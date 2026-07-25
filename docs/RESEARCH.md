@@ -46,6 +46,8 @@ A second theme is **PLCs as one layer in a cyber-physical / IoT system**, not th
 
 **Home Assistant landscape (complement):** HA’s native automation engine, helpers, and most “advanced automation” tools (**pyscript**, **AppDaemon**, **Node-RED**, **C.A.F.E.**, **ST for HA**) are **event-driven or transpile-to-event**. Official **Modbus** / **MQTT** and community **S7/TwinCAT** integrations usually make HA a *client of* a PLC, not a soft-PLC I/O fabric. **FUXA** is SCADA/HMI (addon), not a PLC runtime. **InfluxDB** + **Grafana** and **Lovelace/kiosk** already cover historian and HMI. Packaging-wise, a scan-cycle soft-PLC fits the established **Supervisor addon (+ thin Core integration)** pattern used by AppDaemon/Node-RED better than stuffing a cyclic runtime inside Core.
 
+**Competitive evaluation (complement):** Detailed review of similar offerings (OpenPLC+Modbus, redPlc+Node-RED, ST_HA_Automation, S7/TwinCAT bridges, FUXA, PiPLC, ESP soft-PLCs) shows a clear **white space**: no turnkey product combines scan-cycle soft-PLC + first-class HA entity I/O + HA packaging. Closest pieces are *compose* (OpenPLC) or *language-only* (ST_HA) or *opposite direction* (physical PLC integrations).
+
 **Implication for SWD-70:** Prefer an architecture that **preserves IEC 61131 scan semantics** (HAOS **addon** soft-PLC or equivalent sidecar + entity I/O bridge) over pure ST→HA-automation transpile if the goal is “all the capabilities of a PLC.” Reuse HA for **entity fabric, HMI, and historian**. Event-driven transpile (including [ST_HA_Automation](https://github.com/Auda29/ST_HA_Automation)) remains a lighter alternative but is a **different paradigm**.
 ## Key papers
 
@@ -167,12 +169,145 @@ HA devices / Zigbee / ESPHome / …  →  entities (I/O fabric)
 | ST→automation transpile | HACS integration | **ST_HA_Automation** |
 | Hybrid | Addon soft-PLC + Core entity bridge + Lovelace/Influx | Compose OpenPLC/Modbus/MQTT + HA stack |
 
+## Detailed evaluation of similar HA integrations and apps
+
+Evaluation criteria (for PLCAssistant goals):
+
+| Criterion | Question |
+|-----------|----------|
+| **I/O ownership** | Are HA entities the *field I/O* of the controller, or is HA only HMI/SCADA to an external PLC? |
+| **PLC semantics** | Scan cycle? IEC 61131 languages (LD/ST/FBD)? Timers/counters as first-class? |
+| **Packaging** | Core integration, HACS, Supervisor addon, or DIY compose? |
+| **HMI / historian** | Built-in vs relies on Lovelace / Influx / Grafana / FUXA? |
+| **Maturity** | Official / widely adopted / early community / alpha hardware |
+| **Relation** | *Compete* (same job), *compose* (building block), *adjacent* (related UX), *opposite* (PLC owns I/O) |
+
+Scores below are qualitative **fit to PLCAssistant’s product gap** (not overall product quality): ●●● strong, ●● partial, ● weak / wrong direction.
+
+### Comparison matrix
+
+| Offering | I/O ownership | PLC semantics | Packaging | Fit | Relation |
+|----------|---------------|---------------|-----------|-----|----------|
+| [ST_HA_Automation](https://github.com/Auda29/ST_HA_Automation) | HA entities | ST **language**, event runtime | HACS | ●● | Compete (authoring) |
+| [OpenPLC Runtime](https://github.com/Autonomy-Logic/openplc-runtime) + HA Modbus | Usually OpenPLC I/O / Modbus tags; HA as client | Full IEC 61131 scan | DIY / possible addon | ●● | Compose |
+| [HomeAssistant-OpenPLC](https://github.com/Epaminondaslage/HomeAssistant-OpenPLC) tutorial | Modbus bridge via Node-RED | OpenPLC scan | DIY docs | ●● | Compose / docs |
+| [redPlc](https://github.com/redplc/redplc) + Node-RED + HA | Manual map NR context ↔ HA | Ladder-like soft-PLC in NR | Addon + palette | ●● | Compete / compose |
+| AppDaemon / pyscript / NetDaemon | HA entities | General code, no IEC PLC | Addon / HACS | ● | Adjacent |
+| Native HA automations / C.A.F.E. | HA entities | Event automations | Core / HACS | ● | Adjacent |
+| Official [Modbus](https://www.home-assistant.io/integrations/modbus) | External PLC → HA entities | None (protocol client) | Core | ●● | Compose |
+| [ha-s7plc](https://github.com/xtimmy86x/ha-s7plc) / [ha-s7](https://github.com/gijzelaerr/ha-s7) | Physical S7 → HA (+ optional entity→PLC sync) | External Siemens PLC | HACS | ● | Opposite (+ compose sync) |
+| Official [ADS](https://www.home-assistant.io/integrations/ads) / TwinCAT IoT Communicator | TwinCAT → HA | External Beckhoff soft-PLC | Core / HACS | ● | Opposite |
+| [FUXA](https://github.com/SmartLiving-Rocks/FUXA) HA addon | Industrial protocols / MQTT | HMI/SCADA only | Addon | ● | Adjacent (HMI) |
+| InfluxDB + Grafana addons | Entity history | Historian/viz only | Core + Addon | ●●● (reuse) | Compose |
+| Lovelace / kiosk | Entity UI | HMI only | Core | ●●● (reuse) | Compose |
+| [PiPLC](https://github.com/Chrismettal/PiPLC) | Pi GPIO / Modbus hardware | Designed for OpenPLC + HA | Hardware + docs | ●● | Compose (hardware) |
+| [PiLab ESP32-P4 PLC](https://github.com/OpenPiLab/pilab-esp32-p4-plc) | On-device I/O; REST/JSON | Scan + ladder/AngelScript (alpha) | External MCU | ● | Adjacent / future compose |
+
+### A. Soft-PLC engines that can sit beside HA
+
+#### OpenPLC Runtime (+ Modbus ↔ HA)
+
+- **What it is:** Headless IEC 61131-3 soft-PLC (LD/ST/FBD, …) with deterministic scan cycles, editor upload API, I/O plugins ([OpenPLC Runtime v4](https://github.com/Autonomy-Logic/openplc-runtime)).
+- **HA coupling today:** Not a first-party HA addon. Typical pattern: HA [Modbus](https://www.home-assistant.io/integrations/modbus) **client** reads/writes OpenPLC coils/registers; tutorials also route through Node-RED ([HomeAssistant-OpenPLC](https://github.com/Epaminondaslage/HomeAssistant-OpenPLC)). Community notes that the hard part is binding **HA variables into** the PLC IDE ([HA forum](https://community.home-assistant.io/t/integration-of-ladder-programming-or-functional-plan-similar-step7/620120)).
+- **I/O ownership:** By default OpenPLC owns physical/Modbus I/O; HA is HMI/SCADA **client**. Making HA entities the field bus requires a custom I/O plugin or continuous entity↔register mirroring—the missing product piece.
+- **Strengths:** Real PLC semantics; languages; editor ecosystem; academically recognized ([2607.08550](https://arxiv.org/abs/2607.08550)).
+- **Weaknesses for PLCAssistant:** No turnkey “HA entity I/O driver”; dual systems to operate; Modbus mapping is manual and lossy for rich HA entity attributes.
+- **Learn / reuse:** Strong candidate **runtime to wrap** as a Supervisor addon; use Modbus and/or WebSocket HAL for entity binding.
+
+#### redPlc (Node-RED ladder soft-PLC)
+
+- **What it is:** Node-RED palette implementing ladder contacts/coils/timers/counters/memory with I/Q/M-style arrays and first-scan hooks ([redplc](https://github.com/redplc/redplc), npm `@redplc/node-red-redplc`).
+- **HA coupling:** Via Node-RED HA websocket nodes / MQTT; HAOS already has a Node-RED addon. Discussed on HA community as a ladder alternative to YAML ([forum thread](https://community.home-assistant.io/t/integration-of-ladder-programming-or-functional-plan-similar-step7/620120)).
+- **I/O ownership:** Possible to treat HA entities as I/Q by flow glue—but not a first-class binding UX; logic lives in Node-RED context, not HA.
+- **Strengths:** Ladder UX; soft-PLC vocabulary; runs in familiar HA addon; timers/counters present.
+- **Weaknesses:** Tied to Node-RED (second engine); not a full IEC suite (no native ST/FBD IDE); scan timing is Node-RED’s event/message model, not a hard SCHED_FIFO PLC cycle; dual UI for operators (NR + Lovelace).
+- **Learn / reuse:** Proves demand for ladder-on-HA; packaging path (addon) validated; PLCAssistant should aim for **tighter entity binding** and less glue than redPlc+HA.
+
+### B. “Looks like PLC” but event-driven inside HA
+
+#### ST for Home Assistant (ST_HA_Automation)
+
+- **What it is:** HACS integration: write IEC 61131-3 **Structured Text**, transpile to **native HA automations**; entity bindings (`AT %I*` / `%Q*` / `%M*`); TON/TOF/TP via HA timer helpers; live editor ([ST_HA_Automation](https://github.com/Auda29/ST_HA_Automation)).
+- **I/O ownership:** HA entities — **same direction as PLCAssistant**.
+- **PLC semantics:** Language surface yes; **runtime no** (event triggers from entity dependencies, not cyclic scan).
+- **Strengths:** Closest *in-HA* industrial authoring experience; no sidecar; transactional deploy story.
+- **Weaknesses:** Early/low public adoption signals; inherits HA event semantics (ordering, interlocks, continuous evaluation differ from scan); no LD/FBD engineering suite; not suitable if “all capabilities of a PLC” means scan-cycle behaviour.
+- **Relation:** Direct **competitor on language/UX**, not on runtime architecture. PLCAssistant can position as complementary (scan runtime) or absorb ST authoring later.
+
+#### Native automations, C.A.F.E., pyscript, AppDaemon, NetDaemon
+
+- **What they are:** General automation frameworks (YAML/UI, visual→YAML, Python/C#).
+- **Fit:** Excellent for home logic; **poor** as PLC substitutes (no IEC scan model, no industrial tag HAL).
+- **Relation:** Adjacent; AppDaemon/Node-RED packaging is the **precedent** for a PLCAssistant addon.
+
+### C. Physical / commercial soft-PLC bridges (opposite I/O ownership)
+
+#### Modbus (official), ha-s7plc / ha-s7, ADS / TwinCAT IoT Communicator
+
+- **What they do:** Map **external PLC** memory to HA entities (sensors/switches/…). Some (e.g. ha-s7plc **Entity Sync**) can push HA entity state *into* PLC addresses—interesting but still assumes a real PLC owns control.
+- **Fit to PLCAssistant:** Wrong primary direction (HA is SCADA to PLC). Useful **compose** pieces if PLCAssistant *is* the PLC and needs protocol exposure, or for hybrid sites with both.
+- **Maturity:** Modbus and ADS are official; S7/TwinCAT community integrations are actively maintained relative to ST_HA.
+
+### D. HMI / historian apps (not controllers)
+
+#### FUXA addon
+
+- Web SCADA/HMI with Modbus/MQTT/S7/… ([SmartLiving-Rocks/FUXA](https://github.com/SmartLiving-Rocks/FUXA)). Optional richer process graphics than Lovelace.
+- **Not** a PLC. Compose for phase-4 HMI if Lovelace kiosk is insufficient.
+
+#### InfluxDB + Grafana
+
+- Standard HA historian path. PLCAssistant should expose entities/tags that these already consume—do not build a parallel historian.
+
+### E. Hardware-oriented soft-PLCs near HA
+
+#### PiPLC
+
+- Pi breakout / DIN-rail hardware aimed at **OpenPLC + Home Assistant** ([Chrismettal/PiPLC](https://github.com/Chrismettal/PiPLC)). Documents Modbus between OpenPLC and HA; frames HA as UI/telemetry and OpenPLC as control.
+- **Relation:** Hardware + architecture essay supporting **compose OpenPLC with HA**, not an HA integration that binds entities as I/O.
+
+#### ESP32 / PiLab-class open PLCs
+
+- Alpha edge PLCs with scan loops, ladder/AngelScript, REST/JSON (e.g. [OpenPiLab/pilab-esp32-p4-plc](https://github.com/OpenPiLab/pilab-esp32-p4-plc)); HA forum posters suggest REST/MQTT bridging interest.
+- **Relation:** Adjacent external soft-PLCs; possible future peers via MQTT/REST, not turnkey HA entity I/O products.
+
+### White space (what still does not exist)
+
+No evaluated offering simultaneously provides:
+
+1. **IEC-style (or equivalent) scan-cycle soft-PLC**, and  
+2. **First-class bidirectional binding of arbitrary HA entities as field I/O**, and  
+3. **HA-native packaging** (addon and/or HACS) with Lovelace + Influx/Grafana as default HMI/historian.
+
+Closest approximations:
+
+| Approximation | Missing piece |
+|---------------|---------------|
+| OpenPLC + Modbus + HA | Entity↔tag I/O driver & HA-centric packaging/UX |
+| redPlc + Node-RED + HA | Tight entity HAL, non-NR engineering, true scan isolation |
+| ST_HA_Automation | Scan-cycle runtime (not transpile-to-events) |
+| S7/TwinCAT integrations | Soft-PLC *inside* HA stack; they need an external PLC |
+
+**Implication:** PLCAssistant’s differentiation is the **entity I/O HAL + scan runtime + HA packaging**, not inventing HMI/historian or another Modbus client.
+
+### Competitive positioning options (for `/define`)
+
+| Strategy | Description | Pros | Cons |
+|----------|-------------|------|------|
+| **Wrap OpenPLC** | Addon shipping/runtime-managing OpenPLC + entity↔Modbus/WebSocket bridge | Real IEC stack; faster to “PLC-complete” | Upstream dependency; dual tooling (OpenPLC Editor + HA) |
+| **Custom soft runtime** | Own scan engine in addon; ST/LD subset | Full UX control; HA-native tags | Larger build; language/editor cost |
+| **redPlc-first** | Document/productize NR+redPlc+HA entity recipes | Fast demo | Locked to Node-RED; weak product identity |
+| **ST_HA adjacency** | Ship scan runtime; optionally interop/import ST later | Clear differentiation from transpile | Must not confuse users with ST_HA |
+
+Working lean remains: **wrap or embed a scan soft-PLC as an addon**, invest differentiation in **HA entity I/O binding UX**, reuse Lovelace/Influx/Grafana; treat ST_HA and redPlc as category proof and competitors on *language/ladder UX*, not as complete substitutes.
+
 ## Gaps and limitations
 
 - **Rate limits** prevented soft-PLC / OpenPLC / PLC+IoT dedicated arXiv queries and snowball expansion; OpenPLC evidence is incidental via the IEC 61131 hit list.
-- arXiv set has **no Home Assistant** papers; HA section relies on product docs / community projects (preprint peer-review does not apply).
+- arXiv set has **no Home Assistant** papers; HA and competitive sections rely on product docs / community projects (preprint peer-review does not apply).
 - **Little quantitative comparison** of soft-PLC scan latency vs HA event latency on commodity hosts.
-- ST_HA_Automation is early/low-adoption (public GitHub signals) — useful as a paradigm sample, not a maturity proof.
+- ST_HA_Automation and several ESP PLC projects show **early/low adoption** public signals — useful as paradigm samples, not maturity proofs.
+- Competitive landscape moves quickly; maturity judgments are snapshots (as of research date).
 - Preprint corpus for the academic half; peer-review status varies (`journal_ref` sparse in this sample).
 
 ## Architecture implications (for `/define SWD-70`)
@@ -186,6 +321,7 @@ HA devices / Zigbee / ESPHome / …  →  entities (I/O fabric)
 
 **Working recommendation (evidence-based, not a final product decision):**  
 Adopt **scan-cycle soft-PLC semantics** packaged primarily as a **Home Assistant OS/Supervised addon**, with a **thin Core integration** for config and entity exposure. Bind **HA entities as a constrained I/O HAL** (freshness, range, fail-safe) via WebSocket and/or Modbus. **Reuse** Lovelace/kiosk (+ optional FUXA) for HMI and InfluxDB/Grafana for historian. Treat **ST→automation transpile** (and pyscript/Node-RED) as optional *authoring or adjacent* paths, not the PLC runtime. Document non-goals: hard real-time, safety certification.
+
 ## Recommended reading order
 
 1. [1303.4761](https://arxiv.org/abs/1303.4761) — 61131 vs 61499 paradigm stakes  
@@ -197,7 +333,9 @@ Adopt **scan-cycle soft-PLC semantics** packaged primarily as a **Home Assistant
 7. HA [Modbus](https://www.home-assistant.io/integrations/modbus), [InfluxDB](https://www.home-assistant.io/integrations/influxdb), [timer](https://www.home-assistant.io/integrations/timer) docs — I/O / historian / timer primitives  
 8. [App communication (addons)](https://developers.home-assistant.io/docs/apps/communication/) — how a soft-PLC addon talks to Core  
 9. [ST_HA_Automation](https://github.com/Auda29/ST_HA_Automation) — transpile paradigm sample  
-10. [FUXA HA addon](https://github.com/SmartLiving-Rocks/FUXA) — optional SCADA HMI beside Lovelace  
+10. [OpenPLC Runtime](https://github.com/Autonomy-Logic/openplc-runtime) / [redPlc](https://github.com/redplc/redplc) — soft-PLC engines composed with HA today  
+11. [ha-s7plc](https://github.com/xtimmy86x/ha-s7plc) — mature *opposite-direction* PLC↔HA bridge  
+12. [FUXA HA addon](https://github.com/SmartLiving-Rocks/FUXA) — optional SCADA HMI beside Lovelace  
 
 ## Sources
 
@@ -208,15 +346,17 @@ Triage split: `docs/research/arxiv_swd70_triage.json`
 
 Academic claims above trace to abstracts/metadata in those files (arXiv IDs as cited).
 
-### Home Assistant / product
+### Home Assistant / product / competitive
 
-- Home Assistant Modbus, InfluxDB, Timer integrations (official docs)  
+- Home Assistant Modbus, InfluxDB, Timer, ADS integrations (official docs)  
 - Supervisor app/addon Core API proxy docs  
-- Community: ST_HA_Automation, FUXA HA addon, AppDaemon / Node-RED / pyscript packaging discussions  
-- HA architecture discussion on addons as standalone apps beside Core  
+- Soft-PLC / ladder near HA: OpenPLC Runtime, HomeAssistant-OpenPLC tutorial, redPlc, ST_HA_Automation  
+- Physical PLC bridges: ha-s7plc, ha-s7, TwinCAT IoT Communicator  
+- HMI/hardware: FUXA HA addon, PiPLC, PiLab ESP32-P4 PLC  
+- HA community thread on ladder/Step7-like programming  
+- AppDaemon / Node-RED / pyscript packaging discussions  
 
-HA-section claims trace to those named docs/repos (community maturity varies).
-
+HA and competitive-section claims trace to those named docs/repos (community maturity varies).
 ## Tracker
 
 - Task: [SWD-70](https://marcusknielsen.atlassian.net/browse/SWD-70)
