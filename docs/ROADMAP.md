@@ -60,7 +60,7 @@ Existing work mostly fills *adjacent* niches, not this product:
 
 | Phase | Topic | Notes | Issue |
 |-------|-------|-------|-------|
-| 1 | Architecture & approach selection | Decide OpenPLC sidecar + HA I/O driver vs in-HA runtime vs ST transpile vs hybrid; lock I/O and determinism non-goals. Research: [`docs/RESEARCH.md`](RESEARCH.md) (white space: scan soft-PLC + HA entity I/O; wrap OpenPLC or custom addon; ST_HA/redPlc are partial) | [SWD-70](https://marcusknielsen.atlassian.net/browse/SWD-70) |
+| 1 | Architecture & approach selection | **Defined:** [`docs/PLAN.md`](PLAN.md) — wrap OpenPLC in addon + thin HACS integration; HA entities as I/O HAL; soft real-time. Research: [`docs/RESEARCH.md`](RESEARCH.md) | [SWD-70](https://marcusknielsen.atlassian.net/browse/SWD-70) |
 | 2 | HA entity I/O bridge | Bidirectional entity↔tag binding, availability/freshness, config UX | [SWD-71](https://marcusknielsen.atlassian.net/browse/SWD-71) |
 | 3 | PLC program execution | Runtime lifecycle, timers/counters, at least one IEC-style language path | [SWD-69](https://marcusknielsen.atlassian.net/browse/SWD-69) |
 | 4 | Operator surfaces | Lovelace/kiosk HMI patterns + InfluxDB/Grafana historian patterns | [SWD-68](https://marcusknielsen.atlassian.net/browse/SWD-68) |
@@ -72,11 +72,20 @@ Architecture first (phase 1) unlocks the I/O bridge shape (phase 2) and runtime 
 
 ## Open questions
 
-- Soft-PLC engine: embed/reuse **OpenPLC Runtime**, custom in-HA runtime, or hybrid?
-- How much **determinism** is acceptable given Wi‑Fi/Zigbee/cloud entities and HA’s event loop (soft real-time vs “PLC-like enough”)?
-- Target languages for MVP: Ladder, Structured Text, Function Block, or a smaller subset?
-- Safety/interlock expectations for equipment control (fail-safe outputs on entity unavailable)?
-- Integration vs addon vs both for first install path?
+Resolved by [`docs/PLAN.md`](PLAN.md) / SWD-70 define:
+
+- Soft-PLC engine → **wrap OpenPLC Runtime** in addon (fallback: minimal custom scan if blocked)
+- Determinism → **soft / best-effort**; no safety cert
+- Languages MVP → **OpenPLC Editor** (LD/ST/FBD as upstream supports)
+- Fail-safe → configurable per binding (hold last / force safe)
+- Packaging → **addon + thin HACS integration**
+
+Still open (deferred):
+
+- OpenPLC redistribution/license check before SWD-69
+- Default scan period / overrun metrics (SWD-69)
+- Binding UI vs YAML (SWD-71; prefer UI)
+- Optional Modbus server timing (default post-MVP)
 
 ## Assumptions (working)
 
@@ -92,4 +101,4 @@ Architecture first (phase 1) unlocks the I/O bridge shape (phase 2) and runtime 
 
 ## Next
 
-`/define SWD-70` — Lock architecture using [`docs/RESEARCH.md`](RESEARCH.md) (soft-PLC **addon** + HA entity I/O HAL; reuse Lovelace/Influx; ST transpile optional).
+`/implement SWD-70` — Produce ADR + I/O HAL + packaging blueprint per [`docs/PLAN.md`](PLAN.md).
