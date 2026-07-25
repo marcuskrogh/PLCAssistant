@@ -60,7 +60,7 @@ Existing work mostly fills *adjacent* niches, not this product:
 
 | Phase | Topic | Notes | Issue |
 |-------|-------|-------|-------|
-| 1 | Architecture & approach selection | Decide OpenPLC sidecar + HA I/O driver vs in-HA runtime vs ST transpile vs hybrid; lock I/O and determinism non-goals | [SWD-70](https://marcusknielsen.atlassian.net/browse/SWD-70) |
+| 1 | Architecture & approach selection | Decide OpenPLC sidecar + HA I/O driver vs in-HA runtime vs ST transpile vs hybrid; lock I/O and determinism non-goals. Research: [`docs/RESEARCH.md`](RESEARCH.md) (scan semantics preferred over transpile) | [SWD-70](https://marcusknielsen.atlassian.net/browse/SWD-70) |
 | 2 | HA entity I/O bridge | Bidirectional entity↔tag binding, availability/freshness, config UX | [SWD-71](https://marcusknielsen.atlassian.net/browse/SWD-71) |
 | 3 | PLC program execution | Runtime lifecycle, timers/counters, at least one IEC-style language path | [SWD-69](https://marcusknielsen.atlassian.net/browse/SWD-69) |
 | 4 | Operator surfaces | Lovelace/kiosk HMI patterns + InfluxDB/Grafana historian patterns | [SWD-68](https://marcusknielsen.atlassian.net/browse/SWD-68) |
@@ -92,4 +92,4 @@ Architecture first (phase 1) unlocks the I/O bridge shape (phase 2) and runtime 
 
 ## Next
 
-`/research SWD-70` — deepen soft-PLC approach comparison before locking architecture; or `/define SWD-70` if ready to decide.
+`/define SWD-70` — Lock architecture using [`docs/RESEARCH.md`](RESEARCH.md) (scan soft-PLC + HA I/O HAL preferred over ST→automation transpile).
