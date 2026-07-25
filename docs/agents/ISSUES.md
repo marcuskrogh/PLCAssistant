@@ -15,3 +15,4 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 - 2026-07-25 — `/explore` created Story SWD-66 + phase Tasks SWD-70/71/69/68/67; wrote `docs/ROADMAP.md`; Next `/research SWD-70` or `/define SWD-70`.
 - 2026-07-25 — `/research SWD-70` wrote `docs/RESEARCH.md` (IEC 61131 arXiv brief; scan soft-PLC preferred); Next `/define SWD-70`.
+- 2026-07-26 — Enriched `docs/RESEARCH.md` with HA technology landscape (entities, ST_HA, addons, Modbus, FUXA, Influx/Grafana, Lovelace); lean soft-PLC **addon** + thin Core integration; Next `/define SWD-70`.
