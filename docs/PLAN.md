@@ -78,5 +78,12 @@
   - [SWD-99](https://marcusknielsen.atlassian.net/browse/SWD-99) — Thin-integration stub
   - [SWD-100](https://marcusknielsen.atlassian.net/browse/SWD-100) — Contract/unit tests
 
+## Delivered
+- Specs: `docs/io/` (01–04), wedge I/O + packaging updates
+- Code: `plcassistant/io/` (quality, IoImage, BindingTable, ThinIntegrationStub)
+- Wedge aligned to per-tag `TagQuality` / `is_good`
+- Tests: `python3 -m pytest -q` — 109 passed at ship
+- Shipped: [PR #14](https://github.com/marcuskrogh/PLCAssistant/pull/14) merge `b64a0cd`
+
 ## Next
-`/ship SWD-86` — Merge PR and close the Task
+Done — phase closed. Suggested initiative next: `/research SWD-85`
