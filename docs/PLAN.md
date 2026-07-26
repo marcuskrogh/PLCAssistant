@@ -86,4 +86,4 @@
 - Shipped: [PR #14](https://github.com/marcuskrogh/PLCAssistant/pull/14) merge `b64a0cd`
 
 ## Next
-Done — phase closed. Suggested initiative next: `/research SWD-85`
+Done — phase closed. Suggested initiative next: `/define SWD-85` (research: `docs/RESEARCH.md`)
