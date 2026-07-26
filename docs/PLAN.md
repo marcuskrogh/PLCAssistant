@@ -82,5 +82,9 @@
   - [SWD-91](https://marcusknielsen.atlassian.net/browse/SWD-91) — Follow-on note (physical + later examples)
   - [SWD-94](https://marcusknielsen.atlassian.net/browse/SWD-94) — Preliminary packaging sketch
 
+## Delivered
+- Specs: `docs/wedge/` (01–08)
+- Mock core: `plcassistant/wedge/` with pytest acceptance (`python3 -m pytest -q` — 37 passed)
+
 ## Next
-`/implement SWD-83` — Build per this plan
+`/review-fix SWD-83` — Review and auto-fix until clean
