@@ -65,7 +65,7 @@ Existing work mostly fills *adjacent* niches, not this product:
 
 | Phase | Topic | Notes | Issue |
 |-------|-------|-------|-------|
-| 1 | Architecture & approach selection | **Implemented (docs):** ADR [`ARCHITECTURE.md`](ARCHITECTURE.md), [`IO_HAL.md`](IO_HAL.md), [`PACKAGING.md`](PACKAGING.md), [`HANDOFF.md`](HANDOFF.md). Plan: [`PLAN.md`](PLAN.md). Research: [`RESEARCH.md`](RESEARCH.md) | [SWD-70](https://marcusknielsen.atlassian.net/browse/SWD-70) |
+| 1 | Architecture & approach selection | **Shipped:** ADR [`ARCHITECTURE.md`](ARCHITECTURE.md), [`IO_HAL.md`](IO_HAL.md), [`PACKAGING.md`](PACKAGING.md), [`HANDOFF.md`](HANDOFF.md). Plan: [`PLAN.md`](PLAN.md). Research: [`RESEARCH.md`](RESEARCH.md). PR [#3](https://github.com/marcuskrogh/PLCAssistant/pull/3) | [SWD-70](https://marcusknielsen.atlassian.net/browse/SWD-70) ✅ |
 | 2 | HA entity I/O bridge | Bidirectional entity↔tag binding, availability/freshness, config UX | [SWD-71](https://marcusknielsen.atlassian.net/browse/SWD-71) |
 | 3 | PLC program execution | Runtime lifecycle, timers/counters, at least one IEC-style language path | [SWD-69](https://marcusknielsen.atlassian.net/browse/SWD-69) |
 | 4 | Operator surfaces | Lovelace/kiosk HMI patterns + InfluxDB/Grafana historian patterns | [SWD-68](https://marcusknielsen.atlassian.net/browse/SWD-68) |
@@ -106,4 +106,4 @@ Still open (deferred):
 
 ## Next
 
-`/ship SWD-70` — Merge architecture PR after clean `/review-fix`. Downstream: `/define SWD-71` against [`docs/IO_HAL.md`](IO_HAL.md) + [`docs/HANDOFF.md`](HANDOFF.md).
+`/define SWD-71` — Phase 2 I/O bridge against [`docs/IO_HAL.md`](IO_HAL.md) + [`docs/HANDOFF.md`](HANDOFF.md). Phase 1 (SWD-70) shipped via [PR #3](https://github.com/marcuskrogh/PLCAssistant/pull/3).
