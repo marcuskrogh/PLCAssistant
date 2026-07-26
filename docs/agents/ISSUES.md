@@ -4,8 +4,8 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 | Key | Type | Title | Status | Parent | Artifact | Next |
 |-----|------|-------|--------|--------|----------|------|
-| SWD-81 | Story | PLCAssistant — Virtual PLC for Home Assistant | To Do | — | docs/ROADMAP.md | `/review-fix SWD-83` |
-| SWD-83 | Task | Explore theme: Lab / hobby / small-process wedge | In Review | SWD-81 | docs/PLAN.md, docs/wedge/, plcassistant/wedge/ | `/review-fix SWD-83` |
+| SWD-81 | Story | PLCAssistant — Virtual PLC for Home Assistant | To Do | — | docs/ROADMAP.md | `/ship SWD-83` |
+| SWD-83 | Task | Explore theme: Lab / hobby / small-process wedge | In Review | SWD-81 | docs/PLAN.md, docs/wedge/, plcassistant/wedge/ | `/ship SWD-83` |
 | SWD-88 | Sub-task | SWD-83: Reference process spec | Done | SWD-83 | docs/wedge/01-reference-process.md | — |
 | SWD-87 | Sub-task | SWD-83: I/O & HMI contract for the skid | Done | SWD-83 | docs/wedge/02-io-hmi-contract.md | — |
 | SWD-92 | Sub-task | SWD-83: Control story spec | Done | SWD-83 | docs/wedge/03-control-story.md | — |
@@ -24,4 +24,5 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 - 2026-07-26 — Cleared first PLCAssistant development session (Story SWD-66 and Tasks/Sub-tasks SWD-67..SWD-80; removed explore/implement artifacts from the repo) for a fresh exploration start.
 - 2026-07-26 — Explore complete: Story SWD-81 + theme Tasks SWD-83, SWD-86, SWD-85, SWD-82, SWD-84; artifact `docs/ROADMAP.md`; Next `/define SWD-83`.
 - 2026-07-26 — Define complete for SWD-83: `docs/PLAN.md`; Sub-tasks SWD-88, SWD-87, SWD-92, SWD-93, SWD-90, SWD-89, SWD-91, SWD-94; Next `/implement SWD-83`.
-- 2026-07-26 — Implement SWD-83: wedge specs + mock cascade/safety core (37 pytest); Sub-tasks Done; Task → In Review; Next `/review-fix SWD-83`.
+- 2026-07-26 — Implement SWD-83: wedge specs + mock cascade/safety core (37 pytest); Sub-tasks Done; Task → In Review; Next `/ship SWD-83`.
+- 2026-07-26 — review-fix SWD-83 CLEAN after 3 iterations (8→2→0 should-fix); Next `/ship SWD-83`.
