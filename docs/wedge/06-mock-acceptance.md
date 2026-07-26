@@ -23,7 +23,7 @@ Runnable checklist proving the mock skid meets PLAN acceptance: Start/Stop, casc
 
 ### A1 — Start blocked when not permissive
 
-1. Force `TRIP_ACTIVE` or set `LT_TANK_BAD` (or leave a prior trip).
+1. Force `TRIP_ACTIVE` or force `LT_TANK` quality BAD (or leave a prior trip).
 2. Confirm `PERM_OK = false`.
 3. Issue `HMI_START`.
 4. **Expect:** remain `STOP` / `TRIPPED`; `CMD_SPEED = 0`.
@@ -90,14 +90,14 @@ Repeat for each PV:
 
 | Scenario | Injector | Trip code |
 |----------|----------|-----------|
-| E1 | `force_LT_TANK_BAD` | `LOS_LT_TANK` |
-| E2 | `force_LT_RES_BAD` | `LOS_LT_RES` |
-| E3 | `force_FT_INLET_BAD` | `LOS_FT_INLET` |
+| E1 | `force_quality("LT_TANK", BAD, …)` / `force_LT_TANK_BAD` | `LOS_LT_TANK` |
+| E2 | `force_quality("LT_RES", BAD, …)` / `force_LT_RES_BAD` | `LOS_LT_RES` |
+| E3 | `force_quality("FT_INLET", BAD, …)` / `force_FT_INLET_BAD` | `LOS_FT_INLET` |
 
 For each:
 
 1. Start clean (`RUNNING`).
-2. Force BAD.
+2. Force BAD quality on the PV.
 3. **Expect:** immediate `CMD_SPEED = 0`, `MODE = TRIPPED`, matching `TRIP_CODE`.
 4. Clear injector (quality good again); without Reset, **Expect:** still latched / not running.
 5. `HMI_RESET` → `STOP`; Start succeeds.

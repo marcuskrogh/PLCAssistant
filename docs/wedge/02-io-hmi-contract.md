@@ -14,7 +14,7 @@ Freeze the **logical signal contract** for the gravity-drained tank skid: field 
 | Tag names | Upper snake case (`LT_TANK`) |
 | Bools | `true` = active / asserted |
 | Commands | Edge- or pulse-friendly; controllers must be idempotent on sustained `true` |
-| Bad / missing PV | Quality flag or dedicated `*_FAULT` / loss-of-signal; see safety story |
+| Bad / missing PV | Per-tag quality on the I/O image (`GOOD` / `UNCERTAIN` / `BAD` + reason); see [`docs/io/01-image-quality.md`](../io/01-image-quality.md) |
 | Speed | 0–100% of drive span |
 | Flow | L/min volumetric |
 | Level | m preferred; % of configured span allowed on HMI |
@@ -30,14 +30,16 @@ Freeze the **logical signal contract** for the gravity-drained tank skid: field 
 
 ### Quality / loss-of-signal
 
-For each required PV (`LT_TANK`, `LT_RES`, `FT_INLET`), the runtime must expose a boolean quality (name pattern `LT_TANK_BAD`, `LT_RES_BAD`, `FT_INLET_BAD`) **or** an equivalent “unavailable” state that safety can consume. Mock must be able to force BAD independently.
+There are **no** separate `*_BAD` tags. Each process PV carries **per-tag quality** on the Soft-PLC I/O image (`QualityStatus` + optional `ReasonCode`), as defined in [`docs/io/01-image-quality.md`](../io/01-image-quality.md).
 
-| Tag | Description |
-|-----|-------------|
-| `LT_TANK_BAD` | Tank level signal lost / invalid |
-| `LT_RES_BAD` | Reservoir level signal lost / invalid |
-| `FT_INLET_BAD` | Inlet flow signal lost / invalid |
-| `SC_PUMP_BAD` | Speed feedback lost (informational if `SC_PUMP` optional) |
+| PV tag | Quality consumed by | Notes |
+|--------|---------------------|-------|
+| `LT_TANK` | Safety / HMI | LOS when `not is_good(quality)`; HH only on `GOOD` |
+| `LT_RES` | Safety / HMI | LOS when `not is_good(quality)`; LL only on `GOOD` |
+| `FT_INLET` | Safety / HMI | LOS when `not is_good(quality)` |
+| `SC_PUMP` | HMI (informational) | Optional; treat as unavailable when quality ≠ `GOOD` |
+
+Safety collapses quality with `is_good` / `collapse_quality` — only `GOOD` is trustworthy. Mock / tests inject quality via `force_quality(tag, BAD|UNCERTAIN, reason)` (thin `force_*_BAD` wrappers may remain for harness convenience). Process tag **names** (`LT_TANK`, …) are unchanged.
 
 ## Process outputs (CV / commands)
 
@@ -84,7 +86,7 @@ Tunable PID gains are out of deep scope here (SWD-85 / model); expose placeholde
 | `SP_FLOW` | Active flow setpoint (cascade output or manual) | L/min |
 | `RUNNING` | Control intends to run pump (subject to trips) | bool |
 
-Recommended live displays (Lovelace / dashboard): `LT_TANK`, `LT_RES`, `FT_INLET`, `SC_PUMP` (if present), `CMD_SPEED`, `SP_LEVEL`, `SP_FLOW`, `MODE`, `TRIP_CODE`, `PERM_OK`.
+Recommended live displays (Lovelace / dashboard): `LT_TANK`, `LT_RES`, `FT_INLET`, `SC_PUMP` (if present), `CMD_SPEED`, `SP_LEVEL`, `SP_FLOW`, `MODE`, `TRIP_CODE`, `PERM_OK`, plus each PV’s quality when troubleshooting LOS.
 
 ## HMI surface (reuse HA)
 
@@ -104,3 +106,4 @@ Thin config integration maps HA entities ↔ tags. Mock mode may bind to simulat
 - Process: [`01-reference-process.md`](01-reference-process.md)
 - Modes & cascade: [`03-control-story.md`](03-control-story.md)
 - Trips & permissives: [`04-safety-story.md`](04-safety-story.md)
+- I/O image & quality: [`docs/io/01-image-quality.md`](../io/01-image-quality.md)

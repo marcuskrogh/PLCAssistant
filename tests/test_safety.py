@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from plcassistant.io.quality import QualityStatus, ReasonCode, TagQuality
 from plcassistant.wedge.safety import Mode, SafetyConfig, SafetyLayer, TripCode
 
 
@@ -82,9 +83,22 @@ def test_ll_res_trips_latches_and_stops():
         ({"lt_tank": None}, TripCode.LOS_LT_TANK),
         ({"lt_res": None}, TripCode.LOS_LT_RES),
         ({"ft_inlet": None}, TripCode.LOS_FT_INLET),
-        ({"lt_tank_bad": True}, TripCode.LOS_LT_TANK),
-        ({"lt_res_bad": True}, TripCode.LOS_LT_RES),
-        ({"ft_inlet_bad": True}, TripCode.LOS_FT_INLET),
+        (
+            {"lt_tank_quality": TagQuality(QualityStatus.BAD, ReasonCode.FAULT)},
+            TripCode.LOS_LT_TANK,
+        ),
+        (
+            {"lt_res_quality": TagQuality(QualityStatus.BAD, ReasonCode.FAULT)},
+            TripCode.LOS_LT_RES,
+        ),
+        (
+            {"ft_inlet_quality": TagQuality(QualityStatus.BAD, ReasonCode.FAULT)},
+            TripCode.LOS_FT_INLET,
+        ),
+        (
+            {"lt_tank_quality": QualityStatus.UNCERTAIN},
+            TripCode.LOS_LT_TANK,
+        ),
         ({"lt_tank": float("nan")}, TripCode.LOS_LT_TANK),
     ],
 )

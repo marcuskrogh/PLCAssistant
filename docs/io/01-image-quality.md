@@ -110,12 +110,12 @@ Outputs written by logic are trusted (`GOOD`) unless a later package defines oth
 ## Non-goals (this package)
 
 - HA entity bindings, YAML schema, unit conversion (SWD-98 / SWD-99)
-- Wedge `*_BAD` retirement in skid specs (SWD-96)
+- Wedge `*_BAD` retirement in skid specs — done in SWD-96 (`docs/wedge/02-io-hmi-contract.md`)
 - Change-detect OUT writes
 - Real Home Assistant
 
 ## References
 
 - Parent plan: [`docs/PLAN.md`](../PLAN.md) (SWD-86 work package 1)
-- Prior wedge I/O names (still authoritative for skid roles until SWD-96): [`docs/wedge/02-io-hmi-contract.md`](../wedge/02-io-hmi-contract.md)
+- Prior wedge I/O names (process tags unchanged; quality per tag after SWD-96): [`docs/wedge/02-io-hmi-contract.md`](../wedge/02-io-hmi-contract.md)
 - Tracker Task: [SWD-86](https://marcusknielsen.atlassian.net/browse/SWD-86)

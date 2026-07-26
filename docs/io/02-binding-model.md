@@ -136,7 +136,7 @@ At most one binding per tag. Tag declarations are applied to an `IoImage` via `B
 ## Non-goals (this package)
 
 - Thin-integration stub / mock entities / scan orchestration (SWD-99)
-- Wedge `*_BAD` retirement (SWD-96)
+- Wedge `*_BAD` retirement — done in SWD-96
 - Packaging mock ownership note (SWD-97)
 - Real Home Assistant
 - Change-detect OUT writes

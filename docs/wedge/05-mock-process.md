@@ -21,7 +21,7 @@ Packaging ownership: [`08-packaging-sketch.md`](08-packaging-sketch.md). Image /
 | Requirement | Detail |
 |-------------|--------|
 | Selectable field vs mock entities | Thin integration can expose mock entities or bind real field entities; Add-on control/safety logic is unchanged (binding-agnostic image) |
-| Same tag contract | Mock publishes/consumes the tags in [`02-io-hmi-contract.md`](02-io-hmi-contract.md) (quality per tag; `*_BAD` retirement tracked under SWD-96) |
+| Same tag contract | Mock publishes/consumes the tags in [`02-io-hmi-contract.md`](02-io-hmi-contract.md) (per-tag quality; no `*_BAD` tags) |
 | Injectable faults | Operator or test harness can force bad quality / LOS, raise/lower levels, and adjust drain/pump curves for scenarios |
 | Deterministic enough | Same scenario steps yield the same qualitative outcomes (trips, direction of cascade) |
 | HA-visible | Mock PVs/commands appear as HA entities on the same HMI/binding path used for field acceptance |
@@ -78,14 +78,17 @@ Expose via config, service, or test panel:
 
 | Injector | Effect |
 |----------|--------|
-| `force_LT_TANK_BAD` | Sets `LT_TANK_BAD`; freeze or NaN last PV |
-| `force_LT_RES_BAD` | Sets `LT_RES_BAD` |
-| `force_FT_INLET_BAD` | Sets `FT_INLET_BAD` |
+| `force_quality("LT_TANK", BAD, fault)` | Sets `LT_TANK` quality to BAD; freeze or NaN last PV |
+| `force_quality("LT_RES", BAD, fault)` | Sets `LT_RES` quality to BAD |
+| `force_quality("FT_INLET", BAD, fault)` | Sets `FT_INLET` quality to BAD |
+| `force_LT_TANK_BAD` (wrapper) | Thin alias → `force_quality("LT_TANK", BAD, fault)` |
+| `force_LT_RES_BAD` (wrapper) | Thin alias → `force_quality("LT_RES", BAD, fault)` |
+| `force_FT_INLET_BAD` (wrapper) | Thin alias → `force_quality("FT_INLET", BAD, fault)` |
 | `nudge_h_tank` | Add delta to tank level (for HH scenario) |
 | `nudge_h_res` | Add delta to reservoir (for LL scenario) |
 | `set_K_DRAIN` | Disturbance for cascade demo |
 
-Clearing an injector restores normal quality / physics.
+Clearing an injector restores normal quality / physics. There are no separate `*_BAD` tags — quality lives on each PV ([`docs/io/01-image-quality.md`](../io/01-image-quality.md)).
 
 ## Timebase
 

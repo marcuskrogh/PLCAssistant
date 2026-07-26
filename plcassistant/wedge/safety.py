@@ -15,6 +15,9 @@ Reset never auto-starts. Stop always forces pump off / idle.
 
 Reset policy: clear **all** latched codes in one Reset **iff every** underlying
 condition is clear; otherwise keep remaining latches (recommended in 04).
+
+Quality: LOS uses per-tag ``TagQuality`` / ``is_good`` from ``plcassistant.io``
+(no separate ``*_BAD`` tags). Numeric None/NaN/negative still map to BAD.
 """
 
 from __future__ import annotations
@@ -23,7 +26,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional, Set
 
-from plcassistant.wedge.quality import pv_ok
+from plcassistant.io.quality import QualityStatus, ReasonCode, TagQuality, is_good
+from plcassistant.wedge.quality import resolve_tag_quality
 
 
 class Mode(str, Enum):
@@ -101,9 +105,10 @@ class SafetyLayer:
         self._mode = Mode.STOP
         self._last_lt_tank: Optional[float] = None
         self._last_lt_res: Optional[float] = None
-        self._last_tank_bad = False
-        self._last_res_bad = False
-        self._last_flow_bad = False
+        _unavailable = TagQuality(QualityStatus.BAD, ReasonCode.UNAVAILABLE)
+        self._last_tank_quality = _unavailable
+        self._last_res_quality = _unavailable
+        self._last_flow_quality = _unavailable
 
     @property
     def state(self) -> SafetyState:
@@ -115,27 +120,31 @@ class SafetyLayer:
         lt_tank: Optional[float],
         lt_res: Optional[float],
         ft_inlet: Optional[float],
-        lt_tank_bad: bool = False,
-        lt_res_bad: bool = False,
-        ft_inlet_bad: bool = False,
+        lt_tank_quality: TagQuality | QualityStatus | None = None,
+        lt_res_quality: TagQuality | QualityStatus | None = None,
+        ft_inlet_quality: TagQuality | QualityStatus | None = None,
         start: bool = False,
         stop: bool = False,
         reset: bool = False,
     ) -> SafetyState:
         """Evaluate trips and operator commands for one scan.
 
-        A PV is BAD if the corresponding ``*_bad`` flag is True, or if the
-        value is ``None`` / non-finite (unavailable).
+        LOS when ``not is_good(quality)``. Omitted quality is synthesized from
+        the PV (None / non-finite / negative → BAD).
         """
-        tank_bad = lt_tank_bad or not pv_ok(lt_tank)
-        res_bad = lt_res_bad or not pv_ok(lt_res)
-        flow_bad = ft_inlet_bad or not pv_ok(ft_inlet)
+        tank_q = resolve_tag_quality(lt_tank, lt_tank_quality)
+        res_q = resolve_tag_quality(lt_res, lt_res_quality)
+        flow_q = resolve_tag_quality(ft_inlet, ft_inlet_quality)
 
-        self._last_lt_tank = lt_tank
-        self._last_lt_res = lt_res
-        self._last_tank_bad = tank_bad
-        self._last_res_bad = res_bad
-        self._last_flow_bad = flow_bad
+        tank_bad = not is_good(tank_q)
+        res_bad = not is_good(res_q)
+        flow_bad = not is_good(flow_q)
+
+        self._last_lt_tank = lt_tank if not tank_bad else None
+        self._last_lt_res = lt_res if not res_bad else None
+        self._last_tank_quality = tank_q
+        self._last_res_quality = res_q
+        self._last_flow_quality = flow_q
 
         active: Set[TripCode] = set()
         if tank_bad:
@@ -179,7 +188,11 @@ class SafetyLayer:
     def _perm_ok_now(self) -> bool:
         if self._trip_codes or self._mode is not Mode.STOP:
             return False
-        if self._last_tank_bad or self._last_res_bad or self._last_flow_bad:
+        if (
+            not is_good(self._last_tank_quality)
+            or not is_good(self._last_res_quality)
+            or not is_good(self._last_flow_quality)
+        ):
             return False
         if self._last_lt_tank is None or self._last_lt_res is None:
             return False
@@ -198,4 +211,3 @@ class SafetyLayer:
             running=running,
             pump_permit=running,
         )
-
