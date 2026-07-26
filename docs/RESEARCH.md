@@ -365,4 +365,4 @@ HA and competitive-section claims trace to those named docs/repos (community mat
 
 ## Next
 
-`/ship SWD-70` — Review-fix CLEAN; merge architecture artifacts.
+Done — SWD-70 shipped. Continue `/define SWD-71`.
