@@ -115,6 +115,6 @@ Create at least: `scan_period_ms`, `last_cycle_ms`, `overrun_count`, `bridge_con
 
 ## Next
 
-**Shipped** via PR [#7](https://github.com/marcuskrogh/PLCAssistant/pull/7). Archived copy: [`PLAN_SWD-71.md`](PLAN_SWD-71.md).
+**Shipped** via PR [#7](https://github.com/marcuskrogh/PLCAssistant/pull/7). This file is the archival plan for SWD-71.
 
 Story continuity: `/define SWD-69` — soft-PLC runtime + HAL loop in the addon.
