@@ -1,119 +1,118 @@
-# Implementation plan: Architecture & approach selection (SWD-70)
+# Implementation plan: HA entity I/O bridge (SWD-71)
 
 ## Summary
 
-Lock PLCAssistant’s phase-1 architecture: a **scan-cycle soft-PLC** packaged as a **Home Assistant OS/Supervised addon**, with a **thin Core (HACS) integration** for config and entity exposure. Prefer **wrapping OpenPLC Runtime** for IEC 61131 execution, and differentiate on a first-class **HA entity I/O HAL** (WebSocket primary; Modbus optional mirror). Explicitly **out**: ST→HA-automation transpile as the runtime, hard real-time/safety certification, and replacing Lovelace/Influx/Grafana.
+Build the **Home Assistant side** of PLCAssistant’s entity↔PLC-tag bridge: a thin **HACS custom integration** that owns the binding registry and config UX, plus a shared **`plcassistant_contract`** library for schema, coercion, freshness, and fail-safe pure functions. Sync bindings to the future addon via the locked **`PutBindings`** control-plane op. Expose the named **diagnostic entities** from [IO_HAL.md](IO_HAL.md), fed by a mockable `GetStatus` client.
 
-This phase delivers architecture artifacts only (no soft-PLC product code beyond docs/contracts). Downstream Tasks SWD-71 / SWD-69 / SWD-68 / SWD-67 implement against these decisions.
+This phase does **not** host the scan loop or OpenPLC (that is [SWD-69](https://marcusknielsen.atlassian.net/browse/SWD-69)). Behavioural contracts remain [IO_HAL.md](IO_HAL.md), [PACKAGING.md](PACKAGING.md), and [HANDOFF.md](HANDOFF.md) from shipped [SWD-70](https://marcusknielsen.atlassian.net/browse/SWD-70).
 
 ## Scope
 
 ### In
 
-- Architecture decision: runtime engine, packaging split, I/O ownership model
-- I/O HAL contract: entity→input tag, output tag→service, freshness/availability, fail-safe policy
-- Non-goals: determinism, safety, historian/HMI ownership
-- Handoff notes that constrain SWD-71 (I/O bridge), SWD-69 (runtime), SWD-68 (HMI/historian), SWD-67 (packaging)
-- Written architecture record under `docs/` (ADR / architecture doc)
+- Python package `plcassistant_contract`: binding model types/validation, coercion matrix, freshness/stale/cold-start, fail-safe policy application — **no** Home Assistant or OpenPLC imports
+- HACS custom integration `plcassistant` (technical domain name):
+  - Config entry (addon URL / discovery placeholder, auth secret reference)
+  - Options: `scan_period_ms` (default **100**), global fail-safe defaults
+  - Binding registry as source of truth (persist in config entry / store)
+  - Config-flow / options **UI** to add/edit/disable bindings (all IO_HAL fields needed for MVP)
+  - Control-plane client: `PutBindings`, `PutScanOptions`, `GetStatus` (HTTP adapter; mockable)
+  - Diagnostic HA entities per IO_HAL diagnostics table
+  - HA services: `start` / `stop` / `reload` → control-plane ops (may report “addon unavailable” until SWD-69)
+- Table-driven unit tests for contract; integration tests with fake addon HTTP
+- Docs: short developer note linking IO_HAL fields to UI + sync payload
 
 ### Out
 
-- Implementing the addon, OpenPLC wrapper, or HACS integration (later Tasks)
-- Building a custom ladder/ST IDE (use OpenPLC Editor for MVP)
-- Shipping ST_HA_Automation-style transpile as primary control path
-- Designing Lovelace/Grafana dashboards in detail (SWD-68)
-- Physical PLC client features as the product focus
+- Addon process, WebSocket HAL loop, OpenPLC (SWD-69)
+- Modbus TCP (post-MVP)
+- Lovelace/Grafana dashboards (SWD-68)
+- Full Supervisor packaging / HACS publish metadata polish (SWD-67 may harden)
+- YAML-first binding authoring as the primary UX (optional import later)
+- OpenPLC-specific address encoding beyond opaque `tag` strings
 
 ## Decisions
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
-| **Control paradigm** | IEC 61131-style **scan cycle** (read inputs → logic → write outputs) | Matches “all capabilities of a PLC”; research rejects event-transpile as substitute ([docs/RESEARCH.md](RESEARCH.md)) |
-| **Runtime engine (MVP)** | **Wrap OpenPLC Runtime** inside a Supervisor addon | Real IEC languages/editor; recognized soft-PLC; faster than greenfield scan VM |
-| **Fallback** | If OpenPLC packaging/license/I/O-plugin friction blocks MVP, document pivot to a **minimal custom scan runtime** (ST or boolean subset only) under Open items — do not silently switch | Keeps decision explicit |
-| **Packaging** | **Hybrid**: addon = soft-PLC process; **thin HACS/Core integration** = config UI, binding registry, diagnostic entities | Matches AppDaemon/Node-RED precedent; isolates cyclic runtime from Core |
-| **I/O ownership** | **HA entities are field I/O** of the soft-PLC | Product white space vs Modbus/S7 (opposite) and OpenPLC-as-default-I/O |
-| **I/O transport (primary)** | Core **WebSocket / REST** (addon uses Supervisor Core API proxy) | Rich entity state + service calls; fits entity model |
-| **I/O transport (optional)** | Expose soft-PLC tags on **Modbus TCP** for FUXA / external tools; not required for MVP entity control | Compose path; secondary |
-| **Authoring (MVP)** | **OpenPLC Editor** (LD/ST/FBD as supported upstream) | Avoid building IDE in phase 1–3 |
-| **Transpile / Node-RED / redPlc / ST_HA** | **Adjacent, not runtime** | May document interop later; not the architecture |
-| **HMI** | **Lovelace / kiosk** primary; FUXA optional later | Reuse; out of SWD-70 build |
-| **Historian** | **InfluxDB + Grafana** via entity state export | Reuse; out of SWD-70 build |
-| **Determinism** | **Soft real-time / best-effort scan**; no SCHED_FIFO or cycle-time SLAs on commodity HA hosts | HA entity latency dominates |
-| **Safety** | **Not safety-rated**; configurable fail-safe on stale/unavailable inputs | Document operator responsibility |
+| **Contract vs architecture** | Implement against [IO_HAL.md](IO_HAL.md); do not invent a second binding model | SWD-70 lock |
+| **Ownership split** | Integration owns registry + UI + sync **client**; HAL loop stays in addon (SWD-69) | [HANDOFF.md](HANDOFF.md) |
+| **Shared lib** | **Ship `plcassistant_contract`** in-repo | Testable pure functions; reusable by SWD-69 HAL |
+| **Config UX** | **UI config entry / options** primary | Prefer UI from SWD-70 open items |
+| **YAML** | Out of MVP; may add import later | Avoid dual SoT |
+| **memory_mirror** | **In MVP** | Needed for setpoints; conflict rule below |
+| **Mirror conflict** | UI→PLC every scan; PLC→HA only if `mirror_to_ha: true` | IO_HAL proposal locked |
+| **Sync without addon** | Client + **test double** HTTP server; graceful “unavailable” in UI | Unblocks SWD-71 before SWD-69 |
+| **Diagnostics** | Integration creates entities; values from `GetStatus` / last push | IO_HAL phase ownership |
+| **Repo layout** | `packages/plcassistant_contract/` + `custom_components/plcassistant/` | HA convention + shared lib |
+| **Transport** | Control plane over HTTP (addon base URL from config); Supervisor ingress details deferred to SWD-67/69 | PACKAGING adapters |
 
-## I/O model (contract sketch)
+## Behaviour (MVP)
 
-```text
-Scan cycle (addon soft-PLC):
-  1. Sample bound HA entity states → input tags (%I / IA)
-  2. Execute program (OpenPLC)
-  3. Apply output tags (%Q / QA) → HA services / writable entities
-  4. Sleep until next cycle (configured period, best-effort)
-```
+### Binding registry
 
-| Direction | Mapping | Notes |
-|-----------|---------|-------|
-| Input | `entity_id` + optional attribute → tag | Coerce bool/number/string; track `last_seen`, `available` |
-| Output | tag → service (`domain.service`) or entity write | Idempotent writes preferred; rate-limit churn |
-| Memory | Internal PLC memory; optional mirror to `input_*` helpers | Operator setpoints / overrides |
-| Stale / unavailable | Per-binding policy: **hold last**, **force 0/false**, or **force configured safe value**; optionally force outputs to safe | Default: hold last for inputs; safe-off for critical outputs when configured |
-| Diagnostics | Integration entities: scan overruns, bridge lag, binding errors | For Lovelace troubleshooting |
+- Persist list of bindings matching IO_HAL common + direction-specific fields.
+- Validate: required fields; `safe_value` when policy is `force_value`; `service` when `write_mode: service`.
+- On change (add/edit/delete/enable): persist, then call `PutBindings` (and `PutScanOptions` when options change).
+- If addon unreachable: keep local SoT; set `bridge_connected`-related diagnostics false / error; retry on reload service.
 
-Exact schema and config UX are specified in work package 2 and implemented under **SWD-71**.
+### Coercion & fail-safe (contract lib)
 
-## Packaging blueprint
+- Implement IO_HAL coercion table and input/output policies including **cold_start_policy** (default `force_zero`).
+- Pure functions: `(binding, raw_ha_value, context) → effective_value` and output fault application.
+- Injectable clock for stale_after_s tests.
 
-| Component | Responsibility |
-|-----------|----------------|
-| **Supervisor addon** | Run OpenPLC (or fallback runtime); scan loop; WebSocket client to Core; optional Modbus server |
-| **HACS integration** | Config entries for PLC instance + bindings; expose diagnostic sensors; start/stop/reload services; store binding registry |
-| **OpenPLC Editor** | External engineering tool (MVP); upload program to runtime API |
-| **HA Core** | Device fabric, Lovelace, Influx export — unchanged |
+### Diagnostics entities
 
-Container install targets: **HAOS / Supervised** first. Container/Docker Compose users may run the runtime image manually (document in SWD-67); not a blocker for architecture lock.
+Create at least: `scan_period_ms`, `last_cycle_ms`, `overrun_count`, `bridge_connected`, `bridge_lag_ms`, `stale_binding_count`, `fail_safe_active`, `binding_error_count`, `runtime_state`. Until SWD-69 emits real metrics, client may return zeros / `stopped` / disconnected — entities still exist and update from mock/status.
+
+### Services
+
+| Service | Behaviour |
+|---------|-----------|
+| `plcassistant.reload` | Re-read options/bindings; `PutBindings` + `PutScanOptions` |
+| `plcassistant.start` / `stop` | Forward `Start` / `Stop`; surface errors if addon missing |
 
 ## Constraints
 
-- Must not require replacing Lovelace, InfluxDB, or Grafana
-- Must not claim hard real-time or SIL/safety certification
-- Prefer upstream OpenPLC over forking unless a thin I/O plugin / wrapper is required
-- Architecture docs must be enough for SWD-71/SWD-69 to start without re-litigating paradigm
-- Repo currently docs/skills-first; architecture artifacts live under `docs/`
+- Must not reimplement scan HAL inside the HACS integration
+- Must not embed long-lived passwords in git; secrets via config entry
+- Soft real-time / non-safety messaging unchanged
+- Tests required for all behavioural packages (contract + sync client + validation)
 
 ## Acceptance criteria
 
-1. A single architecture decision record exists under `docs/` stating the Decisions table above (no unresolved “option lists” for MVP path).
-2. I/O HAL contract is written with directions, freshness/fail-safe policies, and diagnostic expectations sufficient for SWD-71.
-3. Packaging blueprint (addon vs integration responsibilities) is written and matches the hybrid decision.
-4. Non-goals (determinism, safety, HMI/historian ownership, transpile-as-runtime) are explicit in the ADR.
-5. Downstream Task notes: SWD-71 / SWD-69 descriptions (or ADR “Implications” section) reference this plan’s decisions.
-6. `docs/ROADMAP.md` phase-1 row points at `PLAN.md` + ADR; open questions that this phase closed are marked resolved.
+1. `plcassistant_contract` exists with table-driven tests covering coercion, cold-start, stale, and output `on_bridge_fault` / `critical` defaults.
+2. HACS integration can create a config entry, manage bindings via UI (or options flow sufficient for MVP), and persist them as SoT.
+3. Changing bindings triggers `PutBindings` to a configurable addon base URL; with a test double, payload matches the contract schema.
+4. Named diagnostic entities from IO_HAL are registered and update from `GetStatus` (including mock).
+5. `reload` / `start` / `stop` services exist and call the control-plane client (documented no-op/error without addon).
+6. README or `docs/` note points implementers of SWD-69 at contract package + sync payload shape.
+7. No Modbus path; no scan loop in the integration.
 
 ## Work packages
 
-1. **ADR — architecture decision record** — Persist locked decisions, alternatives considered (transpile, redPlc, in-Core scan, greenfield VM), and why OpenPLC-wrap + hybrid packaging won for MVP.
-2. **I/O HAL contract** — Formalize binding model, coercion, freshness/availability, fail-safe policies, diagnostics; leave UI details to SWD-71.
-3. **Packaging blueprint** — Addon ↔ integration API boundary, Supervisor token/Core proxy usage, config ownership, lifecycle (install/start/stop/update).
-4. **Downstream handoff** — Update ROADMAP open questions; annotate implications for SWD-71/69/68/67 in ADR or Task comments.
+1. **Contract library** — `plcassistant_contract`: models, validation, coercion, freshness/fail-safe; pytest table-driven suites.
+2. **Integration skeleton** — `custom_components/plcassistant`: manifest, config flow (addon URL + token), options (`scan_period_ms`, defaults), domain setup.
+3. **Binding registry + UI** — store, CRUD/options UI for input/output/`memory_mirror` bindings per IO_HAL fields.
+4. **Control-plane client** — `PutBindings` / `PutScanOptions` / `GetStatus` / `Start`/`Stop`/`Reload`; HTTP adapter + fake server tests; wire reload/start/stop services.
+5. **Diagnostics entities** — expose IO_HAL sensors/binaries; poll or push from `GetStatus`; tests with fake status payloads.
 
 ## Open items
 
-- OpenPLC Runtime v4 **license / addon redistribution** constraints — verify before SWD-69 implement; if blocking, trigger documented fallback (minimal custom scan runtime).
-- Exact **default scan period** and overrun metrics — propose in I/O/runtime contract; tune in SWD-69.
-- Whether MVP bindings are **UI-only**, YAML, or both — defer to SWD-71 (prefer UI config entry).
-- Optional Modbus server — **post-MVP only** (matches HANDOFF / ADR; do not slip into MVP unless a later ADR amendment).
+- Exact Supervisor ingress URL discovery vs manual base URL — default **manual URL** in SWD-71; auto-discovery in SWD-67.
+- Whether options flow vs dedicated panel cards for many bindings — prefer **options / config flow lists** first; panel only if UX blocked.
+- HA Core version pin for custom component — choose current stable at implement time.
+- Real addon auth handshake — stub bearer token in SWD-71; finalize in SWD-69/67.
 
 ## Tracker
 
 - Provider: jira
 - Story: [SWD-66](https://marcusknielsen.atlassian.net/browse/SWD-66)
-- Task: [SWD-70](https://marcusknielsen.atlassian.net/browse/SWD-70)
-- Sub-tasks: [SWD-73](https://marcusknielsen.atlassian.net/browse/SWD-73) (ADR), [SWD-74](https://marcusknielsen.atlassian.net/browse/SWD-74) (I/O HAL), [SWD-75](https://marcusknielsen.atlassian.net/browse/SWD-75) (packaging), [SWD-72](https://marcusknielsen.atlassian.net/browse/SWD-72) (downstream handoff)
-- Inputs: [docs/RESEARCH.md](RESEARCH.md), [docs/ROADMAP.md](ROADMAP.md)
+- Task: [SWD-71](https://marcusknielsen.atlassian.net/browse/SWD-71)
+- Architecture (shipped): [SWD-70](https://marcusknielsen.atlassian.net/browse/SWD-70) — [ARCHITECTURE.md](ARCHITECTURE.md), [IO_HAL.md](IO_HAL.md), [PACKAGING.md](PACKAGING.md), [HANDOFF.md](HANDOFF.md), [PLAN_SWD-70.md](PLAN_SWD-70.md)
+- Sub-tasks: [SWD-78](https://marcusknielsen.atlassian.net/browse/SWD-78) (contract), [SWD-80](https://marcusknielsen.atlassian.net/browse/SWD-80) (skeleton), [SWD-77](https://marcusknielsen.atlassian.net/browse/SWD-77) (registry/UI), [SWD-76](https://marcusknielsen.atlassian.net/browse/SWD-76) (sync client), [SWD-79](https://marcusknielsen.atlassian.net/browse/SWD-79) (diagnostics)
 
 ## Next
 
-Done — phase closed (shipped [PR #3](https://github.com/marcuskrogh/PLCAssistant/pull/3)). Continue with `/define SWD-71`.
-
-**Shipped:** [ARCHITECTURE.md](ARCHITECTURE.md) · [IO_HAL.md](IO_HAL.md) · [PACKAGING.md](PACKAGING.md) · [HANDOFF.md](HANDOFF.md)
+`/implement SWD-71` — Build per this plan

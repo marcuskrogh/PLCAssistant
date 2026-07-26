@@ -8,7 +8,8 @@ See [docs/ROADMAP.md](docs/ROADMAP.md) for goals, scope, phases, and tracker lin
 
 | Doc | Role |
 |-----|------|
-| [docs/PLAN.md](docs/PLAN.md) | Definition / locked decisions (SWD-70) |
+| [docs/PLAN.md](docs/PLAN.md) | Current implementation plan (SWD-71 I/O bridge) |
+| [docs/PLAN_SWD-70.md](docs/PLAN_SWD-70.md) | Shipped phase-1 architecture plan |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Accepted ADR (scan soft-PLC, OpenPLC wrap, HA I/O) |
 | [docs/IO_HAL.md](docs/IO_HAL.md) | Entity ↔ PLC binding and scan I/O contract |
 | [docs/PACKAGING.md](docs/PACKAGING.md) | Addon + HACS packaging boundary |
