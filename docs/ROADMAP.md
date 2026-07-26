@@ -65,8 +65,8 @@ Existing work mostly fills *adjacent* niches, not this product:
 
 | Phase | Topic | Notes | Issue |
 |-------|-------|-------|-------|
-| 1 | Architecture & approach selection | **Shipped:** ADR [`ARCHITECTURE.md`](ARCHITECTURE.md), [`IO_HAL.md`](IO_HAL.md), [`PACKAGING.md`](PACKAGING.md), [`HANDOFF.md`](HANDOFF.md). Plan: [`PLAN.md`](PLAN.md). Research: [`RESEARCH.md`](RESEARCH.md). PR [#3](https://github.com/marcuskrogh/PLCAssistant/pull/3) | [SWD-70](https://marcusknielsen.atlassian.net/browse/SWD-70) ✅ |
-| 2 | HA entity I/O bridge | Bidirectional entity↔tag binding, availability/freshness, config UX | [SWD-71](https://marcusknielsen.atlassian.net/browse/SWD-71) |
+| 1 | Architecture & approach selection | **Shipped:** ADR [`ARCHITECTURE.md`](ARCHITECTURE.md), [`IO_HAL.md`](IO_HAL.md), [`PACKAGING.md`](PACKAGING.md), [`HANDOFF.md`](HANDOFF.md). Prior plan: [`PLAN_SWD-70.md`](PLAN_SWD-70.md). Research: [`RESEARCH.md`](RESEARCH.md). PR [#3](https://github.com/marcuskrogh/PLCAssistant/pull/3) | [SWD-70](https://marcusknielsen.atlassian.net/browse/SWD-70) ✅ |
+| 2 | HA entity I/O bridge | **Implemented:** [`PLAN.md`](PLAN.md) · [`BRIDGE.md`](BRIDGE.md) · `packages/plcassistant_contract/` · `custom_components/plcassistant/` | [SWD-71](https://marcusknielsen.atlassian.net/browse/SWD-71) |
 | 3 | PLC program execution | Runtime lifecycle, timers/counters, at least one IEC-style language path | [SWD-69](https://marcusknielsen.atlassian.net/browse/SWD-69) |
 | 4 | Operator surfaces | Lovelace/kiosk HMI patterns + InfluxDB/Grafana historian patterns | [SWD-68](https://marcusknielsen.atlassian.net/browse/SWD-68) |
 | 5 | Delivery packaging | HACS integration **and** HAOS addon + minimal demo | [SWD-67](https://marcusknielsen.atlassian.net/browse/SWD-67) |
@@ -77,7 +77,7 @@ Architecture first (phase 1) unlocks the I/O bridge shape (phase 2) and runtime 
 
 ## Open questions
 
-Resolved by [`docs/PLAN.md`](PLAN.md) / SWD-70 define:
+Resolved by [`docs/PLAN_SWD-70.md`](PLAN_SWD-70.md) / SWD-70:
 
 - Soft-PLC engine → **wrap OpenPLC Runtime** in addon (fallback: minimal custom scan if blocked)
 - Determinism → **soft / best-effort**; no safety cert
@@ -85,12 +85,18 @@ Resolved by [`docs/PLAN.md`](PLAN.md) / SWD-70 define:
 - Fail-safe → configurable per binding (hold last / force safe)
 - Packaging → **addon + thin HACS integration**
 
+Resolved by [`docs/PLAN.md`](PLAN.md) / SWD-71 define:
+
+- Binding UI vs YAML → **UI config entry / options** primary; YAML out of MVP
+- Shared contract lib → **ship `plcassistant_contract`**
+- Sync before addon → HTTP client + test double; graceful unavailable
+
 Still open (deferred):
 
 - OpenPLC redistribution/license check before SWD-69
-- Default scan period / overrun metrics (SWD-69)
-- Binding UI vs YAML (SWD-71; prefer UI)
-- Optional Modbus server timing (default post-MVP)
+- Default scan period confirmation / overrun metrics (SWD-69; proposal 100 ms)
+- Supervisor ingress auto-discovery (SWD-67; manual URL in SWD-71)
+- Optional Modbus server (post-MVP)
 
 ## Assumptions (working)
 
@@ -106,4 +112,4 @@ Still open (deferred):
 
 ## Next
 
-`/define SWD-71` — Phase 2 I/O bridge against [`docs/IO_HAL.md`](IO_HAL.md) + [`docs/HANDOFF.md`](HANDOFF.md). Phase 1 (SWD-70) shipped via [PR #3](https://github.com/marcuskrogh/PLCAssistant/pull/3).
+`/ship SWD-71` — Merge I/O bridge after CLEAN review-fix.

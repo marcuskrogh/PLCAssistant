@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "plcassistant-contract"
+version = "0.1.0"
+description = "PLCAssistant binding schema, coercion, and fail-safe (shared contract)"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["plcassistant_contract*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
