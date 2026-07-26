@@ -14,11 +14,11 @@ Mock acceptance satisfies **this Task**. A **physical** recycled tank + reservoi
 | Follow-on item | Intent |
 |----------------|--------|
 | BOM | Tank, reservoir, VFD+pump, level sensors, flow sensor, plumbing, spill containment |
-| Wiring / HA devices | Map real entities to the same tags (`LT_TANK`, `LT_RES`, `FT_INLET`, `CMD_SPEED`, …) |
+| Wiring / HA devices | Map real entities to the same tags (`LT_TANK`, `LT_RES`, `FT_INLET`, `CMD_SPEED`, …) via the thin-integration binding table — same path as mock entities ([`08-packaging-sketch.md`](08-packaging-sketch.md), SWD-86) |
 | Commissioning | Repeat [`06-mock-acceptance.md`](06-mock-acceptance.md) scenarios on hardware (with safe water procedures) |
 | Tuning | Real PID/timing under SWD-85 / model guidance |
 
-Do **not** treat physical as optional product scope — only optional relative to SWD-83 closure.
+Do **not** treat physical as optional product scope — only optional relative to SWD-83 closure. Switching mock entities → field entities must not require an Add-on I/O mode change.
 
 ## Later process examples (out of this Task)
 
@@ -43,9 +43,10 @@ Keep v1 packaging and tag patterns from painting into a corner that blocks these
 
 - Home-as-process as a phase goal
 - Full SIL / certified safety stack
-- Final packaging freeze before SWD-84
+- Final packaging freeze before SWD-84 (mock ownership in the thin integration is locked for SWD-86; overall packaging shape remains SWD-84)
 
 ## Related specs
 
 - Reference process: [`01-reference-process.md`](01-reference-process.md)
 - Packaging sketch: [`08-packaging-sketch.md`](08-packaging-sketch.md)
+- I/O contracts: [`docs/io/01-image-quality.md`](../io/01-image-quality.md), [`docs/io/02-binding-model.md`](../io/02-binding-model.md)
