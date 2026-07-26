@@ -115,4 +115,4 @@ Create at least: `scan_period_ms`, `last_cycle_ms`, `overrun_count`, `bridge_con
 
 ## Next
 
-`/implement SWD-71` — Build per this plan
+`/review-fix SWD-71` — Review implementation and auto-fix until clean.

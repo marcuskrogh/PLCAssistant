@@ -66,7 +66,7 @@ Existing work mostly fills *adjacent* niches, not this product:
 | Phase | Topic | Notes | Issue |
 |-------|-------|-------|-------|
 | 1 | Architecture & approach selection | **Shipped:** ADR [`ARCHITECTURE.md`](ARCHITECTURE.md), [`IO_HAL.md`](IO_HAL.md), [`PACKAGING.md`](PACKAGING.md), [`HANDOFF.md`](HANDOFF.md). Prior plan: [`PLAN_SWD-70.md`](PLAN_SWD-70.md). Research: [`RESEARCH.md`](RESEARCH.md). PR [#3](https://github.com/marcuskrogh/PLCAssistant/pull/3) | [SWD-70](https://marcusknielsen.atlassian.net/browse/SWD-70) ✅ |
-| 2 | HA entity I/O bridge | **Defined:** [`PLAN.md`](PLAN.md) — HACS binding registry + `plcassistant_contract` + PutBindings client; diagnostics entities. HAL loop deferred to SWD-69. | [SWD-71](https://marcusknielsen.atlassian.net/browse/SWD-71) |
+| 2 | HA entity I/O bridge | **Implemented:** [`PLAN.md`](PLAN.md) · [`BRIDGE.md`](BRIDGE.md) · `packages/plcassistant_contract/` · `custom_components/plcassistant/` | [SWD-71](https://marcusknielsen.atlassian.net/browse/SWD-71) |
 | 3 | PLC program execution | Runtime lifecycle, timers/counters, at least one IEC-style language path | [SWD-69](https://marcusknielsen.atlassian.net/browse/SWD-69) |
 | 4 | Operator surfaces | Lovelace/kiosk HMI patterns + InfluxDB/Grafana historian patterns | [SWD-68](https://marcusknielsen.atlassian.net/browse/SWD-68) |
 | 5 | Delivery packaging | HACS integration **and** HAOS addon + minimal demo | [SWD-67](https://marcusknielsen.atlassian.net/browse/SWD-67) |
@@ -112,4 +112,4 @@ Still open (deferred):
 
 ## Next
 
-`/implement SWD-71` — Build HACS bridge + contract lib per [`docs/PLAN.md`](PLAN.md).
+`/review-fix SWD-71` — Review I/O bridge implementation.
