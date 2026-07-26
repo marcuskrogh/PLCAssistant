@@ -1,0 +1,9 @@
+reload:
+  name: Reload bindings
+  description: Push bindings and scan options to the addon (PutBindings / PutScanOptions / Reload).
+start:
+  name: Start runtime
+  description: Request addon Start. Errors if the addon is unavailable.
+stop:
+  name: Stop runtime
+  description: Request addon Stop. Errors if the addon is unavailable.

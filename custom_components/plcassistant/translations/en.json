@@ -1,0 +1,36 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "PLCAssistant",
+        "description": "Connect to the PLCAssistant addon control plane (manual URL for MVP).",
+        "data": {
+          "addon_url": "Addon base URL",
+          "token": "Bearer token (optional)",
+          "scan_period_ms": "Scan period (ms)"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This addon URL is already configured."
+    },
+    "error": {
+      "invalid_bindings": "Bindings JSON is invalid."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "PLCAssistant options",
+        "description": "Edit scan period and bindings JSON (IO_HAL fields). Saved bindings are source of truth and synced via PutBindings on reload.",
+        "data": {
+          "scan_period_ms": "Scan period (ms)",
+          "bindings_json": "Bindings JSON array"
+        }
+      }
+    },
+    "error": {
+      "invalid_bindings": "Bindings JSON failed validation."
+    }
+  }
+}
