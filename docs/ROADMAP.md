@@ -8,7 +8,7 @@
 ## Themes to investigate
 | Phase | Theme | Why it matters | Deferred to | Issue |
 |-------|-------|----------------|--------------|-------|
-| 1 | Lab / hobby / small-process wedge | Sharpen who this is for and what “success” looks like in that world | define | [SWD-83](https://marcusknielsen.atlassian.net/browse/SWD-83) |
+| 1 | Lab / hobby / small-process wedge | Sharpen who this is for and what “success” looks like in that world | define ✓ → implement | [SWD-83](https://marcusknielsen.atlassian.net/browse/SWD-83) |
 | 2 | HA entities as PLC I/O | Core inversion: devices live in HA, then participate in PLC-style control | define / research | [SWD-86](https://marcusknielsen.atlassian.net/browse/SWD-86) |
 | 3 | Control semantics | What “PLC-like” means here: loops, feedback, safety, timing — without locking runtime design yet | research | [SWD-85](https://marcusknielsen.atlassian.net/browse/SWD-85) |
 | 4 | Programming surface | Easy high-level entry with a deep customization path | research / define | [SWD-82](https://marcusknielsen.atlassian.net/browse/SWD-82) |
@@ -33,4 +33,4 @@
 - Tasks: [SWD-83](https://marcusknielsen.atlassian.net/browse/SWD-83), [SWD-86](https://marcusknielsen.atlassian.net/browse/SWD-86), [SWD-85](https://marcusknielsen.atlassian.net/browse/SWD-85), [SWD-82](https://marcusknielsen.atlassian.net/browse/SWD-82), [SWD-84](https://marcusknielsen.atlassian.net/browse/SWD-84)
 
 ## Next
-`/define SWD-83` — Define the lab/hobby/small-process wedge
+`/implement SWD-83` — Build lab/hobby wedge per `docs/PLAN.md`
