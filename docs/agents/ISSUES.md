@@ -23,3 +23,4 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 - 2026-07-26 — Added detailed competitive evaluation of similar HA integrations/apps (OpenPLC, redPlc, ST_HA, S7/TwinCAT, FUXA, PiPLC, etc.); white-space confirmed; Next `/define SWD-70`.
 - 2026-07-26 — `/define SWD-70` wrote `docs/PLAN.md`; Sub-tasks SWD-73/74/75/72; Next `/implement SWD-70`.
 - 2026-07-26 — `/implement SWD-70` wrote `docs/ARCHITECTURE.md`, `IO_HAL.md`, `PACKAGING.md`, `HANDOFF.md`; Sub-tasks Done; Task → In Review; Next `/review-fix SWD-70`.
+- 2026-07-26 — `/review-fix` iter 1: REQUEST_CHANGES (0 blocker / 10 should-fix); fix-forward addressing HANDOFF anchors, IO_HAL fields/phases, control plane, HAL ownership, ROADMAP hybrid wording.

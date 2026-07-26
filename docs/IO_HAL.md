@@ -22,25 +22,34 @@ Define how PLCAssistant maps Home Assistant **entities** to soft-PLC **tags** ea
 
 ```text
 every scan_period (best-effort):
+  0. BRIDGE CHECK
+       if not bridge_connected: skip INPUT sampling writes to runtime;
+         apply OUTPUT on_bridge_fault policies only; update diagnostics; WAIT
   1. INPUT PHASE
        for each input binding:
          read entity (and optional attribute) from HA
          coerce → PLC tag type
-         apply freshness / unavailable policy → effective input value
+         apply freshness / unavailable / cold-start policy → effective input value
          write into runtime input image
+       for each memory_mirror binding (HA → PLC direction this scan):
+         sample HA helper → PLC memory tag (same coercion / freshness rules)
   2. LOGIC PHASE
-       run one PLC program cycle (OpenPLC)
+       SoftPlcRuntime.execute_cycle()   # MVP adapter: OpenPLC; same port for fallback runtime
   3. OUTPUT PHASE
        for each output binding:
          read PLC output tag
-         if changed (or force policy): call HA service / write entity
-       apply output fail-safe if bridge unhealthy
+         if changed (idempotent skip) and past min_write_interval_ms:
+           call HA service / write entity
+       for each memory_mirror binding with mirror_to_ha: true:
+         write PLC memory → HA helper when changed
   4. DIAGNOSTICS
-       update metrics (cycle time, overruns, lag, errors)
+       update metrics (cycle time, overruns, lag, errors, stale counts)
   5. WAIT until next period (may overrun; record overrun)
 ```
 
-**Default `scan_period` (proposal):** `100 ms` (10 Hz). Tunable; final default confirmed in SWD-69. Soft real-time only — overruns are recorded, not treated as hard faults unless configured.
+**Scan ownership (MVP):** the **I/O HAL owns `scan_period`** and calls `SoftPlcRuntime.execute_cycle()` once per period. Do not run a second autonomous OpenPLC cyclic I/O loop against HA bindings. Embedding HA I/O inside an OpenPLC plugin is **not** MVP — only via explicit ADR amendment.
+
+**Default `scan_period` (proposal):** `100 ms` (10 Hz). Tunable via integration options (pushed to addon); shipping default confirmed in SWD-69. Soft real-time only — overruns are recorded, not treated as hard faults unless configured.
 
 ## Binding model
 
@@ -62,9 +71,12 @@ A **binding** links one PLC tag to one HA address.
 |-------|----------|-------------|
 | `value_type` | yes | `bool` \| `number` \| `string` |
 | `coerce` | no | Rules for mapping HA strings (`"on"`/`"off"`, numeric parse, scale/offset) |
-| `unavailable_policy` | no | See [Fail-safe](#fail-safe-and-freshness) |
+| `scale` / `offset` | no | Number path: `plc = ha * scale + offset` (default 1 / 0) |
+| `unavailable_policy` | no | See [Fail-safe](#fail-safe-and-freshness); default `hold_last` |
 | `stale_after_s` | no | Seconds after which value is stale if no update; null = only availability |
 | `stale_policy` | no | Policy when stale (defaults to `unavailable_policy`) |
+| `safe_value` | if policy `force_value` | Typed value used by `force_value` / cold-start fallback |
+| `cold_start_policy` | no | Before any good sample: `force_zero` \| `force_value` \| `fault` (default `force_zero`) |
 
 ### Output bindings (`direction: output`)
 
@@ -74,12 +86,22 @@ A **binding** links one PLC tag to one HA address.
 | `write_mode` | yes | `service` \| `entity` |
 | `service` | if service | `{ "domain", "service", "data_template" }` mapping tag→service data |
 | `idempotent` | no | Default true: skip write if last commanded value equals new value |
-| `min_write_interval_ms` | no | Rate limit; default e.g. 0 or 50 |
-| `on_bridge_fault` | no | Output fail-safe when HAL cannot talk to HA |
+| `min_write_interval_ms` | no | Rate limit; **default `0`** |
+| `on_bridge_fault` | no | Output fail-safe when HAL cannot talk to HA; default `hold_last_command` |
+| `safe_value` | if `safe_off` needs non-bool or custom | Value forced on `safe_off` (bool defaults to `false`) |
+| `critical` | no | If true, global bridge fault defaults this binding to `safe_off` |
 
 ### Memory mirror (`direction: memory_mirror`)
 
-Optional bidirectional or HA→PLC mirror for operator setpoints using `input_number` / `input_boolean` / `input_select` helpers. Exact conflict rules (PLC vs UI wins) are decided in SWD-71; default proposal: **UI write updates PLC memory on next scan; PLC writes back only if `mirror_to_ha: true`.**
+Optional HA↔PLC mirror for operator setpoints using `input_number` / `input_boolean` / `input_select` helpers.
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `value_type` | yes | `bool` \| `number` \| `string` |
+| `mirror_to_ha` | no | Default **false**: HA→PLC each scan; if true, also PLC→HA when PLC memory changes |
+| (plus input freshness fields) | no | Same unavailable/stale/cold-start rules as inputs for the HA→PLC leg |
+
+Exact conflict rules (PLC vs UI wins under simultaneous edits) are decided in SWD-71; default proposal: **UI write updates PLC memory on next scan; PLC writes back only if `mirror_to_ha: true`.**
 
 ## Coercion
 
@@ -98,20 +120,22 @@ Scaling: optional `scale` and `offset` on number paths: `plc = ha * scale + offs
 
 | Policy | Behaviour |
 |--------|-----------|
-| `hold_last` | Keep last good coerced value (**default** for inputs) |
+| `hold_last` | Keep last good coerced value (**default** for inputs **after** first good sample) |
 | `force_zero` | Use `false` / `0` / `""` |
-| `force_value` | Use binding’s `safe_value` |
+| `force_value` | Use binding’s `safe_value` (required when this policy is selected) |
 | `fault` | Mark channel faulted; may trigger global output safe mode if configured |
+
+**Cold start:** If `hold_last` is selected but no good sample has ever been stored (boot, new binding, never-available), apply `cold_start_policy` (default **`force_zero`**) until the first successful coerce. Do not leave the PLC input image undefined.
 
 ### Output policies (bridge / channel fault)
 
 | Policy | Behaviour |
 |--------|-----------|
 | `hold_last_command` | Do not send new writes |
-| `safe_off` | Force bool outputs off / numbers to `safe_value` (**recommended** for critical actuators when configured) |
+| `safe_off` | Force bool outputs off / numbers/strings to `safe_value` (**recommended** for critical actuators when configured) |
 | `noop` | Stop writing; leave HA entity as-is |
 
-**Global bridge fault** (WebSocket down, auth failure): apply each output’s `on_bridge_fault` (default proposal: `hold_last_command` unless binding marked `critical: true` → `safe_off`).
+**Global bridge fault** (WebSocket down, auth failure): **do not** attempt normal OUTPUT writes. Apply each output’s `on_bridge_fault` only (default `hold_last_command`; if `critical: true` → `safe_off`).
 
 ## Diagnostics (integration entities)
 
@@ -123,11 +147,15 @@ Expose at least:
 | `last_cycle_ms` | number | Last measured cycle duration |
 | `overrun_count` | number | Cycles that exceeded period |
 | `bridge_connected` | binary | HA API connectivity |
-| `bridge_lag_ms` | number | Approximate sample/command lag |
+| `bridge_lag_ms` | number | Approximate sample/command lag (latency) |
+| `stale_binding_count` | number | Bindings currently in stale policy |
+| `fail_safe_active` | binary | True while any output `on_bridge_fault` / safe mode is applied |
 | `binding_error_count` | number | Coercion / write failures |
 | `runtime_state` | sensor | e.g. `running` / `stopped` / `fault` |
 
 These are first-class HA entities so Lovelace can show health without a custom panel.
+
+**Phase ownership:** SWD-69 emits metrics via addon status API; SWD-71 (or SWD-67 if deferred) exposes the named diagnostic entities in the HACS integration. Not “later” without an owner.
 
 ## Transport
 

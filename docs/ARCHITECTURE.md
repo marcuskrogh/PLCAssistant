@@ -88,18 +88,22 @@ Packaging boundaries: [docs/PACKAGING.md](PACKAGING.md).
 
 ## Fallback trigger
 
-Before or during **SWD-69**, verify OpenPLC Runtime redistribution/license and feasibility of an HA entity I/O path (plugin or external HAL driving tags).
+Before or during **SWD-69**, verify OpenPLC Runtime redistribution/license and that the MVP path (HAL-driven single-step over a tag image) is feasible against the chosen OpenPLC build.
 
-If blocked, pivot to a **minimal custom scan runtime** (boolean/ST subset, no full OpenPLC Editor requirement) and update this ADR with status **Superseded** / amendment — do not silently change approach mid-implement.
+**MVP I/O seam (locked):** the addon **I/O HAL owns `scan_period`** and calls `SoftPlcRuntime.execute_cycle()` once per period ([IO_HAL.md](IO_HAL.md)). OpenPLC’s autonomous cyclic I/O / native plugins are **not** used for HA entity bindings in MVP.
+
+If license or packaging blocks wrapping OpenPLC at all, pivot to a **minimal custom scan runtime** implementing the same `execute_cycle` port + the same HAL, and update this ADR with status **Superseded** / amendment — do not silently change approach mid-implement.
+
+Embedding HA entity I/O inside an OpenPLC I/O plugin (instead of the external HAL loop) is allowed only via an **explicit ADR amendment**, because it changes scan-clock ownership.
 
 ## Implications for later phases
 
 | Task | Implication |
 |------|-------------|
-| [SWD-71](https://marcusknielsen.atlassian.net/browse/SWD-71) | Implement binding registry + WebSocket HAL per [IO_HAL.md](IO_HAL.md); UI config preferred |
-| [SWD-69](https://marcusknielsen.atlassian.net/browse/SWD-69) | Package/run OpenPLC in addon; program lifecycle; scan metrics; license check |
+| [SWD-71](https://marcusknielsen.atlassian.net/browse/SWD-71) | Binding registry + `PutBindings` sync; optional shared contract lib; diagnostic entities; UI config preferred — see [HANDOFF.md](HANDOFF.md) |
+| [SWD-69](https://marcusknielsen.atlassian.net/browse/SWD-69) | Host OpenPLC + HAL in addon; `execute_cycle` adapter; status API; license check |
 | [SWD-68](https://marcusknielsen.atlassian.net/browse/SWD-68) | Document Lovelace/kiosk + Influx/Grafana patterns against bound entities; FUXA optional |
-| [SWD-67](https://marcusknielsen.atlassian.net/browse/SWD-67) | Ship addon + HACS integration + install docs + minimal demo |
+| [SWD-67](https://marcusknielsen.atlassian.net/browse/SWD-67) | Ship **addon and HACS** + install docs + minimal demo |
 
 ## Consequences
 

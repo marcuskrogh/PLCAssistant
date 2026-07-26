@@ -14,11 +14,11 @@ This note maps locked decisions to the next implementation Tasks so phase owners
 | Implication | Source | Required behaviour |
 |-------------|--------|-------------------|
 | Transport = HA WebSocket/REST first | ADR decision summary | Implement entity read/write via Core APIs; Modbus TCP is **out of MVP** |
-| Binding schema | IO_HAL §1 | Persist `entity_id` ↔ PLC address ↔ direction ↔ type ↔ fail-safe |
-| Scan I/O order | IO_HAL §2 | Snapshot inputs → expose to runtime → apply outputs after scan |
-| Fail-safe | IO_HAL §3 | On disconnect/timeout: hold / safe / last-good per binding |
-| Diagnostics | IO_HAL §5 | Latency, stale, fail-safe events for HACS sensors later |
-| Ownership | PACKAGING | Bridge code lives primarily in **addon** (or shared lib); HACS configures bindings |
+| Binding schema | [IO_HAL Binding model](IO_HAL.md#binding-model) | Persist `entity_id` ↔ PLC tag ↔ direction ↔ type ↔ fail-safe fields (`safe_value`, `critical`, …) |
+| Scan I/O order | [IO_HAL Scan cycle](IO_HAL.md#scan-cycle-contract) | Bridge check → inputs (+ mirrors) → `execute_cycle()` → outputs (+ mirrors) |
+| Fail-safe | [IO_HAL Fail-safe](IO_HAL.md#fail-safe-and-freshness) | Cold-start + unavailable/stale policies; on bridge fault apply `on_bridge_fault` only |
+| Diagnostics | [IO_HAL Diagnostics](IO_HAL.md#diagnostics-integration-entities) | Expose named diagnostic entities; consume addon `GetStatus` / `StatusPush` |
+| Ownership | [PACKAGING](PACKAGING.md#components) | SWD-71 ships **binding registry + sync client (`PutBindings`)** and preferably **`plcassistant_contract`** (pure coercion/fail-safe). **HAL loop hosts in the addon** (SWD-69); do not re-implement HAL inside HACS. Shared lib is schema + pure functions only. |
 
 **Do not:** Treat Modbus as the primary path; invent a second binding model.
 
@@ -29,12 +29,13 @@ This note maps locked decisions to the next implementation Tasks so phase owners
 | Implication | Source | Required behaviour |
 |-------------|--------|-------------------|
 | Wrap OpenPLC Runtime | ADR decision summary | Addon hosts OpenPLC (or documented fork); build program externally |
-| Scan cycle | ADR decision summary | Fixed period; measure jitter; soft RT only |
+| Scan cycle | [IO_HAL Scan cycle](IO_HAL.md#scan-cycle-contract) | **HAL owns period**; call `SoftPlcRuntime.execute_cycle()` once per scan; soft RT only; honor integration `scan_period` (default proposal 100 ms) |
 | I/O via HAL | IO_HAL | Runtime must not talk to entities directly — use HAL |
-| Fallback | ADR fallback trigger | If OpenPLC blocked, minimal custom scan loop + same HAL — explicit pivot |
+| Fallback | ADR fallback trigger | If OpenPLC blocked, minimal custom scan implementing the same `execute_cycle` port + same HAL — explicit ADR amendment |
 | Authoring | ADR decision summary | OpenPLC Editor external; no in-HA ST IDE in MVP |
+| Status API | [PACKAGING Control plane](PACKAGING.md#control-plane-abstract-ops) | Emit metrics for diagnostic entities (`GetStatus` / `StatusPush`) |
 
-**Do not:** Transpile ST → HA automations as the runtime; claim hard RT or SIL.
+**Do not:** Transpile ST → HA automations as the runtime; claim hard RT or SIL; run a second OpenPLC autonomous I/O clock against HA bindings.
 
 ---
 
@@ -45,7 +46,7 @@ This note maps locked decisions to the next implementation Tasks so phase owners
 | HMI = Lovelace (+ optional kiosk) | ADR decision summary | Dashboards bind to HA entities / PLC status entities |
 | Historian = Influx + Grafana | ADR decision summary | Document patterns; optional export of scan metrics |
 | FUXA | RESEARCH | Optional later — not MVP dependency |
-| Diagnostics surfaces | IO_HAL §5 | Expose status entities the HMI can show |
+| Diagnostics surfaces | [IO_HAL Diagnostics](IO_HAL.md#diagnostics-integration-entities) | Use diagnostic entities already owned by SWD-71/69 |
 
 **Do not:** Build a custom SCADA shell in MVP; require FUXA for first demo.
 
@@ -55,10 +56,11 @@ This note maps locked decisions to the next implementation Tasks so phase owners
 
 | Implication | Source | Required behaviour |
 |-------------|--------|-------------------|
-| Dual packaging | ADR + PACKAGING | Addon (runtime) + HACS (config/UI) |
-| Ingress / auth | PACKAGING §3–4 | Prefer Supervisor proxy; document token handling |
-| Lifecycle | PACKAGING §5 | Start order, config reload, program deploy |
-| Docs for install | PACKAGING §6 | README paths for HAOS users |
+| Dual packaging | ADR + PACKAGING | **Addon (runtime) and HACS (config/UI)** — both required |
+| Ingress / auth | [PACKAGING Supervisor](PACKAGING.md#supervisor--core-communication) | Prefer Supervisor proxy; document token handling |
+| Control plane | [PACKAGING Control plane](PACKAGING.md#control-plane-abstract-ops) | Implement abstract ops over HTTP/ingress adapters |
+| Lifecycle | [PACKAGING Lifecycle](PACKAGING.md#lifecycle) | Install order, program upload then Reload/Start, config reload |
+| Docs for install | [PACKAGING Install targets](PACKAGING.md#install-targets) | README paths for HAOS users |
 
 **Do not:** Ship runtime-only without a config surface, or HACS-only without a process host.
 
@@ -69,3 +71,4 @@ This note maps locked decisions to the next implementation Tasks so phase owners
 - [x] This handoff exists and links all architecture docs  
 - [x] ROADMAP phase 1 points at ARCHITECTURE (and related)  
 - [x] Downstream Tasks SWD-71 / 69 / 68 / 67 receive tracker comments pointing here  
+- [x] Section references use heading anchors (not opaque §N)  

@@ -102,7 +102,7 @@ Container install targets: **HAOS / Supervised** first. Container/Docker Compose
 - OpenPLC Runtime v4 **license / addon redistribution** constraints — verify before SWD-69 implement; if blocking, trigger documented fallback (minimal custom scan runtime).
 - Exact **default scan period** and overrun metrics — propose in I/O/runtime contract; tune in SWD-69.
 - Whether MVP bindings are **UI-only**, YAML, or both — defer to SWD-71 (prefer UI config entry).
-- Optional Modbus server in MVP vs post-MVP — default **post-MVP** unless cheap with OpenPLC defaults.
+- Optional Modbus server — **post-MVP only** (matches HANDOFF / ADR; do not slip into MVP unless a later ADR amendment).
 
 ## Tracker
 

@@ -365,4 +365,4 @@ HA and competitive-section claims trace to those named docs/repos (community mat
 
 ## Next
 
-`/define SWD-70` — Lock architecture: soft-PLC **addon** + HA entity I/O HAL + reuse Lovelace/Influx (vs transpile-only).
+`/review-fix SWD-70` — Architecture define + implement complete; review/fix until clean, then `/ship SWD-70`.

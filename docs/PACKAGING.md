@@ -13,10 +13,13 @@ Split PLCAssistant so the **scan soft-PLC** runs isolated from Home Assistant Co
 
 | Component | Package type | Responsibility |
 |-----------|--------------|----------------|
-| **plcassistant** (name TBD) | Supervisor **addon** / app | Run OpenPLC Runtime; I/O HAL loop; program upload API surface; optional Modbus later |
-| **plcassistant** integration | **HACS** custom integration | Config entries; binding registry; diagnostic entities; start/stop/reload services; discovery of addon |
+| **plcassistant** (name TBD) | Supervisor **addon** / app | Run OpenPLC Runtime; host I/O HAL loop; program upload API surface; optional Modbus later |
+| **plcassistant** integration | **HACS** custom integration | Config entries; binding registry SoT; diagnostic entities; start/stop/reload services; discovery of addon |
+| **plcassistant_contract** (optional shared lib) | Python package (no HA/OpenPLC imports) | Binding schema types + pure coercion / fail-safe / freshness functions only — usable by addon HAL and integration tests |
 | **OpenPLC Editor** | External desktop app | Author LD/ST/FBD; upload to runtime (MVP) |
 | **HA Core** | Existing | Entities, Lovelace, Influx export — unchanged |
+
+If the shared lib is skipped, coercion/fail-safe code still lives behind the same pure-function seam **inside the addon**, with the integration owning only config serialization — do not scatter HAL logic into HACS.
 
 ## Responsibility matrix
 
@@ -47,7 +50,19 @@ The HACS integration talks to the addon over:
 - Supervisor addon API / ingress, and/or  
 - A small authenticated HTTP API on the addon (localhost / hassio network)
 
-Exact auth handshake is an SWD-67/69 detail; blueprint requirement: **integration must not embed long-lived user passwords in git**; prefer Supervisor token or HA long-lived token stored in config entry secrets.
+Transport is an **adapter**; the **control plane** is the contract below. Exact auth handshake is an SWD-67/69 detail; blueprint requirement: **integration must not embed long-lived user passwords in git**; prefer Supervisor token or HA long-lived token stored in config entry secrets.
+
+### Control plane (abstract ops)
+
+| Op | Direction | Purpose |
+|----|-----------|---------|
+| `PutBindings` | Integration → Addon | Push binding registry (integration is source of truth) |
+| `GetStatus` / `StatusPush` | Addon → Integration | Metrics for diagnostic entities (`bridge_connected`, cycle times, …) |
+| `Start` / `Stop` / `Reload` | Integration → Addon | Runtime lifecycle |
+| `GetProgramStatus` | Integration → Addon | Program loaded/version/running |
+| `PutScanOptions` | Integration → Addon | `scan_period`, global fail-safe defaults |
+
+Do **not** invent a second binding schema or metrics model in either package. HTTP/ingress only carry these ops.
 
 ## Configuration ownership
 
@@ -63,10 +78,12 @@ Exact auth handshake is an SWD-67/69 detail; blueprint requirement: **integratio
 ```text
 Install addon (Supervisor) → Install HACS integration →
   Add integration config entry (point at addon) →
-  Configure bindings → Start runtime (service) →
-  Upload program (OpenPLC Editor) → Running
+  Configure bindings (PutBindings) →
+  Upload program (OpenPLC Editor) → Start / Reload runtime →
+  Running (empty program: runtime may Start but logic is no-op until program loaded)
 
 Update: addon update via Supervisor; integration update via HACS
+Program deploy: upload then Reload (or Start) so SWD-67/69 share one state machine
 Stop: HA service → addon stops scan / OpenPLC
 Unload integration: stop commanding addon; bindings retained in config entry
 ```

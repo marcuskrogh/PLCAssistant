@@ -18,7 +18,7 @@
 
 - Soft-PLC (or strong PLC equivalent) whose tags bind to HA entities
 - Engineering path to author/deploy control logic
-- Packaging as a Home Assistant integration and/or addon
+- Packaging as a Home Assistant **HACS integration and HAOS/Supervised addon** (hybrid)
 - Patterns/docs for historian + HMI on existing HA tooling
 
 ### Out
@@ -35,11 +35,16 @@ HA devices / integrations
         │  entities (sensors, switches, …)
         ▼
 ┌───────────────────────────┐
-│  PLCAssistant (virtual PLC)│  ← tags, scan/logic, timers
-└───────────────────────────┘
-        │
-        ├─► Lovelace / kiosk dashboards  (HMI)
-        └─► InfluxDB → Grafana           (historian)
+│ HA Core + thin HACS integ.│  ← bindings SoT, diagnostics, services
+└───────────────┬───────────┘
+                │ WebSocket / REST (control plane)
+                ▼
+┌───────────────────────────┐
+│ Addon: I/O HAL + OpenPLC  │  ← scan cycle, tags, timers
+└───────────────┬───────────┘
+                │
+                ├─► Lovelace / kiosk dashboards  (HMI)
+                └─► InfluxDB → Grafana           (historian)
 ```
 
 ## Landscape (explore findings)
@@ -64,7 +69,7 @@ Existing work mostly fills *adjacent* niches, not this product:
 | 2 | HA entity I/O bridge | Bidirectional entity↔tag binding, availability/freshness, config UX | [SWD-71](https://marcusknielsen.atlassian.net/browse/SWD-71) |
 | 3 | PLC program execution | Runtime lifecycle, timers/counters, at least one IEC-style language path | [SWD-69](https://marcusknielsen.atlassian.net/browse/SWD-69) |
 | 4 | Operator surfaces | Lovelace/kiosk HMI patterns + InfluxDB/Grafana historian patterns | [SWD-68](https://marcusknielsen.atlassian.net/browse/SWD-68) |
-| 5 | Delivery packaging | HACS integration and/or HAOS addon + minimal demo | [SWD-67](https://marcusknielsen.atlassian.net/browse/SWD-67) |
+| 5 | Delivery packaging | HACS integration **and** HAOS addon + minimal demo | [SWD-67](https://marcusknielsen.atlassian.net/browse/SWD-67) |
 
 ### Sequencing rationale
 
