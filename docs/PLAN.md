@@ -84,7 +84,8 @@
 
 ## Delivered
 - Specs: `docs/wedge/` (01–08)
-- Mock core: `plcassistant/wedge/` with pytest acceptance (`python3 -m pytest -q` — 37 passed)
+- Mock core: `plcassistant/wedge/` with pytest acceptance (`python3 -m pytest -q` — 44 passed)
+- Shipped: [PR #11](https://github.com/marcuskrogh/PLCAssistant/pull/11) merge `3f892a4`
 
 ## Next
-`/ship SWD-83` — Merge PR and close the Task
+Done — phase closed. Suggested initiative next: `/define SWD-86`
