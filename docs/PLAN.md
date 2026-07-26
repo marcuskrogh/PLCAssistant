@@ -61,7 +61,7 @@
 ## Open items
 - ~~Exact reason-code list~~ — resolved: `unavailable`, `unknown`, `stale`, `fault` ([`docs/io/01-image-quality.md`](io/01-image-quality.md))
 - ~~Exact YAML/config schema field names~~ — resolved: `tags` / `bindings` with `tag`, `entity`, `direction`, optional `scale`/`offset`/`entity_unit`/`treat_uncertain_as_good` ([`docs/io/02-binding-model.md`](io/02-binding-model.md))
-- How Add-on consumes the binding table from the integration (API/IPC) — sketch only if needed for stub
+- ~~How Add-on consumes the binding table from the integration (API/IPC)~~ — resolved for stub: **in-process** `scan_inputs` / `scan_outputs` on a shared `IoImage` ([`docs/io/03-thin-integration-stub.md`](io/03-thin-integration-stub.md)); real HA IPC later / [SWD-84](https://marcusknielsen.atlassian.net/browse/SWD-84)
 - ~~Whether wedge runtime (`plcassistant/wedge`) gains a shared quality type now or only via adapter in this Task~~ — resolved in SWD-96: wedge uses `plcassistant.io` `TagQuality` / `is_good` directly
 
 ## Tracker

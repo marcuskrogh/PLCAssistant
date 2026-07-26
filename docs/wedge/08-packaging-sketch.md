@@ -35,7 +35,7 @@ Record the **working packaging shape** enough to host operator services and the 
      └─────────────────────────┘
 ```
 
-Contracts: [`docs/io/01-image-quality.md`](../io/01-image-quality.md) (image + quality) · [`docs/io/02-binding-model.md`](../io/02-binding-model.md) (bindings + config shape).
+Contracts: [`docs/io/01-image-quality.md`](../io/01-image-quality.md) (image + quality) · [`docs/io/02-binding-model.md`](../io/02-binding-model.md) (bindings + config shape) · [`docs/io/03-thin-integration-stub.md`](../io/03-thin-integration-stub.md) (stub + mock entities + scan API).
 
 ## Responsibility split
 
