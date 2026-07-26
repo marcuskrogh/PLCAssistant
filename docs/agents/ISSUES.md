@@ -4,19 +4,19 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 | Key | Type | Title | Status | Parent | Artifact | Next |
 |-----|------|-------|--------|--------|----------|------|
-| SWD-66 | Story | PLCAssistant: virtual PLC for Home Assistant | To Do | | docs/ROADMAP.md | `/ship SWD-71` |
+| SWD-66 | Story | PLCAssistant: virtual PLC for Home Assistant | To Do | | docs/ROADMAP.md | `/define SWD-69` |
 | SWD-70 | Task | Architecture & approach selection for virtual PLC over HA entities | Done | SWD-66 | docs/ARCHITECTURE.md | Done — phase closed |
 | SWD-73 | Sub-task | WP1: ADR — architecture decision record | Done | SWD-70 | docs/ARCHITECTURE.md | — |
 | SWD-74 | Sub-task | WP2: I/O HAL contract | Done | SWD-70 | docs/IO_HAL.md | — |
 | SWD-75 | Sub-task | WP3: Packaging blueprint | Done | SWD-70 | docs/PACKAGING.md | — |
 | SWD-72 | Sub-task | WP4: Downstream handoff to SWD-71/69/68/67 | Done | SWD-70 | docs/HANDOFF.md | — |
-| SWD-71 | Task | HA entity I/O bridge for PLC tags | In Review | SWD-66 | docs/PLAN.md | `/ship SWD-71` |
+| SWD-71 | Task | HA entity I/O bridge for PLC tags | Done | SWD-66 | docs/PLAN_SWD-71.md · docs/BRIDGE.md | Done — phase closed |
 | SWD-78 | Sub-task | WP1: plcassistant_contract library | Done | SWD-71 | packages/plcassistant_contract/ | — |
 | SWD-80 | Sub-task | WP2: HACS integration skeleton + config entry | Done | SWD-71 | custom_components/plcassistant/ | — |
 | SWD-77 | Sub-task | WP3: Binding registry and config UI | Done | SWD-71 | custom_components/plcassistant/ | — |
 | SWD-76 | Sub-task | WP4: Control-plane sync client | Done | SWD-71 | custom_components/plcassistant/control_plane.py | — |
 | SWD-79 | Sub-task | WP5: Diagnostic entities from GetStatus | Done | SWD-71 | custom_components/plcassistant/ | — |
-| SWD-69 | Task | PLC program execution runtime | To Do | SWD-66 | docs/ARCHITECTURE.md | `/define SWD-69` after SWD-71 |
+| SWD-69 | Task | PLC program execution runtime | To Do | SWD-66 | docs/ARCHITECTURE.md | `/define SWD-69` |
 | SWD-68 | Task | Operator surfaces: Lovelace HMI and Influx/Grafana historian | To Do | SWD-66 | docs/HANDOFF.md | `/define SWD-68` after runtime tags |
 | SWD-67 | Task | Delivery packaging as HA integration and addon | To Do | SWD-66 | docs/PACKAGING.md | `/define SWD-67` when MVP scope stable |
 
@@ -32,3 +32,4 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 - 2026-07-26 — `/implement SWD-71`: contract lib + HACS integration + tests (30 passed); Sub-tasks Done; Task → In Review; Next `/review-fix SWD-71`.
 - 2026-07-26 — `/review-fix SWD-71` iter1 REQUEST_CHANGES (2 blockers); fix-forward: PutBindings on setup, HACS vendor contract, control_plane client, fail-safe options (34 tests).
 - 2026-07-26 — `/review-fix SWD-71` iter2 **CLEAN**; Task stays In Review; Next `/ship SWD-71`.
+- 2026-07-26 — `/ship SWD-71`: merged PR [#7](https://github.com/marcuskrogh/PLCAssistant/pull/7); Task → Done; plan archived `docs/PLAN_SWD-71.md`; Next `/define SWD-69`.
