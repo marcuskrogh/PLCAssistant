@@ -50,7 +50,7 @@ Missing entities are treated like absent field samples: scan IN applies `BAD` + 
 |--------|------|--------|
 | `attach(image?)` | Setup | `BindingTable.declare_on`; creates `IoImage` if omitted |
 | `scan_inputs(image)` | Scan start | For each IN/INOUT: read store → `apply_in` (units + quality) |
-| `scan_outputs(image)` | Scan end | `apply_out` → write raw OUTs into store **every scan** |
+| `scan_outputs(image)` | Scan end | `apply_out` → write **logic-written** OUTs into store (skip never-written; quality from image tag) |
 | `run_scan(image, logic)` | Tests | `scan_inputs` → `logic(image)` → `scan_outputs` |
 
 Uniqueness (multi-IN / single OUT writer) is enforced by `BindingTable` at construction — the stub does not re-validate.

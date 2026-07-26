@@ -125,3 +125,19 @@ def test_declare_duplicate_and_unknown_tag_errors():
         image.declare("LT_TANK", default=1.0)
     with pytest.raises(KeyError, match="unknown tag"):
         image.apply_input("NOPE", 1.0, QualityStatus.GOOD)
+
+
+def test_apply_input_non_finite_good_demotes_to_bad_fault():
+    image = _image_with_level(default=0.0)
+    image.apply_input("LT_TANK", 0.25, QualityStatus.GOOD)
+    image.apply_input("LT_TANK", float("nan"), QualityStatus.GOOD)
+    value, quality = image.get("LT_TANK")
+    assert value == 0.25
+    assert quality.status is QualityStatus.BAD
+    assert quality.reason is ReasonCode.FAULT
+
+    image.apply_input("LT_TANK", float("inf"), QualityStatus.GOOD)
+    value, quality = image.get("LT_TANK")
+    assert value == 0.25
+    assert quality.status is QualityStatus.BAD
+    assert quality.reason is ReasonCode.FAULT

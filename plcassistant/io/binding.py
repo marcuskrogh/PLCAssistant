@@ -7,7 +7,7 @@ from enum import Enum
 from typing import Any, Mapping
 
 from plcassistant.io.image import IoImage
-from plcassistant.io.quality import QualityStatus, ReasonCode, TagQuality
+from plcassistant.io.quality import QualityStatus, ReasonCode, TagQuality, is_good
 
 
 class Direction(str, Enum):
@@ -46,6 +46,7 @@ class Binding:
     offset: float = 0.0
     entity_unit: str | None = None
     treat_uncertain_as_good: bool = False
+    """API retained for future Soft-PLC wiring; safety uses ``is_good`` only for now."""
 
     def __post_init__(self) -> None:
         if self.scale == 0:
@@ -60,10 +61,15 @@ class Binding:
         return (engineering - self.offset) / self.scale
 
     def usable_for_safety(self, quality: TagQuality | QualityStatus) -> bool:
-        """Safety collapse: GOOD always; UNCERTAIN only if binding opts in."""
-        status = quality.status if isinstance(quality, TagQuality) else quality
-        if status is QualityStatus.GOOD:
+        """Safety collapse helper.
+
+        Soft-PLC wiring of ``treat_uncertain_as_good`` is deferred: callers that
+        mirror production safety should use ``is_good`` only. This method still
+        honours the flag when opted in (API retained for a later package).
+        """
+        if is_good(quality):
             return True
+        status = quality.status if isinstance(quality, TagQuality) else quality
         if status is QualityStatus.UNCERTAIN and self.treat_uncertain_as_good:
             return True
         return False
@@ -81,7 +87,11 @@ def _parse_direction(value: str | Direction) -> Direction:
 def _parse_sample(
     sample: Any,
 ) -> tuple[Any, QualityStatus, ReasonCode | None]:
-    """Accept a raw number (→ GOOD) or (value, status[, reason])."""
+    """Accept a raw number (→ GOOD) or (value, status, reason).
+
+    Non-GOOD samples **require** a reason code. A 2-tuple is only valid when
+    status is GOOD (reason omitted); otherwise raise ``ValueError``.
+    """
     if isinstance(sample, tuple):
         if len(sample) == 2:
             value, status = sample
@@ -96,6 +106,11 @@ def _parse_sample(
             status = QualityStatus(status)
         if reason is not None and not isinstance(reason, ReasonCode):
             reason = ReasonCode(reason)
+        if status is QualityStatus.GOOD:
+            if reason is not None:
+                raise ValueError("GOOD sample must not carry a reason code")
+        elif reason is None:
+            raise ValueError(f"{status.value} sample requires a reason code")
         return value, status, reason
     return sample, QualityStatus.GOOD, None
 
@@ -201,33 +216,47 @@ class BindingTable:
         image: IoImage,
         entity_samples: Mapping[str, Any],
     ) -> None:
-        """Scan-start: for each IN/INOUT binding with a sample, convert and apply_input.
+        """Scan-start: for each IN/INOUT binding, convert (when GOOD) and apply_input.
 
         ``entity_samples`` maps entity id → raw number (treated as GOOD) or
-        ``(value, QualityStatus)`` / ``(value, QualityStatus, ReasonCode)``.
-        OUT-only bindings are skipped. Missing entity keys are skipped (image keeps
-        prior / default quality rules).
+        ``(value, QualityStatus, ReasonCode)`` (reason required when not GOOD).
+        OUT-only bindings are skipped. Missing entity keys are applied as
+        ``BAD`` / ``unavailable`` (same as the thin-integration stub).
         """
         image.begin_inputs()
         for binding in self._bindings:
             if not binding.direction.reads:
                 continue
             if binding.entity not in entity_samples:
+                image.apply_input(
+                    binding.tag,
+                    0.0,
+                    QualityStatus.BAD,
+                    ReasonCode.UNAVAILABLE,
+                )
                 continue
             raw, status, reason = _parse_sample(entity_samples[binding.entity])
-            engineering = binding.to_engineering(float(raw))
-            image.apply_input(binding.tag, engineering, status, reason)
+            if status is QualityStatus.GOOD:
+                engineering = binding.to_engineering(float(raw))
+                image.apply_input(binding.tag, engineering, status, reason)
+            else:
+                # Placeholder only: do not float/scale non-GOOD payloads (may be None).
+                image.apply_input(binding.tag, 0.0, status, reason)
 
     def apply_out(self, image: IoImage) -> dict[str, float]:
-        """Scan-end: convert OUT/INOUT tag values to HA raw; return entity → raw.
+        """Scan-end: convert written OUT/INOUT tag values to HA raw.
 
-        IN-only bindings are skipped. Raises if an OUT/INOUT binding's direction
-        were somehow misused via a non-writer (defensive; writers only here).
+        Only tags present in ``image.snapshot_outputs()`` (logic called
+        ``set_output`` / ``is_output``) are flushed. Never-written OUT bindings
+        are omitted so callers do not publish defaults as GOOD.
         """
+        written = image.snapshot_outputs()
         flush: dict[str, float] = {}
         for binding in self._bindings:
             if not binding.direction.writes:
                 continue
-            engineering = float(image.get_value(binding.tag))
+            if binding.tag not in written:
+                continue
+            engineering = float(written[binding.tag])
             flush[binding.entity] = binding.to_raw(engineering)
         return flush

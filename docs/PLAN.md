@@ -14,7 +14,7 @@
 - Unit conversion in the binding layer
 - Binding uniqueness: one HA entity may map to **many** tags; **at most one OUT** writer per entity
 - Last-good retention when quality ≠ `GOOD`; before first sample: `BAD` / `unavailable` + **default value**
-- Safety treats only `GOOD` as good unless a binding opts otherwise
+- Safety treats only `GOOD` as good (`is_good`); `treat_uncertain_as_good` API retained on bindings but Soft-PLC wiring deferred
 - Mock/sim in the **thin integration** (entities mocked internally); Add-on has no special mock-process path
 - Revise packaging notes that put mock inside the Add-on
 - Working **thin-integration stub** + automated contract/unit tests (mocked HA; no real HA instance)
@@ -61,6 +61,7 @@
 ## Open items
 - ~~Exact reason-code list~~ — resolved: `unavailable`, `unknown`, `stale`, `fault` ([`docs/io/01-image-quality.md`](io/01-image-quality.md))
 - ~~Exact YAML/config schema field names~~ — resolved: `tags` / `bindings` with `tag`, `entity`, `direction`, optional `scale`/`offset`/`entity_unit`/`treat_uncertain_as_good` ([`docs/io/02-binding-model.md`](io/02-binding-model.md))
+- ~~`treat_uncertain_as_good` Soft-PLC wiring~~ — deferred: field/API retained; production safety uses `is_good` only for now ([`docs/io/02-binding-model.md`](io/02-binding-model.md))
 - ~~How Add-on consumes the binding table from the integration (API/IPC)~~ — resolved for stub: **in-process** `scan_inputs` / `scan_outputs` on a shared `IoImage` ([`docs/io/03-thin-integration-stub.md`](io/03-thin-integration-stub.md)); real HA IPC later / [SWD-84](https://marcusknielsen.atlassian.net/browse/SWD-84)
 - ~~Whether wedge runtime (`plcassistant/wedge`) gains a shared quality type now or only via adapter in this Task~~ — resolved in SWD-96: wedge uses `plcassistant.io` `TagQuality` / `is_good` directly
 - ~~Contract/unit tests covering PLAN acceptance (mocked HA; no real HA)~~ — resolved in SWD-100: [`docs/io/04-acceptance.md`](io/04-acceptance.md), `tests/test_swd86_acceptance.py`

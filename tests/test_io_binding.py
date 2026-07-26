@@ -293,3 +293,77 @@ def test_undeclared_tag_and_duplicate_tag_binding():
                 Binding("T", "sensor.b", Direction.IN),
             ],
         )
+
+
+def test_apply_in_non_good_none_keeps_last_good():
+    """Non-GOOD may carry None; must not float(raw) before apply_input."""
+    table = _level_table()
+    image = IoImage()
+    table.declare_on(image)
+    table.apply_in(image, {"sensor.tank_level": 0.42})
+    assert image.get_value("LT_TANK") == pytest.approx(0.42)
+
+    table.apply_in(
+        image,
+        {
+            "sensor.tank_level": (
+                None,
+                QualityStatus.BAD,
+                ReasonCode.UNAVAILABLE,
+            )
+        },
+    )
+    assert image.get_value("LT_TANK") == pytest.approx(0.42)
+    q = image.get_quality("LT_TANK")
+    assert q.status is QualityStatus.BAD
+    assert q.reason is ReasonCode.UNAVAILABLE
+
+
+def test_apply_in_missing_entity_is_bad_unavailable():
+    table = _level_table(scale=0.01)
+    image = IoImage()
+    table.declare_on(image)
+    table.apply_in(image, {"sensor.tank_level": 20.0})
+    assert image.get_value("LT_TANK") == pytest.approx(0.20)
+
+    # Missing key (not skip-retain): apply BAD + unavailable → keep last-good
+    table.apply_in(image, {})
+    assert image.get_value("LT_TANK") == pytest.approx(0.20)
+    q = image.get_quality("LT_TANK")
+    assert q.status is QualityStatus.BAD
+    assert q.reason is ReasonCode.UNAVAILABLE
+
+
+def test_apply_out_skips_never_written_tags():
+    table = BindingTable(
+        tags={
+            "LT_TANK": TagDecl("LT_TANK", default=0.0),
+            "CMD_SPEED": TagDecl("CMD_SPEED", default=0.0),
+        },
+        bindings=[
+            Binding("LT_TANK", "sensor.tank_level", Direction.IN),
+            Binding("CMD_SPEED", "number.cmd_speed", Direction.OUT),
+        ],
+    )
+    image = IoImage()
+    table.declare_on(image)
+    # No set_output → nothing to flush (do not publish default as GOOD)
+    assert table.apply_out(image) == {}
+
+    image.set_output("CMD_SPEED", 33.0)
+    assert table.apply_out(image) == {"number.cmd_speed": pytest.approx(33.0)}
+
+
+def test_parse_sample_requires_reason_when_not_good():
+    from plcassistant.io.binding import _parse_sample
+
+    with pytest.raises(ValueError, match="requires a reason code"):
+        _parse_sample((None, QualityStatus.BAD))
+    with pytest.raises(ValueError, match="requires a reason code"):
+        _parse_sample((1.0, QualityStatus.UNCERTAIN))
+    value, status, reason = _parse_sample(
+        (None, QualityStatus.BAD, ReasonCode.UNAVAILABLE)
+    )
+    assert value is None
+    assert status is QualityStatus.BAD
+    assert reason is ReasonCode.UNAVAILABLE

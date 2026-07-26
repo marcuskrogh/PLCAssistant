@@ -121,8 +121,10 @@ In mock, the thin integration **synthesizes** entity state (optionally via the S
 - Choosing exact language/runtime stack inside the add-on
 - Publishing a store-ready add-on release
 - Exhaustive comparison of pure integration vs Supervisor vs external box (SWD-84)
-- Final entity-registry UX (remaining SWD-86 packages / stub)
-- Implementing the thin-integration stub (SWD-99)
+- Final entity-registry UX / real HA packaging freeze (SWD-84)
+- Replacing the in-process stub with production HA IPC
+
+**SWD-99 landed:** thin-integration stub + mock entity store — see [`docs/io/03-thin-integration-stub.md`](../io/03-thin-integration-stub.md) (`plcassistant.io.integration`).
 
 ## Scan / timebase (demo)
 
@@ -140,12 +142,13 @@ To host [`06-mock-acceptance.md`](06-mock-acceptance.md) under this packaging sh
 4. Fault injection / level nudges act on mock entities or plant-model knobs in the integration (not a special Add-on I/O branch)
 5. Integration services for Start/Stop/Reset visible to Lovelace
 
-Until the stub lands (SWD-99), SWD-83 acceptance remains green via `plcassistant.wedge` tag API / unit tests.
+SWD-99 stub is available for I/O contract tests (`ThinIntegrationStub` / `MockEntityStore`). SWD-83 skid acceptance remains green via `plcassistant.wedge` tag API / unit tests; full HA-hosted mock acceptance is packaging follow-on (SWD-84).
 
 ## Related specs
 
 - I/O image & quality: [`docs/io/01-image-quality.md`](../io/01-image-quality.md)
 - Binding model: [`docs/io/02-binding-model.md`](../io/02-binding-model.md)
+- Thin-integration stub: [`docs/io/03-thin-integration-stub.md`](../io/03-thin-integration-stub.md)
 - Follow-on / physical: [`07-follow-on.md`](07-follow-on.md)
 - Mock / plant model: [`05-mock-process.md`](05-mock-process.md)
 - Plan: [`docs/PLAN.md`](../PLAN.md)

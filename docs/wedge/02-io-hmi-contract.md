@@ -59,14 +59,17 @@ No outlet flow command, no valve position command in v1.
 
 ## Setpoints & limits (operator-writable)
 
-| Tag | Description | Unit | Default (ref) | Notes |
-|-----|-------------|------|---------------|-------|
-| `SP_LEVEL` | Tank level setpoint | m | 0.20 | Outer loop SP |
-| `SP_FLOW_MAN` | Manual flow SP (optional mode) | L/min | 2.0 | Used only in Flow / Manual modes |
-| `LIM_LEVEL_HH` | High-high tank trip | m | 0.36 | Safety threshold |
-| `LIM_RES_LL` | Low-low reservoir trip | m | 0.05 | Dry-run threshold |
-| `SP_FLOW_MAX` | Clamp on cascade flow SP | L/min | 6.0 | Protects pump/plumbing |
-| `CMD_SPEED_MAX` | Clamp on speed command | % | 100 | Optional demotion limit |
+Default setpoint pattern is **split IN + OUT** (not one `INOUT`): request from HA/operator, active value from Soft-PLC. See [`docs/io/02-binding-model.md`](../io/02-binding-model.md).
+
+| Tag | Description | Unit | Default (ref) | Direction | Notes |
+|-----|-------------|------|---------------|-----------|-------|
+| `SP_LEVEL_REQ` | Operator / HA tank level setpoint request | m | 0.20 | `IN` | Bound to `input_number` (or equivalent) |
+| `SP_LEVEL` | Active tank level setpoint Soft-PLC is applying | m | 0.20 | `OUT` | Outer loop SP; mirrored for HMI |
+| `SP_FLOW_MAN` | Manual flow SP (optional mode) | L/min | 2.0 | — | Used only in Flow / Manual modes |
+| `LIM_LEVEL_HH` | High-high tank trip | m | 0.36 | — | Safety threshold |
+| `LIM_RES_LL` | Low-low reservoir trip | m | 0.05 | — | Dry-run threshold |
+| `SP_FLOW_MAX` | Clamp on cascade flow SP | L/min | 6.0 | — | Protects pump/plumbing |
+| `CMD_SPEED_MAX` | Clamp on speed command | % | 100 | — | Optional demotion limit |
 
 Tunable PID gains are out of deep scope here (SWD-85 / model); expose placeholders if needed:
 
@@ -86,7 +89,7 @@ Tunable PID gains are out of deep scope here (SWD-85 / model); expose placeholde
 | `SP_FLOW` | Active flow setpoint (cascade output or manual) | L/min |
 | `RUNNING` | Control intends to run pump (subject to trips) | bool |
 
-Recommended live displays (Lovelace / dashboard): `LT_TANK`, `LT_RES`, `FT_INLET`, `SC_PUMP` (if present), `CMD_SPEED`, `SP_LEVEL`, `SP_FLOW`, `MODE`, `TRIP_CODE`, `PERM_OK`, plus each PV’s quality when troubleshooting LOS.
+Recommended live displays (Lovelace / dashboard): `LT_TANK`, `LT_RES`, `FT_INLET`, `SC_PUMP` (if present), `CMD_SPEED`, `SP_LEVEL_REQ`, `SP_LEVEL`, `SP_FLOW`, `MODE`, `TRIP_CODE`, `PERM_OK`, plus each PV’s quality when troubleshooting LOS.
 
 ## HMI surface (reuse HA)
 
@@ -99,7 +102,7 @@ Recommended live displays (Lovelace / dashboard): `LT_TANK`, `LT_RES`, `FT_INLET
 
 ## Binding notes (not owned here)
 
-Thin config integration maps HA entities ↔ tags. Mock mode may bind to simulated entities or inject directly into the runtime without field devices. Exact mapping mechanics: SWD-86.
+Thin config integration maps HA entities ↔ tags. Mock and field share the **same binding-fed image path** into the Add-on (mock entities in the thin integration; no special inject-into-runtime I/O branch). Exact mapping mechanics: [`docs/io/02-binding-model.md`](../io/02-binding-model.md), stub: [`docs/io/03-thin-integration-stub.md`](../io/03-thin-integration-stub.md) (SWD-86).
 
 ## Related specs
 

@@ -32,12 +32,10 @@ def pv_ok(value: Optional[float]) -> bool:
 
 
 def quality_from_pv(value: Optional[float]) -> TagQuality:
-    """Synthesize tag quality from a raw numeric sample."""
+    """Synthesize tag quality from a raw numeric sample via ``pv_ok``."""
     if value is None:
         return TagQuality(QualityStatus.BAD, ReasonCode.UNAVAILABLE)
-    if value != value or value in (float("inf"), float("-inf")):
-        return TagQuality(QualityStatus.BAD, ReasonCode.FAULT)
-    if value < 0.0:
+    if not pv_ok(value):
         return TagQuality(QualityStatus.BAD, ReasonCode.FAULT)
     return TagQuality(QualityStatus.GOOD)
 

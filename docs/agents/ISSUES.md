@@ -41,3 +41,4 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 - 2026-07-26 — SWD-99 Done: thin-integration stub (`docs/io/03-thin-integration-stub.md`, `plcassistant/io/integration.py`); in-process `scan_inputs`/`scan_outputs` on shared `IoImage` (HA IPC later / SWD-84); Next continue `/implement SWD-86` (SWD-100).
 - 2026-07-26 — SWD-100 Done: PLAN acceptance contract/unit tests (`docs/io/04-acceptance.md`, `tests/test_swd86_acceptance.py`); all SWD-86 packages complete; Next `/review-fix SWD-86`.
 - 2026-07-26 — Implement SWD-86 complete: Sub-tasks Done; Task → In Review; Next `/review-fix SWD-86`.
+- 2026-07-26 — Fix-forward SWD-86 review iteration 1: apply_in non-GOOD/missing, apply_out written-only flush, docs alignment, compose helpers; Task stays In Review; Next `/review-fix SWD-86`.

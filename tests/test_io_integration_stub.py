@@ -199,3 +199,30 @@ def test_mock_store_get_missing_is_unavailable():
     assert sample.status is QualityStatus.BAD
     assert sample.reason is ReasonCode.UNAVAILABLE
     assert store.has("sensor.missing") is False
+
+
+def test_scan_outputs_skips_never_written_out_tags():
+    """Never-written OUT must not appear in the entity store as GOOD."""
+    stub = ThinIntegrationStub(CONFIG)
+    image = stub.attach()
+    stub.entities.set("sensor.tank_level", 10.0)
+
+    stub.scan_inputs(image)
+    flush = stub.scan_outputs(image)
+    assert flush == {}
+    assert stub.entities.has("number.cmd_speed") is False
+
+    image.set_output("CMD_SPEED", 12.0)
+    flush = stub.scan_outputs(image)
+    assert flush == {"number.cmd_speed": pytest.approx(12.0)}
+    assert stub.entities.get("number.cmd_speed").status is QualityStatus.GOOD
+    assert stub.entities.get("number.cmd_speed").value == pytest.approx(12.0)
+
+
+def test_entity_sample_composes_tag_quality_validation():
+    from plcassistant.io import EntitySample
+
+    with pytest.raises(ValueError):
+        EntitySample(value=1.0, status=QualityStatus.GOOD, reason=ReasonCode.FAULT)
+    with pytest.raises(ValueError):
+        EntitySample(value=1.0, status=QualityStatus.BAD)

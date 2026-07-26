@@ -14,7 +14,7 @@ from typing import Any, Callable, Mapping
 
 from plcassistant.io.binding import BindingTable
 from plcassistant.io.image import IoImage
-from plcassistant.io.quality import QualityStatus, ReasonCode
+from plcassistant.io.quality import QualityStatus, ReasonCode, TagQuality
 
 
 @dataclass(frozen=True)
@@ -26,18 +26,13 @@ class EntitySample:
     reason: ReasonCode | None = None
 
     def __post_init__(self) -> None:
-        if self.status is QualityStatus.GOOD:
-            if self.reason is not None:
-                raise ValueError("GOOD entity sample must not carry a reason code")
-        elif self.reason is None:
-            raise ValueError(f"{self.status.value} entity sample requires a reason code")
+        # Compose TagQuality validation (GOOD ↔ reason rules) instead of duplicating.
+        TagQuality(self.status, self.reason)
 
     def as_apply_sample(self) -> Any:
         """Shape accepted by ``BindingTable.apply_in`` entity_samples values."""
         if self.status is QualityStatus.GOOD and self.reason is None:
             return self.value
-        if self.reason is None:
-            return (self.value, self.status)
         return (self.value, self.status, self.reason)
 
 
@@ -148,11 +143,21 @@ class ThinIntegrationStub:
     def scan_outputs(self, image: IoImage) -> dict[str, float]:
         """Scan end: ``BindingTable.apply_out`` → write raw values into the store.
 
-        OUTs are flushed every scan (no change-detect). Returns entity → raw.
+        Only tags logic wrote (``set_output`` / ``is_output``) are flushed —
+        never-written OUT bindings are omitted. Entity quality follows the
+        image tag (do not force GOOD for non-GOOD / never-written tags).
+        Returns entity → raw.
         """
         flush = self._table.apply_out(image)
+        by_entity = {
+            binding.entity: binding
+            for binding in self._table.bindings
+            if binding.direction.writes
+        }
         for entity_id, raw in flush.items():
-            self._entities.set(entity_id, raw, QualityStatus.GOOD)
+            binding = by_entity[entity_id]
+            quality = image.get_quality(binding.tag)
+            self._entities.set(entity_id, raw, quality.status, quality.reason)
         return flush
 
     def run_scan(

@@ -73,15 +73,17 @@ Simple linear transform (stub / v1):
 
 `BindingTable` construction / `from_config` **rejects** a second writer for the same entity (`ValueError`). Two `IN` bindings to the same entity are allowed.
 
-## Safety opt-in
+## Safety opt-in (API retained; Soft-PLC wiring deferred)
 
-Safety collapses quality to good **only** for `GOOD` unless the binding sets:
+Production Soft-PLC safety collapses quality with **`is_good` only** (`GOOD` trustworthy). The binding field:
 
 ```text
 treat_uncertain_as_good: true   # default false
 ```
 
-When `true`, `UNCERTAIN` may be treated as usable for that binding’s safety consumers (`Binding.usable_for_safety`). Image retention rules from [`01-image-quality.md`](01-image-quality.md) are unchanged: non-`GOOD` samples still do not overwrite last-good on the image.
+is **retained on the binding schema / `Binding` API** for a future Soft-PLC wiring package. Until that lands, safety consumers must not rely on the flag — use `is_good` / `collapse_quality`. `Binding.usable_for_safety` still honours the flag when called explicitly (tests / future wiring).
+
+Image retention rules from [`01-image-quality.md`](01-image-quality.md) are unchanged: non-`GOOD` samples still do not overwrite last-good on the image.
 
 ## Config schema (YAML-oriented dict)
 
@@ -128,10 +130,10 @@ At most one binding per tag. Tag declarations are applied to an `IoImage` via `B
 | `BindingTable` | Validated collection; uniqueness enforced |
 | `from_config(dict)` | Load tags + bindings from the schema above |
 | `declare_on(image)` | Declare all tags on an `IoImage` |
-| `apply_in(image, samples)` | IN/INOUT only: convert raw→eng, `apply_input` |
-| `apply_out(image)` | OUT/INOUT only: eng→raw map `entity → raw` |
+| `apply_in(image, samples)` | IN/INOUT: GOOD → convert raw→eng; non-GOOD → placeholder + quality; missing entity → `BAD`/`unavailable` |
+| `apply_out(image)` | OUT/INOUT **written** tags only (`snapshot_outputs` / `is_output`): eng→raw map `entity → raw` |
 
-`samples` maps entity id → numeric raw value or `(value, QualityStatus, reason?)`. Pure Python; no Home Assistant.
+`samples` maps entity id → numeric raw value (→ GOOD) or `(value, QualityStatus, ReasonCode)` — reason **required** when status is not GOOD. Pure Python; no Home Assistant.
 
 ## Non-goals (this package)
 

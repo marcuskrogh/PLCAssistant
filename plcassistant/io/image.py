@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Any, Mapping
 
@@ -82,6 +83,11 @@ class IoImage:
     ) -> None:
         """Apply an IN sample at scan start per last-good / default rules."""
         slot = self._require(name)
+        if status is QualityStatus.GOOD and isinstance(value, (int, float)):
+            if not math.isfinite(float(value)):
+                # Reject non-finite GOOD: demote to BAD / fault (keep last-good).
+                status = QualityStatus.BAD
+                reason = ReasonCode.FAULT
         quality = TagQuality(status, reason)
         if status is QualityStatus.GOOD:
             slot.value = value
