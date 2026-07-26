@@ -79,4 +79,4 @@
   - [SWD-100](https://marcusknielsen.atlassian.net/browse/SWD-100) — Contract/unit tests
 
 ## Next
-`/review-fix SWD-86`
+`/ship SWD-86` — Merge PR and close the Task
