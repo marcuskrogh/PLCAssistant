@@ -4,7 +4,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 | Key | Type | Title | Status | Parent | Artifact | Next |
 |-----|------|-------|--------|--------|----------|------|
-| SWD-81 | Story | PLCAssistant — Virtual PLC for Home Assistant | To Do | — | docs/ROADMAP.md | `/research SWD-85` |
+| SWD-81 | Story | PLCAssistant — Virtual PLC for Home Assistant | To Do | — | docs/ROADMAP.md | `/define SWD-85` |
 | SWD-83 | Task | Explore theme: Lab / hobby / small-process wedge | Done | SWD-81 | docs/PLAN.md (prior), docs/wedge/, plcassistant/wedge/ | Done — phase closed |
 | SWD-88 | Sub-task | SWD-83: Reference process spec | Done | SWD-83 | docs/wedge/01-reference-process.md | — |
 | SWD-87 | Sub-task | SWD-83: I/O & HMI contract for the skid | Done | SWD-83 | docs/wedge/02-io-hmi-contract.md | — |
@@ -21,7 +21,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-97 | Sub-task | SWD-86: Packaging note revision | Done | SWD-86 | docs/wedge/08-packaging-sketch.md (+ 05/07/README) | — |
 | SWD-99 | Sub-task | SWD-86: Thin-integration stub | Done | SWD-86 | docs/io/03-thin-integration-stub.md, plcassistant/io/integration.py | — |
 | SWD-100 | Sub-task | SWD-86: Contract/unit tests | Done | SWD-86 | docs/io/04-acceptance.md, tests/test_swd86_acceptance.py | — |
-| SWD-85 | Task | Explore theme: Control semantics | To Do | SWD-81 | docs/ROADMAP.md | `/research SWD-85` (optional) |
+| SWD-85 | Task | Explore theme: Control semantics | To Do | SWD-81 | docs/RESEARCH.md | `/define SWD-85` |
 | SWD-82 | Task | Explore theme: Programming surface | To Do | SWD-81 | docs/ROADMAP.md | later |
 | SWD-84 | Task | Explore theme: Packaging shape | To Do | SWD-81 | docs/ROADMAP.md | later |
 
@@ -44,3 +44,4 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 - 2026-07-26 — review-fix SWD-86 CLEAN after 3 iterations (10→5→0 blocking); Next `/ship SWD-86`.
 - 2026-07-26 — Fix-forward SWD-86 review iteration 1: apply_in non-GOOD/missing, apply_out written-only flush, docs alignment, compose helpers; Task stays In Review; Next `/review-fix SWD-86`.
 - 2026-07-26 — Fix-forward SWD-86 review iteration 2: apply_in GOOD None/non-numeric/non-finite demote, set_output non-finite demote, SP_LEVEL naming docs; Task stays In Review; Next `/review-fix SWD-86`.
+- 2026-07-26 — Research complete for SWD-85: `docs/RESEARCH.md` (scan-cycle semantics, safety ambition, HA vs cyclic); tool `scripts/arxiv_research.py`; Next `/define SWD-85`.
