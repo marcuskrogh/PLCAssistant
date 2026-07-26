@@ -9,8 +9,8 @@ import pytest
 
 from plcassistant.wedge.control import CascadeConfig
 from plcassistant.wedge.process import MockProcess, ProcessConfig
-from plcassistant.wedge.safety import Mode, SafetyConfig, TripCode
-from plcassistant.wedge.skid import OperatorCommand, Skid, SkidConfig
+from plcassistant.wedge.safety import Mode, TripCode
+from plcassistant.wedge.skid import LimitConfig, OperatorCommand, Skid, SkidConfig
 
 
 def _clean_skid(**kwargs) -> Skid:
@@ -23,7 +23,7 @@ def _clean_skid(**kwargs) -> Skid:
             initial_h_tank=0.15,
             initial_h_res=0.20,
         ),
-        safety=SafetyConfig(lim_level_hh=0.36, lim_res_ll=0.05),
+        limits=LimitConfig(lim_level_hh=0.36, lim_res_ll=0.05),
         sp_level=0.20,
         **kwargs,
     )
@@ -48,6 +48,8 @@ def test_A1_start_blocked_when_not_permissive():
     assert snap.cmd_speed == 0.0
     assert snap.mode is Mode.TRIPPED
     assert TripCode.LOS_LT_TANK in snap.trip_codes
+    assert snap.lt_tank_bad is True
+    assert snap.lt_tank is None
 
 
 def test_A2_clean_start():
@@ -61,7 +63,7 @@ def test_A2_clean_start():
         snap = skid.step(0.1)
 
     assert snap.cmd_speed > 0.0
-    assert snap.ft_inlet > 0.0
+    assert snap.ft_inlet is not None and snap.ft_inlet > 0.0
 
 
 def test_A3_stop_always_works():
@@ -71,17 +73,20 @@ def test_A3_stop_always_works():
     for _ in range(5):
         skid.step(0.1)
 
+    before = skid.last
+    assert before is not None and before.sp_flow > 0.0
     snap = skid.step(0.1, command=OperatorCommand.STOP)
     assert snap.mode is Mode.STOP
     assert snap.cmd_speed == 0.0
     assert snap.trip_active is False
+    assert snap.sp_flow == before.sp_flow  # hold last SP_FLOW on STOP
 
 
 # --- B — Cascade holds / responds -------------------------------------------
 
 
 def test_B1_level_step_up():
-    """B1 — Raise SP_LEVEL → SP_FLOW / CMD_SPEED / FT_INLET up; LT_TANK rises."""
+    """B1 — Raise SP_LEVEL → SP_FLOW and CMD_SPEED rise; FT_INLET up; LT_TANK rises."""
     skid = _clean_skid()
     skid.process.set_levels(lt_tank=0.15, lt_res=0.20)
     skid.sp_level = 0.15
@@ -98,14 +103,16 @@ def test_B1_level_step_up():
         snap = skid.step(0.1)
 
     assert snap is not None
-    assert snap.sp_flow >= before.sp_flow or snap.cmd_speed > 0.0
-    assert snap.cmd_speed > 0.0
-    assert snap.ft_inlet > 0.0
-    assert snap.lt_tank > before.lt_tank - 0.01  # moves toward higher SP
+    assert snap.sp_flow > before.sp_flow
+    assert snap.cmd_speed > before.cmd_speed
+    assert snap.ft_inlet is not None and before.ft_inlet is not None
+    assert snap.ft_inlet > before.ft_inlet
+    assert snap.lt_tank is not None and before.lt_tank is not None
+    assert snap.lt_tank > before.lt_tank - 0.01
 
 
 def test_B2_level_step_down():
-    """B2 — Lower SP_LEVEL → flow/speed decrease; tank trends down."""
+    """B2 — Lower SP_LEVEL → SP_FLOW and CMD_SPEED decrease; tank trends down."""
     skid = _clean_skid()
     skid.process.set_levels(lt_tank=0.18, lt_res=0.18)
     skid.sp_level = 0.22
@@ -122,7 +129,9 @@ def test_B2_level_step_down():
         snap = skid.step(0.1)
 
     assert snap is not None
-    assert snap.sp_flow < high.sp_flow or snap.cmd_speed < high.cmd_speed
+    assert snap.sp_flow < high.sp_flow
+    assert snap.cmd_speed < high.cmd_speed
+    assert snap.lt_tank is not None and high.lt_tank is not None
     assert snap.lt_tank < high.lt_tank + 0.02
 
 
@@ -199,6 +208,8 @@ def test_E1_loss_of_signal_lt_tank():
     assert TripCode.LOS_LT_TANK in tripped.trip_codes
     assert tripped.mode is Mode.TRIPPED
     assert tripped.cmd_speed == 0.0
+    assert tripped.lt_tank_bad is True
+    assert tripped.lt_tank is None
 
     skid.force_lt_tank_bad(False)
     assert skid.step(0.1).trip_active is True
@@ -208,24 +219,43 @@ def test_E1_loss_of_signal_lt_tank():
 
 
 def test_E2_loss_of_signal_lt_res():
-    """E2 — force_LT_RES_BAD → LOS_LT_RES."""
+    """E2 — force_LT_RES_BAD → LOS_LT_RES; clear alone keeps latch; Reset+Start."""
     skid = _clean_skid()
     _start_running(skid)
+
     skid.force_lt_res_bad(True)
     tripped = skid.step(0.1)
     assert TripCode.LOS_LT_RES in tripped.trip_codes
     assert tripped.mode is Mode.TRIPPED
+    assert tripped.cmd_speed == 0.0
+    assert tripped.lt_res_bad is True
+    assert tripped.lt_res is None
+
+    skid.force_lt_res_bad(False)
+    assert skid.step(0.1).trip_active is True
+
+    skid.step(0.1, command=OperatorCommand.RESET)
+    assert skid.step(0.1, command=OperatorCommand.START).mode is Mode.RUNNING
 
 
 def test_E3_loss_of_signal_ft_inlet():
-    """E3 — force_FT_INLET_BAD → LOS_FT_INLET."""
+    """E3 — force_FT_INLET_BAD → LOS_FT_INLET; clear alone keeps latch; Reset+Start."""
     skid = _clean_skid()
     _start_running(skid)
+
     skid.force_ft_inlet_bad(True)
     tripped = skid.step(0.1)
     assert TripCode.LOS_FT_INLET in tripped.trip_codes
     assert tripped.mode is Mode.TRIPPED
     assert tripped.cmd_speed == 0.0
+    assert tripped.ft_inlet_bad is True
+    assert tripped.ft_inlet is None
+
+    skid.force_ft_inlet_bad(False)
+    assert skid.step(0.1).trip_active is True
+
+    skid.step(0.1, command=OperatorCommand.RESET)
+    assert skid.step(0.1, command=OperatorCommand.START).mode is Mode.RUNNING
 
 
 # --- F — Latch discipline ---------------------------------------------------
@@ -254,9 +284,55 @@ def test_F_latch_discipline_no_auto_restart_after_reset():
     assert idle.mode is Mode.STOP
 
 
+def test_multi_latch_reset_requires_all_conditions_clear():
+    """HH+LL both latched; clear only one → both codes remain; all clear → Reset."""
+    skid = _clean_skid()
+    _start_running(skid)
+
+    skid.process.set_levels(lt_tank=0.37, lt_res=0.04)
+    tripped = skid.step(0.1)
+    assert TripCode.HH_TANK in tripped.trip_codes
+    assert TripCode.LL_RES in tripped.trip_codes
+
+    # Clear only HH condition; Reset must not clear either latch
+    skid.process.set_levels(lt_tank=0.15, lt_res=0.04)
+    partial = skid.step(0.1, command=OperatorCommand.RESET)
+    assert TripCode.HH_TANK in partial.trip_codes
+    assert TripCode.LL_RES in partial.trip_codes
+    assert partial.trip_active is True
+    assert partial.mode is Mode.TRIPPED
+
+    # All underlying conditions clear → Reset clears both
+    skid.process.set_levels(lt_tank=0.15, lt_res=0.20)
+    still = skid.step(0.1)
+    assert still.trip_active is True
+    assert TripCode.HH_TANK in still.trip_codes
+    assert TripCode.LL_RES in still.trip_codes
+
+    reset = skid.step(0.1, command=OperatorCommand.RESET)
+    assert reset.trip_active is False
+    assert reset.mode is Mode.STOP
+    assert reset.trip_codes == frozenset()
+
+    assert skid.step(0.1, command=OperatorCommand.START).mode is Mode.RUNNING
+
+
 def test_mock_process_is_first_class():
     """Mock path is a product module under plcassistant.wedge.process."""
     proc = MockProcess()
     assert proc.state.lt_tank == pytest.approx(0.15)
     s = proc.step(0.05, 50.0)
     assert s.cmd_speed == 50.0
+
+
+def test_skid_limits_sync_process_and_safety():
+    """SkidConfig.limits is the single owner for HH/LL thresholds."""
+    skid = Skid(SkidConfig(limits=LimitConfig(lim_level_hh=0.30, lim_res_ll=0.08)))
+    assert skid.config.process.lim_res_ll == 0.08
+    assert skid.process.config.lim_res_ll == 0.08
+    assert skid.safety.config.lim_level_hh == 0.30
+    assert skid.safety.config.lim_res_ll == 0.08
+
+    skid.process.set_levels(lt_tank=0.31, lt_res=0.20)
+    snap = skid.step(0.1)
+    assert TripCode.HH_TANK in snap.trip_codes

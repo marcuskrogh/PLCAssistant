@@ -7,6 +7,8 @@
 
 Runnable checklist proving the mock skid meets PLAN acceptance: Start/Stop, cascade, and each safety case with latch + reset. Execute against the tag contract in [`02-io-hmi-contract.md`](02-io-hmi-contract.md).
 
+**SWD-83 runnable bar:** the Skid / tag API (`plcassistant.wedge.skid`) is the HMI stand-in — drive Start/Stop/Reset, setpoints, and injectors through that surface (or tests wrapping it). A full Lovelace binding is packaging follow-on, not required to claim this checklist green.
+
 ## Preconditions (all scenarios)
 
 - [ ] Mock process enabled ([`05-mock-process.md`](05-mock-process.md))

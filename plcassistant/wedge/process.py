@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from math import exp, sqrt
+from typing import Protocol, runtime_checkable
 
 
 @dataclass
@@ -44,7 +45,7 @@ class ProcessConfig:
     """Lag for optional SC_PUMP feedback (s)."""
 
     lim_res_ll: float = 0.05
-    """Used only for soft pump derate near LL (trip owned by safety)."""
+    """Soft pump derate near LL (owned by SkidConfig.limits when under Skid)."""
 
     initial_h_tank: float = 0.15
     initial_h_res: float = 0.20
@@ -70,6 +71,16 @@ class ProcessState:
     """SC_PUMP feedback (%); tracks CMD_SPEED with lag."""
 
 
+@runtime_checkable
+class ProcessPort(Protocol):
+    """Plant surface used by Skid — mock or future field adapter."""
+
+    @property
+    def state(self) -> ProcessState: ...
+
+    def step(self, dt: float, cmd_speed: float) -> ProcessState: ...
+
+
 class MockProcess:
     """Simulated reservoir ↔ tank loop with pump and gravity drain.
 
@@ -79,6 +90,9 @@ class MockProcess:
         q_drain = K_DRAIN * sqrt(max(h_tank, 0))
         dh_tank/dt = (q_in - q_drain) / (A_TANK * 1000) / 60   # m per second
         dh_res/dt  = (q_drain - q_in) / (A_RES * 1000) / 60
+
+    Inlet/drain are limited by available inventory and headroom each ``dt`` so
+    level clamps do not create or destroy mass (05 conservation).
     """
 
     def __init__(self, config: ProcessConfig | None = None) -> None:
@@ -136,23 +150,32 @@ class MockProcess:
             target_q = 0.0
 
         if cfg.pump_tau <= 0 or dt == 0:
-            self._ft_inlet = target_q
+            q_in_cmd = target_q
         else:
             alpha = 1.0 - exp(-dt / cfg.pump_tau)
-            self._ft_inlet += alpha * (target_q - self._ft_inlet)
+            q_in_cmd = self._ft_inlet + alpha * (target_q - self._ft_inlet)
 
-        q_drain = cfg.k_drain * sqrt(max(self._h_tank, 0.0))
+        q_drain_cmd = cfg.k_drain * sqrt(max(self._h_tank, 0.0))
+        q_in, q_drain = _limit_flows_by_inventory(
+            q_in=q_in_cmd,
+            q_drain=q_drain_cmd,
+            h_tank=self._h_tank,
+            h_res=self._h_res,
+            cfg=cfg,
+            dt=dt,
+        )
+        self._ft_inlet = q_in
 
         # L/min → m/s level change: (L/min) / (A_m2 * 1000 L/m3) / 60 s/min
         to_m_per_s_tank = 1.0 / (cfg.a_tank * 1000.0 * 60.0)
         to_m_per_s_res = 1.0 / (cfg.a_res * 1000.0 * 60.0)
         self._h_tank = _clamp(
-            self._h_tank + (self._ft_inlet - q_drain) * to_m_per_s_tank * dt,
+            self._h_tank + (q_in - q_drain) * to_m_per_s_tank * dt,
             0.0,
             cfg.h_tank_max,
         )
         self._h_res = _clamp(
-            self._h_res + (q_drain - self._ft_inlet) * to_m_per_s_res * dt,
+            self._h_res + (q_drain - q_in) * to_m_per_s_res * dt,
             0.0,
             cfg.h_res_max,
         )
@@ -164,6 +187,51 @@ class MockProcess:
             self._sc_pump += alpha_s * (self._cmd_speed - self._sc_pump)
 
         return self.state
+
+
+def _volume_l(h_m: float, area_m2: float) -> float:
+    return h_m * area_m2 * 1000.0
+
+
+def _max_flow_lpm(volume_l: float, dt: float) -> float:
+    """Max |q| (L/min) that can move ``volume_l`` in ``dt`` seconds."""
+    if dt <= 0.0 or volume_l <= 0.0:
+        return 0.0
+    return volume_l * 60.0 / dt
+
+
+def _limit_flows_by_inventory(
+    *,
+    q_in: float,
+    q_drain: float,
+    h_tank: float,
+    h_res: float,
+    cfg: ProcessConfig,
+    dt: float,
+) -> tuple[float, float]:
+    """Clamp inlet/drain so neither vessel invents or dumps mass this step."""
+    if dt <= 0.0:
+        return 0.0, 0.0
+
+    q_in = max(0.0, q_in)
+    q_drain = max(0.0, q_drain)
+
+    avail_res = _volume_l(h_res, cfg.a_res)
+    avail_tank = _volume_l(h_tank, cfg.a_tank)
+    headroom_tank = _volume_l(cfg.h_tank_max - h_tank, cfg.a_tank)
+    headroom_res = _volume_l(cfg.h_res_max - h_res, cfg.a_res)
+
+    q_in = min(
+        q_in,
+        _max_flow_lpm(avail_res, dt),
+        _max_flow_lpm(headroom_tank, dt),
+    )
+    q_drain = min(
+        q_drain,
+        _max_flow_lpm(avail_tank, dt),
+        _max_flow_lpm(headroom_res, dt),
+    )
+    return q_in, q_drain
 
 
 def _pump_derate(h_res: float, lim_ll: float) -> float:

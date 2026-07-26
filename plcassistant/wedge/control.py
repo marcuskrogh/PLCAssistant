@@ -4,12 +4,14 @@ When MODE = RUNNING:
 1. Level loop (LT_TANK vs SP_LEVEL) produces SP_FLOW (L/min).
 2. Flow loop (FT_INLET vs SP_FLOW) produces CMD_SPEED (0–100 %).
 
-Simple PI controllers; gains injectable. Inactive when not running.
+Simple PI controllers; gains injectable. Inactive when not running —
+hold last SP_FLOW, force CMD_SPEED = 0 (docs/wedge/03 STOP).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Optional
 
 
 @dataclass
@@ -80,14 +82,15 @@ class CascadeController:
         self,
         dt: float,
         *,
-        lt_tank: float,
-        ft_inlet: float,
+        lt_tank: Optional[float],
+        ft_inlet: Optional[float],
         sp_level: float,
         running: bool,
     ) -> CascadeOutputs:
         """Compute cascade outputs for one scan.
 
-        When ``running`` is False, integrators are cleared and CMD_SPEED is 0.
+        When ``running`` is False: clear integrators, hold last ``SP_FLOW``,
+        force ``CMD_SPEED = 0`` (docs/wedge/03 STOP — hold last SPs).
         """
         if dt < 0:
             raise ValueError("dt must be non-negative")
@@ -96,7 +99,21 @@ class CascadeController:
         if not running:
             self.reset_integrators()
             self._last = CascadeOutputs(
-                sp_flow=0.0, cmd_speed=0.0, level_error=0.0, flow_error=0.0
+                sp_flow=self._last.sp_flow,
+                cmd_speed=0.0,
+                level_error=self._last.level_error,
+                flow_error=self._last.flow_error,
+            )
+            return self._last
+
+        # Defensive: LOS should have tripped pump_permit; treat as idle.
+        if lt_tank is None or ft_inlet is None:
+            self.reset_integrators()
+            self._last = CascadeOutputs(
+                sp_flow=self._last.sp_flow,
+                cmd_speed=0.0,
+                level_error=self._last.level_error,
+                flow_error=self._last.flow_error,
             )
             return self._last
 

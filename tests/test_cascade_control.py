@@ -5,8 +5,8 @@ from __future__ import annotations
 import pytest
 
 from plcassistant.wedge.control import CascadeConfig, CascadeController
-from plcassistant.wedge.process import MockProcess, ProcessConfig
-from plcassistant.wedge.safety import Mode
+from plcassistant.wedge.process import MockProcess, ProcessConfig, ProcessPort
+from plcassistant.wedge.safety import Mode, TripCode
 from plcassistant.wedge.skid import OperatorCommand, Skid, SkidConfig
 
 
@@ -26,12 +26,14 @@ def test_flow_loop_produces_cmd_speed_when_running():
     assert out.cmd_speed > 0.0
 
 
-def test_cascade_idle_when_not_running():
+def test_cascade_holds_sp_flow_when_not_running():
+    """STOP / idle: CMD_SPEED=0, hold last SP_FLOW (docs/wedge/03)."""
     ctrl = CascadeController()
-    ctrl.step(0.1, lt_tank=0.10, ft_inlet=0.0, sp_level=0.20, running=True)
+    running_out = ctrl.step(0.1, lt_tank=0.10, ft_inlet=0.0, sp_level=0.20, running=True)
+    assert running_out.sp_flow > 0.0
     out = ctrl.step(0.1, lt_tank=0.10, ft_inlet=0.0, sp_level=0.20, running=False)
     assert out.cmd_speed == 0.0
-    assert out.sp_flow == 0.0
+    assert out.sp_flow == running_out.sp_flow
 
 
 def test_process_responds_to_speed_command():
@@ -54,6 +56,37 @@ def test_gravity_drain_lowers_tank_when_pump_off():
     assert proc.state.lt_tank < before
 
 
+def test_process_conserves_inventory_near_clamps():
+    """Inventory limiting prevents clamp-induced mass create/destroy."""
+    proc = MockProcess(
+        ProcessConfig(
+            pump_tau=0.0,
+            k_drain=20.0,
+            q_pump_max=20.0,
+            a_tank=0.05,
+            a_res=0.10,
+            h_tank_max=0.40,
+            h_res_max=0.30,
+        )
+    )
+    proc.set_levels(lt_tank=0.39, lt_res=0.01)
+
+    def inventory_m3() -> float:
+        s = proc.state
+        return s.lt_tank * proc.config.a_tank + s.lt_res * proc.config.a_res
+
+    before = inventory_m3()
+    for _ in range(100):
+        proc.step(0.1, cmd_speed=100.0)
+    after = inventory_m3()
+    assert after == pytest.approx(before, rel=1e-9, abs=1e-12)
+
+
+def test_mock_process_satisfies_process_port():
+    proc = MockProcess()
+    assert isinstance(proc, ProcessPort)
+
+
 def test_skid_cascade_when_running_produces_sp_flow_and_speed():
     skid = Skid(
         SkidConfig(
@@ -71,16 +104,34 @@ def test_skid_cascade_when_running_produces_sp_flow_and_speed():
 
     assert snap.sp_flow > 0.0
     assert snap.cmd_speed > 0.0
-    assert snap.ft_inlet > 0.0
+    assert snap.ft_inlet is not None and snap.ft_inlet > 0.0
+    assert snap.lt_tank_bad is False
 
 
-def test_skid_stop_zeros_speed_and_cascade_idle():
+def test_skid_stop_zeros_speed_and_holds_sp_flow():
     skid = Skid()
     skid.process.set_levels(lt_tank=0.15, lt_res=0.20)
     skid.step(0.1, command=OperatorCommand.START)
     for _ in range(5):
         skid.step(0.1)
+    before = skid.last
+    assert before is not None
     snap = skid.step(0.1, command=OperatorCommand.STOP)
     assert snap.mode is Mode.STOP
     assert snap.cmd_speed == 0.0
     assert snap.cascade.cmd_speed == 0.0
+    assert snap.cascade.sp_flow == before.sp_flow
+
+
+def test_skid_measurement_view_shared_on_override():
+    """Safety and snapshot use the same override/LOS view (not raw live)."""
+    skid = Skid()
+    skid.process.set_levels(lt_tank=0.15, lt_res=0.20)
+    skid.step(0.1, command=OperatorCommand.START)
+    skid.set_signal_override(lt_tank=None)
+    snap = skid.step(0.1)
+    assert snap.lt_tank is None
+    assert snap.lt_tank_bad is True
+    assert snap.measurement.lt_tank is None
+    assert TripCode.LOS_LT_TANK in snap.trip_codes
+    assert snap.cmd_speed == 0.0

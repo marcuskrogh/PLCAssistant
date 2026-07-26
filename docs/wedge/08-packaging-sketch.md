@@ -95,6 +95,12 @@ Mock mode may **synthesize** PVs inside the add-on and still mirror them to HA e
 - Exhaustive comparison of pure integration vs Supervisor vs external box (SWD-84)
 - Final entity-registry UX (SWD-86)
 
+## Scan / timebase (demo)
+
+- Prefer injectable `dt` on the soft-PLC / mock loop (no wall-clock hard-coding in core).
+- Demo responsiveness: scan / sim step **≤ 100 ms** (aligns with [`05-mock-process.md`](05-mock-process.md) timebase).
+- Control and safety may share the same scan; coarser rates are fine if documented.
+
 ## Hosting mock acceptance
 
 The add-on must support:
