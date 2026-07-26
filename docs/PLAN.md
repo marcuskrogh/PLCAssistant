@@ -51,7 +51,7 @@
 - No real HA required for green tests
 
 ## Work packages
-1. **I/O image & quality contract** — image semantics, quality enum/reasons, last-good, defaults, scan IN/OUT timing
+1. **I/O image & quality contract** — image semantics, quality enum/reasons, last-good, defaults, scan IN/OUT timing → [`docs/io/01-image-quality.md`](io/01-image-quality.md), `plcassistant/io/` ([SWD-95](https://marcusknielsen.atlassian.net/browse/SWD-95))
 2. **Binding model & schema** — IN/OUT/INOUT, setpoint split default, units, uniqueness rules, config shape in thin integration
 3. **Wedge I/O contract update** — retire `*_BAD`; point safety/HMI at tag quality
 4. **Packaging note revision** — mock/sim moves to thin integration; Add-on image SoT unchanged
@@ -59,7 +59,7 @@
 6. **Contract/unit tests** — mocked HA; acceptance checklist above
 
 ## Open items
-- Exact reason-code list (minimal set: `unavailable`, `unknown`, `stale`, `fault`, …)
+- ~~Exact reason-code list~~ — resolved: `unavailable`, `unknown`, `stale`, `fault` ([`docs/io/01-image-quality.md`](io/01-image-quality.md))
 - Exact YAML/config schema field names
 - How Add-on consumes the binding table from the integration (API/IPC) — sketch only if needed for stub
 - Whether wedge runtime (`plcassistant/wedge`) gains a shared quality type now or only via adapter in this Task
