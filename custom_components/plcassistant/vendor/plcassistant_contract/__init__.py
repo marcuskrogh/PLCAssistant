@@ -1,7 +1,9 @@
 """PLCAssistant shared contract: bindings, coercion, fail-safe (no HA/OpenPLC imports).
 
-HTTP control-plane client lives in ``custom_components/plcassistant/control_plane.py``
-(PACKAGING: shared lib is schema + pure functions only).
+Vendored under the HACS integration so installs do not require PyPI or monorepo
+sys.path hacks. Canonical source for editable/dev installs remains
+``packages/plcassistant_contract/`` — keep both in sync via
+``scripts/sync_contract_vendor.sh``.
 """
 
 from .models import (

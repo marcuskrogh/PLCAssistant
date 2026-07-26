@@ -14,7 +14,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-78 | Sub-task | WP1: plcassistant_contract library | Done | SWD-71 | packages/plcassistant_contract/ | — |
 | SWD-80 | Sub-task | WP2: HACS integration skeleton + config entry | Done | SWD-71 | custom_components/plcassistant/ | — |
 | SWD-77 | Sub-task | WP3: Binding registry and config UI | Done | SWD-71 | custom_components/plcassistant/ | — |
-| SWD-76 | Sub-task | WP4: Control-plane sync client | Done | SWD-71 | packages/plcassistant_contract/ | — |
+| SWD-76 | Sub-task | WP4: Control-plane sync client | Done | SWD-71 | custom_components/plcassistant/control_plane.py | — |
 | SWD-79 | Sub-task | WP5: Diagnostic entities from GetStatus | Done | SWD-71 | custom_components/plcassistant/ | — |
 | SWD-69 | Task | PLC program execution runtime | To Do | SWD-66 | docs/ARCHITECTURE.md | `/define SWD-69` after SWD-71 |
 | SWD-68 | Task | Operator surfaces: Lovelace HMI and Influx/Grafana historian | To Do | SWD-66 | docs/HANDOFF.md | `/define SWD-68` after runtime tags |

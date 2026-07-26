@@ -65,6 +65,27 @@ def test_force_value_requires_safe_value_at_runtime():
     assert apply_input_policy(binding, "unknown", ctx) is True
 
 
+def test_force_value_missing_safe_falls_back_to_zero():
+    """Defensive runtime path; validate_binding rejects this at config time."""
+    binding = _input(unavailable_policy=InputPolicy.FORCE_VALUE, safe_value=None)
+    ctx = InputContext()
+    assert apply_input_policy(binding, "unavailable", ctx) is False
+
+
+def test_stale_without_clock_uses_unavailable_policy():
+    binding = _input(
+        unavailable_policy=InputPolicy.FORCE_ZERO,
+        stale_after_s=5.0,
+        stale_policy=InputPolicy.HOLD_LAST,
+    )
+    ctx = InputContext()
+    assert apply_input_policy(binding, "on", ctx, now=0.0) is True
+    # No now/clock on next call → cannot prove stale; apply unavailable policy.
+    out = apply_input_policy(binding, "unavailable", ctx)
+    assert out is False
+    assert ctx.stale is False
+
+
 def test_critical_defaults_to_safe_off():
     binding = Binding(
         tag="Q0",

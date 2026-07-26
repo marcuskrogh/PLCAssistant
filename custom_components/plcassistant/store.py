@@ -2,24 +2,20 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.storage import Store
 
+from .bootstrap import ensure_contract
 from .const import STORAGE_KEY, STORAGE_VERSION
 
-# Path bootstrap for contract package
-from pathlib import Path
-import sys
+ensure_contract()
 
-_REPO_CONTRACT = Path(__file__).resolve().parents[2] / "packages" / "plcassistant_contract"
-if _REPO_CONTRACT.is_dir():
-    path = str(_REPO_CONTRACT)
-    if path not in sys.path:
-        sys.path.insert(0, path)
+from plcassistant_contract import Binding, ValidationError, validate_bindings  # noqa: E402
 
-from plcassistant_contract import Binding, ValidationError, validate_bindings
+_LOGGER = logging.getLogger(__name__)
 
 
 class BindingStore:
@@ -40,7 +36,14 @@ class BindingStore:
             self._bindings = []
             return
         items = data.get("bindings") or []
-        self._bindings = [Binding.from_dict(item) for item in items]
+        bindings = [Binding.from_dict(item) for item in items]
+        try:
+            validate_bindings(bindings)
+        except ValidationError as exc:
+            _LOGGER.error("Stored bindings failed validation (%s); keeping empty set", exc)
+            self._bindings = []
+            return
+        self._bindings = bindings
 
     async def async_save(self) -> None:
         await self._store.async_save({"bindings": self.as_dicts()})

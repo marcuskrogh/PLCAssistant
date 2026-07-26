@@ -7,7 +7,9 @@
         "data": {
           "addon_url": "Addon base URL",
           "token": "Bearer token (optional)",
-          "scan_period_ms": "Scan period (ms)"
+          "scan_period_ms": "Scan period (ms)",
+          "default_unavailable_policy": "Default input unavailable policy",
+          "default_on_bridge_fault": "Default output bridge-fault policy"
         }
       }
     },
@@ -22,9 +24,12 @@
     "step": {
       "init": {
         "title": "PLCAssistant options",
-        "description": "Edit scan period and bindings JSON (IO_HAL fields). Saved bindings are source of truth and synced via PutBindings on reload.",
+        "description": "Edit scan period, fail-safe defaults, token, and bindings JSON. Saving persists the registry and syncs via PutBindings on entry reload.",
         "data": {
+          "token": "Bearer token (optional)",
           "scan_period_ms": "Scan period (ms)",
+          "default_unavailable_policy": "Default input unavailable policy",
+          "default_on_bridge_fault": "Default output bridge-fault policy",
           "bindings_json": "Bindings JSON array"
         }
       }

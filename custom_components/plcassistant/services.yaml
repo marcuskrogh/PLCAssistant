@@ -1,9 +1,21 @@
 reload:
   name: Reload bindings
   description: Push bindings and scan options to the addon (PutBindings / PutScanOptions / Reload).
+  fields:
+    entry_id:
+      name: Config entry ID
+      description: Optional. When set, only this entry is targeted; otherwise all loaded entries.
 start:
   name: Start runtime
   description: Request addon Start. Errors if the addon is unavailable.
+  fields:
+    entry_id:
+      name: Config entry ID
+      description: Optional. When set, only this entry is targeted; otherwise all loaded entries.
 stop:
   name: Stop runtime
   description: Request addon Stop. Errors if the addon is unavailable.
+  fields:
+    entry_id:
+      name: Config entry ID
+      description: Optional. When set, only this entry is targeted; otherwise all loaded entries.

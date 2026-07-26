@@ -8,7 +8,11 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any
 
-from plcassistant_contract import Binding, RuntimeStatus, ScanOptions
+from .bootstrap import ensure_contract
+
+ensure_contract()
+
+from plcassistant_contract import Binding, RuntimeStatus, ScanOptions  # noqa: E402
 
 
 class AddonUnavailableError(RuntimeError):
@@ -43,7 +47,12 @@ class ControlPlaneClient:
         try:
             with urllib.request.urlopen(req, timeout=self.timeout_s) as resp:
                 raw = resp.read().decode("utf-8") or "{}"
-                return json.loads(raw) if raw.strip() else {}
+                if not raw.strip():
+                    return {}
+                try:
+                    return json.loads(raw)
+                except json.JSONDecodeError as exc:
+                    raise AddonUnavailableError(f"Invalid JSON from addon: {exc}") from exc
         except urllib.error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")
             raise AddonUnavailableError(f"HTTP {exc.code}: {detail}") from exc

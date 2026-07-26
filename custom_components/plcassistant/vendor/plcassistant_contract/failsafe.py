@@ -29,13 +29,6 @@ class InputContext:
     stale: bool = False
 
 
-def _force_value_or_zero(binding: Binding) -> Any:
-    """FORCE_VALUE with missing safe_value falls back to typed zero (defensive)."""
-    if binding.safe_value is not None:
-        return binding.safe_value
-    return zero_for(binding.value_type)
-
-
 def _apply_policy(
     policy: InputPolicy,
     binding: Binding,
@@ -48,7 +41,7 @@ def _apply_policy(
     if policy is InputPolicy.FORCE_ZERO:
         return zero_for(binding.value_type)
     if policy is InputPolicy.FORCE_VALUE:
-        return _force_value_or_zero(binding)
+        return binding.safe_value
     # FAULT
     ctx.faulted = True
     return zero_for(binding.value_type)
@@ -59,7 +52,7 @@ def _cold_start(binding: Binding, ctx: InputContext) -> Any:
     if policy is ColdStartPolicy.FORCE_ZERO:
         return zero_for(binding.value_type)
     if policy is ColdStartPolicy.FORCE_VALUE:
-        return _force_value_or_zero(binding)
+        return binding.safe_value
     ctx.faulted = True
     return zero_for(binding.value_type)
 

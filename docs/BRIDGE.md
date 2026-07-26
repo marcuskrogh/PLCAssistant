@@ -6,10 +6,25 @@ How the HACS integration maps [IO_HAL.md](IO_HAL.md) fields to UI + addon sync.
 
 | Path | Role |
 |------|------|
-| `packages/plcassistant_contract/` | Binding models, validation, coercion, fail-safe, HTTP control-plane client |
+| `packages/plcassistant_contract/` | Canonical pure contract (models, validation, coercion, fail-safe) for editable installs and pytest |
+| `custom_components/plcassistant/vendor/plcassistant_contract/` | **Vendored** copy shipped with the HACS integration (no PyPI / monorepo `sys.path` required) |
+| `custom_components/plcassistant/control_plane.py` | HTTP control-plane client (`PutBindings` / `GetStatus` / …) |
 | `custom_components/plcassistant/` | Config entry, binding store/UI, diagnostic entities, HA services |
 
+After editing pure contract modules under `packages/`, refresh the vendor tree:
+
+```bash
+./scripts/sync_contract_vendor.sh
+```
+
 The **scan HAL loop** is **not** here — that is [SWD-69](https://marcusknielsen.atlassian.net/browse/SWD-69) inside the addon. This phase only owns registry SoT + `PutBindings` / `GetStatus` client.
+
+## Binding sync
+
+- Bindings persist in HA storage (source of truth).
+- **On config-entry setup** (including after options save → reload): `PutBindings` + `PutScanOptions` + addon `Reload` (best-effort; local SoT kept if addon is down).
+- **`plcassistant.reload`**: same push; raises if addon unavailable.
+- Options include `scan_period_ms`, global fail-safe defaults, rotatable `token`, and `bindings_json`.
 
 ## Binding JSON (options UI)
 
@@ -54,17 +69,17 @@ Base URL from config entry `addon_url`. Bearer token optional (`token`).
 | Method | Path | Body |
 |--------|------|------|
 | PUT | `/api/bindings` | `{ "bindings": [ ... ] }` |
-| PUT | `/api/scan_options` | `{ "scan_period_ms": 100, ... }` |
+| PUT | `/api/scan_options` | `{ "scan_period_ms": 100, "default_unavailable_policy": "...", "default_on_bridge_fault": "..." }` |
 | GET | `/api/status` | → `RuntimeStatus` fields (diagnostics) |
 | POST | `/api/start` \| `/api/stop` \| `/api/reload` | `{}` |
 
-HA services `plcassistant.reload` / `start` / `stop` call these. If the addon is down, reload/start/stop raise; diagnostic entities show `bridge_connected=false` / `runtime_state=stopped`.
+HA services `plcassistant.reload` / `start` / `stop` call these (optional `entry_id`). If the addon is down, reload/start/stop raise; diagnostic entities show `bridge_connected=false` / `runtime_state=stopped`.
 
 ## Tests
 
 ```bash
 python3 -m pip install -e packages/plcassistant_contract pytest
-python3 -m pytest packages/plcassistant_contract/tests -q
+python3 -m pytest -q
 ```
 
-Contract + client tests do not require Home Assistant Core.
+Contract tests live under `packages/plcassistant_contract/tests/`; control-plane client tests under `tests/` (stdlib fake HTTP; no Home Assistant Core).

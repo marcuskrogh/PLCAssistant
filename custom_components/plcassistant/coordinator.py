@@ -4,24 +4,34 @@ from __future__ import annotations
 
 from datetime import timedelta
 import logging
-from pathlib import Path
-import sys
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from .const import CONF_ADDON_URL, CONF_SCAN_PERIOD_MS, CONF_TOKEN, DEFAULT_SCAN_PERIOD_MS, DOMAIN
+from .bootstrap import ensure_contract
+from .const import (
+    CONF_ADDON_URL,
+    CONF_DEFAULT_ON_BRIDGE_FAULT,
+    CONF_DEFAULT_UNAVAILABLE_POLICY,
+    CONF_SCAN_PERIOD_MS,
+    CONF_TOKEN,
+    DEFAULT_ON_BRIDGE_FAULT,
+    DEFAULT_SCAN_PERIOD_MS,
+    DEFAULT_UNAVAILABLE_POLICY,
+    DOMAIN,
+)
+from .control_plane import AddonUnavailableError, ControlPlaneClient
 from .store import BindingStore
 
-_REPO_CONTRACT = Path(__file__).resolve().parents[2] / "packages" / "plcassistant_contract"
-if _REPO_CONTRACT.is_dir():
-    path = str(_REPO_CONTRACT)
-    if path not in sys.path:
-        sys.path.insert(0, path)
+ensure_contract()
 
-from plcassistant_contract import RuntimeStatus, ScanOptions
-from plcassistant_contract.client import AddonUnavailableError, ControlPlaneClient
+from plcassistant_contract import (  # noqa: E402
+    InputPolicy,
+    OutputFaultPolicy,
+    RuntimeStatus,
+    ScanOptions,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -46,15 +56,37 @@ class PlcAssistantCoordinator(DataUpdateCoordinator[RuntimeStatus]):
             update_interval=timedelta(seconds=5),
         )
 
+    def _scan_options(self) -> ScanOptions:
+        opts = self.entry.options
+        period = int(opts.get(CONF_SCAN_PERIOD_MS, DEFAULT_SCAN_PERIOD_MS))
+        unavailable = opts.get(CONF_DEFAULT_UNAVAILABLE_POLICY, DEFAULT_UNAVAILABLE_POLICY)
+        bridge_fault = opts.get(CONF_DEFAULT_ON_BRIDGE_FAULT, DEFAULT_ON_BRIDGE_FAULT)
+        return ScanOptions(
+            scan_period_ms=period,
+            default_unavailable_policy=InputPolicy(unavailable),
+            default_on_bridge_fault=OutputFaultPolicy(bridge_fault),
+        )
+
     def sync_to_addon(self) -> None:
         """Push bindings + scan options (runs in executor)."""
-        period = int(self.entry.options.get(CONF_SCAN_PERIOD_MS, DEFAULT_SCAN_PERIOD_MS))
         self.client.put_bindings(self.store.bindings)
-        self.client.put_scan_options(ScanOptions(scan_period_ms=period))
+        self.client.put_scan_options(self._scan_options())
         self.client.reload()
 
+    async def async_sync_to_addon_best_effort(self) -> None:
+        """Persist-local SoT; PutBindings when addon reachable, else keep SoT."""
+        try:
+            await self.hass.async_add_executor_job(self.sync_to_addon)
+        except AddonUnavailableError as exc:
+            _LOGGER.warning(
+                "Addon unavailable during PutBindings sync (%s); local bindings retained",
+                exc,
+            )
+
     async def _async_update_data(self) -> RuntimeStatus:
-        period = float(self.entry.options.get(CONF_SCAN_PERIOD_MS, DEFAULT_SCAN_PERIOD_MS))
+        period = float(
+            self.entry.options.get(CONF_SCAN_PERIOD_MS, DEFAULT_SCAN_PERIOD_MS)
+        )
         try:
             return await self.hass.async_add_executor_job(self.client.get_status)
         except AddonUnavailableError as exc:
