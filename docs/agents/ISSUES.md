@@ -4,8 +4,8 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 | Key | Type | Title | Status | Parent | Artifact | Next |
 |-----|------|-------|--------|--------|----------|------|
-| SWD-81 | Story | PLCAssistant — Virtual PLC for Home Assistant | To Do | — | docs/ROADMAP.md | `/define SWD-86` |
-| SWD-83 | Task | Explore theme: Lab / hobby / small-process wedge | Done | SWD-81 | docs/PLAN.md, docs/wedge/, plcassistant/wedge/ | Done — phase closed |
+| SWD-81 | Story | PLCAssistant — Virtual PLC for Home Assistant | To Do | — | docs/ROADMAP.md | `/implement SWD-86` |
+| SWD-83 | Task | Explore theme: Lab / hobby / small-process wedge | Done | SWD-81 | docs/PLAN.md (prior), docs/wedge/, plcassistant/wedge/ | Done — phase closed |
 | SWD-88 | Sub-task | SWD-83: Reference process spec | Done | SWD-83 | docs/wedge/01-reference-process.md | — |
 | SWD-87 | Sub-task | SWD-83: I/O & HMI contract for the skid | Done | SWD-83 | docs/wedge/02-io-hmi-contract.md | — |
 | SWD-92 | Sub-task | SWD-83: Control story spec | Done | SWD-83 | docs/wedge/03-control-story.md | — |
@@ -14,7 +14,13 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-89 | Sub-task | SWD-83: Mock acceptance scenarios | Done | SWD-83 | docs/wedge/06-mock-acceptance.md | — |
 | SWD-91 | Sub-task | SWD-83: Follow-on note (physical + later examples) | Done | SWD-83 | docs/wedge/07-follow-on.md | — |
 | SWD-94 | Sub-task | SWD-83: Preliminary packaging sketch | Done | SWD-83 | docs/wedge/08-packaging-sketch.md | — |
-| SWD-86 | Task | Explore theme: HA entities as PLC I/O | To Do | SWD-81 | docs/ROADMAP.md | `/define SWD-86` |
+| SWD-86 | Task | Explore theme: HA entities as PLC I/O | To Do | SWD-81 | docs/PLAN.md | `/implement SWD-86` |
+| SWD-95 | Sub-task | SWD-86: I/O image & quality contract | To Do | SWD-86 | docs/PLAN.md | — |
+| SWD-98 | Sub-task | SWD-86: Binding model & schema | To Do | SWD-86 | docs/PLAN.md | — |
+| SWD-96 | Sub-task | SWD-86: Wedge I/O contract update | To Do | SWD-86 | docs/PLAN.md | — |
+| SWD-97 | Sub-task | SWD-86: Packaging note revision | To Do | SWD-86 | docs/PLAN.md | — |
+| SWD-99 | Sub-task | SWD-86: Thin-integration stub | To Do | SWD-86 | docs/PLAN.md | — |
+| SWD-100 | Sub-task | SWD-86: Contract/unit tests | To Do | SWD-86 | docs/PLAN.md | — |
 | SWD-85 | Task | Explore theme: Control semantics | To Do | SWD-81 | docs/ROADMAP.md | `/research SWD-85` (optional) |
 | SWD-82 | Task | Explore theme: Programming surface | To Do | SWD-81 | docs/ROADMAP.md | later |
 | SWD-84 | Task | Explore theme: Packaging shape | To Do | SWD-81 | docs/ROADMAP.md | later |
@@ -27,3 +33,4 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 - 2026-07-26 — Implement SWD-83: wedge specs + mock cascade/safety core; Sub-tasks Done; Task → In Review.
 - 2026-07-26 — review-fix SWD-83 CLEAN after 3 iterations (8→2→0 should-fix); Next `/ship SWD-83`.
 - 2026-07-26 — Shipped SWD-83 via PR #11 (merge `3f892a4`); Task Done; Story SWD-81 remains open; Next `/define SWD-86`.
+- 2026-07-26 — Define complete for SWD-86: `docs/PLAN.md`; Sub-tasks SWD-95, SWD-98, SWD-96, SWD-97, SWD-99, SWD-100; Next `/implement SWD-86`.
