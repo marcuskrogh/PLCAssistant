@@ -365,4 +365,4 @@ HA and competitive-section claims trace to those named docs/repos (community mat
 
 ## Next
 
-Done — SWD-70 shipped. Continue `/define SWD-71`.
+Done — SWD-70 shipped; SWD-71 defined. Continue `/implement SWD-71`.

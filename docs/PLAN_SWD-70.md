@@ -114,6 +114,6 @@ Container install targets: **HAOS / Supervised** first. Container/Docker Compose
 
 ## Next
 
-Done — phase closed (shipped [PR #3](https://github.com/marcuskrogh/PLCAssistant/pull/3)). Continue with `/define SWD-71`.
+Done — phase closed (shipped [PR #3](https://github.com/marcuskrogh/PLCAssistant/pull/3)). Continue with `/implement SWD-71`.
 
 **Shipped:** [ARCHITECTURE.md](ARCHITECTURE.md) · [IO_HAL.md](IO_HAL.md) · [PACKAGING.md](PACKAGING.md) · [HANDOFF.md](HANDOFF.md)
