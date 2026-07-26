@@ -30,3 +30,4 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 - 2026-07-26 — `/implement` → `/review-fix` → `/ship SWD-70` (PR #3); Next `/define SWD-71`.
 - 2026-07-26 — `/define SWD-71` wrote `docs/PLAN.md`; Sub-tasks SWD-78/80/77/76/79; Next `/implement SWD-71`.
 - 2026-07-26 — `/implement SWD-71`: contract lib + HACS integration + tests (30 passed); Sub-tasks Done; Task → In Review; Next `/review-fix SWD-71`.
+- 2026-07-26 — `/review-fix SWD-71` iter1 REQUEST_CHANGES (2 blockers); fix-forward: PutBindings on setup, HACS vendor contract, control_plane client, fail-safe options (34 tests).
