@@ -112,4 +112,4 @@ Still open (deferred):
 
 ## Next
 
-`/review-fix SWD-71` — Review I/O bridge implementation.
+`/ship SWD-71` — Merge I/O bridge after CLEAN review-fix.

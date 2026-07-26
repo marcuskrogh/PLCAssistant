@@ -115,4 +115,4 @@ Create at least: `scan_period_ms`, `last_cycle_ms`, `overrun_count`, `bridge_con
 
 ## Next
 
-`/review-fix SWD-71` — Review implementation and auto-fix until clean.
+`/ship SWD-71` — Merge after CLEAN `/review-fix` (iter2).
