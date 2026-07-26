@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import pytest
 
+from plcassistant.io.quality import QualityStatus, ReasonCode, is_good
 from plcassistant.wedge.control import CascadeConfig
 from plcassistant.wedge.process import MockProcess, ProcessConfig
 from plcassistant.wedge.safety import Mode, TripCode
@@ -39,16 +40,17 @@ def _start_running(skid: Skid) -> None:
 
 
 def test_A1_start_blocked_when_not_permissive():
-    """A1 — Start blocked when not permissive (latched / BAD)."""
+    """A1 — Start blocked when not permissive (latched / BAD quality)."""
     skid = _clean_skid()
-    skid.force_lt_tank_bad(True)
+    skid.force_quality("LT_TANK", QualityStatus.BAD, ReasonCode.FAULT)
     snap = skid.step(0.1, command=OperatorCommand.START)
     assert snap.perm_ok is False
     assert snap.mode in (Mode.STOP, Mode.TRIPPED)
     assert snap.cmd_speed == 0.0
     assert snap.mode is Mode.TRIPPED
     assert TripCode.LOS_LT_TANK in snap.trip_codes
-    assert snap.lt_tank_bad is True
+    assert is_good(snap.lt_tank_quality) is False
+    assert snap.lt_tank_quality.status is QualityStatus.BAD
     assert snap.lt_tank is None
 
 
@@ -199,19 +201,19 @@ def test_D_low_reservoir_trip_latch_reset():
 
 
 def test_E1_loss_of_signal_lt_tank():
-    """E1 — force_LT_TANK_BAD → LOS_LT_TANK; clear alone keeps latch; Reset+Start."""
+    """E1 — force_quality LT_TANK BAD → LOS_LT_TANK; clear alone keeps latch; Reset+Start."""
     skid = _clean_skid()
     _start_running(skid)
 
-    skid.force_lt_tank_bad(True)
+    skid.force_quality("LT_TANK", QualityStatus.BAD, ReasonCode.FAULT)
     tripped = skid.step(0.1)
     assert TripCode.LOS_LT_TANK in tripped.trip_codes
     assert tripped.mode is Mode.TRIPPED
     assert tripped.cmd_speed == 0.0
-    assert tripped.lt_tank_bad is True
+    assert is_good(tripped.lt_tank_quality) is False
     assert tripped.lt_tank is None
 
-    skid.force_lt_tank_bad(False)
+    skid.force_quality("LT_TANK", QualityStatus.GOOD)
     assert skid.step(0.1).trip_active is True
 
     skid.step(0.1, command=OperatorCommand.RESET)
@@ -219,7 +221,7 @@ def test_E1_loss_of_signal_lt_tank():
 
 
 def test_E2_loss_of_signal_lt_res():
-    """E2 — force_LT_RES_BAD → LOS_LT_RES; clear alone keeps latch; Reset+Start."""
+    """E2 — force_LT_RES_BAD wrapper → LOS_LT_RES; clear alone keeps latch; Reset+Start."""
     skid = _clean_skid()
     _start_running(skid)
 
@@ -228,7 +230,7 @@ def test_E2_loss_of_signal_lt_res():
     assert TripCode.LOS_LT_RES in tripped.trip_codes
     assert tripped.mode is Mode.TRIPPED
     assert tripped.cmd_speed == 0.0
-    assert tripped.lt_res_bad is True
+    assert is_good(tripped.lt_res_quality) is False
     assert tripped.lt_res is None
 
     skid.force_lt_res_bad(False)
@@ -239,7 +241,7 @@ def test_E2_loss_of_signal_lt_res():
 
 
 def test_E3_loss_of_signal_ft_inlet():
-    """E3 — force_FT_INLET_BAD → LOS_FT_INLET; clear alone keeps latch; Reset+Start."""
+    """E3 — force_FT_INLET_BAD wrapper → LOS_FT_INLET; clear alone keeps latch; Reset+Start."""
     skid = _clean_skid()
     _start_running(skid)
 
@@ -248,7 +250,7 @@ def test_E3_loss_of_signal_ft_inlet():
     assert TripCode.LOS_FT_INLET in tripped.trip_codes
     assert tripped.mode is Mode.TRIPPED
     assert tripped.cmd_speed == 0.0
-    assert tripped.ft_inlet_bad is True
+    assert is_good(tripped.ft_inlet_quality) is False
     assert tripped.ft_inlet is None
 
     skid.force_ft_inlet_bad(False)

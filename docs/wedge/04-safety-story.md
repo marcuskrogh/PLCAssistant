@@ -23,11 +23,11 @@ Use reference limits from the I/O contract (overridable in config).
 
 | Trip code | Condition | Notes |
 |-----------|-----------|-------|
-| `HH_TANK` | `LT_TANK >= LIM_LEVEL_HH` **and** not `LT_TANK_BAD` | Prefer evaluating HH only on good quality; BAD is its own trip |
-| `LL_RES` | `LT_RES <= LIM_RES_LL` **and** not `LT_RES_BAD` | Dry-run protect |
-| `LOS_LT_TANK` | `LT_TANK_BAD` | Loss-of-signal |
-| `LOS_LT_RES` | `LT_RES_BAD` | Loss-of-signal |
-| `LOS_FT_INLET` | `FT_INLET_BAD` | Loss-of-signal |
+| `HH_TANK` | `LT_TANK >= LIM_LEVEL_HH` **and** `is_good(LT_TANK quality)` | Prefer evaluating HH only on good quality; non-GOOD is its own LOS trip |
+| `LL_RES` | `LT_RES <= LIM_RES_LL` **and** `is_good(LT_RES quality)` | Dry-run protect |
+| `LOS_LT_TANK` | `not is_good(LT_TANK quality)` | Loss-of-signal / BAD / UNCERTAIN |
+| `LOS_LT_RES` | `not is_good(LT_RES quality)` | Loss-of-signal / BAD / UNCERTAIN |
+| `LOS_FT_INLET` | `not is_good(FT_INLET quality)` | Loss-of-signal / BAD / UNCERTAIN |
 
 On any trip assert:
 
@@ -61,9 +61,9 @@ If conditions still present: ignore Reset (or pulse a “reset failed” diagnos
 | Check | Requirement |
 |-------|-------------|
 | No latch | `TRIP_ACTIVE = false` |
-| Tank level quality | `LT_TANK_BAD = false` |
-| Reservoir quality | `LT_RES_BAD = false` |
-| Flow quality | `FT_INLET_BAD = false` |
+| Tank level quality | `is_good(LT_TANK quality)` |
+| Reservoir quality | `is_good(LT_RES quality)` |
+| Flow quality | `is_good(FT_INLET quality)` |
 | Not already HH | `LT_TANK < LIM_LEVEL_HH` |
 | Not already LL | `LT_RES > LIM_RES_LL` |
 | Mode | `MODE = STOP` (not `RUNNING` / not `TRIPPED`) |
@@ -97,3 +97,4 @@ HMI must show at least:
 - Tags: [`02-io-hmi-contract.md`](02-io-hmi-contract.md)
 - Modes: [`03-control-story.md`](03-control-story.md)
 - Acceptance cases: [`06-mock-acceptance.md`](06-mock-acceptance.md)
+- Per-tag quality: [`docs/io/01-image-quality.md`](../io/01-image-quality.md)

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from plcassistant.io.quality import QualityStatus, is_good
 from plcassistant.wedge.control import CascadeConfig, CascadeController
 from plcassistant.wedge.process import MockProcess, ProcessConfig, ProcessPort
 from plcassistant.wedge.safety import Mode, TripCode
@@ -121,7 +122,8 @@ def test_skid_cascade_when_running_produces_sp_flow_and_speed():
     assert snap.sp_flow > 0.0
     assert snap.cmd_speed > 0.0
     assert snap.ft_inlet is not None and snap.ft_inlet > 0.0
-    assert snap.lt_tank_bad is False
+    assert is_good(snap.lt_tank_quality) is True
+    assert snap.lt_tank_quality.status is QualityStatus.GOOD
 
 
 def test_skid_stop_zeros_speed_and_holds_sp_flow():
@@ -147,23 +149,24 @@ def test_skid_measurement_view_shared_on_override():
     skid.set_signal_override(lt_tank=None)
     snap = skid.step(0.1)
     assert snap.lt_tank is None
-    assert snap.lt_tank_bad is True
+    assert is_good(snap.lt_tank_quality) is False
     assert snap.measurement.lt_tank is None
     assert TripCode.LOS_LT_TANK in snap.trip_codes
     assert snap.cmd_speed == 0.0
 
 
 def test_skid_measurement_view_nan_is_bad_and_trips_los():
-    """Non-finite override matches safety pv_ok: BAD, None PV, LOS trip."""
+    """Non-finite override maps to BAD quality, None PV, LOS trip."""
     skid = Skid()
     skid.process.set_levels(lt_tank=0.15, lt_res=0.20)
     skid.step(0.1, command=OperatorCommand.START)
     skid.set_signal_override(lt_tank=float("nan"))
     snap = skid.step(0.1)
-    assert snap.lt_tank_bad is True
+    assert is_good(snap.lt_tank_quality) is False
+    assert snap.lt_tank_quality.status is QualityStatus.BAD
     assert snap.lt_tank is None
     assert snap.measurement.lt_tank is None
-    assert snap.measurement.lt_tank_bad is True
+    assert is_good(snap.measurement.lt_tank_quality) is False
     assert TripCode.LOS_LT_TANK in snap.trip_codes
     assert snap.mode is Mode.TRIPPED
     assert snap.cmd_speed == 0.0

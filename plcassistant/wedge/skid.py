@@ -3,6 +3,9 @@
 Pure ``step(dt)`` API with injectable clock/dt — no Home Assistant imports.
 Tag names align with docs/wedge/02-io-hmi-contract.md.
 
+Quality lives on each PV as ``TagQuality`` (docs/io/01-image-quality.md). There
+are no separate ``*_BAD`` tags; LOS / safety use ``not is_good(quality)``.
+
 Clear / restart policy
 ----------------------
 After a trip, clearing the condition alone does **not** restart. Operator must
@@ -16,9 +19,10 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
+from plcassistant.io.quality import QualityStatus, ReasonCode, TagQuality, is_good
 from plcassistant.wedge.control import CascadeConfig, CascadeController, CascadeOutputs
 from plcassistant.wedge.process import MockProcess, ProcessConfig, ProcessPort, ProcessState
-from plcassistant.wedge.quality import pv_ok
+from plcassistant.wedge.quality import resolve_tag_quality
 from plcassistant.wedge.safety import (
     Mode,
     SafetyConfig,
@@ -26,6 +30,8 @@ from plcassistant.wedge.safety import (
     SafetyState,
     TripCode,
 )
+
+_PV_TAGS = frozenset({"LT_TANK", "LT_RES", "FT_INLET"})
 
 
 class OperatorCommand(str, Enum):
@@ -72,14 +78,14 @@ class SkidConfig:
 
 @dataclass(frozen=True)
 class MeasurementView:
-    """One-scan resolved PVs + BAD flags (overrides / injectors applied)."""
+    """One-scan resolved PVs + per-tag quality (overrides / injectors applied)."""
 
     lt_tank: Optional[float]
     lt_res: Optional[float]
     ft_inlet: Optional[float]
-    lt_tank_bad: bool
-    lt_res_bad: bool
-    ft_inlet_bad: bool
+    lt_tank_quality: TagQuality
+    lt_res_quality: TagQuality
+    ft_inlet_quality: TagQuality
 
 
 @dataclass
@@ -100,17 +106,17 @@ class SkidSnapshot:
     """CMD_SPEED applied to the process this scan (%)."""
 
     lt_tank: Optional[float]
-    """Safety-view LT_TANK (None when BAD / LOS)."""
+    """Safety-view LT_TANK (None when quality is not GOOD)."""
 
     lt_res: Optional[float]
-    """Safety-view LT_RES (None when BAD / LOS)."""
+    """Safety-view LT_RES (None when quality is not GOOD)."""
 
     ft_inlet: Optional[float]
-    """Safety-view FT_INLET (None when BAD / LOS)."""
+    """Safety-view FT_INLET (None when quality is not GOOD)."""
 
-    lt_tank_bad: bool
-    lt_res_bad: bool
-    ft_inlet_bad: bool
+    lt_tank_quality: TagQuality
+    lt_res_quality: TagQuality
+    ft_inlet_quality: TagQuality
 
     sc_pump: float
     mode: Mode
@@ -158,9 +164,7 @@ class Skid:
         self._apply_limits()
         self.sp_level = self.config.sp_level
         self._last: SkidSnapshot | None = None
-        self._force_lt_tank_bad = False
-        self._force_lt_res_bad = False
-        self._force_ft_inlet_bad = False
+        self._force_quality: dict[str, TagQuality] = {}
         self._override_lt_tank: object = _UNSET
         self._override_lt_res: object = _UNSET
         self._override_ft_inlet: object = _UNSET
@@ -193,25 +197,51 @@ class Skid:
         return self._last
 
     def clear_faults(self) -> None:
-        """Clear all BAD injectors and PV overrides."""
-        self._force_lt_tank_bad = False
-        self._force_lt_res_bad = False
-        self._force_ft_inlet_bad = False
+        """Clear all quality injectors and PV overrides."""
+        self._force_quality.clear()
         self._override_lt_tank = _UNSET
         self._override_lt_res = _UNSET
         self._override_ft_inlet = _UNSET
 
+    def force_quality(
+        self,
+        tag: str,
+        status: QualityStatus,
+        reason: ReasonCode | None = None,
+    ) -> None:
+        """Force per-tag quality on a process PV (``LT_TANK``, ``LT_RES``, ``FT_INLET``).
+
+        ``GOOD`` clears any injector for that tag. Non-GOOD requires a reason
+        (defaults to ``FAULT`` when omitted).
+        """
+        key = tag.upper()
+        if key not in _PV_TAGS:
+            raise ValueError(f"force_quality tag must be one of {sorted(_PV_TAGS)}, got {tag!r}")
+        if status is QualityStatus.GOOD:
+            self._force_quality.pop(key, None)
+            return
+        self._force_quality[key] = TagQuality(status, reason if reason is not None else ReasonCode.FAULT)
+
     def force_lt_tank_bad(self, bad: bool = True) -> None:
-        """force_LT_TANK_BAD injector."""
-        self._force_lt_tank_bad = bad
+        """Thin wrapper: force LT_TANK quality BAD/fault (or clear)."""
+        if bad:
+            self.force_quality("LT_TANK", QualityStatus.BAD, ReasonCode.FAULT)
+        else:
+            self.force_quality("LT_TANK", QualityStatus.GOOD)
 
     def force_lt_res_bad(self, bad: bool = True) -> None:
-        """force_LT_RES_BAD injector."""
-        self._force_lt_res_bad = bad
+        """Thin wrapper: force LT_RES quality BAD/fault (or clear)."""
+        if bad:
+            self.force_quality("LT_RES", QualityStatus.BAD, ReasonCode.FAULT)
+        else:
+            self.force_quality("LT_RES", QualityStatus.GOOD)
 
     def force_ft_inlet_bad(self, bad: bool = True) -> None:
-        """force_FT_INLET_BAD injector."""
-        self._force_ft_inlet_bad = bad
+        """Thin wrapper: force FT_INLET quality BAD/fault (or clear)."""
+        if bad:
+            self.force_quality("FT_INLET", QualityStatus.BAD, ReasonCode.FAULT)
+        else:
+            self.force_quality("FT_INLET", QualityStatus.GOOD)
 
     def set_signal_override(
         self,
@@ -236,24 +266,24 @@ class Skid:
     def _measurement_view(self, live: ProcessState) -> MeasurementView:
         """Resolve one measurement view for this scan (shared by safety + control).
 
-        Quality matches safety ``pv_ok``: non-finite or ``< 0`` is BAD and the
-        published PV is ``None``.
+        Quality from injectors or synthesized via ``resolve_tag_quality`` /
+        ``pv_ok``: non-GOOD publishes the PV as ``None`` for safety/control.
         """
         lt_tank = self._read(self._override_lt_tank, live.lt_tank)
         lt_res = self._read(self._override_lt_res, live.lt_res)
         ft_inlet = self._read(self._override_ft_inlet, live.ft_inlet)
 
-        tank_bad = self._force_lt_tank_bad or not pv_ok(lt_tank)
-        res_bad = self._force_lt_res_bad or not pv_ok(lt_res)
-        flow_bad = self._force_ft_inlet_bad or not pv_ok(ft_inlet)
+        tank_q = resolve_tag_quality(lt_tank, self._force_quality.get("LT_TANK"))
+        res_q = resolve_tag_quality(lt_res, self._force_quality.get("LT_RES"))
+        flow_q = resolve_tag_quality(ft_inlet, self._force_quality.get("FT_INLET"))
 
         return MeasurementView(
-            lt_tank=None if tank_bad else lt_tank,
-            lt_res=None if res_bad else lt_res,
-            ft_inlet=None if flow_bad else ft_inlet,
-            lt_tank_bad=tank_bad,
-            lt_res_bad=res_bad,
-            ft_inlet_bad=flow_bad,
+            lt_tank=lt_tank if is_good(tank_q) else None,
+            lt_res=lt_res if is_good(res_q) else None,
+            ft_inlet=ft_inlet if is_good(flow_q) else None,
+            lt_tank_quality=tank_q,
+            lt_res_quality=res_q,
+            ft_inlet_quality=flow_q,
         )
 
     def step(
@@ -272,9 +302,9 @@ class Skid:
             lt_tank=mv.lt_tank,
             lt_res=mv.lt_res,
             ft_inlet=mv.ft_inlet,
-            lt_tank_bad=mv.lt_tank_bad,
-            lt_res_bad=mv.lt_res_bad,
-            ft_inlet_bad=mv.ft_inlet_bad,
+            lt_tank_quality=mv.lt_tank_quality,
+            lt_res_quality=mv.lt_res_quality,
+            ft_inlet_quality=mv.ft_inlet_quality,
             start=command is OperatorCommand.START,
             stop=command is OperatorCommand.STOP,
             reset=command is OperatorCommand.RESET,
@@ -303,9 +333,9 @@ class Skid:
             lt_tank=mv.lt_tank,
             lt_res=mv.lt_res,
             ft_inlet=mv.ft_inlet,
-            lt_tank_bad=mv.lt_tank_bad,
-            lt_res_bad=mv.lt_res_bad,
-            ft_inlet_bad=mv.ft_inlet_bad,
+            lt_tank_quality=mv.lt_tank_quality,
+            lt_res_quality=mv.lt_res_quality,
+            ft_inlet_quality=mv.ft_inlet_quality,
             sc_pump=process_state.sc_pump,
             mode=safety.mode,
             perm_ok=safety.perm_ok,

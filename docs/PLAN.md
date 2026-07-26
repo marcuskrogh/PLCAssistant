@@ -1,91 +1,82 @@
-# Implementation plan: Lab / hobby wedge — gravity-drained tank skid (SWD-83)
+# Implementation plan: HA entities as PLC I/O (SWD-86)
 
 ## Summary
-- Primary example: **one process tank + reservoir**, recycled water loop: reservoir → **variable-speed inlet pump** → tank → **gravity drain** → reservoir.
-- First wedge proves **cascade control** (level → flow setpoint → pump speed) plus an **illustrative safety layer**, on a **mock first**; **physical rig is the next iteration** and is required for **overall** system success.
-- Preliminary packaging: **HA Add-on (app)** for runtime/mock engine + **thin config integration** for entity binding and operator services.
-- Later examples (two-tank; four-tank with split valve) are **out of this Task**.
+- Soft-PLC keeps a **scan-cycle I/O image**; HA entities are the field that **feed/sink** that image.
+- Refresh is **scan-synchronous**: IN at scan start, OUT at scan end (**every scan**).
+- Each tag carries **quality** (`GOOD` / `UNCERTAIN` / `BAD` + reason); **no** separate `*_BAD` tags.
+- **Thin HA integration** owns tag declarations, bindings, unit conversion, and **mock/sim entities**; **Add-on** owns the live image at runtime and always sees the same binding path.
 
 ## Scope
 **In**
-- Reference skid: 1 tank + reservoir; **pump-only** actuator; gravity drain (no outlet pump / no control valve in v1)
-- Automatic cascade: **level loop** outputs **flow setpoint**; **flow loop** tracks via **pump speed** + inlet flow sensor
-- Safety (illustrative middle ground):
-  1. High tank level → stop pump (latched)
-  2. Low reservoir level → stop pump (dry-run protect, latched)
-  3. Loss-of-signal on tank level, reservoir level, or flow → stop pump (latched)
-  4. Latched trip + **operator reset**
-  5. HMI **operator start/stop** (Start only if permissives OK; Stop always)
-- I/O: tank level, reservoir level, inlet volumetric flow, pump speed feedback if available; pump speed command; HMI start/stop, setpoints, trip/reset, key measurements
-- **Mock path** as this Task’s delivery bar; product must **allow mocking / simulated processes**
-- Historian/HMI via normal HA paths (Lovelace / logging) as reuse, not a new stack in this Task
-- Preliminary packaging: HA Add-on + thin config integration (working choice; full evaluation remains SWD-84)
+- I/O image + quality model and scan refresh rules
+- Strictly directional bindings: `IN` / `OUT` / `INOUT` (declared, not inferred)
+- Setpoint default: split **IN** (request) + **OUT** (active); `INOUT` only when a binding opts in
+- Unit conversion in the binding layer
+- Binding uniqueness: one HA entity may map to **many** tags; **at most one OUT** writer per entity
+- Last-good retention when quality ≠ `GOOD`; before first sample: `BAD` / `unavailable` + **default value**
+- Safety treats only `GOOD` as good (`is_good`); `treat_uncertain_as_good` API retained on bindings but Soft-PLC wiring deferred
+- Mock/sim in the **thin integration** (entities mocked internally); Add-on has no special mock-process path
+- Revise packaging notes that put mock inside the Add-on
+- Working **thin-integration stub** + automated contract/unit tests (mocked HA; no real HA instance)
+- Align wedge I/O contract: drop `*_BAD` tags in favor of per-tag quality
 
 **Out**
-- Home-as-process as a goal for this phase
-- Two-tank and four-tank / split-valve examples (later)
-- Physical rig build/wiring as **this** Task’s done bar (follow-on iteration; still required for whole-product success)
-- Full industrial safety framework (SIL, certified safety PLC, rich bypass/audit model beyond reset)
-- Final packaging freeze / exhaustive alternatives study (SWD-84) — preliminary shape is chosen above
-- Full programming-language and soft-PLC runtime internals beyond what the packaging sketch and control/safety specs require (SWD-82 / SWD-85 / SWD-86)
+- Real Home Assistant instance testing
+- Final packaging freeze (SWD-84)
+- Control / PID semantics (SWD-85)
+- Programming authoring UX (SWD-82)
+- Change-detect OUT writes (defer; write every scan for now)
+- Physical rig commissioning
 
 ## Decisions
-- Wedge audience: lab / hobby / small process equipment
-- Control story: cascade level → flow → pump speed
-- Safety story: the five behaviors above
-- Mock first; physical next; both needed for overall success
-- One-tank + reservoir only for this example
-- Start as **HA Add-on + thin config integration**
+- Image + scan-synchronous refresh
+- Quality trio + reasons; collapse to good/bad for safety
+- Directional bindings; setpoint split by default; `INOUT` opt-in only
+- Integration owns declarations / bindings / mock; Add-on owns live image
+- Unit conversion at binding
+- OUT every scan; multi-IN OK; single OUT writer per entity
+- Initial: `BAD` + default value (no last-good yet)
 
 ## Constraints
-- HA remains the low-friction I/O / logging / HMI surface
-- Must not paint into a corner that blocks later multi-tank / valve examples
-- Entity-binding mechanics, deep scan/runtime semantics, and authoring UX stay with sibling Tasks where not needed for the skid specs and packaging sketch
+- Must not break skid tag *names* / roles from SWD-83 except retiring `*_BAD`
+- Add-on scan path must stay binding-agnostic (same for mock and field)
+- No silent bidirectional bindings
+- Prior SWD-83 wedge specs remain authoritative for process/control/safety behavior; this Task owns the entity↔tag I/O layer
 
 ## Acceptance criteria
-- Documented reference skid matches the scope above (process narrative, I/O list, control + safety story)
-- On **mock**: operator can **Start/Stop** from HMI; cascade holds/responds to level & flow setpoints; high-tank, low-reservoir, loss-of-signal each **trip, latch, and require reset**; Stop always works
-- Mock/simulation support called out as a system requirement (not a one-off test hack)
-- Preliminary Add-on + thin integration responsibilities documented enough to host the mock path
-- Physical rig listed as **required follow-on** for overall success (not silently dropped)
-- Explicit out-of-scope list retained for later examples
+- Documented contract covers image, quality, directions, units, uniqueness, initial/last-good, mock-in-integration
+- Packaging sketch updated for mock ownership (integration, not Add-on process engine)
+- Stub can declare tags, bind IN/OUT/INOUT, convert units, apply mock entity values into an image on a scan boundary
+- Tests cover: sync refresh, quality transitions, last-good, defaults, direction enforcement, multi-IN / single-OUT, unit conversion, mock path ≡ field path into the Add-on image
+- No real HA required for green tests
 
 ## Work packages
-1. **Reference process spec** — P&ID-level narrative, recycled loop, one-tank + reservoir boundaries
-2. **I/O & HMI contract for the skid** — signals, setpoints, start/stop/reset, displays
-3. **Control story spec** — cascade level→flow→speed behavior and operating modes needed for the demo
-4. **Safety story spec** — the five behaviors, latch/reset, permissives for Start
-5. **Mock process requirements** — simulated process behavior + how mocking is a first-class capability
-6. **Mock acceptance scenarios** — runnable checklist covering cascade + each safety case + Start/Stop
-7. **Follow-on note** — physical rig iteration + later two-tank / four-tank examples (pointers only)
-8. **Preliminary packaging sketch** — Add-on vs integration responsibilities, config surface enough to support mock acceptance (not a full installable product yet)
+1. **I/O image & quality contract** — image semantics, quality enum/reasons, last-good, defaults, scan IN/OUT timing → [`docs/io/01-image-quality.md`](io/01-image-quality.md), `plcassistant/io/` ([SWD-95](https://marcusknielsen.atlassian.net/browse/SWD-95))
+2. **Binding model & schema** — IN/OUT/INOUT, setpoint split default, units, uniqueness rules, config shape in thin integration → [`docs/io/02-binding-model.md`](io/02-binding-model.md), `plcassistant/io/binding.py` ([SWD-98](https://marcusknielsen.atlassian.net/browse/SWD-98))
+3. **Wedge I/O contract update** — retire `*_BAD`; point safety/HMI at tag quality
+4. **Packaging note revision** — mock/sim moves to thin integration; Add-on image SoT unchanged
+5. **Thin-integration stub** — declarations, bindings, unit convert, mock entities, scan-boundary image refresh API toward Add-on
+6. **Contract/unit tests** — mocked HA; acceptance checklist above
 
 ## Open items
-- Exact add-on/runtime stack inside the Add-on
-- PID/tuning and timing semantics (SWD-85 / possible `/model`)
-- Entity mapping mechanics in HA (SWD-86)
-- Programming authoring UX (SWD-82)
-- Full packaging alternatives (SWD-84)
-- Physical bill of materials and wiring (next iteration after mock)
+- ~~Exact reason-code list~~ — resolved: `unavailable`, `unknown`, `stale`, `fault` ([`docs/io/01-image-quality.md`](io/01-image-quality.md))
+- ~~Exact YAML/config schema field names~~ — resolved: `tags` / `bindings` with `tag`, `entity`, `direction`, optional `scale`/`offset`/`entity_unit`/`treat_uncertain_as_good` ([`docs/io/02-binding-model.md`](io/02-binding-model.md))
+- ~~`treat_uncertain_as_good` Soft-PLC wiring~~ — deferred: field/API retained; production safety uses `is_good` only for now ([`docs/io/02-binding-model.md`](io/02-binding-model.md))
+- ~~How Add-on consumes the binding table from the integration (API/IPC)~~ — resolved for stub: **in-process** `scan_inputs` / `scan_outputs` on a shared `IoImage` ([`docs/io/03-thin-integration-stub.md`](io/03-thin-integration-stub.md)); real HA IPC later / [SWD-84](https://marcusknielsen.atlassian.net/browse/SWD-84)
+- ~~Whether wedge runtime (`plcassistant/wedge`) gains a shared quality type now or only via adapter in this Task~~ — resolved in SWD-96: wedge uses `plcassistant.io` `TagQuality` / `is_good` directly
+- ~~Contract/unit tests covering PLAN acceptance (mocked HA; no real HA)~~ — resolved in SWD-100: [`docs/io/04-acceptance.md`](io/04-acceptance.md), `tests/test_swd86_acceptance.py`
 
 ## Tracker
 - Provider: jira
 - Story: [SWD-81](https://marcusknielsen.atlassian.net/browse/SWD-81)
-- Task: [SWD-83](https://marcusknielsen.atlassian.net/browse/SWD-83)
+- Task: [SWD-86](https://marcusknielsen.atlassian.net/browse/SWD-86)
 - Sub-tasks:
-  - [SWD-88](https://marcusknielsen.atlassian.net/browse/SWD-88) — Reference process spec
-  - [SWD-87](https://marcusknielsen.atlassian.net/browse/SWD-87) — I/O & HMI contract for the skid
-  - [SWD-92](https://marcusknielsen.atlassian.net/browse/SWD-92) — Control story spec
-  - [SWD-93](https://marcusknielsen.atlassian.net/browse/SWD-93) — Safety story spec
-  - [SWD-90](https://marcusknielsen.atlassian.net/browse/SWD-90) — Mock process requirements
-  - [SWD-89](https://marcusknielsen.atlassian.net/browse/SWD-89) — Mock acceptance scenarios
-  - [SWD-91](https://marcusknielsen.atlassian.net/browse/SWD-91) — Follow-on note (physical + later examples)
-  - [SWD-94](https://marcusknielsen.atlassian.net/browse/SWD-94) — Preliminary packaging sketch
-
-## Delivered
-- Specs: `docs/wedge/` (01–08)
-- Mock core: `plcassistant/wedge/` with pytest acceptance (`python3 -m pytest -q` — 44 passed)
-- Shipped: [PR #11](https://github.com/marcuskrogh/PLCAssistant/pull/11) merge `3f892a4`
+  - [SWD-95](https://marcusknielsen.atlassian.net/browse/SWD-95) — I/O image & quality contract
+  - [SWD-98](https://marcusknielsen.atlassian.net/browse/SWD-98) — Binding model & schema
+  - [SWD-96](https://marcusknielsen.atlassian.net/browse/SWD-96) — Wedge I/O contract update
+  - [SWD-97](https://marcusknielsen.atlassian.net/browse/SWD-97) — Packaging note revision
+  - [SWD-99](https://marcusknielsen.atlassian.net/browse/SWD-99) — Thin-integration stub
+  - [SWD-100](https://marcusknielsen.atlassian.net/browse/SWD-100) — Contract/unit tests
 
 ## Next
-Done — phase closed. Suggested initiative next: `/define SWD-86`
+`/ship SWD-86` — Merge PR and close the Task

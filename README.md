@@ -6,6 +6,7 @@ Virtual / soft-PLC for **lab, hobby, and small-scale process equipment**, using 
 
 | Doc | Description |
 |-----|-------------|
-| [`docs/PLAN.md`](docs/PLAN.md) | Implementation plan for the lab / hobby wedge (SWD-83) |
+| [`docs/PLAN.md`](docs/PLAN.md) | Implementation plan for HA entities as PLC I/O (SWD-86) |
+| [`docs/io/`](docs/io/01-image-quality.md) | Soft-PLC I/O image, bindings, thin-integration stub, acceptance checklist |
 | [`docs/wedge/`](docs/wedge/README.md) | Skid specifications: process, I/O, control, safety, mock, packaging |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Product direction and theme roadmap |

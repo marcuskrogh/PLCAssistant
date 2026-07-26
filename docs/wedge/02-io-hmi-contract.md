@@ -14,7 +14,7 @@ Freeze the **logical signal contract** for the gravity-drained tank skid: field 
 | Tag names | Upper snake case (`LT_TANK`) |
 | Bools | `true` = active / asserted |
 | Commands | Edge- or pulse-friendly; controllers must be idempotent on sustained `true` |
-| Bad / missing PV | Quality flag or dedicated `*_FAULT` / loss-of-signal; see safety story |
+| Bad / missing PV | Per-tag quality on the I/O image (`GOOD` / `UNCERTAIN` / `BAD` + reason); see [`docs/io/01-image-quality.md`](../io/01-image-quality.md) |
 | Speed | 0–100% of drive span |
 | Flow | L/min volumetric |
 | Level | m preferred; % of configured span allowed on HMI |
@@ -30,14 +30,16 @@ Freeze the **logical signal contract** for the gravity-drained tank skid: field 
 
 ### Quality / loss-of-signal
 
-For each required PV (`LT_TANK`, `LT_RES`, `FT_INLET`), the runtime must expose a boolean quality (name pattern `LT_TANK_BAD`, `LT_RES_BAD`, `FT_INLET_BAD`) **or** an equivalent “unavailable” state that safety can consume. Mock must be able to force BAD independently.
+There are **no** separate `*_BAD` tags. Each process PV carries **per-tag quality** on the Soft-PLC I/O image (`QualityStatus` + optional `ReasonCode`), as defined in [`docs/io/01-image-quality.md`](../io/01-image-quality.md).
 
-| Tag | Description |
-|-----|-------------|
-| `LT_TANK_BAD` | Tank level signal lost / invalid |
-| `LT_RES_BAD` | Reservoir level signal lost / invalid |
-| `FT_INLET_BAD` | Inlet flow signal lost / invalid |
-| `SC_PUMP_BAD` | Speed feedback lost (informational if `SC_PUMP` optional) |
+| PV tag | Quality consumed by | Notes |
+|--------|---------------------|-------|
+| `LT_TANK` | Safety / HMI | LOS when `not is_good(quality)`; HH only on `GOOD` |
+| `LT_RES` | Safety / HMI | LOS when `not is_good(quality)`; LL only on `GOOD` |
+| `FT_INLET` | Safety / HMI | LOS when `not is_good(quality)` |
+| `SC_PUMP` | HMI (informational) | Optional; treat as unavailable when quality ≠ `GOOD` |
+
+Safety collapses quality with `is_good` / `collapse_quality` — only `GOOD` is trustworthy. Mock / tests inject quality via `force_quality(tag, BAD|UNCERTAIN, reason)` (thin `force_*_BAD` wrappers may remain for harness convenience). Process tag **names** (`LT_TANK`, …) are unchanged.
 
 ## Process outputs (CV / commands)
 
@@ -55,16 +57,19 @@ No outlet flow command, no valve position command in v1.
 | `HMI_STOP` | Request stop | bool cmd | **Always** honored: leaves Running, `CMD_SPEED → 0` |
 | `HMI_RESET` | Clear latched trips | bool cmd | Clears trips only when trip conditions are clear; see safety |
 
-## Setpoints & limits (operator-writable)
+## Setpoints & limits
 
-| Tag | Description | Unit | Default (ref) | Notes |
-|-----|-------------|------|---------------|-------|
-| `SP_LEVEL` | Tank level setpoint | m | 0.20 | Outer loop SP |
-| `SP_FLOW_MAN` | Manual flow SP (optional mode) | L/min | 2.0 | Used only in Flow / Manual modes |
-| `LIM_LEVEL_HH` | High-high tank trip | m | 0.36 | Safety threshold |
-| `LIM_RES_LL` | Low-low reservoir trip | m | 0.05 | Dry-run threshold |
-| `SP_FLOW_MAX` | Clamp on cascade flow SP | L/min | 6.0 | Protects pump/plumbing |
-| `CMD_SPEED_MAX` | Clamp on speed command | % | 100 | Optional demotion limit |
+Default setpoint pattern is **split IN + OUT** (not one `INOUT`): **operator / HA request** on the IN tag, **active Soft-PLC setpoint** on the OUT tag. Only the request side is operator-writable; the active SP is logic-owned (mirrored for HMI). See [`docs/io/02-binding-model.md`](../io/02-binding-model.md).
+
+| Tag | Description | Unit | Default (ref) | Direction | Notes |
+|-----|-------------|------|---------------|-----------|-------|
+| `SP_LEVEL_REQ` | Operator / HA tank level setpoint request | m | 0.20 | `IN` | Operator-writable; bound to `input_number` (or equivalent) |
+| `SP_LEVEL` | Active tank level setpoint Soft-PLC is applying | m | 0.20 | `OUT` | Soft-PLC-owned outer loop SP; mirrored for HMI (not operator-writable) |
+| `SP_FLOW_MAN` | Manual flow SP (optional mode) | L/min | 2.0 | — | Used only in Flow / Manual modes |
+| `LIM_LEVEL_HH` | High-high tank trip | m | 0.36 | — | Safety threshold |
+| `LIM_RES_LL` | Low-low reservoir trip | m | 0.05 | — | Dry-run threshold |
+| `SP_FLOW_MAX` | Clamp on cascade flow SP | L/min | 6.0 | — | Protects pump/plumbing |
+| `CMD_SPEED_MAX` | Clamp on speed command | % | 100 | — | Optional demotion limit |
 
 Tunable PID gains are out of deep scope here (SWD-85 / model); expose placeholders if needed:
 
@@ -84,23 +89,24 @@ Tunable PID gains are out of deep scope here (SWD-85 / model); expose placeholde
 | `SP_FLOW` | Active flow setpoint (cascade output or manual) | L/min |
 | `RUNNING` | Control intends to run pump (subject to trips) | bool |
 
-Recommended live displays (Lovelace / dashboard): `LT_TANK`, `LT_RES`, `FT_INLET`, `SC_PUMP` (if present), `CMD_SPEED`, `SP_LEVEL`, `SP_FLOW`, `MODE`, `TRIP_CODE`, `PERM_OK`.
+Recommended live displays (Lovelace / dashboard): `LT_TANK`, `LT_RES`, `FT_INLET`, `SC_PUMP` (if present), `CMD_SPEED`, `SP_LEVEL_REQ`, `SP_LEVEL`, `SP_FLOW`, `MODE`, `TRIP_CODE`, `PERM_OK`, plus each PV’s quality when troubleshooting LOS.
 
 ## HMI surface (reuse HA)
 
 | Need | Approach |
 |------|----------|
 | Start / Stop / Reset | HA buttons / scripts / services bound to command tags |
-| Setpoints | `number` / `input_number` entities bound to SP tags |
+| Setpoints | `number` / `input_number` entities bound to **request** SP tags (`SP_LEVEL_REQ`, …) |
 | Trends | HA recorder / Influx + Grafana — no new historian in this Task |
 | Mimic | Lovelace cards showing PVs + `MODE` / trip banner |
 
 ## Binding notes (not owned here)
 
-Thin config integration maps HA entities ↔ tags. Mock mode may bind to simulated entities or inject directly into the runtime without field devices. Exact mapping mechanics: SWD-86.
+Thin config integration maps HA entities ↔ tags. Mock and field share the **same binding-fed image path** into the Add-on (mock entities in the thin integration; no special inject-into-runtime I/O branch). Exact mapping mechanics: [`docs/io/02-binding-model.md`](../io/02-binding-model.md), stub: [`docs/io/03-thin-integration-stub.md`](../io/03-thin-integration-stub.md) (SWD-86).
 
 ## Related specs
 
 - Process: [`01-reference-process.md`](01-reference-process.md)
 - Modes & cascade: [`03-control-story.md`](03-control-story.md)
 - Trips & permissives: [`04-safety-story.md`](04-safety-story.md)
+- I/O image & quality: [`docs/io/01-image-quality.md`](../io/01-image-quality.md)
