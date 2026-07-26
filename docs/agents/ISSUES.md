@@ -4,7 +4,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 | Key | Type | Title | Status | Parent | Artifact | Next |
 |-----|------|-------|--------|--------|----------|------|
-| SWD-81 | Story | PLCAssistant — Virtual PLC for Home Assistant | To Do | — | docs/ROADMAP.md | `/ship SWD-86` |
+| SWD-81 | Story | PLCAssistant — Virtual PLC for Home Assistant | To Do | — | docs/ROADMAP.md | `/research SWD-85` |
 | SWD-83 | Task | Explore theme: Lab / hobby / small-process wedge | Done | SWD-81 | docs/PLAN.md (prior), docs/wedge/, plcassistant/wedge/ | Done — phase closed |
 | SWD-88 | Sub-task | SWD-83: Reference process spec | Done | SWD-83 | docs/wedge/01-reference-process.md | — |
 | SWD-87 | Sub-task | SWD-83: I/O & HMI contract for the skid | Done | SWD-83 | docs/wedge/02-io-hmi-contract.md | — |
@@ -14,7 +14,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-89 | Sub-task | SWD-83: Mock acceptance scenarios | Done | SWD-83 | docs/wedge/06-mock-acceptance.md | — |
 | SWD-91 | Sub-task | SWD-83: Follow-on note (physical + later examples) | Done | SWD-83 | docs/wedge/07-follow-on.md | — |
 | SWD-94 | Sub-task | SWD-83: Preliminary packaging sketch | Done | SWD-83 | docs/wedge/08-packaging-sketch.md | — |
-| SWD-86 | Task | Explore theme: HA entities as PLC I/O | In Review | SWD-81 | docs/PLAN.md, docs/io/, plcassistant/io/ | `/ship SWD-86` |
+| SWD-86 | Task | Explore theme: HA entities as PLC I/O | Done | SWD-81 | docs/PLAN.md, docs/io/, plcassistant/io/ | Done — phase closed |
 | SWD-95 | Sub-task | SWD-86: I/O image & quality contract | Done | SWD-86 | docs/io/01-image-quality.md, plcassistant/io/ | — |
 | SWD-98 | Sub-task | SWD-86: Binding model & schema | Done | SWD-86 | docs/io/02-binding-model.md, plcassistant/io/binding.py | — |
 | SWD-96 | Sub-task | SWD-86: Wedge I/O contract update | Done | SWD-86 | docs/wedge/02-io-hmi-contract.md, plcassistant/wedge/ | — |
