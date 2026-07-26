@@ -113,12 +113,24 @@ class IoImage:
         return slot.value, slot.quality
 
     def set_output(self, name: str, value: Any) -> None:
-        """Logic write for OUT flush; marks the tag as an output with GOOD quality."""
+        """Logic write for OUT flush; marks the tag as an output with GOOD quality.
+
+        Non-finite numeric values (nan/inf) are demoted to ``BAD`` / ``fault``
+        (same as ``apply_input``): last-good or default is retained; the write
+        is not published as GOOD.
+        """
         slot = self._require(name)
+        slot.is_output = True
+        if isinstance(value, (int, float)) and not math.isfinite(float(value)):
+            slot.quality = TagQuality(QualityStatus.BAD, ReasonCode.FAULT)
+            if slot.last_good is not None:
+                slot.value = slot.last_good
+            else:
+                slot.value = slot.default
+            return
         slot.value = value
         slot.last_good = value
         slot.quality = TagQuality(QualityStatus.GOOD)
-        slot.is_output = True
 
     def snapshot_outputs(self) -> dict[str, Any]:
         """Values for tags written as outputs this image lifetime (scan-end flush)."""

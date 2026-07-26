@@ -32,7 +32,8 @@ Logical tag names are stable across all wedge docs. HA entity IDs are binding-ti
 | `FT_INLET` | Inlet volumetric flow | L/min |
 | `SC_PUMP` | Pump speed feedback (optional) | % |
 | `CMD_SPEED` | Pump speed command | % |
-| `SP_LEVEL` | Tank level setpoint | m (or %) |
+| `SP_LEVEL_REQ` | Operator / HA tank level setpoint request | m (or %) |
+| `SP_LEVEL` | Active Soft-PLC tank level setpoint (OUT; not operator-writable) | m (or %) |
 | `SP_FLOW` | Flow setpoint (from level loop or operator override) | L/min |
 | `HMI_START` | Operator start request | bool pulse / command |
 | `HMI_STOP` | Operator stop request | bool pulse / command |

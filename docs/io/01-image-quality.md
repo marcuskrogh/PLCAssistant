@@ -14,7 +14,7 @@ Code: `plcassistant.io` (`QualityStatus`, `ReasonCode`, `TagQuality`, `IoImage`)
 | Role | Owner |
 |------|--------|
 | Live scan-cycle image | Add-on (Soft-PLC runtime) |
-| Tag declarations, bindings, unit conversion, mock entities | Thin HA integration (later packages) |
+| Tag declarations, bindings, unit conversion, mock entities | Thin HA integration (`plcassistant.io.binding` / `integration`; packages landed under SWD-86) |
 
 The Soft-PLC keeps one **I/O image** for the scan. Bindings apply field samples into the image and flush outputs from it. Logic and safety read/write **tags** on the image — never HA entities directly.
 
@@ -28,7 +28,7 @@ Refresh is **scan-synchronous** and happens **every scan**:
 |----------|--------|
 | **Scan start (IN)** | Bindings (or tests) call `apply_input` for each input tag: value + quality + reason |
 | **Scan body** | Logic / safety read tag values and quality; write outputs via `set_output` |
-| **Scan end (OUT)** | Runtime takes a **snapshot** of output values and flushes them to the field (every scan; change-detect deferred) |
+| **Scan end (OUT)** | Runtime flushes **logic-written** tags via `snapshot_outputs()` (tags marked by `set_output` / `is_output`) every scan among written tags; change-detect deferred |
 
 Until bindings exist, callers exercise the same API with in-memory samples. The Add-on scan path stays binding-agnostic: mock and field use the same image API.
 
@@ -37,7 +37,7 @@ Until bindings exist, callers exercise the same API with in-memory samples. The 
   │  scan N                                     │
   │  1. IN:  apply_input(...) for each IN tag   │
   │  2.     logic / safety on image values      │
-  │  3. OUT: snapshot() → flush writers         │
+  │  3. OUT: snapshot_outputs() → flush writers │
   └─────────────────────────────────────────────┘
 ```
 
@@ -102,10 +102,10 @@ Direction (`IN` / `OUT` / `INOUT`), uniqueness, and HA entity mapping belong to 
 | `declare(name, default=…)` | setup | Create slot; initial BAD + default |
 | `apply_input(name, value, status, reason=…)` | start (IN) | Apply sample per retention rules |
 | `get_value` / `get_quality` / `get` | body | Read for logic / safety |
-| `set_output(name, value)` | body | Logic writes CV / command |
-| `snapshot()` / `snapshot_outputs()` | end (OUT) | Capture values for flush |
+| `set_output(name, value)` | body | Logic writes CV / command; non-finite → BAD / fault (retain last-good) |
+| `snapshot()` / `snapshot_outputs()` | end (OUT) | Full diag snapshot; OUT flush = logic-written tags only |
 
-Outputs written by logic are trusted (`GOOD`) unless a later package defines otherwise.
+Finite outputs written by logic are trusted (`GOOD`). Non-finite (`nan` / `inf`) writes are demoted to `BAD` / `fault` and are not published as GOOD.
 
 ## Non-goals (this package)
 

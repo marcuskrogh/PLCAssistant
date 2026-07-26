@@ -57,14 +57,14 @@ No outlet flow command, no valve position command in v1.
 | `HMI_STOP` | Request stop | bool cmd | **Always** honored: leaves Running, `CMD_SPEED → 0` |
 | `HMI_RESET` | Clear latched trips | bool cmd | Clears trips only when trip conditions are clear; see safety |
 
-## Setpoints & limits (operator-writable)
+## Setpoints & limits
 
-Default setpoint pattern is **split IN + OUT** (not one `INOUT`): request from HA/operator, active value from Soft-PLC. See [`docs/io/02-binding-model.md`](../io/02-binding-model.md).
+Default setpoint pattern is **split IN + OUT** (not one `INOUT`): **operator / HA request** on the IN tag, **active Soft-PLC setpoint** on the OUT tag. Only the request side is operator-writable; the active SP is logic-owned (mirrored for HMI). See [`docs/io/02-binding-model.md`](../io/02-binding-model.md).
 
 | Tag | Description | Unit | Default (ref) | Direction | Notes |
 |-----|-------------|------|---------------|-----------|-------|
-| `SP_LEVEL_REQ` | Operator / HA tank level setpoint request | m | 0.20 | `IN` | Bound to `input_number` (or equivalent) |
-| `SP_LEVEL` | Active tank level setpoint Soft-PLC is applying | m | 0.20 | `OUT` | Outer loop SP; mirrored for HMI |
+| `SP_LEVEL_REQ` | Operator / HA tank level setpoint request | m | 0.20 | `IN` | Operator-writable; bound to `input_number` (or equivalent) |
+| `SP_LEVEL` | Active tank level setpoint Soft-PLC is applying | m | 0.20 | `OUT` | Soft-PLC-owned outer loop SP; mirrored for HMI (not operator-writable) |
 | `SP_FLOW_MAN` | Manual flow SP (optional mode) | L/min | 2.0 | — | Used only in Flow / Manual modes |
 | `LIM_LEVEL_HH` | High-high tank trip | m | 0.36 | — | Safety threshold |
 | `LIM_RES_LL` | Low-low reservoir trip | m | 0.05 | — | Dry-run threshold |
@@ -96,7 +96,7 @@ Recommended live displays (Lovelace / dashboard): `LT_TANK`, `LT_RES`, `FT_INLET
 | Need | Approach |
 |------|----------|
 | Start / Stop / Reset | HA buttons / scripts / services bound to command tags |
-| Setpoints | `number` / `input_number` entities bound to SP tags |
+| Setpoints | `number` / `input_number` entities bound to **request** SP tags (`SP_LEVEL_REQ`, …) |
 | Trends | HA recorder / Influx + Grafana — no new historian in this Task |
 | Mimic | Lovelace cards showing PVs + `MODE` / trip banner |
 

@@ -319,6 +319,84 @@ def test_apply_in_non_good_none_keeps_last_good():
     assert q.reason is ReasonCode.UNAVAILABLE
 
 
+def test_apply_in_good_none_demotes_unavailable_retains_last_good():
+    """GOOD path with None must not float(raw) / abort; demote BAD+unavailable."""
+    table = _level_table()
+    image = IoImage()
+    table.declare_on(image)
+    table.apply_in(image, {"sensor.tank_level": 0.42})
+    assert image.get_value("LT_TANK") == pytest.approx(0.42)
+
+    table.apply_in(image, {"sensor.tank_level": None})
+    assert image.get_value("LT_TANK") == pytest.approx(0.42)
+    q = image.get_quality("LT_TANK")
+    assert q.status is QualityStatus.BAD
+    assert q.reason is ReasonCode.UNAVAILABLE
+
+
+def test_apply_in_good_none_via_store_set_does_not_leave_stale_good():
+    """store.set(entity, None) as GOOD → BAD unavailable; mid-scan peers still apply."""
+    from plcassistant.io.integration import MockEntityStore, ThinIntegrationStub
+
+    config = {
+        "tags": {
+            "LT_TANK": {"default": 0.0},
+            "LT_RES": {"default": 0.0},
+        },
+        "bindings": [
+            {
+                "tag": "LT_TANK",
+                "entity": "sensor.tank_level",
+                "direction": "IN",
+            },
+            {
+                "tag": "LT_RES",
+                "entity": "sensor.res_level",
+                "direction": "IN",
+            },
+        ],
+    }
+    stub = ThinIntegrationStub(config)
+    image = stub.attach()
+    stub.entities.set("sensor.tank_level", 0.30)
+    stub.entities.set("sensor.res_level", 0.25)
+    stub.scan_inputs(image)
+    assert image.get_quality("LT_TANK").status is QualityStatus.GOOD
+    assert image.get_quality("LT_RES").status is QualityStatus.GOOD
+
+    stub.entities.set("sensor.tank_level", None)  # GOOD + None
+    stub.entities.set("sensor.res_level", 0.28)
+    stub.scan_inputs(image)
+    assert image.get_value("LT_TANK") == pytest.approx(0.30)
+    q = image.get_quality("LT_TANK")
+    assert q.status is QualityStatus.BAD
+    assert q.reason is ReasonCode.UNAVAILABLE
+    # Peer binding still advanced (loop did not abort mid-scan)
+    assert image.get_value("LT_RES") == pytest.approx(0.28)
+    assert image.get_quality("LT_RES").status is QualityStatus.GOOD
+
+
+@pytest.mark.parametrize(
+    "raw,reason",
+    [
+        ("not-a-number", ReasonCode.UNAVAILABLE),
+        (float("nan"), ReasonCode.FAULT),
+        (float("inf"), ReasonCode.FAULT),
+        (float("-inf"), ReasonCode.FAULT),
+    ],
+)
+def test_apply_in_good_non_numeric_or_non_finite_demotes(raw, reason):
+    table = _level_table()
+    image = IoImage()
+    table.declare_on(image)
+    table.apply_in(image, {"sensor.tank_level": 0.15})
+    table.apply_in(image, {"sensor.tank_level": raw})
+    assert image.get_value("LT_TANK") == pytest.approx(0.15)
+    q = image.get_quality("LT_TANK")
+    assert q.status is QualityStatus.BAD
+    assert q.reason is reason
+
+
 def test_apply_in_missing_entity_is_bad_unavailable():
     table = _level_table(scale=0.01)
     image = IoImage()

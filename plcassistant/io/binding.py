@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Mapping
@@ -115,6 +116,23 @@ def _parse_sample(
     return sample, QualityStatus.GOOD, None
 
 
+def _coerce_good_raw(raw: Any) -> tuple[float | None, ReasonCode | None]:
+    """Validate a GOOD-path raw before ``float`` / scale.
+
+    Returns ``(raw_f, None)`` when usable, or ``(None, reason)`` to demote:
+    ``None`` / non-numeric → ``unavailable``; non-finite → ``fault``.
+    """
+    if raw is None:
+        return None, ReasonCode.UNAVAILABLE
+    try:
+        raw_f = float(raw)
+    except (TypeError, ValueError):
+        return None, ReasonCode.UNAVAILABLE
+    if not math.isfinite(raw_f):
+        return None, ReasonCode.FAULT
+    return raw_f, None
+
+
 class BindingTable:
     """Validated set of tag declarations and directional bindings.
 
@@ -222,6 +240,10 @@ class BindingTable:
         ``(value, QualityStatus, ReasonCode)`` (reason required when not GOOD).
         OUT-only bindings are skipped. Missing entity keys are applied as
         ``BAD`` / ``unavailable`` (same as the thin-integration stub).
+
+        A GOOD sample with ``None``, non-numeric, or non-finite raw is demoted
+        (``BAD`` / ``unavailable`` or ``fault``) and still applied so quality
+        advances; the loop never aborts mid-scan on bad payloads.
         """
         image.begin_inputs()
         for binding in self._bindings:
@@ -237,7 +259,17 @@ class BindingTable:
                 continue
             raw, status, reason = _parse_sample(entity_samples[binding.entity])
             if status is QualityStatus.GOOD:
-                engineering = binding.to_engineering(float(raw))
+                raw_f, demote_reason = _coerce_good_raw(raw)
+                if demote_reason is not None:
+                    image.apply_input(
+                        binding.tag,
+                        0.0,
+                        QualityStatus.BAD,
+                        demote_reason,
+                    )
+                    continue
+                assert raw_f is not None
+                engineering = binding.to_engineering(raw_f)
                 image.apply_input(binding.tag, engineering, status, reason)
             else:
                 # Placeholder only: do not float/scale non-GOOD payloads (may be None).

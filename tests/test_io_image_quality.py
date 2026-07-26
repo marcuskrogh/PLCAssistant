@@ -141,3 +141,33 @@ def test_apply_input_non_finite_good_demotes_to_bad_fault():
     assert value == 0.25
     assert quality.status is QualityStatus.BAD
     assert quality.reason is ReasonCode.FAULT
+
+
+@pytest.mark.parametrize("bad", [float("nan"), float("inf"), float("-inf")])
+def test_set_output_non_finite_demotes_to_bad_fault(bad):
+    """Non-finite set_output matches apply_input: BAD/fault, not published GOOD."""
+    image = IoImage()
+    image.declare("CMD_SPEED", default=0.0)
+    image.set_output("CMD_SPEED", 42.5)
+    assert image.get_quality("CMD_SPEED").status is QualityStatus.GOOD
+    assert image.snapshot_outputs() == {"CMD_SPEED": 42.5}
+
+    image.set_output("CMD_SPEED", bad)
+    value, quality = image.get("CMD_SPEED")
+    assert value == 42.5
+    assert quality.status is QualityStatus.BAD
+    assert quality.reason is ReasonCode.FAULT
+    # Still marked written, but value retained last-good (not nan/inf)
+    assert image.snapshot_outputs() == {"CMD_SPEED": 42.5}
+
+
+def test_set_output_non_finite_before_first_good_keeps_default():
+    image = IoImage()
+    image.declare("CMD_SPEED", default=7.0)
+    image.set_output("CMD_SPEED", float("nan"))
+    value, quality = image.get("CMD_SPEED")
+    assert value == 7.0
+    assert quality.status is QualityStatus.BAD
+    assert quality.reason is ReasonCode.FAULT
+    assert image.snapshot()["CMD_SPEED"].last_good is None
+    assert "CMD_SPEED" in image.snapshot_outputs()
