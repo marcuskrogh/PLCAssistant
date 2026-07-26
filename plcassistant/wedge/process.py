@@ -138,18 +138,25 @@ class MockProcess:
         )
 
     def step(self, dt: float, cmd_speed: float) -> ProcessState:
-        """Advance the mock plant by ``dt`` seconds under ``CMD_SPEED`` (0–100)."""
+        """Advance the mock plant by ``dt`` seconds under ``CMD_SPEED`` (0–100).
+
+        When ``dt == 0``, record ``CMD_SPEED`` but hold flow/level/lag state
+        (no inventory limiting or dynamics updates).
+        """
         if dt < 0:
             raise ValueError("dt must be non-negative")
         cfg = self.config
         self._cmd_speed = _clamp(cmd_speed, 0.0, 100.0)
+
+        if dt == 0.0:
+            return self.state
 
         derate = _pump_derate(self._h_res, cfg.lim_res_ll)
         target_q = cfg.q_pump_max * (self._cmd_speed / 100.0) * derate
         if self._cmd_speed <= 0.0 or self._h_res <= 0.0:
             target_q = 0.0
 
-        if cfg.pump_tau <= 0 or dt == 0:
+        if cfg.pump_tau <= 0:
             q_in_cmd = target_q
         else:
             alpha = 1.0 - exp(-dt / cfg.pump_tau)
@@ -180,7 +187,7 @@ class MockProcess:
             cfg.h_res_max,
         )
 
-        if cfg.speed_fb_tau <= 0 or dt == 0:
+        if cfg.speed_fb_tau <= 0:
             self._sc_pump = self._cmd_speed
         else:
             alpha_s = 1.0 - exp(-dt / cfg.speed_fb_tau)

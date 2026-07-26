@@ -23,6 +23,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional, Set
 
+from plcassistant.wedge.quality import pv_ok
+
 
 class Mode(str, Enum):
     STOP = "STOP"
@@ -125,9 +127,9 @@ class SafetyLayer:
         A PV is BAD if the corresponding ``*_bad`` flag is True, or if the
         value is ``None`` / non-finite (unavailable).
         """
-        tank_bad = lt_tank_bad or not _pv_ok(lt_tank)
-        res_bad = lt_res_bad or not _pv_ok(lt_res)
-        flow_bad = ft_inlet_bad or not _pv_ok(ft_inlet)
+        tank_bad = lt_tank_bad or not pv_ok(lt_tank)
+        res_bad = lt_res_bad or not pv_ok(lt_res)
+        flow_bad = ft_inlet_bad or not pv_ok(ft_inlet)
 
         self._last_lt_tank = lt_tank
         self._last_lt_res = lt_res
@@ -197,12 +199,3 @@ class SafetyLayer:
             pump_permit=running,
         )
 
-
-def _pv_ok(value: Optional[float]) -> bool:
-    if value is None:
-        return False
-    if value != value:  # NaN
-        return False
-    if value in (float("inf"), float("-inf")):
-        return False
-    return value >= 0.0

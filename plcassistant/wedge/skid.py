@@ -18,6 +18,7 @@ from typing import Optional
 
 from plcassistant.wedge.control import CascadeConfig, CascadeController, CascadeOutputs
 from plcassistant.wedge.process import MockProcess, ProcessConfig, ProcessPort, ProcessState
+from plcassistant.wedge.quality import pv_ok
 from plcassistant.wedge.safety import (
     Mode,
     SafetyConfig,
@@ -233,14 +234,18 @@ class Skid:
         self._override_ft_inlet = _UNSET
 
     def _measurement_view(self, live: ProcessState) -> MeasurementView:
-        """Resolve one measurement view for this scan (shared by safety + control)."""
+        """Resolve one measurement view for this scan (shared by safety + control).
+
+        Quality matches safety ``pv_ok``: non-finite or ``< 0`` is BAD and the
+        published PV is ``None``.
+        """
         lt_tank = self._read(self._override_lt_tank, live.lt_tank)
         lt_res = self._read(self._override_lt_res, live.lt_res)
         ft_inlet = self._read(self._override_ft_inlet, live.ft_inlet)
 
-        tank_bad = self._force_lt_tank_bad or lt_tank is None
-        res_bad = self._force_lt_res_bad or lt_res is None
-        flow_bad = self._force_ft_inlet_bad or ft_inlet is None
+        tank_bad = self._force_lt_tank_bad or not pv_ok(lt_tank)
+        res_bad = self._force_lt_res_bad or not pv_ok(lt_res)
+        flow_bad = self._force_ft_inlet_bad or not pv_ok(ft_inlet)
 
         return MeasurementView(
             lt_tank=None if tank_bad else lt_tank,

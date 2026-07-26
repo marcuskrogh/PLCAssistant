@@ -47,6 +47,22 @@ def test_process_responds_to_speed_command():
     assert proc.state.cmd_speed == 100.0
 
 
+def test_process_dt_zero_holds_ft_inlet_and_levels():
+    """dt==0 records CMD_SPEED but must not wipe flow/level/lag state."""
+    proc = MockProcess(ProcessConfig(pump_tau=0.5, speed_fb_tau=0.2, k_drain=0.0, q_pump_max=8.0))
+    proc.set_levels(lt_tank=0.10, lt_res=0.20)
+    for _ in range(20):
+        proc.step(0.1, cmd_speed=100.0)
+    before = proc.state
+    assert before.ft_inlet > 0.0
+    after = proc.step(0.0, cmd_speed=50.0)
+    assert after.cmd_speed == 50.0
+    assert after.ft_inlet == before.ft_inlet
+    assert after.lt_tank == before.lt_tank
+    assert after.lt_res == before.lt_res
+    assert after.sc_pump == before.sc_pump
+
+
 def test_gravity_drain_lowers_tank_when_pump_off():
     proc = MockProcess(ProcessConfig(k_drain=5.0, q_pump_max=0.0))
     proc.set_levels(lt_tank=0.30, lt_res=0.15)
@@ -134,4 +150,20 @@ def test_skid_measurement_view_shared_on_override():
     assert snap.lt_tank_bad is True
     assert snap.measurement.lt_tank is None
     assert TripCode.LOS_LT_TANK in snap.trip_codes
+    assert snap.cmd_speed == 0.0
+
+
+def test_skid_measurement_view_nan_is_bad_and_trips_los():
+    """Non-finite override matches safety pv_ok: BAD, None PV, LOS trip."""
+    skid = Skid()
+    skid.process.set_levels(lt_tank=0.15, lt_res=0.20)
+    skid.step(0.1, command=OperatorCommand.START)
+    skid.set_signal_override(lt_tank=float("nan"))
+    snap = skid.step(0.1)
+    assert snap.lt_tank_bad is True
+    assert snap.lt_tank is None
+    assert snap.measurement.lt_tank is None
+    assert snap.measurement.lt_tank_bad is True
+    assert TripCode.LOS_LT_TANK in snap.trip_codes
+    assert snap.mode is Mode.TRIPPED
     assert snap.cmd_speed == 0.0
