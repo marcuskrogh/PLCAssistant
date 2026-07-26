@@ -87,4 +87,4 @@
 - Mock core: `plcassistant/wedge/` with pytest acceptance (`python3 -m pytest -q` — 37 passed)
 
 ## Next
-`/review-fix SWD-83` — Review and auto-fix until clean
+`/ship SWD-83` — Merge PR and close the Task

@@ -33,4 +33,4 @@
 - Tasks: [SWD-83](https://marcusknielsen.atlassian.net/browse/SWD-83), [SWD-86](https://marcusknielsen.atlassian.net/browse/SWD-86), [SWD-85](https://marcusknielsen.atlassian.net/browse/SWD-85), [SWD-82](https://marcusknielsen.atlassian.net/browse/SWD-82), [SWD-84](https://marcusknielsen.atlassian.net/browse/SWD-84)
 
 ## Next
-`/review-fix SWD-83` — Review implement PR for lab/hobby wedge
+`/ship SWD-83` — Merge implement PR and close Task
