@@ -106,4 +106,4 @@ Still open (deferred):
 
 ## Next
 
-`/review-fix SWD-70` — Review architecture artifacts; then `/ship SWD-70` when approved. Downstream: `/define SWD-71` against [`docs/IO_HAL.md`](IO_HAL.md) + [`docs/HANDOFF.md`](HANDOFF.md).
+`/ship SWD-70` — Merge architecture PR after clean `/review-fix`. Downstream: `/define SWD-71` against [`docs/IO_HAL.md`](IO_HAL.md) + [`docs/HANDOFF.md`](HANDOFF.md).

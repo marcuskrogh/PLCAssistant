@@ -4,8 +4,8 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 | Key | Type | Title | Status | Parent | Artifact | Next |
 |-----|------|-------|--------|--------|----------|------|
-| SWD-66 | Story | PLCAssistant: virtual PLC for Home Assistant | To Do | | docs/ROADMAP.md | `/review-fix SWD-70` |
-| SWD-70 | Task | Architecture & approach selection for virtual PLC over HA entities | In Review | SWD-66 | docs/ARCHITECTURE.md | `/review-fix SWD-70` |
+| SWD-66 | Story | PLCAssistant: virtual PLC for Home Assistant | To Do | | docs/ROADMAP.md | `/ship SWD-70` |
+| SWD-70 | Task | Architecture & approach selection for virtual PLC over HA entities | In Review | SWD-66 | docs/ARCHITECTURE.md | `/ship SWD-70` |
 | SWD-73 | Sub-task | WP1: ADR — architecture decision record | Done | SWD-70 | docs/ARCHITECTURE.md | — |
 | SWD-74 | Sub-task | WP2: I/O HAL contract | Done | SWD-70 | docs/IO_HAL.md | — |
 | SWD-75 | Sub-task | WP3: Packaging blueprint | Done | SWD-70 | docs/PACKAGING.md | — |
@@ -24,3 +24,4 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 - 2026-07-26 — `/define SWD-70` wrote `docs/PLAN.md`; Sub-tasks SWD-73/74/75/72; Next `/implement SWD-70`.
 - 2026-07-26 — `/implement SWD-70` wrote `docs/ARCHITECTURE.md`, `IO_HAL.md`, `PACKAGING.md`, `HANDOFF.md`; Sub-tasks Done; Task → In Review; Next `/review-fix SWD-70`.
 - 2026-07-26 — `/review-fix` iter 1: REQUEST_CHANGES (0 blocker / 10 should-fix); fix-forward addressing HANDOFF anchors, IO_HAL fields/phases, control plane, HAL ownership, ROADMAP hybrid wording.
+- 2026-07-26 — `/review-fix` iter 2: CLEAN (0 blocker / 0 should-fix / notes only); Next `/ship SWD-70`.

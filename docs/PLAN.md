@@ -114,6 +114,4 @@ Container install targets: **HAOS / Supervised** first. Container/Docker Compose
 
 ## Next
 
-`/review-fix SWD-70` — Review architecture docs and auto-fix until clean.
-
-**Implemented:** [ARCHITECTURE.md](ARCHITECTURE.md) · [IO_HAL.md](IO_HAL.md) · [PACKAGING.md](PACKAGING.md) · [HANDOFF.md](HANDOFF.md)
+`/ship SWD-70` — Merge PR and close the Task after clean review-fix.
