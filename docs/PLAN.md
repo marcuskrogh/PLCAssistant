@@ -114,4 +114,6 @@ Container install targets: **HAOS / Supervised** first. Container/Docker Compose
 
 ## Next
 
-`/implement SWD-70` — Produce ADR, I/O HAL contract, packaging blueprint, and downstream handoff per this plan.
+`/review-fix SWD-70` — Review architecture docs and auto-fix until clean.
+
+**Implemented:** [ARCHITECTURE.md](ARCHITECTURE.md) · [IO_HAL.md](IO_HAL.md) · [PACKAGING.md](PACKAGING.md) · [HANDOFF.md](HANDOFF.md)

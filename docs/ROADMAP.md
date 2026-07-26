@@ -60,7 +60,7 @@ Existing work mostly fills *adjacent* niches, not this product:
 
 | Phase | Topic | Notes | Issue |
 |-------|-------|-------|-------|
-| 1 | Architecture & approach selection | **Defined:** [`docs/PLAN.md`](PLAN.md) — wrap OpenPLC in addon + thin HACS integration; HA entities as I/O HAL; soft real-time. Research: [`docs/RESEARCH.md`](RESEARCH.md) | [SWD-70](https://marcusknielsen.atlassian.net/browse/SWD-70) |
+| 1 | Architecture & approach selection | **Implemented (docs):** ADR [`ARCHITECTURE.md`](ARCHITECTURE.md), [`IO_HAL.md`](IO_HAL.md), [`PACKAGING.md`](PACKAGING.md), [`HANDOFF.md`](HANDOFF.md). Plan: [`PLAN.md`](PLAN.md). Research: [`RESEARCH.md`](RESEARCH.md) | [SWD-70](https://marcusknielsen.atlassian.net/browse/SWD-70) |
 | 2 | HA entity I/O bridge | Bidirectional entity↔tag binding, availability/freshness, config UX | [SWD-71](https://marcusknielsen.atlassian.net/browse/SWD-71) |
 | 3 | PLC program execution | Runtime lifecycle, timers/counters, at least one IEC-style language path | [SWD-69](https://marcusknielsen.atlassian.net/browse/SWD-69) |
 | 4 | Operator surfaces | Lovelace/kiosk HMI patterns + InfluxDB/Grafana historian patterns | [SWD-68](https://marcusknielsen.atlassian.net/browse/SWD-68) |
@@ -101,4 +101,4 @@ Still open (deferred):
 
 ## Next
 
-`/implement SWD-70` — Produce ADR + I/O HAL + packaging blueprint per [`docs/PLAN.md`](PLAN.md).
+`/review-fix SWD-70` — Review architecture artifacts; then `/ship SWD-70` when approved. Downstream: `/define SWD-71` against [`docs/IO_HAL.md`](IO_HAL.md) + [`docs/HANDOFF.md`](HANDOFF.md).
