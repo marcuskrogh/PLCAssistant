@@ -92,4 +92,4 @@
   - [SWD-118](https://marcusknielsen.atlassian.net/browse/SWD-118) — Contract/unit tests + acceptance
 
 ## Next
-`/research SWD-84` — Packaging shape (last explore theme)
+`/define SWD-84` — Packaging shape; research brief is supportive context only
