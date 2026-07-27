@@ -92,4 +92,4 @@
   - [SWD-118](https://marcusknielsen.atlassian.net/browse/SWD-118) — Contract/unit tests + acceptance
 
 ## Next
-`/implement SWD-82` — Build per this plan
+`/review-fix SWD-82` — Review and auto-fix until clean
