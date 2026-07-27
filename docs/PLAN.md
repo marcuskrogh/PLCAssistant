@@ -82,7 +82,8 @@
 ## Delivered
 - Specs: `docs/control/` (01–05), wedge control/I/O/follow-on cross-links
 - Code: `plcassistant/control/` (`ScanShell`), cascade bumpless + anti-windup, Skid phase orchestration
-- Tests: `tests/test_swd85_acceptance.py` — `python3 -m pytest -q` green
+- Tests: `tests/test_swd85_acceptance.py` — `python3 -m pytest -q` — 121 passed at ship
+- Shipped: [PR #18](https://github.com/marcuskrogh/PLCAssistant/pull/18) merge `a51cdbe`
 
 ## Next
-`/ship SWD-85` — Merge PR and close the Task
+Done — phase closed. Suggested initiative next: `/define SWD-82`
