@@ -124,9 +124,9 @@ Draft define should lock (conceptually):
 
 ## Tracker
 
-- Task [SWD-82](https://marcusknielsen.atlassian.net/browse/SWD-82) remains **To Do** until define/implement; research artifact is this doc.
-- Story [SWD-81](https://marcusknielsen.atlassian.net/browse/SWD-81) Next → `/define SWD-82`.
+- Task [SWD-82](https://marcusknielsen.atlassian.net/browse/SWD-82) remains **To Do** until implement/ship; research fed define (`docs/PLAN.md`).
+- Story [SWD-81](https://marcusknielsen.atlassian.net/browse/SWD-81) Next → `/implement SWD-82`.
 
 ## Next
 
-`/define SWD-82` — turn this brief into `docs/PLAN.md` + Sub-tasks for the programming surface (progressive layers, L1 metaphor, escape hatch).
+`/implement SWD-82` — build per `docs/PLAN.md` (L0–L3, BT L1, YAML program, L3 stub).

@@ -4,7 +4,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 | Key | Type | Title | Status | Parent | Artifact | Next |
 |-----|------|-------|--------|--------|----------|------|
-| SWD-81 | Story | PLCAssistant — Virtual PLC for Home Assistant | To Do | — | docs/ROADMAP.md | `/define SWD-82` |
+| SWD-81 | Story | PLCAssistant — Virtual PLC for Home Assistant | To Do | — | docs/ROADMAP.md | `/implement SWD-82` |
 | SWD-83 | Task | Explore theme: Lab / hobby / small-process wedge | Done | SWD-81 | docs/PLAN.md (prior), docs/wedge/, plcassistant/wedge/ | Done — phase closed |
 | SWD-88 | Sub-task | SWD-83: Reference process spec | Done | SWD-83 | docs/wedge/01-reference-process.md | — |
 | SWD-87 | Sub-task | SWD-83: I/O & HMI contract for the skid | Done | SWD-83 | docs/wedge/02-io-hmi-contract.md | — |
@@ -28,7 +28,13 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-101 | Sub-task | SWD-85: HA↔cyclic boundary note | Done | SWD-85 | docs/control/04-ha-cyclic-boundary.md | — |
 | SWD-102 | Sub-task | SWD-85: Wedge control-story update | Done | SWD-85 | docs/wedge/03-control-story.md (+ 02/07) | — |
 | SWD-106 | Sub-task | SWD-85: Contract/unit tests | Done | SWD-85 | docs/control/05-acceptance.md, tests/test_swd85_acceptance.py | — |
-| SWD-82 | Task | Explore theme: Programming surface | To Do | SWD-81 | docs/RESEARCH.md | `/define SWD-82` |
+| SWD-82 | Task | Explore theme: Programming surface | To Do | SWD-81 | docs/PLAN.md, docs/RESEARCH.md | `/implement SWD-82` |
+| SWD-107 | Sub-task | SWD-82: Layer model & Soft-PLC≠HA boundary | To Do | SWD-82 | docs/programming/01–02 (target) | — |
+| SWD-110 | Sub-task | SWD-82: Program artifact schema & loader | To Do | SWD-82 | docs/programming/03, plcassistant/programming/ (target) | — |
+| SWD-108 | Sub-task | SWD-82: L1 BT runtime on CONTROL | To Do | SWD-82 | docs/programming/04 (target) | — |
+| SWD-112 | Sub-task | SWD-82: L0 default + wedge L1 example | To Do | SWD-82 | docs/programming/05 (target) | — |
+| SWD-111 | Sub-task | SWD-82: L2 params + L3 escape stub | To Do | SWD-82 | docs/programming/06 (target) | — |
+| SWD-109 | Sub-task | SWD-82: Contract/unit tests | To Do | SWD-82 | docs/programming/07, tests/test_swd82_acceptance.py (target) | — |
 | SWD-84 | Task | Explore theme: Packaging shape | To Do | SWD-81 | docs/ROADMAP.md | later |
 
 ## Log
@@ -56,3 +62,4 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 - 2026-07-27 — review-fix SWD-85 CLEAN after 2 iterations (2→0 should-fix); Next `/ship SWD-85`.
 - 2026-07-27 — Shipped SWD-85 via PR #18 (merge `a51cdbe`); Task Done; Story SWD-81 remains open; Next `/define SWD-82`.
 - 2026-07-27 — Research complete for SWD-82: `docs/RESEARCH.md` (progressive L0–L3 surface, BT L1 metaphor, IEC escape hatch; LLM assist secondary); Next `/define SWD-82`.
+- 2026-07-27 — Define complete for SWD-82: `docs/PLAN.md`; Sub-tasks SWD-107, SWD-110, SWD-108, SWD-112, SWD-111, SWD-109; Next `/implement SWD-82`.
