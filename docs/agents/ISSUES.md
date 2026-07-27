@@ -68,4 +68,4 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 - 2026-07-27 — Define complete for SWD-82: `docs/PLAN.md`; Sub-tasks SWD-119, SWD-116, SWD-115, SWD-114, SWD-120, SWD-117, SWD-121, SWD-118; Next `/implement SWD-82`.
 - 2026-07-27 — Implement SWD-82 complete: surface + App editor + wedge CONTROL on blocks; Sub-tasks Done; Task → In Review; Next `/review-fix SWD-82`.
 - 2026-07-27 — review-fix SWD-82 CLEAN after 2 iterations (iter1: stale context/sandbox/hot-apply/etc.; iter2: shell-owned `running` wires + CMD clamp, builtin overwrite guard, localhost default, docs JSON/YAML align); Next `/ship SWD-82`.
-- 2026-07-27 — Shipped SWD-82 via PR #26; Task Done; Story SWD-81 remains open (SWD-84 packaging remains); Next `/research SWD-84`.
+- 2026-07-27 — Shipped SWD-82 via PR #26 (merge `6bc330f`); Task Done; Story SWD-81 remains open (SWD-84 packaging remains); Next `/research SWD-84`.
