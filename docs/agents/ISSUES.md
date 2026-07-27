@@ -55,3 +55,4 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 - 2026-07-27 — Implement SWD-85 complete: Sub-tasks Done; Task → In Review; Next `/ship SWD-85`.
 - 2026-07-27 — review-fix SWD-85 CLEAN after 2 iterations (2→0 should-fix); Next `/ship SWD-85`.
 - 2026-07-27 — Shipped SWD-85 via PR #18 (merge `a51cdbe`); Task Done; Story SWD-81 remains open; Next `/define SWD-82`.
+- 2026-07-27 — Reverted incorrect SWD-82 `/research` + `/define` (PRs #20/#21 closed unmerged; Sub-tasks SWD-107..112 cancelled). Continuity remains post–SWD-85 ship; Next `/define SWD-82`.
