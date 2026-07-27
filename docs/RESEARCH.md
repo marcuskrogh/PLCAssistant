@@ -130,9 +130,9 @@ Draft define should lock (conceptually, not necessarily code):
 
 ## Tracker
 
-- Task [SWD-85](https://marcusknielsen.atlassian.net/browse/SWD-85) remains **To Do** until define/implement; research artifact is this doc.
-- Story [SWD-81](https://marcusknielsen.atlassian.net/browse/SWD-81) Next → `/define SWD-85`.
+- Task [SWD-85](https://marcusknielsen.atlassian.net/browse/SWD-85) remains **To Do** through implement; research artifact is this doc; definition is `docs/PLAN.md`.
+- Story [SWD-81](https://marcusknielsen.atlassian.net/browse/SWD-81) Next → `/implement SWD-85`.
 
 ## Next
 
-`/define SWD-85` — turn this brief into `docs/PLAN.md` + Sub-tasks for control semantics (scan, cascade FB, safety precedence, timing).
+`/implement SWD-85` — build per `docs/PLAN.md` (research consumed by define).
