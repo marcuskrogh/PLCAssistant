@@ -17,7 +17,7 @@ auto-starts. Stop always forces CMD_SPEED = 0 / idle.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 from typing import Optional
 
@@ -419,7 +419,7 @@ class Skid:
             trip_active=safety.trip_active,
             trip_codes=frozenset(safety.trip_codes),
             scan_phases=diag.last_phases,
-            scan_diagnostics=diag,
+            scan_diagnostics=replace(diag),
         )
         self._last = snap
         return snap

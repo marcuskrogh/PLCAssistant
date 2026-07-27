@@ -25,17 +25,11 @@ class CascadeConfig:
     level_ki: float = 5.0
     """Level I gain (1/s · error → SP_FLOW contribution)."""
 
-    level_td: float = 0.0
-    """Level D time stub — reserved; v1 ignores (must stay 0)."""
-
     flow_kp: float = 12.0
     """Flow P gain → CMD_SPEED (% per L/min error)."""
 
     flow_ki: float = 2.0
     """Flow I gain."""
-
-    flow_td: float = 0.0
-    """Flow D time stub — reserved; v1 ignores (must stay 0)."""
 
     sp_flow_min: float = 0.0
     sp_flow_max: float = 6.0
@@ -44,6 +38,12 @@ class CascadeConfig:
     cmd_speed_min: float = 0.0
     cmd_speed_max: float = 100.0
     """CMD_SPEED_MAX clamp (%)."""
+
+    level_td: float = 0.0
+    """Level D time stub — reserved; v1 ignores (must stay 0). Appended to keep positional kwargs stable."""
+
+    flow_td: float = 0.0
+    """Flow D time stub — reserved; v1 ignores (must stay 0)."""
 
 
 @dataclass
@@ -119,8 +119,8 @@ class CascadeController:
 
         level_error = sp_level - lt_tank
         if cfg.level_ki != 0.0:
-            # Prefit so the *next* step(dt) lands on target after I += error*dt.
-            # Caller must use the same PV/SP on that first step; dt is applied then.
+            # Prefit I so kp*e + ki*I equals target on the *next* step with
+            # `_bumpless_pending` (that first RUNNING scan skips I += error*dt).
             self._level_i = (sp_flow - cfg.level_kp * level_error) / cfg.level_ki
         else:
             self._level_i = 0.0

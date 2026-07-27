@@ -180,3 +180,36 @@ def test_td_stubs_default_zero():
     cfg = CascadeConfig()
     assert cfg.level_td == 0.0
     assert cfg.flow_td == 0.0
+
+
+def test_skid_snapshot_diagnostics_are_copied():
+    """Prior snapshots must not share mutable ScanShell.diagnostics."""
+    skid = Skid()
+    s1 = skid.step(0.1)
+    assert s1.scan_diagnostics is not None
+    count1 = s1.scan_diagnostics.scan_count
+    s2 = skid.step(0.1)
+    assert s2.scan_diagnostics is not None
+    assert s1.scan_diagnostics is not s2.scan_diagnostics
+    assert s1.scan_diagnostics is not skid.scan_shell.diagnostics
+    assert s1.scan_diagnostics.scan_count == count1
+    assert s2.scan_diagnostics.scan_count == count1 + 1
+
+
+def test_dt_zero_holds_integrals_and_recomputes_p():
+    ctrl = CascadeController(
+        CascadeConfig(level_kp=10.0, level_ki=5.0, flow_kp=0.0, flow_ki=0.0)
+    )
+    out1 = ctrl.step(0.1, lt_tank=0.10, ft_inlet=0.0, sp_level=0.20, running=True)
+    i1 = ctrl.level_integral
+    out0 = ctrl.step(0.0, lt_tank=0.10, ft_inlet=0.0, sp_level=0.20, running=True)
+    assert ctrl.level_integral == pytest.approx(i1)
+    # Same error → same P+I output when dt==0 (no I advance)
+    assert out0.sp_flow == pytest.approx(out1.sp_flow)
+
+
+def test_skid_duration_s_overrun_counter():
+    skid = Skid(SkidConfig(scan=ScanConfig(scan_period_s=0.1)))
+    snap = skid.step(0.1, duration_s=0.25)
+    assert snap.scan_diagnostics is not None
+    assert snap.scan_diagnostics.overrun_count == 1
