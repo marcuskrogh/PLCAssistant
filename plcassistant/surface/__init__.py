@@ -1,9 +1,13 @@
-"""Block program surface: data model, YAML round-trip, placement, and validation (SWD-119).
+"""Block program surface: data model, YAML round-trip, runtime, and built-in library.
 
-See docs/surface/01-block-model.md for the full contract.
+See docs/surface/ for the full contract.
 No Home Assistant dependency.
 """
 
+from plcassistant.surface.builtin import (
+    register_builtins,
+    wedge_cascade_program,
+)
 from plcassistant.surface.model import (
     BlockInstance,
     BlockTemplate,
@@ -12,6 +16,13 @@ from plcassistant.surface.model import (
     Program,
     TemplateLibrary,
     Wire,
+)
+from plcassistant.surface.runtime import (
+    BlockCallable,
+    BlockRuntime,
+    DictContext,
+    TagContext,
+    make_runtime,
 )
 from plcassistant.surface.schema import (
     place_block,
@@ -22,6 +33,7 @@ from plcassistant.surface.schema import (
 )
 
 __all__ = [
+    # model
     "BlockInstance",
     "BlockTemplate",
     "PinDirection",
@@ -29,9 +41,19 @@ __all__ = [
     "Program",
     "TemplateLibrary",
     "Wire",
+    # schema
     "place_block",
     "program_from_dict",
     "program_to_dict",
     "reset_instance",
     "validate_program",
+    # runtime
+    "BlockCallable",
+    "BlockRuntime",
+    "DictContext",
+    "TagContext",
+    "make_runtime",
+    # built-in library
+    "register_builtins",
+    "wedge_cascade_program",
 ]
