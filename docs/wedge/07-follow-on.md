@@ -16,7 +16,7 @@ Mock acceptance satisfies **this Task**. A **physical** recycled tank + reservoi
 | BOM | Tank, reservoir, VFD+pump, level sensors, flow sensor, plumbing, spill containment |
 | Wiring / HA devices | Map real entities to the same tags (`LT_TANK`, `LT_RES`, `FT_INLET`, `CMD_SPEED`, …) via the thin-integration binding table — same path as mock entities ([`08-packaging-sketch.md`](08-packaging-sketch.md), SWD-86) |
 | Commissioning | Repeat [`06-mock-acceptance.md`](06-mock-acceptance.md) scenarios on hardware (with safe water procedures) |
-| Tuning | Real PID/timing under SWD-85 / model guidance |
+| Tuning | Demo-grade cascade PI per [`docs/control/02-fb-pid.md`](../control/02-fb-pid.md); physical retune later |
 
 Do **not** treat physical as optional product scope — only optional relative to SWD-83 closure. Switching mock entities → field entities must not require an Add-on I/O mode change.
 
