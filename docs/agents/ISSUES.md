@@ -4,7 +4,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 | Key | Type | Title | Status | Parent | Artifact | Next |
 |-----|------|-------|--------|--------|----------|------|
-| SWD-81 | Story | PLCAssistant — Virtual PLC for Home Assistant | To Do | — | docs/ROADMAP.md | `/review-fix SWD-84` |
+| SWD-81 | Story | PLCAssistant — Virtual PLC for Home Assistant | To Do | — | docs/ROADMAP.md | `/ship SWD-84` |
 | SWD-83 | Task | Explore theme: Lab / hobby / small-process wedge | Done | SWD-81 | docs/PLAN.md (prior), docs/wedge/, plcassistant/wedge/ | Done — phase closed |
 | SWD-88 | Sub-task | SWD-83: Reference process spec | Done | SWD-83 | docs/wedge/01-reference-process.md | — |
 | SWD-87 | Sub-task | SWD-83: I/O & HMI contract for the skid | Done | SWD-83 | docs/wedge/02-io-hmi-contract.md | — |
