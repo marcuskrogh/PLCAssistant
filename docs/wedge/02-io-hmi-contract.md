@@ -71,7 +71,8 @@ Default setpoint pattern is **split IN + OUT** (not one `INOUT`): **operator / H
 | `SP_FLOW_MAX` | Clamp on cascade flow SP | L/min | 6.0 | — | Protects pump/plumbing |
 | `CMD_SPEED_MAX` | Clamp on speed command | % | 100 | — | Optional demotion limit |
 
-Tunable PID gains are out of deep scope here (SWD-85 / model); expose placeholders if needed:
+Tunable PID gains are configured on the Soft-PLC cascade FB (SWD-85 —
+[`docs/control/02-fb-pid.md`](../control/02-fb-pid.md)); expose placeholders if needed:
 
 | Tag | Description |
 |-----|-------------|

@@ -3,6 +3,8 @@
 Pure ``step(dt)`` API with injectable clock/dt — no Home Assistant imports.
 Tag names align with docs/wedge/02-io-hmi-contract.md.
 
+Scan phase order (SWD-85): IN → SAFETY → CONTROL → OUT via ``ScanShell``.
+
 Quality lives on each PV as ``TagQuality`` (docs/io/01-image-quality.md). There
 are no separate ``*_BAD`` tags; LOS / safety use ``not is_good(quality)``.
 
@@ -19,6 +21,13 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
+from plcassistant.control.scan import (
+    PHASE_ORDER,
+    ScanConfig,
+    ScanDiagnostics,
+    ScanPhase,
+    ScanShell,
+)
 from plcassistant.io.quality import QualityStatus, ReasonCode, TagQuality, is_good
 from plcassistant.wedge.control import CascadeConfig, CascadeController, CascadeOutputs
 from plcassistant.wedge.process import MockProcess, ProcessConfig, ProcessPort, ProcessState
@@ -72,6 +81,9 @@ class SkidConfig:
     limits: LimitConfig = field(default_factory=LimitConfig)
     """Canonical lim_level_hh / lim_res_ll — synced into process + safety."""
 
+    scan: ScanConfig = field(default_factory=ScanConfig)
+    """Scan period / overrun threshold (default 0.1 s)."""
+
     sp_level: float = 0.20
     """SP_LEVEL default (m)."""
 
@@ -124,6 +136,12 @@ class SkidSnapshot:
     trip_active: bool
     trip_codes: frozenset
 
+    scan_phases: tuple[ScanPhase, ...] = PHASE_ORDER
+    """Phases executed this scan (must be IN→SAFETY→CONTROL→OUT)."""
+
+    scan_diagnostics: ScanDiagnostics | None = None
+    """Shell diagnostics after this scan (overrun counters, last dt)."""
+
     # Convenience aliases
     @property
     def level_sp(self) -> float:
@@ -160,10 +178,12 @@ class Skid:
         self.process: ProcessPort = process or MockProcess(self.config.process)
         self.control = control or CascadeController(self.config.cascade)
         self.safety = safety or SafetyLayer(self.config.safety)
+        self.scan_shell = ScanShell(self.config.scan)
         # Re-sync in case injected process/safety carried stale thresholds
         self._apply_limits()
         self.sp_level = self.config.sp_level
         self._last: SkidSnapshot | None = None
+        self._was_running = False
         self._force_quality: dict[str, TagQuality] = {}
         self._override_lt_tank: object = _UNSET
         self._override_lt_res: object = _UNSET
@@ -290,37 +310,94 @@ class Skid:
         self,
         dt: float,
         command: OperatorCommand = OperatorCommand.NONE,
+        *,
+        duration_s: float | None = None,
     ) -> SkidSnapshot:
-        """Advance one scan by ``dt`` seconds under optional HMI command."""
+        """Advance one scan by ``dt`` seconds under optional HMI command.
+
+        Phase order is locked via ``ScanShell``: IN → SAFETY → CONTROL → OUT.
+        ``duration_s`` is optional wall/logical duration for overrun diagnostics.
+        """
         if dt < 0:
             raise ValueError("dt must be non-negative")
 
-        live = self.process.state
-        mv = self._measurement_view(live)
+        # Mutable slots filled by phase callbacks (single-scan locals).
+        box: dict[str, object] = {}
 
-        safety = self.safety.evaluate(
-            lt_tank=mv.lt_tank,
-            lt_res=mv.lt_res,
-            ft_inlet=mv.ft_inlet,
-            lt_tank_quality=mv.lt_tank_quality,
-            lt_res_quality=mv.lt_res_quality,
-            ft_inlet_quality=mv.ft_inlet_quality,
-            start=command is OperatorCommand.START,
-            stop=command is OperatorCommand.STOP,
-            reset=command is OperatorCommand.RESET,
-        )
+        def on_in() -> None:
+            live = self.process.state
+            box["mv"] = self._measurement_view(live)
 
-        running = safety.pump_permit
-        cascade = self.control.step(
+        def on_safety() -> None:
+            mv = box["mv"]
+            assert isinstance(mv, MeasurementView)
+            box["safety"] = self.safety.evaluate(
+                lt_tank=mv.lt_tank,
+                lt_res=mv.lt_res,
+                ft_inlet=mv.ft_inlet,
+                lt_tank_quality=mv.lt_tank_quality,
+                lt_res_quality=mv.lt_res_quality,
+                ft_inlet_quality=mv.ft_inlet_quality,
+                start=command is OperatorCommand.START,
+                stop=command is OperatorCommand.STOP,
+                reset=command is OperatorCommand.RESET,
+            )
+
+        def on_control() -> None:
+            mv = box["mv"]
+            safety = box["safety"]
+            assert isinstance(mv, MeasurementView)
+            assert isinstance(safety, SafetyState)
+            running = safety.pump_permit
+            # Bumpless Start: rising edge of pump permit.
+            if running and not self._was_running:
+                if mv.lt_tank is not None and mv.ft_inlet is not None:
+                    self.control.prepare_bumpless(
+                        lt_tank=mv.lt_tank,
+                        ft_inlet=mv.ft_inlet,
+                        sp_level=self.sp_level,
+                        target_sp_flow=self.control.last.sp_flow,
+                        target_cmd_speed=0.0,
+                    )
+            box["cascade"] = self.control.step(
+                dt,
+                lt_tank=mv.lt_tank,
+                ft_inlet=mv.ft_inlet,
+                sp_level=self.sp_level,
+                running=running,
+            )
+            self._was_running = running
+
+        def on_out() -> None:
+            safety = box["safety"]
+            cascade = box["cascade"]
+            assert isinstance(safety, SafetyState)
+            assert isinstance(cascade, CascadeOutputs)
+            running = safety.pump_permit
+            # Safety precedence: CV forced 0 whenever permit is false.
+            cmd_speed = cascade.cmd_speed if running else 0.0
+            box["cmd_speed"] = cmd_speed
+            box["process_state"] = self.process.step(dt, cmd_speed)
+
+        diag = self.scan_shell.run(
             dt,
-            lt_tank=mv.lt_tank,
-            ft_inlet=mv.ft_inlet,
-            sp_level=self.sp_level,
-            running=running,
+            on_in=on_in,
+            on_safety=on_safety,
+            on_control=on_control,
+            on_out=on_out,
+            duration_s=duration_s,
         )
 
-        cmd_speed = cascade.cmd_speed if running else 0.0
-        process_state = self.process.step(dt, cmd_speed)
+        mv = box["mv"]
+        safety = box["safety"]
+        cascade = box["cascade"]
+        process_state = box["process_state"]
+        cmd_speed = box["cmd_speed"]
+        assert isinstance(mv, MeasurementView)
+        assert isinstance(safety, SafetyState)
+        assert isinstance(cascade, CascadeOutputs)
+        assert isinstance(process_state, ProcessState)
+        assert isinstance(cmd_speed, float)
 
         snap = SkidSnapshot(
             process=process_state,
@@ -341,6 +418,8 @@ class Skid:
             perm_ok=safety.perm_ok,
             trip_active=safety.trip_active,
             trip_codes=frozenset(safety.trip_codes),
+            scan_phases=diag.last_phases,
+            scan_diagnostics=diag,
         )
         self._last = snap
         return snap

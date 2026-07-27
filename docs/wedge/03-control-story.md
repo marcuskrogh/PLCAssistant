@@ -5,7 +5,7 @@
 
 ## Purpose
 
-Specify the **automatic cascade** and operating modes for the v1 skid demo: level loop → flow setpoint → flow loop → pump speed. Exact PID/timing semantics remain open (SWD-85); this story defines **structure, modes, and observable behavior** enough to implement and accept on mock.
+Specify the **automatic cascade** and operating modes for the v1 skid demo: level loop → flow setpoint → flow loop → pump speed. Exact PID/timing semantics are locked in SWD-85 ([`docs/control/`](../control/01-scan-scheduler.md)); this story defines **structure, modes, and observable behavior** for the skid demo.
 
 ## Cascade structure
 
@@ -78,13 +78,18 @@ On failure: remain `STOP`; HMI may show “Start blocked” via `PERM_OK = false
 | Disturbance: increase drain (mock knob) | Level drops; cascade increases flow/speed to recover |
 | Enter `STOP` | Speed → 0; tank drains toward equilibrium with pump off |
 
-Quantitative tuning targets are deferred to SWD-85 / model; for mock acceptance, require **directionally correct** response within a few mock time-constants (see mock acceptance).
+Quantitative tuning targets use demo-grade defaults; formal FB contract (sample time = scan `dt`, clamps, anti-windup, bumpless Start) is locked in [`docs/control/02-fb-pid.md`](../control/02-fb-pid.md). For mock acceptance, require **directionally correct** response within a few mock time-constants (see mock acceptance).
 
 ## Anti-windup / clamps (minimum)
 
 - Clamp `SP_FLOW` to `[0, SP_FLOW_MAX]`
 - Clamp `CMD_SPEED` to `[0, CMD_SPEED_MAX]`
-- When `CMD_SPEED` saturated or not `RUNNING`, level/flow integrators must not wind unboundedly (implementation-defined anti-windup)
+- When `CMD_SPEED` saturated or not `RUNNING`, level/flow integrators must not wind unboundedly (**conditional integration** — [`docs/control/02-fb-pid.md`](../control/02-fb-pid.md))
+
+## Scan & safety precedence
+
+- Scan order: IN → SAFETY → CONTROL → OUT ([`docs/control/01-scan-scheduler.md`](../control/01-scan-scheduler.md))
+- Safety before control so trips force CV=0 the **same** scan ([`docs/control/03-safety-precedence.md`](../control/03-safety-precedence.md))
 
 ## Out of this control story
 
@@ -98,3 +103,4 @@ Quantitative tuning targets are deferred to SWD-85 / model; for mock acceptance,
 - Tags: [`02-io-hmi-contract.md`](02-io-hmi-contract.md)
 - Permissives & trips: [`04-safety-story.md`](04-safety-story.md)
 - Acceptance: [`06-mock-acceptance.md`](06-mock-acceptance.md)
+- Control semantics (SWD-85): [`docs/control/`](../control/01-scan-scheduler.md)

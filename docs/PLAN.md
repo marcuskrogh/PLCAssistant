@@ -61,10 +61,10 @@
 6. **Contract/unit tests** — scan order, trip same-scan CV=0, anti-windup, bumpless Start, injectable `dt` ([SWD-106](https://marcusknielsen.atlassian.net/browse/SWD-106))
 
 ## Open items
-- Exact default scan period constant vs config field name (recommend `scan_period_s`, default `0.05`–`0.1`)
-- Whether D term lands as stub (`Td=0`) or is omitted from API until needed
-- Whether scan shell lives in new `plcassistant/control/` package vs extending `plcassistant/wedge/skid.py` only
-- Overrun diagnostic surface (tag vs log-only) — hobby-grade; defer rich HMI if needed
+- ~~Exact default scan period constant vs config field name~~ — resolved: `scan_period_s` default `0.1`
+- ~~Whether D term lands as stub (`Td=0`) or is omitted from API until needed~~ — resolved: `level_td` / `flow_td` stubs at 0
+- ~~Whether scan shell lives in new `plcassistant/control/` package vs extending `plcassistant/wedge/skid.py` only~~ — resolved: `plcassistant/control/` + Skid uses `ScanShell`
+- ~~Overrun diagnostic surface (tag vs log-only)~~ — resolved: `ScanDiagnostics` counters (not HMI tags)
 
 ## Tracker
 - Provider: jira
@@ -79,5 +79,10 @@
   - [SWD-102](https://marcusknielsen.atlassian.net/browse/SWD-102) — Wedge control-story update
   - [SWD-106](https://marcusknielsen.atlassian.net/browse/SWD-106) — Contract/unit tests
 
+## Delivered
+- Specs: `docs/control/` (01–05), wedge control/I/O/follow-on cross-links
+- Code: `plcassistant/control/` (`ScanShell`), cascade bumpless + anti-windup, Skid phase orchestration
+- Tests: `tests/test_swd85_acceptance.py` — `python3 -m pytest -q` green
+
 ## Next
-`/implement SWD-85` — Build per this plan
+`/review-fix SWD-85` — Review and auto-fix until clean
