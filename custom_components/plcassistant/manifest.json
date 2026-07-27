@@ -3,6 +3,7 @@
   "name": "PLCAssistant",
   "codeowners": ["@marcuskrogh"],
   "config_flow": true,
+  "dependencies": ["mqtt"],
   "documentation": "https://github.com/marcuskrogh/PLCAssistant/blob/main/ha_app/INSTALL.md",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/marcuskrogh/PLCAssistant/issues",

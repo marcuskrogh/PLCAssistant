@@ -12,6 +12,7 @@ dependencies = []
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0"]
+mqtt = ["paho-mqtt>=1.6"]
 
 [tool.setuptools.packages.find]
 include = ["plcassistant*"]

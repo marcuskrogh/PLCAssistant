@@ -11,6 +11,10 @@ from plcassistant.io.integration import (
     ThinIntegrationStub,
 )
 from plcassistant.io.mqtt_bridge import InMemoryMqttBus, MqttIoBridge
+from plcassistant.io.mqtt_entity_bridge import (
+    MqttEntityBridge,
+    default_wedge_binding_config,
+)
 from plcassistant.io.mqtt_topics import (
     DEFAULT_INSTANCE_ID,
     MQTT_QOS,
@@ -39,6 +43,7 @@ __all__ = [
     "InMemoryMqttBus",
     "IoImage",
     "MQTT_QOS",
+    "MqttEntityBridge",
     "MqttIoBridge",
     "MqttTagPayload",
     "MockEntityStore",
@@ -51,6 +56,7 @@ __all__ = [
     "TagQuality",
     "cmd_topic",
     "collapse_quality",
+    "default_wedge_binding_config",
     "is_good",
     "parse_tag_topic",
     "status_topic",

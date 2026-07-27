@@ -18,21 +18,26 @@ def test_integration_required_files():
         "config_flow.py",
         "services.yaml",
         "strings.json",
+        "sensor.py",
+        "number.py",
         "README.md",
     ):
         assert (CC / name).is_file(), name
 
 
-def test_manifest_and_mqtt_config_keys():
+def test_manifest_mqtt_dependency_and_config_keys():
     manifest = json.loads((CC / "manifest.json").read_text(encoding="utf-8"))
     assert manifest["domain"] == "plcassistant"
     assert manifest["config_flow"] is True
+    assert "mqtt" in manifest.get("dependencies", [])
 
     const_text = (CC / "const.py").read_text(encoding="utf-8")
     for key in (
         "CONF_INSTANCE_ID",
         "CONF_MQTT_BROKER",
         "CONF_MQTT_PORT",
+        "CONF_BINDINGS",
+        "CONF_MOCK_MODE",
         "DEFAULT_MQTT_BROKER",
         "SERVICE_START",
         "SERVICE_STOP",
@@ -40,9 +45,18 @@ def test_manifest_and_mqtt_config_keys():
     ):
         assert key in const_text
 
-    topics = (CC / "mqtt_topics.py").read_text(encoding="utf-8")
-    assert "tag/{tag}/in" in topics.replace("{}", "") or "tag/" in topics
-    assert "/in" in topics and "/out" in topics
+    init_text = (CC / "__init__.py").read_text(encoding="utf-8")
+    assert "tag_in_topic" in init_text
+    assert "tag_out_topic" in init_text
+    assert "Platform.SENSOR" in init_text or "sensor" in init_text.lower()
+
+
+def test_platforms_publish_and_subscribe_paths():
+    sensor = (CC / "sensor.py").read_text(encoding="utf-8")
+    number = (CC / "number.py").read_text(encoding="utf-8")
+    assert "tag_in_topic" in sensor
+    assert "mqtt" in sensor
+    assert "tag_out" in number or "_tag_out" in number
 
 
 def test_services_yaml_has_operator_actions():
@@ -55,4 +69,4 @@ def test_services_yaml_has_operator_actions():
 def test_bundle_docs_mention_copy_install():
     install = (ROOT / "ha_app" / "INSTALL.md").read_text(encoding="utf-8")
     assert "custom_components/plcassistant" in install
-    assert "one-time copy" in install.lower() or "copy" in install.lower()
+    assert "copy" in install.lower()

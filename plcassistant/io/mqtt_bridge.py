@@ -1,7 +1,8 @@
 """MQTT ↔ IoImage bridge for the HA App path (SWD-84 / SWD-125).
 
 Uses an injectable bus so unit tests run with ``InMemoryMqttBus`` (no Mosquitto).
-Live broker clients are out of scope for CI; wire a real client in the App entry.
+The HA App entry (``plcassistant.app.runtime``) wires a live bus when options/MQTT
+are configured.
 """
 
 from __future__ import annotations
@@ -106,18 +107,31 @@ class MqttIoBridge:
         self.instance_id = instance_id
         self._out_tags = tuple(out_tags) if out_tags is not None else None
         self._pending_in: dict[str, MqttTagPayload] = {}
+        self._pending_cmds: list[str] = []
         self._started = False
+        self._cmd_handlers: dict[str, Callable[[], None]] = {}
 
     @property
     def pending_inputs(self) -> dict[str, MqttTagPayload]:
         return dict(self._pending_in)
 
+    @property
+    def pending_commands(self) -> tuple[str, ...]:
+        return tuple(self._pending_cmds)
+
+    def on_command(self, name: str, handler: Callable[[], None]) -> None:
+        """Register a handler for ``cmd/{name}`` operator pulses."""
+        self._cmd_handlers[name] = handler
+
     def start(self) -> None:
-        """Subscribe to IN topics for this instance."""
+        """Subscribe to IN and cmd topics for this instance."""
         if self._started:
             return
         pattern = tag_in_topic(self.instance_id, "+")
         self._bus.subscribe(pattern, self._on_message)
+        from plcassistant.io.mqtt_topics import cmd_topic
+
+        self._bus.subscribe(cmd_topic(self.instance_id, "+"), self._on_cmd_message)
         self._started = True
 
     def _on_message(self, topic: str, payload: bytes) -> None:
@@ -137,11 +151,24 @@ class MqttIoBridge:
             )
         self._pending_in[tag] = sample
 
-    def apply_inputs(self, image: IoImage) -> tuple[str, ...]:
+    def _on_cmd_message(self, topic: str, payload: bytes) -> None:
+        parts = topic.split("/")
+        if len(parts) != 4 or parts[0] != "plcassistant":
+            return
+        if parts[1] != self.instance_id or parts[2] != "cmd":
+            return
+        name = parts[3]
+        self._pending_cmds.append(name)
+        handler = self._cmd_handlers.get(name)
+        if handler is not None:
+            handler()
+
+    def apply_inputs(self, image: IoImage, *, clear: bool = True) -> tuple[str, ...]:
         """Apply buffered IN samples to ``image``; return tags applied.
 
-        Missing / never-received tags are left untouched (bindings / declare
-        still own defaults). Call at scan start after ``image.begin_inputs()``.
+        When ``clear`` is True (default), consumed samples are removed so a quiet
+        publisher does not forever re-assert the last value without a fresh
+        message (callers that need retain-until-stale can pass ``clear=False``).
         """
         applied: list[str] = []
         image.begin_inputs()
@@ -150,7 +177,15 @@ class MqttIoBridge:
                 continue
             image.apply_input(tag, sample.value, sample.status, sample.reason)
             applied.append(tag)
+            if clear:
+                self._pending_in.pop(tag, None)
         return tuple(applied)
+
+    def drain_commands(self) -> tuple[str, ...]:
+        """Return and clear buffered operator command names."""
+        cmds = tuple(self._pending_cmds)
+        self._pending_cmds.clear()
+        return cmds
 
     def publish_outputs(
         self,

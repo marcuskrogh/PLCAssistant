@@ -8,10 +8,11 @@ Automated tests live under `tests/` and must pass without a live Home Assistant 
 |----|-----------|--------------|
 | A1 | MQTT topic helpers build and parse the locked path shape | `tests/test_mqtt_topics.py` |
 | A2 | Bridge publishes OUT and receives IN via injectable bus | `tests/test_mqtt_bridge.py` |
-| A3 | Packaged App layout contains required files and Ingress/port config | `tests/test_ha_app_scaffold.py` |
+| A3 | Packaged App layout contains required files and Ingress/port config | `tests/test_ha_app_scaffold.py` (root `plc_assistant/`) |
 | A4 | Bundled thin integration layout contains required files and MQTT config keys | `tests/test_bundled_integration.py` |
-| A5 | Repository metadata for custom GitHub App install exists | `tests/test_github_app_repo.py` |
+| A5 | Repository metadata for custom GitHub App install exists at repo root | `tests/test_github_app_repo.py` |
 | A6 | Existing soft-PLC + surface regression suite still green | full `pytest` |
+| A7 | App + integration MQTT adapters round-trip over in-memory bus | `tests/test_mqtt_entity_bridge.py`, `tests/test_swd84_acceptance.py` |
 
 ## Human (HA OS)
 

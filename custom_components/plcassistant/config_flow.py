@@ -9,6 +9,7 @@ from homeassistant.data_entry_flow import FlowResult
 
 from .const import (
     CONF_INSTANCE_ID,
+    CONF_MOCK_MODE,
     CONF_MQTT_BROKER,
     CONF_MQTT_PORT,
     DEFAULT_INSTANCE_ID,
@@ -22,7 +23,7 @@ STEP_USER_DATA_SCHEMA = vol.Schema(
         vol.Required(CONF_INSTANCE_ID, default=DEFAULT_INSTANCE_ID): str,
         vol.Required(CONF_MQTT_BROKER, default=DEFAULT_MQTT_BROKER): str,
         vol.Required(CONF_MQTT_PORT, default=DEFAULT_MQTT_PORT): int,
-        vol.Optional("mock_mode", default=True): bool,
+        vol.Optional(CONF_MOCK_MODE, default=True): bool,
     }
 )
 
@@ -39,4 +40,5 @@ class PlcAssistantConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         await self.async_set_unique_id(user_input[CONF_INSTANCE_ID])
         self._abort_if_unique_id_configured()
 
+        # Broker fields document required Mosquitto alignment; transport uses HA MQTT.
         return self.async_create_entry(title="PLCAssistant", data=user_input)

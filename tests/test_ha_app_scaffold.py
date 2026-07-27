@@ -7,7 +7,7 @@ import pathlib
 import yaml
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-APP = ROOT / "ha_app" / "plcassistant"
+APP = ROOT / "plc_assistant"
 
 
 def test_app_required_files_exist():
@@ -34,8 +34,10 @@ def test_config_ingress_and_port():
     assert opts["instance_id"] == "default"
 
 
-def test_run_sh_persists_program_path():
+def test_run_sh_wires_ha_runtime():
     text = (APP / "run.sh").read_text(encoding="utf-8")
     assert "program.json" in text
     assert "plcassistant.app" in text
     assert "0.0.0.0" in text
+    assert "--ha-runtime" in text or "PLCASSISTANT_HA_RUNTIME" in text
+    assert "options.json" in text

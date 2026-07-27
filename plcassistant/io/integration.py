@@ -4,7 +4,9 @@ Owns tag declarations / bindings / units / mock entity store. The Add-on owns
 the live ``IoImage``; this stub only feeds INs and sinks OUTs via
 ``BindingTable.apply_in`` / ``apply_out`` (mock path ≡ field path).
 
-No Home Assistant dependency. Real HA IPC is later (SWD-84).
+No Home Assistant dependency. Real HA path is MQTT (SWD-84): see
+``plcassistant.io.mqtt_entity_bridge`` and ``custom_components/plcassistant/``.
+This stub remains the non-HA pytest path (mock path ≡ field path).
 """
 
 from __future__ import annotations

@@ -88,8 +88,28 @@ class MqttTagPayload:
         else:
             reason = ReasonCode(str(reason_raw))
         ts = data.get("ts")
-        ts_f = float(ts) if ts is not None else None
-        return cls(value=data.get("value"), status=status, reason=reason, ts=ts_f)
+        ts_f: float | None
+        if ts is None:
+            ts_f = None
+        else:
+            try:
+                ts_f = float(ts)
+            except (TypeError, ValueError):
+                ts_f = None
+
+        if "value" not in data:
+            if status is QualityStatus.GOOD:
+                status = QualityStatus.BAD
+                reason = ReasonCode.UNAVAILABLE
+            return cls(value=None, status=status, reason=reason, ts=ts_f)
+
+        value = data.get("value")
+        if status is QualityStatus.GOOD and value is None:
+            status = QualityStatus.BAD
+            reason = ReasonCode.UNAVAILABLE
+            return cls(value=None, status=status, reason=reason, ts=ts_f)
+
+        return cls(value=value, status=status, reason=reason, ts=ts_f)
 
     @classmethod
     def decode(cls, raw: bytes | str) -> MqttTagPayload:

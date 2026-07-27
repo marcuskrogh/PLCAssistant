@@ -73,10 +73,28 @@ class AppState:
         self.program_path = program_path
         loaded: dict[str, Any] | None = initial_program
         if loaded is None and program_path and os.path.isfile(program_path):
-            with open(program_path, encoding="utf-8") as fh:
-                loaded = json.load(fh)
+            try:
+                with open(program_path, encoding="utf-8") as fh:
+                    loaded = json.load(fh)
+                if not isinstance(loaded, dict):
+                    loaded = None
+            except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+                # Corrupt program-of-record must not prevent App restart (H6 recovery).
+                loaded = None
         if loaded is not None:
-            self.loader.load(program_from_dict(loaded))
+            try:
+                self.loader.load(program_from_dict(loaded))
+            except (ValueError, KeyError, TypeError):
+                self.loader.load(
+                    program_from_dict(
+                        {
+                            "version": "1.0",
+                            "instances": {},
+                            "wires": [],
+                            "execution_order": [],
+                        }
+                    )
+                )
         else:
             self.loader.load(
                 program_from_dict(
@@ -97,15 +115,21 @@ class AppState:
         return program_to_dict(prog)
 
     def persist_program(self) -> None:
-        """Write program-of-record to ``program_path`` when configured (App /data)."""
+        """Write program-of-record to ``program_path`` when configured (App /data).
+
+        Uses temp file + ``os.replace`` so a crash mid-write cannot truncate the
+        live program file.
+        """
         if not self.program_path:
             return
         parent = os.path.dirname(self.program_path)
         if parent:
             os.makedirs(parent, exist_ok=True)
-        with open(self.program_path, "w", encoding="utf-8") as fh:
+        tmp_path = f"{self.program_path}.tmp"
+        with open(tmp_path, "w", encoding="utf-8") as fh:
             json.dump(self.program_dict, fh, indent=2)
             fh.write("\n")
+        os.replace(tmp_path, self.program_path)
 
 
 def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
@@ -206,6 +230,7 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
                         return
                     remove_user_template(prog, tid)
                     state.library.unregister("user", tid)
+                    state.persist_program()
                     self._send_json({"deleted": tid})
                 else:
                     self._send_error_json("Not found", 404)
@@ -256,6 +281,7 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
                 return
             add_user_template(prog, tmpl)
             state.library.register(tmpl)
+            state.persist_program()
             self._send_json({
                 "template_id": tmpl.template_id,
                 "library": tmpl.library,
@@ -283,6 +309,7 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
             prog.instances[iid] = inst
             if iid not in prog.execution_order:
                 prog.execution_order.append(iid)
+            state.persist_program()
             self._send_json(program_to_dict(prog))
 
         def _handle_post_reset_instance(self) -> None:
@@ -305,6 +332,7 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
                 )
                 return
             prog.instances[iid] = reset_instance(inst, tmpl)
+            state.persist_program()
             self._send_json(program_to_dict(prog))
 
         def _handle_post_apply(self) -> None:
@@ -318,9 +346,11 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
                 return
             if mode == "restart":
                 state.loader.restart_apply(prog)
+                state.persist_program()
                 self._send_json({"applied": "restart"})
             elif mode == "hot":
                 state.loader.hot_apply(prog, superuser=state.superuser_hot_apply)
+                state.persist_program()
                 self._send_json({"applied": "hot"})
             else:
                 self._send_error_json(f"Unknown mode {mode!r}")

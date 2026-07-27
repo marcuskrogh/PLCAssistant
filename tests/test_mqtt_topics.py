@@ -60,6 +60,22 @@ def test_payload_bad_requires_reason():
     assert again.reason is ReasonCode.UNAVAILABLE
 
 
+def test_missing_value_demotes_good():
+    data = {"status": "GOOD"}
+    payload = MqttTagPayload.from_dict(data)
+    assert payload.status is QualityStatus.BAD
+    assert payload.reason is ReasonCode.UNAVAILABLE
+
+
+def test_bad_ts_does_not_drop_value():
+    payload = MqttTagPayload.from_dict(
+        {"value": 1.5, "status": "GOOD", "reason": None, "ts": "nope"}
+    )
+    assert payload.value == 1.5
+    assert payload.status is QualityStatus.GOOD
+    assert payload.ts is None
+
+
 def test_payload_rejects_good_with_reason():
     with pytest.raises(ValueError):
         MqttTagPayload(value=1, status=QualityStatus.GOOD, reason=ReasonCode.FAULT)
