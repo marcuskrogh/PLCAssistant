@@ -36,7 +36,7 @@ The thin integration ships at `custom_components/plcassistant/`.
 cp -a custom_components/plcassistant /config/custom_components/plcassistant
 ```
 
-Restart Home Assistant Core and add the **PLCAssistant** integration. `instance_id` must match the App option (default `default`). Mosquitto / HA MQTT integration must be configured. Mock mode creates sensor/number entities that publish tag IN and sink tag OUT over MQTT.
+Restart Home Assistant Core and add the **PLCAssistant** integration. `instance_id` must match the App option (default `default`). Mosquitto / HA MQTT integration must be configured. Mock mode creates **Number** entities that publish tag IN (writable) and sink tag OUT over MQTT.
 
 ## Configure MQTT
 

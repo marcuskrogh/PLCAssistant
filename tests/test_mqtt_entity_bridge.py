@@ -52,8 +52,10 @@ def test_scan_loop_once_and_commands():
     assert image.get_value("CMD_SPEED") == 10.0
 
     bus.publish(cmd_topic("default", "stop"), b"1")
+    loop.scan_once()
     assert loop.scanning is False
     bus.publish(cmd_topic("default", "start"), b"1")
+    loop.scan_once()
     assert loop.scanning is True
 
 

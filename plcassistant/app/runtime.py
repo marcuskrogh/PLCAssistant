@@ -100,31 +100,26 @@ class MqttScanLoop:
         self._thread: threading.Thread | None = None
         self._lock = threading.Lock()
         self._alive = False
-        self.bridge.on_command("start", self._cmd_start)
-        self.bridge.on_command("stop", self._cmd_stop)
-        self.bridge.on_command("reset", self._cmd_reset)
+        # Handlers optional; scan_once applies drained cmds on the scan thread.
+        self.bridge.on_command("start", lambda: None)
+        self.bridge.on_command("stop", lambda: None)
+        self.bridge.on_command("reset", lambda: None)
 
-    def _cmd_start(self) -> None:
-        with self._lock:
-            self.commands.append("start")
-            self.scanning = True
-        self.bridge.publish_status("running")
-
-    def _cmd_stop(self) -> None:
-        with self._lock:
-            self.commands.append("stop")
-            self.scanning = False
-        self.bridge.publish_status("stopped")
-
-    def _cmd_reset(self) -> None:
-        with self._lock:
-            self.commands.append("reset")
-            # Re-declare defaults by rewriting outputs/inputs to declared defaults.
-            for name in self.image.names():
-                snap = self.image.snapshot()[name]
-                # Force a GOOD write of default for OUT tags after reset.
-                self.image.set_output(name, snap.default)
-        self.bridge.publish_status("reset")
+    def _apply_commands(self, cmds: tuple[str, ...]) -> None:
+        for name in cmds:
+            with self._lock:
+                self.commands.append(name)
+            if name == "start":
+                self.scanning = True
+                self.bridge.publish_status("running")
+            elif name == "stop":
+                self.scanning = False
+                self.bridge.publish_status("stopped")
+            elif name == "reset":
+                for tag_name in self.image.names():
+                    snap = self.image.snapshot()[tag_name]
+                    self.image.set_output(tag_name, snap.default)
+                self.bridge.publish_status("reset")
 
     def start(self) -> None:
         if self._thread is not None:
@@ -147,8 +142,7 @@ class MqttScanLoop:
         self.bridge.apply_inputs(self.image, clear=True)
         drained = self.bridge.drain_commands()
         if drained:
-            with self._lock:
-                self.commands.extend(drained)
+            self._apply_commands(drained)
         if self.scanning:
             self.logic(self.image)
             self.bridge.publish_outputs(self.image)

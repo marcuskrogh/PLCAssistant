@@ -78,14 +78,24 @@ def test_apply_inputs_clears_pending_by_default():
     assert bridge.pending_inputs == {}
 
 
-def test_cmd_topics_are_consumed():
+def test_cmd_topics_are_queued_for_scan_thread():
     bus = InMemoryMqttBus()
     bridge = MqttIoBridge(bus)
-    seen: list[str] = []
-    bridge.on_command("start", lambda: seen.append("start"))
     bridge.start()
     from plcassistant.io.mqtt_topics import cmd_topic
 
     bus.publish(cmd_topic("default", "start"), b"1")
-    assert seen == ["start"]
     assert bridge.drain_commands() == ("start",)
+    assert bridge.pending_commands == ()
+
+
+def test_bad_payload_becomes_fault_quality():
+    bus = InMemoryMqttBus()
+    bridge = MqttIoBridge(bus)
+    bridge.start()
+    image = _image()
+    bus.publish(tag_in_topic("default", "LT_TANK"), b"not-json")
+    bridge.apply_inputs(image)
+    q = image.get_quality("LT_TANK")
+    assert q.status is QualityStatus.BAD
+    assert q.reason is ReasonCode.FAULT

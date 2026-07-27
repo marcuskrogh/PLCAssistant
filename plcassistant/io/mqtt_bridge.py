@@ -165,9 +165,8 @@ class MqttIoBridge:
         name = parts[3]
         with self._lock:
             self._pending_cmds.append(name)
-        handler = self._cmd_handlers.get(name)
-        if handler is not None:
-            handler()
+        # Do not invoke handlers here — apply on the scan thread via drain_commands
+        # so IoImage / scanning mutations stay single-threaded.
 
     def apply_inputs(self, image: IoImage, *, clear: bool = True) -> tuple[str, ...]:
         """Apply buffered IN samples to ``image``; return tags applied.
