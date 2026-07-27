@@ -85,5 +85,8 @@
 - Tests: `tests/test_swd85_acceptance.py` — `python3 -m pytest -q` — 121 passed at ship
 - Shipped: [PR #18](https://github.com/marcuskrogh/PLCAssistant/pull/18) merge `a51cdbe`
 
+## Research (SWD-82 input)
+- Active theme research: [`docs/RESEARCH.md`](RESEARCH.md) (Programming surface) — supportive evidence only; does not lock SWD-82 scope
+
 ## Next
 Done — phase closed. Suggested initiative next: `/define SWD-82`
