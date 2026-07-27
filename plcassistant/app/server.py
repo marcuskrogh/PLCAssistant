@@ -59,17 +59,35 @@ _ENV_HOT_APPLY = "PLCASSISTANT_SUPERUSER_HOT_APPLY"
 class AppState:
     """Mutable shared state for one App server instance."""
 
-    def __init__(self, initial_program: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self,
+        initial_program: dict[str, Any] | None = None,
+        *,
+        program_path: str | None = None,
+    ) -> None:
         self.loader, self.library, self.runtime = _make_loader()
         # Server-side hot-apply authority: read env var once at startup.
         self.superuser_hot_apply: bool = (
             os.environ.get(_ENV_HOT_APPLY, "") == "1"
         )
-        if initial_program is not None:
-            self.loader.load(program_from_dict(initial_program))
+        self.program_path = program_path
+        loaded: dict[str, Any] | None = initial_program
+        if loaded is None and program_path and os.path.isfile(program_path):
+            with open(program_path, encoding="utf-8") as fh:
+                loaded = json.load(fh)
+        if loaded is not None:
+            self.loader.load(program_from_dict(loaded))
         else:
-            from plcassistant.surface.schema import program_from_dict as _pfd
-            self.loader.load(_pfd({"version": "1.0", "instances": {}, "wires": [], "execution_order": []}))
+            self.loader.load(
+                program_from_dict(
+                    {
+                        "version": "1.0",
+                        "instances": {},
+                        "wires": [],
+                        "execution_order": [],
+                    }
+                )
+            )
 
     @property
     def program_dict(self) -> dict[str, Any]:
@@ -77,6 +95,17 @@ class AppState:
         if prog is None:
             return {"version": "1.0", "instances": {}, "wires": [], "execution_order": []}
         return program_to_dict(prog)
+
+    def persist_program(self) -> None:
+        """Write program-of-record to ``program_path`` when configured (App /data)."""
+        if not self.program_path:
+            return
+        parent = os.path.dirname(self.program_path)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        with open(self.program_path, "w", encoding="utf-8") as fh:
+            json.dump(self.program_dict, fh, indent=2)
+            fh.write("\n")
 
 
 def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
@@ -154,6 +183,7 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
                     data = self._read_json()
                     new_prog = program_from_dict(data)
                     state.loader.restart_apply(new_prog)
+                    state.persist_program()
                     self._send_json(state.program_dict)
                 else:
                     self._send_error_json("Not found", 404)
@@ -304,6 +334,7 @@ def run_app(
     initial_program: dict[str, Any] | None = None,
     *,
     state: AppState | None = None,
+    program_path: str | None = None,
 ) -> HTTPServer:
     """Create and start the App HTTP server.
 
@@ -312,7 +343,7 @@ def run_app(
     For testing call ``server.handle_request()`` directly.
     """
     if state is None:
-        state = AppState(initial_program)
+        state = AppState(initial_program, program_path=program_path)
     handler = make_handler(state)
     server = HTTPServer((host, port), handler)
     return server

@@ -66,10 +66,12 @@
 6. **Acceptance** — checklist + automated tests where feasible (MQTT round-trip, persistence, docs)
 
 ## Open items
-- Exact MQTT topic namespace and payload schema (lock in package 1 / 3)
-- How the App bundles/registers the thin integration on first start (copy into `custom_components` vs documented sidecar install zip) — prefer one mechanism in package 4
 - Whether Ingress auth reuses HA session only or needs App-side auth for the exposed port
-- Versioning / update channel for the GitHub App repo
+- Versioning / update channel for the GitHub App repo (see `ha_app/INSTALL.md`)
+
+## Locked during implement
+- MQTT topic namespace + payload schema → `docs/packaging/02-mqtt-topics.md` + `plcassistant.io.mqtt_topics`
+- Bundle mechanism → documented one-time copy of `custom_components/plcassistant/` (not auto-copy)
 
 ## Tracker
 - Provider: jira
@@ -84,4 +86,4 @@
   - [SWD-124](https://marcusknielsen.atlassian.net/browse/SWD-124) — Acceptance tests + checklist
 
 ## Next
-`/implement SWD-84` — Build per this plan
+`/review-fix SWD-84` — Implement complete; Task In Review
