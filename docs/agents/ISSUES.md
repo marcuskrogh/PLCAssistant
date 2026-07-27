@@ -4,7 +4,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 | Key | Type | Title | Status | Parent | Artifact | Next |
 |-----|------|-------|--------|--------|----------|------|
-| SWD-81 | Story | PLCAssistant — Virtual PLC for Home Assistant | To Do | — | docs/ROADMAP.md | `/define SWD-84` |
+| SWD-81 | Story | PLCAssistant — Virtual PLC for Home Assistant | To Do | — | docs/ROADMAP.md | `/implement SWD-84` |
 | SWD-83 | Task | Explore theme: Lab / hobby / small-process wedge | Done | SWD-81 | docs/PLAN.md (prior), docs/wedge/, plcassistant/wedge/ | Done — phase closed |
 | SWD-88 | Sub-task | SWD-83: Reference process spec | Done | SWD-83 | docs/wedge/01-reference-process.md | — |
 | SWD-87 | Sub-task | SWD-83: I/O & HMI contract for the skid | Done | SWD-83 | docs/wedge/02-io-hmi-contract.md | — |
@@ -37,7 +37,13 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-117 | Sub-task | SWD-82: Apply policy (restart + hot-apply) | Done | SWD-82 | docs/surface/04-apply-policy.md, plcassistant/surface/apply.py | — |
 | SWD-121 | Sub-task | SWD-82: Wedge skid migration onto blocks | Done | SWD-82 | docs/surface/06-wedge-migration.md, plcassistant/wedge/skid.py | — |
 | SWD-118 | Sub-task | SWD-82: Contract/unit tests + acceptance | Done | SWD-82 | docs/surface/07-acceptance.md, tests/test_swd82_acceptance.py | — |
-| SWD-84 | Task | Explore theme: Packaging shape | To Do | SWD-81 | docs/RESEARCH.md, docs/ROADMAP.md | `/define SWD-84` |
+| SWD-84 | Task | Explore theme: Packaging shape | To Do | SWD-81 | docs/PLAN.md, docs/RESEARCH.md | `/implement SWD-84` |
+| SWD-122 | Sub-task | SWD-84: Packaging contract docs | To Do | SWD-84 | docs/PLAN.md, docs/wedge/08-packaging-sketch.md | — |
+| SWD-123 | Sub-task | SWD-84: HA App scaffold | To Do | SWD-84 | docs/PLAN.md | — |
+| SWD-125 | Sub-task | SWD-84: MQTT I/O bridge (App) | To Do | SWD-84 | docs/PLAN.md | — |
+| SWD-126 | Sub-task | SWD-84: Bundled thin integration | To Do | SWD-84 | docs/PLAN.md | — |
+| SWD-127 | Sub-task | SWD-84: GitHub App repository + install docs | To Do | SWD-84 | docs/PLAN.md | — |
+| SWD-124 | Sub-task | SWD-84: Acceptance tests + checklist | To Do | SWD-84 | docs/PLAN.md | — |
 
 ## Log
 
