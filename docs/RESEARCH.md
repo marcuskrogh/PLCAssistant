@@ -135,4 +135,4 @@ Draft define should lock (conceptually, not necessarily code):
 
 ## Next
 
-`/implement SWD-85` — build per `docs/PLAN.md` (research consumed by define).
+`/review-fix SWD-85` — review implement PR #18
