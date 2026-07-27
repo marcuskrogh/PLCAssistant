@@ -130,9 +130,9 @@ Draft define should lock (conceptually, not necessarily code):
 
 ## Tracker
 
-- Task [SWD-85](https://marcusknielsen.atlassian.net/browse/SWD-85) is **In Review** (review-fix CLEAN); research artifact is this doc; definition is `docs/PLAN.md`.
-- Story [SWD-81](https://marcusknielsen.atlassian.net/browse/SWD-81) Next → `/ship SWD-85`.
+- Task [SWD-85](https://marcusknielsen.atlassian.net/browse/SWD-85) is **Done** (shipped PR #18 merge `a51cdbe`); research artifact is this doc; definition is `docs/PLAN.md`.
+- Story [SWD-81](https://marcusknielsen.atlassian.net/browse/SWD-81) Next → `/define SWD-82`.
 
 ## Next
 
-`/ship SWD-85` — merge implement PR #18
+Done — phase closed. Suggested initiative next: `/define SWD-82`
