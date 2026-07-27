@@ -1,92 +1,95 @@
-# Implementation plan: Control semantics (SWD-85)
+# Implementation plan: Programming surface (SWD-82)
 
 ## Summary
-- Soft-PLC core is an **IEC 61131-shaped cyclic scan**: IN → **safety** → **control** → OUT each cycle — not HA event callbacks as the control engine.
-- **Continuous FB semantics** (cascade PI) run *inside* the scan with explicit `dt`, clamps, anti-windup, and bumpless Start.
-- **Safety** at this ambition = latched trips / permissives / LOS on non-GOOD every scan, forcing CV to safe — **not** SIL, dual-channel, or formal verification of user programs.
-- HA remains the **async I/O / HMI bus**; events update a sample buffer that the scan samples — they do not execute mid-scan logic.
+- Progressive **Python block library**: place copies → edit that copy → or author new library blocks in-App.
+- **YAML is canonical**; App **visual editor** reads/writes the same YAML. HA **integration stays connections-only** (entities ↔ tags).
+- **Hybrid graph**: pin wiring + explicit deterministic execution order on the scan.
+- **Fixed** mode/safety shell (non-bypassable). User graph runs in CONTROL only.
+- **Hybrid wedge**: framework + enough blocks to run the mock skid on the new surface.
+- Apply changes via **restart** by default; **super-user hot-apply** for development.
 
 ## Scope
 **In**
-- Scan scheduler contract: period notion, injectable `dt`, fixed phase order, optional overrun/jitter diagnostics (hobby-grade)
-- Continuous FB / PID minimum for wedge cascade: sample time = scan `dt`, P+I required, D optional/off by default, output clamps, conditional anti-windup, bumpless integral init on Start
-- Safety precedence relative to continuous loops: evaluate every scan **before** control writes; trip/stop force `CMD_SPEED = 0` and freeze/disable integrators
-- Mode enable rules: continuous FBs active only when `MODE = RUNNING` and pump permit; `STOP`/`TRIPPED` hold last SPs on HMI side as already specified
-- Document HA↔cyclic boundary (sample buffer vs scan clock); align wedge control/runtime to the locked semantics
-- Contract/unit tests covering scan order, safety override, anti-windup, bumpless Start, `dt` injectability
-- Update wedge control story notes that deferred exact PID/timing to SWD-85
+- Block model + YAML schema (instances as copies, pins/wires, params, execution order)
+- Python block runtime API (scan tick; tag/pin I/O) inside Soft-PLC App
+- Built-in library (read-only) with wedge-capable blocks (e.g. Level/Flow PI and supporting pieces)
+- User library: create/edit custom Python blocks via **in-App editor**; place always **copies**; **reset-to-library** on a placed copy
+- App visual canvas + YAML editing of the same program
+- Loader: restart-apply default; super-user on-the-fly apply
+- Migrate mock skid control path onto the block program (safety/mode shell unchanged)
+- Contract/unit tests + a minimal App editor smoke path
 
 **Out**
-- SIL / IEC 61508/62061 compliance, certified safety PLC, dual-channel I/O
-- Full IEC 61131-3 language runtime (LD/ST/SFC editors) — programming surface is SWD-82
-- IEC 61499 event-driven FB distribution as primary mental model
-- Quantitative autotune / research-grade cascade tuning
-- Change-detect OUT writes (still every-scan flush per SWD-86)
-- Final packaging / Add-on install shape (SWD-84)
-- Physical rig commissioning
-- Formal model checking of user programs
+- SIL / certified safety authoring
+- Full IEC 61131 IDE (LD/ST/SFC editors) — Python blocks first; IEC later optional
+- Behavior trees / LLM codegen as primary surface
+- HA automations / Node-RED as the Soft-PLC program
+- Editing built-in library definitions
+- Deep packaging freeze beyond “App hosts editor + runtime; integration = bindings” ([SWD-84](https://marcusknielsen.atlassian.net/browse/SWD-84))
+- Physical rig
 
 ## Decisions
-- **Cyclic 61131-shaped core** over 61499-first; HA keeps async distribution
-- Scan order locked: **IN → safety → control → OUT**
-- Safety and control share the same scan; demo target period ≤ 100 ms (align packaging/mock timebase); `dt` injectable (no wall-clock hard-coding in core)
-- Cascade FB: PI sufficient for v1; D deferred (API may reserve Td = 0)
-- Anti-windup: conditional integration (clamp + freeze I when pushing further into saturation) — already sketched in wedge; lock as required behavior
-- Bumpless Start: initialize integrals so first RUNNING scan does not jump `CMD_SPEED` / `SP_FLOW` unboundedly
-- Trip/Stop: reset or freeze integrators; CV = 0 immediately
-- Overrun/jitter: optional diagnostic counters/hooks only — not hard real-time guarantees
-- Non-GOOD PV: safety LOS trips as wedge; control must not treat non-GOOD as live PV (existing `is_good` collapse)
+- Easy path = **block library + params** on a visual canvas (YAML equivalent)
+- Depth = edit **placed copy** or add **custom user-library** Python block
+- Python only for v1 block bodies
+- YAML program-of-record; visual updates YAML
+- Safety/mode **fixed shell**; user blocks cannot bypass
+- Built-ins **stock** (read-only templates); user library for new templates
+- Place always **copies** the template; editing a placed block never mutates the library; **reset-to-library** restores a placed copy from its template
+- Hybrid wiring + execution order (topo-sort default; explicit override allowed)
+- Editor + runtime in the **App** (formerly “Add-on”); integration = connections layer only
+- Restart to apply program changes by default; **super-user hot-apply** for development
 
 ## Constraints
-- Preserve SWD-83 wedge tag names, cascade structure, modes, and five safety behaviors
-- Preserve SWD-86 I/O image + quality + scan-boundary IN/OUT APIs
-- Soft-PLC owns the scan clock; thin integration only feeds/sinks the image
-- Must not claim SIL or “verified PLC” in docs or UX copy
-- Demo-grade gains/timing OK; document defaults; leave tuning knobs (`PID_*`) as already sketched in I/O contract
+- Preserve SWD-85 scan order: IN → safety → control → OUT; user graph executes only in CONTROL
+- Preserve SWD-86 I/O image, quality, and bindings; integration must not grow a program authoring surface
+- Must not claim SIL or certified safety PLC
+- Soft-PLC ≠ HA automations — program-of-record lives in the App (YAML), not HA automation YAML
+- Built-in library templates remain stock; no in-place mutation of shipped blocks
+- Demo-grade wedge behavior must still pass existing mock acceptance intent after migration
+
+## Inputs (supportive — not substitutes for decisions above)
+- Research: [`docs/RESEARCH.md`](RESEARCH.md) (multi-axis programming-surface survey)
+- Prior locks: `docs/control/*`, `docs/io/*`, `docs/wedge/*`
 
 ## Acceptance criteria
-- Documented scan contract states phase order, `dt` rules, and safety-before-control precedence
-- Documented FB contract covers PI sample time, clamps, anti-windup, bumpless Start, disable-on-not-RUNNING
-- HA↔cyclic boundary documented: events → buffer; scan samples image; no mid-scan HA-driven logic
-- Wedge runtime (`plcassistant/wedge`) implements the locked order and FB behaviors (or thin adapter if scan shell lives beside skid)
-- Tests prove: safety can zero CV the same scan a trip asserts; integrators do not wind unboundedly at clamp; Start does not produce an unbounded CV step; `dt` is caller-supplied; fixed phase order observable
-- No real HA required for green tests
+- Mock skid runnable as a YAML + visual program of built-in blocks under the fixed safety shell
+- Placing a block creates an independent copy; editing it does not change the library; reset restores from template
+- User can create a custom Python block in-App, place it, and see it run in CONTROL
+- YAML ↔ visual round-trip for the same program
+- Restart applies program changes; super-user hot-apply documented and testable
+- Safety still forces CV safe the same scan regardless of user graph
+- Tests cover loader, copy-on-place, reset, execution order, and safety precedence without real HA
 
 ## Work packages
-1. **Scan scheduler contract** — phase order, period/`dt`, overrun hooks → `docs/control/01-scan-scheduler.md`, scan shell sketch in `plcassistant/control/` (or wedge scan façade) ([SWD-103](https://marcusknielsen.atlassian.net/browse/SWD-103))
-2. **Continuous FB / PID semantics** — cascade PI contract (clamps, anti-windup, bumpless, Ts=`dt`) → `docs/control/02-fb-pid.md`, align `plcassistant/wedge/control.py` ([SWD-105](https://marcusknielsen.atlassian.net/browse/SWD-105))
-3. **Safety precedence in the scan** — safety-before-control, CV force-zero, integrator disable → `docs/control/03-safety-precedence.md`, align skid/safety orchestration ([SWD-104](https://marcusknielsen.atlassian.net/browse/SWD-104))
-4. **HA↔cyclic boundary note** — sample buffer vs scan clock; cross-links to `docs/io/` → `docs/control/04-ha-cyclic-boundary.md` ([SWD-101](https://marcusknielsen.atlassian.net/browse/SWD-101))
-5. **Wedge control-story update** — retire “PID/timing deferred to SWD-85” where now locked; point to control docs ([SWD-102](https://marcusknielsen.atlassian.net/browse/SWD-102))
-6. **Contract/unit tests** — scan order, trip same-scan CV=0, anti-windup, bumpless Start, injectable `dt` ([SWD-106](https://marcusknielsen.atlassian.net/browse/SWD-106))
+1. **Block model + YAML schema** — instance copies, pins/wires, params, execution order → `docs/surface/`, schema module ([SWD-119](https://marcusknielsen.atlassian.net/browse/SWD-119))
+2. **Python block runtime + scan integration** — tick API; CONTROL-phase execution ([SWD-116](https://marcusknielsen.atlassian.net/browse/SWD-116))
+3. **Built-in wedge block library** — Level/Flow PI and supporting stock blocks ([SWD-115](https://marcusknielsen.atlassian.net/browse/SWD-115))
+4. **User library + in-App Python editor** — create/edit user templates; copy-on-place; reset-to-library ([SWD-114](https://marcusknielsen.atlassian.net/browse/SWD-114))
+5. **App visual canvas** — wires + order bound to YAML ([SWD-120](https://marcusknielsen.atlassian.net/browse/SWD-120))
+6. **Apply policy** — restart default + super-user hot-apply ([SWD-117](https://marcusknielsen.atlassian.net/browse/SWD-117))
+7. **Wedge skid migration** — mock skid control path onto block program; shell unchanged ([SWD-121](https://marcusknielsen.atlassian.net/browse/SWD-121))
+8. **Contract/unit tests + acceptance doc** ([SWD-118](https://marcusknielsen.atlassian.net/browse/SWD-118))
 
 ## Open items
-- ~~Exact default scan period constant vs config field name~~ — resolved: `scan_period_s` default `0.1`
-- ~~Whether D term lands as stub (`Td=0`) or is omitted from API until needed~~ — resolved: `level_td` / `flow_td` stubs at 0
-- ~~Whether scan shell lives in new `plcassistant/control/` package vs extending `plcassistant/wedge/skid.py` only~~ — resolved: `plcassistant/control/` + Skid uses `ScanShell`
-- ~~Overrun diagnostic surface (tag vs log-only)~~ — resolved: `ScanDiagnostics` counters (not HMI tags)
+- Exact YAML field names / pin typing details — lock during implement of package 1
+- Super-user hot-apply auth mechanism (App setting vs env flag) — lock in package 6
+- Whether “App” rename lands in all historical wedge/packaging docs in this Task or only new SWD-82 docs — prefer new docs + light cross-links; full rename can ride SWD-84
 
 ## Tracker
 - Provider: jira
 - Story: [SWD-81](https://marcusknielsen.atlassian.net/browse/SWD-81)
-- Task: [SWD-85](https://marcusknielsen.atlassian.net/browse/SWD-85)
+- Task: [SWD-82](https://marcusknielsen.atlassian.net/browse/SWD-82)
 - Research: [`docs/RESEARCH.md`](RESEARCH.md)
 - Sub-tasks:
-  - [SWD-103](https://marcusknielsen.atlassian.net/browse/SWD-103) — Scan scheduler contract
-  - [SWD-105](https://marcusknielsen.atlassian.net/browse/SWD-105) — Continuous FB / PID semantics
-  - [SWD-104](https://marcusknielsen.atlassian.net/browse/SWD-104) — Safety precedence in the scan
-  - [SWD-101](https://marcusknielsen.atlassian.net/browse/SWD-101) — HA↔cyclic boundary note
-  - [SWD-102](https://marcusknielsen.atlassian.net/browse/SWD-102) — Wedge control-story update
-  - [SWD-106](https://marcusknielsen.atlassian.net/browse/SWD-106) — Contract/unit tests
-
-## Delivered
-- Specs: `docs/control/` (01–05), wedge control/I/O/follow-on cross-links
-- Code: `plcassistant/control/` (`ScanShell`), cascade bumpless + anti-windup, Skid phase orchestration
-- Tests: `tests/test_swd85_acceptance.py` — `python3 -m pytest -q` — 121 passed at ship
-- Shipped: [PR #18](https://github.com/marcuskrogh/PLCAssistant/pull/18) merge `a51cdbe`
-
-## Research (SWD-82 input)
-- Active theme research: [`docs/RESEARCH.md`](RESEARCH.md) (Programming surface) — supportive evidence only; does not lock SWD-82 scope
+  - [SWD-119](https://marcusknielsen.atlassian.net/browse/SWD-119) — Block model + YAML schema
+  - [SWD-116](https://marcusknielsen.atlassian.net/browse/SWD-116) — Python block runtime + scan integration
+  - [SWD-115](https://marcusknielsen.atlassian.net/browse/SWD-115) — Built-in wedge block library
+  - [SWD-114](https://marcusknielsen.atlassian.net/browse/SWD-114) — User library + in-App Python editor
+  - [SWD-120](https://marcusknielsen.atlassian.net/browse/SWD-120) — App visual canvas bound to YAML
+  - [SWD-117](https://marcusknielsen.atlassian.net/browse/SWD-117) — Apply policy (restart + hot-apply)
+  - [SWD-121](https://marcusknielsen.atlassian.net/browse/SWD-121) — Wedge skid migration onto blocks
+  - [SWD-118](https://marcusknielsen.atlassian.net/browse/SWD-118) — Contract/unit tests + acceptance
 
 ## Next
-Done — phase closed. Suggested initiative next: `/define SWD-82`
+`/implement SWD-82` — Build per this plan

@@ -192,4 +192,4 @@ Particulars for define that remain open (non-exhaustive):
 
 ## Next
 
-`/define SWD-82` — Probe user on which “easy” sense and which escape hatches belong in v1; research brief is supportive context only
+Done — research closed. Suggested next: `/implement SWD-82` (define complete; plan in `docs/PLAN.md`)
