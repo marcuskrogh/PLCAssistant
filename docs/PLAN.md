@@ -86,4 +86,4 @@
   - [SWD-124](https://marcusknielsen.atlassian.net/browse/SWD-124) — Acceptance tests + checklist
 
 ## Next
-`/ship SWD-84` — review-fix CLEAN (iter 3)
+Done — phase closed (shipped PR #30 merge `3b64b33`)
