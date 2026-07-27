@@ -37,7 +37,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-117 | Sub-task | SWD-82: Apply policy (restart + hot-apply) | Done | SWD-82 | docs/surface/04-apply-policy.md, plcassistant/surface/apply.py | — |
 | SWD-121 | Sub-task | SWD-82: Wedge skid migration onto blocks | Done | SWD-82 | docs/surface/06-wedge-migration.md, plcassistant/wedge/skid.py | — |
 | SWD-118 | Sub-task | SWD-82: Contract/unit tests + acceptance | Done | SWD-82 | docs/surface/07-acceptance.md, tests/test_swd82_acceptance.py | — |
-| SWD-84 | Task | Explore theme: Packaging shape | In Review | SWD-81 | docs/PLAN.md, docs/packaging/, ha_app/, custom_components/plcassistant/ | `/ship SWD-84` |
+| SWD-84 | Task | Explore theme: Packaging shape | In Review | SWD-81 | docs/PLAN.md, docs/packaging/, plc_assistant/, custom_components/plcassistant/ | `/ship SWD-84` |
 | SWD-122 | Sub-task | SWD-84: Packaging contract docs | Done | SWD-84 | docs/packaging/ | — |
 | SWD-123 | Sub-task | SWD-84: HA App scaffold | Done | SWD-84 | ha_app/plcassistant/ | — |
 | SWD-125 | Sub-task | SWD-84: MQTT I/O bridge (App) | Done | SWD-84 | plcassistant/io/mqtt_*.py | — |
@@ -78,5 +78,4 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 - 2026-07-27 — Research complete for SWD-84: `docs/RESEARCH.md` (HA Apps vs integration vs Container sidecar; soft-PLC container peers; bridge options). Task remains To Do; Next `/define SWD-84`.
 - 2026-07-27 — Define complete for SWD-84: `docs/PLAN.md`; Sub-tasks SWD-122, SWD-123, SWD-125, SWD-126, SWD-127, SWD-124; Next `/implement SWD-84`.
 - 2026-07-27 — Implement SWD-84 complete: packaging docs, HA App scaffold, MQTT bridge, bundled thin integration, GitHub App install docs, acceptance tests; Sub-tasks Done; Task → In Review; Next `/review-fix SWD-84`.
-- 2026-07-27 — review-fix SWD-84 CLEAN after 3 iterations (iter1: 3B+8SF scaffold gaps; iter2: 1B+4SF mock IN/ops; iter3: cmd scan-thread + notes only); Next `/ship SWD-84`.
-- 2026-07-27 — review-fix SWD-84 CLEAN after 3 iterations (iter1: 3B+8SF MQTT wiring/persist; iter2: 1B+4SF writable mock IN + scan cmds/retry/locks; iter3: 0); Next `/ship SWD-84`.
+- 2026-07-27 — review-fix SWD-84 CLEAN after 3 iterations (iter1: 3B+8SF MQTT wiring/persist; iter2: 1B+4SF writable mock IN + scan cmds/retry/locks; iter3: 0 blockers/should-fix); Next `/ship SWD-84`.
