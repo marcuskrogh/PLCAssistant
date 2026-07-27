@@ -31,6 +31,14 @@ from plcassistant.surface.schema import (
     reset_instance,
     validate_program,
 )
+from plcassistant.surface.user_library import (
+    add_user_template,
+    get_user_template,
+    list_user_templates,
+    make_user_template,
+    register_user_templates,
+    remove_user_template,
+)
 
 __all__ = [
     # model
@@ -56,4 +64,11 @@ __all__ = [
     # built-in library
     "register_builtins",
     "wedge_cascade_program",
+    # user library (SWD-114)
+    "add_user_template",
+    "get_user_template",
+    "list_user_templates",
+    "make_user_template",
+    "register_user_templates",
+    "remove_user_template",
 ]
