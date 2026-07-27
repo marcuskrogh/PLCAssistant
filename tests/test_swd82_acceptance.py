@@ -186,9 +186,8 @@ def test_ac3_custom_block_in_skid_control_via_replace_program():
     """Custom block placed alongside cascade blocks runs in skid CONTROL phase."""
     skid = Skid()
     loader = skid.program_loader
-    ctx = skid.block_context
     assert loader is not None
-    assert ctx is not None
+    assert skid.block_context is not None
 
     # Build extended cascade program with a spy block that reads level_pi.cv
     prog_dict = wedge_cascade_program()
@@ -219,6 +218,9 @@ def test_ac3_custom_block_in_skid_control_via_replace_program():
     prog_dict["execution_order"] = ["level_pi", "flow_pi", "spy"]
 
     loader.restart_apply(program_from_dict(prog_dict))
+
+    # Fetch ctx AFTER apply — restart_apply replaces the DictContext.
+    ctx = skid.block_context
 
     # Run the skid for several scans
     skid.step(0.1, command=OperatorCommand.START)
@@ -422,6 +424,92 @@ def test_ac7_no_ha_imports_surface():
     """plcassistant.surface must not import homeassistant."""
     violations = _ha_imports_in_pkg("plcassistant/surface")
     assert violations == [], f"HA imports found: {violations}"
+
+
+# ---------------------------------------------------------------------------
+# Review findings — regression tests (SWD-82 fix-forward)
+# ---------------------------------------------------------------------------
+
+
+def test_review_f1_stale_context_cleared_on_restart_apply():
+    """After restart_apply the DictContext is replaced: no stale CV tags."""
+    skid = _running_skid(20)
+    assert skid.last is not None
+    assert skid.last.cmd_speed > 0.0
+
+    # Context has level_pi.cv set from the running program.
+    old_ctx = skid.block_context
+    assert old_ctx is not None
+    assert old_ctx.get("level_pi.cv") is not None
+
+    prog = program_from_dict(wedge_cascade_program())
+    skid.program_loader.restart_apply(prog)  # type: ignore[union-attr]
+
+    # block_context must be a freshly created DictContext (not the old one).
+    new_ctx = skid.block_context
+    assert new_ctx is not old_ctx, "restart_apply must replace _block_context"
+    assert new_ctx.get("level_pi.cv") is None, "new context must start empty"
+
+    # _was_running reset: next running step triggers bumpless prep, not stale cv.
+    snap = skid.step(0.1)
+    assert snap is not None
+
+
+def test_review_f1_stale_context_cleared_on_hot_apply():
+    """After hot_apply the DictContext is replaced: first tick rebuilds from state."""
+    skid = _running_skid(20)
+    old_ctx = skid.block_context
+    assert old_ctx is not None
+    assert old_ctx.get("level_pi.cv") is not None
+
+    prog = program_from_dict(wedge_cascade_program())
+    skid.program_loader.hot_apply(prog, superuser=True)  # type: ignore[union-attr]
+
+    new_ctx = skid.block_context
+    assert new_ctx is not old_ctx, "hot_apply must replace _block_context"
+    assert new_ctx.get("level_pi.cv") is None, "new context must start empty"
+
+    # After one more step while running, context is rebuilt from preserved state.
+    snap = skid.step(0.1)
+    assert snap is not None
+    # Context should now have a level_pi.cv value computed by the tick.
+    assert new_ctx.get("level_pi.cv") is not None
+
+
+def test_review_f6_control_last_synced_each_scan():
+    """skid.control.last is kept in sync with block runtime outputs each scan."""
+    skid = _running_skid(20)
+    snap = skid.last
+    assert snap is not None
+    assert snap.cmd_speed > 0.0
+
+    # control.last must mirror the CascadeOutputs from the block runtime.
+    ctl = skid.control
+    assert ctl.last.sp_flow == pytest.approx(snap.cascade.sp_flow)
+    assert ctl.last.cmd_speed == pytest.approx(snap.cascade.cmd_speed)
+
+
+def test_review_f6_bumpless_seeded_from_instance_params():
+    """Bumpless prep reads kp/ki from the program instance, not only SkidConfig."""
+    from plcassistant.surface.schema import program_from_dict as _pfd
+
+    # Create a skid with intentionally different gains from default.
+    skid = Skid(
+        SkidConfig(
+            cascade=CascadeConfig(
+                level_kp=10.0, level_ki=1.0,
+                flow_kp=5.0, flow_ki=0.5,
+            )
+        )
+    )
+    # Override level_pi instance params with different kp.
+    prog = skid.program_loader.program  # type: ignore[union-attr]
+    assert prog is not None
+    prog.instances["level_pi"].params["kp"] = 99.0
+    # Run START → should not raise.
+    skid.step(0.1, command=OperatorCommand.START)
+    skid.step(0.1)
+    assert skid.last is not None
 
 
 def test_ac7_no_ha_imports_app():

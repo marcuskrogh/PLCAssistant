@@ -199,6 +199,9 @@ class Skid:
             self._block_runtime = BlockRuntime(_lib)
             register_builtins(_lib, self._block_runtime)
             self._loader = ProgramLoader(_lib, self._block_runtime)
+            # Create context before initial load so the on-apply hook can clear it.
+            self._block_context = DictContext()
+            self._loader.add_on_apply_hook(self._on_program_apply)
             cfg = self.config.cascade
             self._loader.load(
                 program_from_dict(
@@ -214,9 +217,8 @@ class Skid:
                     )
                 )
             )
-            self._block_context = DictContext()
             self._use_block_runtime = True
-            # Keep CascadeController for API compatibility (not stepped on default path).
+            # Keep CascadeController for API compatibility; synced each scan.
             self.control = CascadeController(self.config.cascade)
         else:
             # Fallback path: explicit CascadeController injection.
@@ -407,12 +409,15 @@ class Skid:
                 cmd_speed_raw = float(ctx.get("flow_pi.cv") or 0.0)
                 lt_val = mv.lt_tank if mv.lt_tank is not None else 0.0
                 ft_val = mv.ft_inlet if mv.ft_inlet is not None else 0.0
-                box["cascade"] = CascadeOutputs(
+                cascade = CascadeOutputs(
                     sp_flow=sp_flow,
                     cmd_speed=cmd_speed_raw,
                     level_error=self.sp_level - lt_val,
                     flow_error=sp_flow - ft_val,
                 )
+                box["cascade"] = cascade
+                # Sync control.last for callers that use the CascadeController API.
+                self.control._last = cascade  # type: ignore[attr-defined]
             else:
                 # CascadeController fallback path (explicit injection).
                 if running and not self._was_running:
@@ -490,6 +495,22 @@ class Skid:
         return snap
 
     # ------------------------------------------------------------------
+    # On-apply hook (registered with ProgramLoader on default path)
+    # ------------------------------------------------------------------
+
+    def _on_program_apply(self, is_restart: bool) -> None:
+        """Called by ProgramLoader after each apply.
+
+        Clears the scan context so stale CV / pin values from the previous
+        program cannot bleed into the new program's first tick.  On restart
+        also resets ``_was_running`` so bumpless prep fires correctly on the
+        first RUNNING scan of the new program.
+        """
+        self._block_context = DictContext()
+        if is_restart:
+            self._was_running = False
+
+    # ------------------------------------------------------------------
     # Block-runtime accessors (public, only set on default path)
     # ------------------------------------------------------------------
 
@@ -519,21 +540,46 @@ class Skid:
         - target_sp_flow = last held level_pi output (0.0 on first start).
         - target_cmd_speed = 0.0 (always start from rest).
 
+        Gains are read from the active program's instance params first so that
+        per-instance overrides (different from ``SkidConfig.cascade``) are
+        respected; falls back to ``SkidConfig.cascade`` if the instance or
+        param is absent.
+
         Sets ``bumpless_pending=True`` on both PI instances so that the first
         RUNNING scan skips the I-advance and matches the target outputs.
         """
         cfg = self.config.cascade
+
+        # Prefer instance params over SkidConfig for bumpless seeding.
+        prog = self._loader.program
+        level_inst = prog.instances.get("level_pi") if prog else None
+        flow_inst = prog.instances.get("flow_pi") if prog else None
+
+        def _p(inst: object, key: str, fallback: float) -> float:
+            if inst is not None and hasattr(inst, "params"):
+                v = inst.params.get(key)  # type: ignore[attr-defined]
+                if v is not None:
+                    return float(v)
+            return fallback
+
+        level_kp = _p(level_inst, "kp", cfg.level_kp)
+        level_ki = _p(level_inst, "ki", cfg.level_ki)
+        sp_flow_min = _p(level_inst, "cv_min", cfg.sp_flow_min)
+        sp_flow_max = _p(level_inst, "cv_max", cfg.sp_flow_max)
+        flow_kp = _p(flow_inst, "kp", cfg.flow_kp)
+        flow_ki = _p(flow_inst, "ki", cfg.flow_ki)
+
         last_cv = self._block_context.get("level_pi.cv")
         target_sp_flow = float(last_cv) if last_cv is not None else 0.0
-        target_sp_flow = max(cfg.sp_flow_min, min(cfg.sp_flow_max, target_sp_flow))
+        target_sp_flow = max(sp_flow_min, min(sp_flow_max, target_sp_flow))
         target_cmd_speed = 0.0
 
         level_error = self.sp_level - lt_tank
         flow_error = target_sp_flow - ft_inlet
 
         level_integral = (
-            (target_sp_flow - cfg.level_kp * level_error) / cfg.level_ki
-            if cfg.level_ki != 0.0
+            (target_sp_flow - level_kp * level_error) / level_ki
+            if level_ki != 0.0
             else 0.0
         )
         self._block_runtime.set_instance_state(
@@ -546,8 +592,8 @@ class Skid:
         )
 
         flow_integral = (
-            (target_cmd_speed - cfg.flow_kp * flow_error) / cfg.flow_ki
-            if cfg.flow_ki != 0.0
+            (target_cmd_speed - flow_kp * flow_error) / flow_ki
+            if flow_ki != 0.0
             else 0.0
         )
         self._block_runtime.set_instance_state(

@@ -68,20 +68,23 @@ loader.hot_apply(new_program, superuser=True)
 
 ## Superuser authorisation
 
-`hot_apply` is protected by a two-factor check:
+`hot_apply` is protected by a **server-side** check only:
 
 | Mechanism | How to enable |
 |---|---|
-| Caller flag | Pass `superuser=True` to `hot_apply` |
+| Caller flag | Pass `superuser=True` from a trusted server-side caller |
 | Environment variable | Set `PLCASSISTANT_SUPERUSER_HOT_APPLY=1` before starting the App |
 
-Either condition grants authority.  Typical configurations:
+Either condition grants authority.  The HTTP server (`POST /api/apply`) reads
+the env var once at `AppState` construction and **ignores** any `superuser`
+field supplied in the request body — client code cannot self-elevate.
 
-- **App setting:** an `enable_hot_apply` checkbox in the App configuration
-  page passes `superuser=True` when checked.
+Typical configuration:
+
 - **Environment flag:** set `PLCASSISTANT_SUPERUSER_HOT_APPLY=1` in the
   process environment (e.g. `.env` file or Docker Compose override) before
-  running `python -m plcassistant.app`.
+  running `python -m plcassistant.app`.  The App canvas ⚡ Hot Apply button
+  will then succeed without further client-side configuration.
 
 > **Security note:** Hot-apply is for development only.  Do not enable it in
 > safety-critical or production deployments.  The environment flag name starts
@@ -98,9 +101,15 @@ Either condition grants authority.  Typical configurations:
 | Manual `runtime.reset_state()` | Cleared all (caller's choice) |
 | `runtime.reset_state(instance_id)` | Cleared one instance |
 
-After hot-apply, removed instances retain stale state entries in `_state`.
-These are harmless (they are never executed) but can be cleared manually with
-`runtime.reset_state()` if needed.
+After `hot_apply`, the loader automatically:
+
+- **Drops** runtime state for instance IDs no longer present in the new program.
+- **Resets** runtime state for instances whose `template_id` changed (new
+  template has a different state schema).
+- **Prunes** stale user templates from the `TemplateLibrary`.
+
+Remaining state (same instances, same templates) is preserved for bumpless
+continuity.
 
 ---
 

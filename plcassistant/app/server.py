@@ -51,11 +51,18 @@ def _make_loader() -> tuple[ProgramLoader, TemplateLibrary, BlockRuntime]:
     return loader, library, runtime
 
 
+_ENV_HOT_APPLY = "PLCASSISTANT_SUPERUSER_HOT_APPLY"
+
+
 class AppState:
     """Mutable shared state for one App server instance."""
 
     def __init__(self, initial_program: dict[str, Any] | None = None) -> None:
         self.loader, self.library, self.runtime = _make_loader()
+        # Server-side hot-apply authority: read env var once at startup.
+        self.superuser_hot_apply: bool = (
+            os.environ.get(_ENV_HOT_APPLY, "") == "1"
+        )
         if initial_program is not None:
             self.loader.load(program_from_dict(initial_program))
         else:
@@ -166,7 +173,7 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
                         self._send_error_json("No program loaded", 400)
                         return
                     remove_user_template(prog, tid)
-                    state.library._templates.pop(("user", tid), None)
+                    state.library.unregister("user", tid)
                     self._send_json({"deleted": tid})
                 else:
                     self._send_error_json("Not found", 404)
@@ -271,7 +278,8 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
         def _handle_post_apply(self) -> None:
             data = self._read_json()
             mode = str(data.get("mode", "restart")).lower()
-            superuser = bool(data.get("superuser", False))
+            # Client-supplied "superuser" field is intentionally ignored.
+            # Authority comes solely from the server-side flag set at startup.
             prog = state.loader.program
             if prog is None:
                 self._send_error_json("No program loaded", 400)
@@ -280,7 +288,7 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
                 state.loader.restart_apply(prog)
                 self._send_json({"applied": "restart"})
             elif mode == "hot":
-                state.loader.hot_apply(prog, superuser=superuser)
+                state.loader.hot_apply(prog, superuser=state.superuser_hot_apply)
                 self._send_json({"applied": "hot"})
             else:
                 self._send_error_json(f"Unknown mode {mode!r}")

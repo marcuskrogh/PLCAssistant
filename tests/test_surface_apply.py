@@ -219,3 +219,160 @@ def test_hot_apply_preserves_runtime_state(monkeypatch):
 def test_loader_runtime_property():
     loader, lib, rt = _make_loader()
     assert loader.runtime is rt
+
+
+# ---------------------------------------------------------------------------
+# Review findings — Finding 5: prune stale user templates on load/hot_apply
+# ---------------------------------------------------------------------------
+
+
+def _template_prog(tid: str) -> tuple[Program, BlockTemplate]:
+    """Return a program containing one user template with *tid*."""
+    tmpl = make_user_template(
+        tid,
+        body="out = 0.0",
+        pins=[{"name": "out", "direction": "OUT", "data_type": "float"}],
+    )
+    prog = Program(
+        instances={},
+        wires=[],
+        execution_order=[],
+    )
+    add_user_template(prog, tmpl)
+    return prog, tmpl
+
+
+def test_prune_removes_stale_user_template_on_load():
+    """load() removes library entries for templates absent from the new program."""
+    loader, lib, rt = _make_loader()
+    prog1, _ = _template_prog("old_t")
+    loader.load(prog1)
+    assert lib.get("user", "old_t") is not None
+
+    # Load a new program that does NOT include "old_t".
+    prog2 = _empty_prog()
+    loader.load(prog2)
+    assert lib.get("user", "old_t") is None, (
+        "load() must prune stale user templates from the library"
+    )
+
+
+def test_prune_removes_stale_user_template_on_hot_apply(monkeypatch):
+    """hot_apply() removes library entries for templates absent from the new program."""
+    monkeypatch.delenv("PLCASSISTANT_SUPERUSER_HOT_APPLY", raising=False)
+    loader, lib, rt = _make_loader()
+    prog1, _ = _template_prog("old_t")
+    loader.load(prog1)
+    assert lib.get("user", "old_t") is not None
+
+    prog2 = _empty_prog()
+    loader.hot_apply(prog2, superuser=True)
+    assert lib.get("user", "old_t") is None, (
+        "hot_apply() must prune stale user templates from the library"
+    )
+
+
+def test_prune_keeps_templates_in_new_program():
+    """Templates present in the new program are not pruned."""
+    loader, lib, rt = _make_loader()
+    prog1, _ = _template_prog("keep_me")
+    loader.load(prog1)
+
+    prog2, _ = _template_prog("keep_me")
+    loader.load(prog2)
+    assert lib.get("user", "keep_me") is not None, (
+        "Templates still in the new program must remain registered"
+    )
+
+
+def test_template_library_unregister():
+    """TemplateLibrary.unregister() removes a template; no-op if absent."""
+    from plcassistant.surface.model import TemplateLibrary, BlockTemplate
+
+    lib = TemplateLibrary()
+    tmpl = BlockTemplate(template_id="t", library="user")
+    lib.register(tmpl)
+    assert lib.get("user", "t") is not None
+
+    lib.unregister("user", "t")
+    assert lib.get("user", "t") is None
+
+    # Second call must be a no-op.
+    lib.unregister("user", "t")  # must not raise
+
+
+# ---------------------------------------------------------------------------
+# Review findings — Finding 7: hot-apply state pruning
+# ---------------------------------------------------------------------------
+
+
+def test_hot_apply_drops_state_for_removed_instance(monkeypatch):
+    """hot_apply() drops runtime state for instances not in the new program."""
+    monkeypatch.delenv("PLCASSISTANT_SUPERUSER_HOT_APPLY", raising=False)
+    loader, lib, rt = _make_loader()
+    prog, _ = _counter_program()
+    loader.load(prog)
+    ctx = DictContext()
+    rt.tick(loader.program, ctx, 0.1)
+    rt.tick(loader.program, ctx, 0.1)
+    assert "c1" in rt.state
+
+    # New program has no "c1" instance.
+    prog2 = _empty_prog()
+    loader.hot_apply(prog2, superuser=True)
+    assert "c1" not in rt.state, (
+        "hot_apply must drop state for instances removed from the new program"
+    )
+
+
+def test_hot_apply_resets_state_on_template_id_change(monkeypatch):
+    """hot_apply() resets state when an instance switches template_id."""
+    monkeypatch.delenv("PLCASSISTANT_SUPERUSER_HOT_APPLY", raising=False)
+    loader, lib, rt = _make_loader()
+    prog, _ = _counter_program()
+    loader.load(prog)
+    ctx = DictContext()
+    rt.tick(loader.program, ctx, 0.1)
+    rt.tick(loader.program, ctx, 0.1)
+    assert rt.state.get("c1", {}).get("n", 0) == 2
+
+    # New program keeps "c1" but with a different template_id.
+    new_tmpl = make_user_template(
+        "counter_v2",
+        body="state['n'] = state.get('n', 0) + 10\nout = state['n']",
+        pins=[{"name": "out", "direction": "OUT", "data_type": "float"}],
+    )
+    from plcassistant.surface.model import BlockInstance, Program
+    prog2 = Program(
+        instances={"c1": BlockInstance(
+            instance_id="c1", template_id="counter_v2", library="user", params={}
+        )},
+        wires=[],
+        execution_order=["c1"],
+    )
+    add_user_template(prog2, new_tmpl)
+    loader.hot_apply(prog2, superuser=True)
+    # State for c1 must have been reset (template changed).
+    assert rt.state.get("c1", {}).get("n", 0) == 0, (
+        "hot_apply must reset state when template_id changes for same instance_id"
+    )
+
+
+def test_on_apply_hook_fires_on_load():
+    """add_on_apply_hook callback is invoked with is_restart=True on load."""
+    loader, lib, rt = _make_loader()
+    calls: list[bool] = []
+    loader.add_on_apply_hook(lambda is_restart: calls.append(is_restart))
+    loader.load(_empty_prog())
+    assert calls == [True]
+
+
+def test_on_apply_hook_fires_on_hot_apply(monkeypatch):
+    """add_on_apply_hook callback is invoked with is_restart=False on hot_apply."""
+    monkeypatch.delenv("PLCASSISTANT_SUPERUSER_HOT_APPLY", raising=False)
+    loader, lib, rt = _make_loader()
+    loader.load(_empty_prog())
+    calls: list[bool] = []
+    loader.add_on_apply_hook(lambda is_restart: calls.append(is_restart))
+    loader.hot_apply(_empty_prog(), superuser=True)
+    assert calls == [False]

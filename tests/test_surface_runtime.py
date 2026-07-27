@@ -755,3 +755,106 @@ def test_no_ha_imports_in_runtime():
             assert "homeassistant" not in attr.lower(), (
                 f"runtime module references homeassistant symbol: {attr}"
             )
+
+
+# ---------------------------------------------------------------------------
+# Review findings — Finding 2: sandboxed user-body exec
+# ---------------------------------------------------------------------------
+
+
+def _make_body_template(body: str, tid: str = "t") -> BlockTemplate:
+    return BlockTemplate(
+        template_id=tid,
+        library="user",
+        pins=[PinSpec("out", PinDirection.OUT, "float", default=0.0)],
+        params={},
+        body=body,
+    )
+
+
+def _run_body(body: str) -> DictContext:
+    """Execute *body* via the runtime and return the context."""
+    tmpl = _make_body_template(body)
+    lib = TemplateLibrary()
+    rt = BlockRuntime(lib)
+    prog = Program(
+        instances={"t": BlockInstance(instance_id="t", template_id="t", library="user", params={})},
+        wires=[],
+        execution_order=["t"],
+        user_templates={"t": tmpl},
+    )
+    ctx = DictContext()
+    rt.tick(prog, ctx, 0.1)
+    return ctx
+
+
+def test_sandbox_import_denied():
+    """__import__ must not be available inside user block bodies."""
+    with pytest.raises((NameError, ImportError)):
+        _run_body("__import__('os')")
+
+
+def test_sandbox_open_denied():
+    """open() must not be available inside user block bodies."""
+    with pytest.raises(NameError):
+        _run_body("open('/etc/passwd')")
+
+
+def test_sandbox_eval_denied():
+    """eval() must not be available inside user block bodies."""
+    with pytest.raises(NameError):
+        _run_body("eval('1+1')")
+
+
+def test_sandbox_exec_denied():
+    """exec() must not be available inside user block bodies."""
+    with pytest.raises(NameError):
+        _run_body("exec('pass')")
+
+
+def test_sandbox_safe_math_abs():
+    """abs() is allowed in user bodies."""
+    ctx = _run_body("out = abs(-7.0)")
+    assert ctx.get("t.out") == pytest.approx(7.0)
+
+
+def test_sandbox_safe_math_module():
+    """math module is available in user bodies (math.sqrt etc.)."""
+    ctx = _run_body("out = math.sqrt(9.0)")
+    assert ctx.get("t.out") == pytest.approx(3.0)
+
+
+def test_sandbox_safe_min_max():
+    """min/max are allowed in user bodies."""
+    ctx = _run_body("out = max(1.0, min(5.0, 3.0))")
+    assert ctx.get("t.out") == pytest.approx(3.0)
+
+
+# ---------------------------------------------------------------------------
+# Review findings — Finding 4: reverse-wire-order raises
+# ---------------------------------------------------------------------------
+
+
+def test_wire_reverse_order_raises():
+    """Source must run before destination; wrong execution_order raises ValueError."""
+    tmpl = _make_passthrough_template()
+    lib = _make_library(tmpl)
+    rt = make_runtime(lib)
+    _register_passthrough(rt, tmpl)
+
+    # Wire B.out_val → A.in_val, but execution_order puts A before B.
+    # When A runs it tries to read B.out_val which hasn't been computed yet.
+    prog = Program(
+        instances={
+            "A": _inst("A", "passthrough"),
+            "B": _inst("B", "passthrough"),
+        },
+        wires=[
+            Wire(src_instance="B", src_pin="out_val",
+                 dst_instance="A", dst_pin="in_val"),
+        ],
+        execution_order=["A", "B"],  # A before B — wrong order
+    )
+    ctx = DictContext({"B.in_val": 1.0})
+    with pytest.raises(ValueError, match="not been computed yet"):
+        rt.tick(prog, ctx, 0.1)

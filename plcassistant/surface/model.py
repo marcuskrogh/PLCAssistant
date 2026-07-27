@@ -107,6 +107,10 @@ class TemplateLibrary:
         """Add or overwrite an entry keyed by (library, template_id)."""
         self._templates[(template.library, template.template_id)] = template
 
+    def unregister(self, library: str, template_id: str) -> None:
+        """Remove the template for (library, template_id). No-op if absent."""
+        self._templates.pop((library, template_id), None)
+
     def get(self, library: str, template_id: str) -> BlockTemplate | None:
         """Return the template for (library, template_id) or None if absent."""
         return self._templates.get((library, template_id))

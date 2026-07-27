@@ -28,14 +28,14 @@ Visual canvas — HTML/JS single-page app.
 
 - Left sidebar: block library (builtin + user templates); drag to place.
 - Centre canvas: placed blocks (SVG); drag to move; wire OUT→IN pins.
-- Right panel: live JSON/YAML textarea (edit directly); user block Python editor.
+- Right panel: live JSON textarea (edit directly); user block Python editor.
 - Top bar: *Apply (restart)*, *Hot Apply*, *Remove* buttons.
 
 ---
 
 ### `GET /api/program`
 
-Returns the current program as a JSON dict matching the YAML schema.
+Returns the current program as a JSON-shaped dict.
 
 ```json
 {
@@ -179,7 +179,7 @@ Returns `{"applied": "restart"}` or `{"applied": "hot"}`.
 | Double-click block | Open block properties (param editor) |
 | Drag OUT pin → IN pin | Create wire |
 | Click wire | Delete wire |
-| Edit YAML textarea | Replace program (parsed on valid JSON) |
+| Edit JSON textarea | Replace program (parsed on valid JSON) |
 | ✕ Remove button | Delete selected block and its wires |
 | User Block Editor (right panel) | Create / edit / delete user Python blocks |
 

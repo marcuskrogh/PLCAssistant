@@ -2,7 +2,7 @@
 
 Serves a self-contained single-page application that:
 - Shows a block canvas where blocks can be placed and wired.
-- Displays the YAML/JSON representation in a sync'd textarea.
+- Displays the JSON representation in a sync'd textarea.
 - Provides a library picker for builtin and user templates.
 - Allows editing user block Python bodies in-App.
 """
@@ -161,7 +161,7 @@ _HTML = r"""<!DOCTYPE html>
 
   <!-- Right panel -->
   <div id="right">
-    <h2>Program YAML/JSON</h2>
+    <h2>Program JSON</h2>
     <textarea id="yaml-area" spellcheck="false" oninput="onYamlEdit()"></textarea>
     <div class="panel-sep"></div>
     <!-- User block editor (inline) -->
@@ -265,12 +265,13 @@ async function applyRestart() {
 }
 
 async function applyHot() {
-  const su = confirm('Hot-apply requires superuser. Proceed?');
-  if (!su) return;
+  // Hot-apply authority is controlled by the server-side env var
+  // PLCASSISTANT_SUPERUSER_HOT_APPLY=1. The server ignores any
+  // superuser field from the client.
   await apiFetch('/api/apply', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({mode: 'hot', superuser: true})
+    body: JSON.stringify({mode: 'hot'})
   });
   setStatus('Applied (hot)', true);
 }

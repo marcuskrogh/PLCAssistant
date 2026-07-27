@@ -7,6 +7,7 @@ The caller (scan shell on_control) decides when to invoke tick().
 
 from __future__ import annotations
 
+import math as _math
 from typing import Any, Callable, Protocol
 
 from plcassistant.surface.model import (
@@ -150,7 +151,15 @@ class BlockRuntime:
                 wire_key = (instance_id, pin_spec.name)
                 if wire_key in wire_map:
                     src_inst, src_pin = wire_map[wire_key]
-                    value = pin_cache.get((src_inst, src_pin), pin_spec.default)
+                    cache_key = (src_inst, src_pin)
+                    if cache_key not in pin_cache:
+                        raise ValueError(
+                            f"wire source {src_inst!r}.{src_pin!r} → "
+                            f"{instance_id!r}.{pin_spec.name!r} has not been "
+                            f"computed yet: check execution_order (source must "
+                            f"run before destination)"
+                        )
+                    value = pin_cache[cache_key]
                 else:
                     tag_name = f"{instance_id}.{pin_spec.name}"
                     ctx_val = context.get(tag_name)
@@ -243,6 +252,33 @@ class BlockRuntime:
         return self._state
 
 
+_SAFE_BUILTINS: dict[str, Any] = {
+    "abs": abs,
+    "bool": bool,
+    "enumerate": enumerate,
+    "float": float,
+    "int": int,
+    "len": len,
+    "max": max,
+    "min": min,
+    "range": range,
+    "round": round,
+    "sum": sum,
+    "zip": zip,
+    # Boolean singletons (referenced by name in exec'd code)
+    "True": True,
+    "False": False,
+    "None": None,
+}
+"""Restricted built-ins available inside user block bodies.
+
+Dangerous functions (``__import__``, ``open``, ``eval``, ``exec``,
+``compile``, ``getattr``, ``setattr``, ``__class__``, …) are **not**
+included.  ``math`` is injected separately as a module-level name so that
+``math.sqrt(x)`` works without allowing arbitrary imports.
+"""
+
+
 def _exec_user_body(
     template: BlockTemplate,
     input_pins: dict[str, Any],
@@ -253,19 +289,24 @@ def _exec_user_body(
     """Execute a user-defined block body string and return output pin values.
 
     Execution namespace: all IN pin names as variables, all param names,
-    ``state`` dict, ``dt``.  OUT pin names are read back from the namespace
-    after execution.
-    """
-    namespace: dict[str, Any] = {}
-    namespace.update(params)
-    namespace.update(input_pins)
-    namespace["state"] = state
-    namespace["dt"] = dt
+    ``state`` dict, ``dt``, ``math`` module.  OUT pin names are read back from
+    the namespace after execution.
 
-    exec(template.body, namespace)  # noqa: S102
+    ``__builtins__`` is restricted to :data:`_SAFE_BUILTINS` so that dangerous
+    callables (``__import__``, ``open``, ``eval``, ``exec``, …) are
+    unavailable inside user bodies.
+    """
+    globals_ns: dict[str, Any] = {"__builtins__": _SAFE_BUILTINS, "math": _math}
+    locals_ns: dict[str, Any] = {}
+    locals_ns.update(params)
+    locals_ns.update(input_pins)
+    locals_ns["state"] = state
+    locals_ns["dt"] = dt
+
+    exec(template.body, globals_ns, locals_ns)  # noqa: S102
 
     return {
-        pin.name: namespace.get(pin.name, pin.default)
+        pin.name: locals_ns.get(pin.name, pin.default)
         for pin in template.pins
         if pin.direction is PinDirection.OUT
     }

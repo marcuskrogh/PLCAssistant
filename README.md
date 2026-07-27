@@ -11,4 +11,5 @@ Virtual / soft-PLC for **lab, hobby, and small-scale process equipment**, using 
 | [`docs/control/`](docs/control/01-scan-scheduler.md) | Scan scheduler, FB/PID, safety precedence, HA↔cyclic boundary |
 | [`docs/io/`](docs/io/01-image-quality.md) | Soft-PLC I/O image, bindings, thin-integration stub, acceptance checklist |
 | [`docs/wedge/`](docs/wedge/README.md) | Skid specifications: process, I/O, control, safety, mock, packaging |
+| [`docs/surface/`](docs/surface/01-block-model.md) | Block program surface: model, runtime, builtin library, apply policy, App editor, wedge migration, acceptance |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Product direction and theme roadmap |

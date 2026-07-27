@@ -28,7 +28,11 @@ Test file: `tests/test_swd82_acceptance.py`.
 - [ ] The program (including the custom block) is loaded via `ProgramLoader.restart_apply`.
 - [ ] After a scan tick the custom block's output pin is written to the context.
 
-### AC-4 — YAML-shaped program dict round-trip
+### AC-4 — JSON-shaped program dict round-trip
+
+The program schema uses a JSON-shaped Python dict (the same structure produced
+by `json.dumps` / consumed by `json.loads`).  `yaml.safe_dump` / `yaml.safe_load`
+are optional wrappers the caller may supply; the library works with plain dicts.
 
 - [ ] `program_from_dict(wedge_cascade_program())` parses without error.
 - [ ] `program_to_dict(program_from_dict(d))` re-serialises to a structurally equivalent dict.

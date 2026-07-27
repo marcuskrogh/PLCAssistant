@@ -239,13 +239,36 @@ def test_apply_hot_without_superuser_returns_403(app_server):
     assert "superuser" in resp.get("error", "").lower()
 
 
-def test_apply_hot_with_superuser_flag(app_server):
+def test_apply_hot_client_superuser_flag_ignored(app_server):
+    """Client-supplied superuser=True must be ignored; still returns 403 when env unset."""
     _, base_url, _ = app_server
     status, resp = _json_request(
         base_url + "/api/apply", "POST", {"mode": "hot", "superuser": True}
     )
-    assert status == 200
-    assert resp["applied"] == "hot"
+    assert status == 403, (
+        "Server must not honour client-supplied superuser field; "
+        "authority comes from server-side env var only"
+    )
+
+
+def test_apply_hot_with_env_var(monkeypatch):
+    """PLCASSISTANT_SUPERUSER_HOT_APPLY=1 env var at AppState construction → hot allowed."""
+    monkeypatch.setenv("PLCASSISTANT_SUPERUSER_HOT_APPLY", "1")
+    state = AppState()
+    handler = make_handler(state)
+    import threading
+    from http.server import HTTPServer
+    server = HTTPServer(("127.0.0.1", 0), handler)
+    port = server.server_address[1]
+    base_url = f"http://127.0.0.1:{port}"
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        status, resp = _json_request(base_url + "/api/apply", "POST", {"mode": "hot"})
+        assert status == 200
+        assert resp["applied"] == "hot"
+    finally:
+        server.shutdown()
 
 
 def test_apply_unknown_mode_returns_400(app_server):
