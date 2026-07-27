@@ -52,9 +52,8 @@ def test_scaffold_and_github_app_trees():
     assert (ROOT / "plc_assistant" / "config.yaml").is_file()
     assert (ROOT / "repository.yaml").is_file()
     assert (ROOT / "custom_components" / "plcassistant" / "manifest.json").is_file()
-    assert (ROOT / "custom_components" / "plcassistant" / "sensor.py").is_file()
     assert (ROOT / "custom_components" / "plcassistant" / "number.py").is_file()
-
+    assert not (ROOT / "custom_components" / "plcassistant" / "sensor.py").exists()
 
 def test_non_ha_stub_still_works():
     """In-process ThinIntegrationStub remains the non-HA CI path."""

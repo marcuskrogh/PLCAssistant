@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
+from threading import Lock
 from typing import Any, Protocol
 
 from plcassistant.io.image import IoImage
@@ -110,14 +111,17 @@ class MqttIoBridge:
         self._pending_cmds: list[str] = []
         self._started = False
         self._cmd_handlers: dict[str, Callable[[], None]] = {}
+        self._lock = Lock()
 
     @property
     def pending_inputs(self) -> dict[str, MqttTagPayload]:
-        return dict(self._pending_in)
+        with self._lock:
+            return dict(self._pending_in)
 
     @property
     def pending_commands(self) -> tuple[str, ...]:
-        return tuple(self._pending_cmds)
+        with self._lock:
+            return tuple(self._pending_cmds)
 
     def on_command(self, name: str, handler: Callable[[], None]) -> None:
         """Register a handler for ``cmd/{name}`` operator pulses."""
@@ -149,7 +153,8 @@ class MqttIoBridge:
                 status=QualityStatus.BAD,
                 reason=ReasonCode.FAULT,
             )
-        self._pending_in[tag] = sample
+        with self._lock:
+            self._pending_in[tag] = sample
 
     def _on_cmd_message(self, topic: str, payload: bytes) -> None:
         parts = topic.split("/")
@@ -158,7 +163,8 @@ class MqttIoBridge:
         if parts[1] != self.instance_id or parts[2] != "cmd":
             return
         name = parts[3]
-        self._pending_cmds.append(name)
+        with self._lock:
+            self._pending_cmds.append(name)
         handler = self._cmd_handlers.get(name)
         if handler is not None:
             handler()
@@ -169,22 +175,30 @@ class MqttIoBridge:
         When ``clear`` is True (default), consumed samples are removed so a quiet
         publisher does not forever re-assert the last value without a fresh
         message (callers that need retain-until-stale can pass ``clear=False``).
+        Undeclared tags are dropped when clearing so the buffer cannot grow unbound.
         """
         applied: list[str] = []
         image.begin_inputs()
-        for tag, sample in list(self._pending_in.items()):
-            if tag not in image.names():
+        with self._lock:
+            items = list(self._pending_in.items())
+            if clear:
+                self._pending_in.clear()
+        known = set(image.names())
+        for tag, sample in items:
+            if tag not in known:
                 continue
             image.apply_input(tag, sample.value, sample.status, sample.reason)
             applied.append(tag)
-            if clear:
-                self._pending_in.pop(tag, None)
+            if not clear:
+                with self._lock:
+                    self._pending_in[tag] = sample
         return tuple(applied)
 
     def drain_commands(self) -> tuple[str, ...]:
         """Return and clear buffered operator command names."""
-        cmds = tuple(self._pending_cmds)
-        self._pending_cmds.clear()
+        with self._lock:
+            cmds = tuple(self._pending_cmds)
+            self._pending_cmds.clear()
         return cmds
 
     def publish_outputs(

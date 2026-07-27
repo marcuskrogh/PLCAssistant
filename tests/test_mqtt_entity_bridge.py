@@ -44,21 +44,17 @@ def test_scan_loop_once_and_commands():
     bridge = MqttIoBridge(bus, instance_id="default")
     loop = MqttScanLoop(bridge, image, period_s=0.01)
     bridge.start()
-    # Publish IN then scan
-    from plcassistant.io.mqtt_topics import MqttTagPayload, tag_in_topic
+    from plcassistant.io.mqtt_topics import MqttTagPayload, cmd_topic, tag_in_topic
 
     bus.publish(tag_in_topic("default", "LT_TANK"), MqttTagPayload.now(0.1).encode())
     loop.scan_once()
     assert image.get_value("LT_TANK") == 0.1
     assert image.get_value("CMD_SPEED") == 10.0
 
-    integ_style = MqttEntityBridge(
-        bus,
-        BindingTable.from_config(default_wedge_binding_config()),
-        MockEntityStore(),
-    )
-    integ_style.publish_command("start")
-    assert "start" in bridge.drain_commands() or "start" in loop.commands
+    bus.publish(cmd_topic("default", "stop"), b"1")
+    assert loop.scanning is False
+    bus.publish(cmd_topic("default", "start"), b"1")
+    assert loop.scanning is True
 
 
 def test_topic_parity_with_custom_component():

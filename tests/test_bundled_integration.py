@@ -18,7 +18,6 @@ def test_integration_required_files():
         "config_flow.py",
         "services.yaml",
         "strings.json",
-        "sensor.py",
         "number.py",
         "README.md",
     ):
@@ -48,16 +47,16 @@ def test_manifest_mqtt_dependency_and_config_keys():
     init_text = (CC / "__init__.py").read_text(encoding="utf-8")
     assert "tag_in_topic" in init_text
     assert "tag_out_topic" in init_text
-    assert "Platform.SENSOR" in init_text or "sensor" in init_text.lower()
+    assert "Platform.NUMBER" in init_text
 
 
 def test_platforms_publish_and_subscribe_paths():
-    sensor = (CC / "sensor.py").read_text(encoding="utf-8")
     number = (CC / "number.py").read_text(encoding="utf-8")
-    assert "tag_in_topic" in sensor
-    assert "mqtt" in sensor
-    assert "tag_out" in number or "_tag_out" in number
-
+    assert "tag_in_topic" in number
+    assert "async_set_native_value" in number
+    assert "_tag_out" in number
+    assert "PlcAssistantMockInNumber" in number
+    assert "PlcAssistantMockOutNumber" in number
 
 def test_services_yaml_has_operator_actions():
     text = (CC / "services.yaml").read_text(encoding="utf-8")
