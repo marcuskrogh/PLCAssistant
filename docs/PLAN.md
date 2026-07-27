@@ -86,4 +86,4 @@
 - Shipped: [PR #18](https://github.com/marcuskrogh/PLCAssistant/pull/18) merge `a51cdbe`
 
 ## Next
-Done — phase closed. Suggested initiative next: `/define SWD-82`
+Done — phase closed. Suggested initiative next: `/define SWD-82` (research: `docs/RESEARCH.md`)

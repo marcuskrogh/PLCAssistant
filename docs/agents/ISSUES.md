@@ -28,7 +28,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-101 | Sub-task | SWD-85: HA↔cyclic boundary note | Done | SWD-85 | docs/control/04-ha-cyclic-boundary.md | — |
 | SWD-102 | Sub-task | SWD-85: Wedge control-story update | Done | SWD-85 | docs/wedge/03-control-story.md (+ 02/07) | — |
 | SWD-106 | Sub-task | SWD-85: Contract/unit tests | Done | SWD-85 | docs/control/05-acceptance.md, tests/test_swd85_acceptance.py | — |
-| SWD-82 | Task | Explore theme: Programming surface | To Do | SWD-81 | docs/ROADMAP.md | `/define SWD-82` |
+| SWD-82 | Task | Explore theme: Programming surface | To Do | SWD-81 | docs/RESEARCH.md | `/define SWD-82` |
 | SWD-84 | Task | Explore theme: Packaging shape | To Do | SWD-81 | docs/ROADMAP.md | later |
 
 ## Log
@@ -55,3 +55,4 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 - 2026-07-27 — Implement SWD-85 complete: Sub-tasks Done; Task → In Review; Next `/ship SWD-85`.
 - 2026-07-27 — review-fix SWD-85 CLEAN after 2 iterations (2→0 should-fix); Next `/ship SWD-85`.
 - 2026-07-27 — Shipped SWD-85 via PR #18 (merge `a51cdbe`); Task Done; Story SWD-81 remains open; Next `/define SWD-82`.
+- 2026-07-27 — Research complete for SWD-82: `docs/RESEARCH.md` (progressive L0–L3 surface, BT L1 metaphor, IEC escape hatch; LLM assist secondary); Next `/define SWD-82`.
