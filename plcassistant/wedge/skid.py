@@ -407,6 +407,12 @@ class Skid:
 
                 sp_flow = float(ctx.get("level_pi.cv") or 0.0)
                 cmd_speed_raw = float(ctx.get("flow_pi.cv") or 0.0)
+                # Shell precedence: when permit is false, force CMD_SPEED safe in
+                # cascade / control.last as well as the OUT-phase process write.
+                # Defense in depth if a graph somehow overrides ``running``.
+                if not running:
+                    cmd_speed_raw = 0.0
+                    ctx["flow_pi.cv"] = 0.0
                 lt_val = mv.lt_tank if mv.lt_tank is not None else 0.0
                 ft_val = mv.ft_inlet if mv.ft_inlet is not None else 0.0
                 cascade = CascadeOutputs(

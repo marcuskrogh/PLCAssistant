@@ -208,6 +208,53 @@ def test_make_user_template_params_deep_copied():
     assert tmpl.params["offset"] == [0.0]
 
 
+def test_make_user_template_rejects_builtin_library():
+    with pytest.raises(ValueError, match="library='builtin'"):
+        make_user_template("spoof", body="out = 1", library="builtin")
+
+
+def test_add_user_template_rejects_builtin_library():
+    prog = Program()
+    tmpl = BlockTemplate(
+        template_id="spoof",
+        library="builtin",
+        description="",
+        pins=[],
+        params={},
+        body="out = 1",
+        is_builtin=False,
+    )
+    with pytest.raises(ValueError, match="library='builtin'"):
+        add_user_template(prog, tmpl)
+
+
+def test_template_library_refuses_overwrite_builtin():
+    lib = TemplateLibrary()
+    lib.register(
+        BlockTemplate(
+            template_id="level_pi",
+            library="builtin",
+            is_builtin=True,
+            description="stock",
+            pins=[],
+            params={},
+            body="",
+        )
+    )
+    with pytest.raises(ValueError, match="cannot overwrite built-in"):
+        lib.register(
+            BlockTemplate(
+                template_id="level_pi",
+                library="builtin",
+                is_builtin=False,
+                description="spoof",
+                pins=[],
+                params={},
+                body="out = 99",
+            )
+        )
+
+
 # ---------------------------------------------------------------------------
 # register_user_templates
 # ---------------------------------------------------------------------------

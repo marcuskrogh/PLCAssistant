@@ -104,8 +104,19 @@ class TemplateLibrary:
         self._templates: dict[tuple[str, str], BlockTemplate] = {}
 
     def register(self, template: BlockTemplate) -> None:
-        """Add or overwrite an entry keyed by (library, template_id)."""
-        self._templates[(template.library, template.template_id)] = template
+        """Add or overwrite an entry keyed by (library, template_id).
+
+        Raises ``ValueError`` when a non-built-in template would overwrite an
+        existing built-in at the same key (built-ins stay stock).
+        """
+        key = (template.library, template.template_id)
+        existing = self._templates.get(key)
+        if existing is not None and existing.is_builtin and not template.is_builtin:
+            raise ValueError(
+                f"cannot overwrite built-in template "
+                f"{template.library}/{template.template_id!r} with a user template"
+            )
+        self._templates[key] = template
 
     def unregister(self, library: str, template_id: str) -> None:
         """Remove the template for (library, template_id). No-op if absent."""

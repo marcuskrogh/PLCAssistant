@@ -68,7 +68,8 @@ tick(program, context, dt)
       - Unwired pin → `context.get("{instance_id}.{pin_name}")` or pin default.
       - Unwired with no context value and no default → `ValueError`.
    b. Look up template via `library.get(inst.library, inst.template_id)`;
-      fall back to `program.user_templates`; raise `ValueError` if absent.
+      fall back to `program.user_templates[template_id]` only when that
+      template's `library` matches the instance; raise `ValueError` if absent.
    c. Dispatch execution:
       - **Built-in**: call registered `BlockCallable(input_pins, params, state, dt)`.
       - **User body**: `exec(body, namespace)` with input pins, params, `state`, `dt`.
@@ -77,7 +78,9 @@ tick(program, context, dt)
 
 **Safety constraint** — Safety must NOT be inside block runtime. The scan
 shell `on_safety` callback runs before `on_control`; user blocks cannot
-reach or override safety outputs.
+reach or override safety outputs.  Shell-owned IN pins (currently
+``running``) must not be driven by wires — `validate_program` rejects such
+wires, and the skid clamp forces CMD_SPEED = 0 when permit is false.
 
 ---
 

@@ -398,6 +398,127 @@ def test_ac6_safety_phase_before_control():
     assert snap.scan_phases == PHASE_ORDER
 
 
+def test_ac6_malicious_running_wire_rejected_and_cmd_clamped():
+    """Wires into ``running`` are rejected; skid clamps CMD when permit is false.
+
+    Defense in depth: schema rejects shell-owned pin wires. Separately, if a
+    program that bypasses schema somehow forces ``running=True`` while permit is
+    false, the skid still zeros cascade/control.last cmd_speed.
+    """
+    from plcassistant.surface.model import (
+        BlockInstance,
+        BlockTemplate,
+        PinDirection,
+        PinSpec,
+        Program,
+        Wire,
+    )
+
+    # Schema path: cannot load a program that wires into running.
+    malicious = {
+        "version": "1.0",
+        "instances": {
+            "force_run": {
+                "template_id": "force_true",
+                "library": "user",
+                "params": {},
+            },
+            "level_pi": {
+                "template_id": "level_pi",
+                "library": "builtin",
+                "params": {"kp": 2.0, "ki": 0.5, "cv_min": 0.0, "cv_max": 100.0},
+            },
+            "flow_pi": {
+                "template_id": "flow_pi",
+                "library": "builtin",
+                "params": {"kp": 2.0, "ki": 0.5, "cv_min": 0.0, "cv_max": 100.0},
+            },
+        },
+        "wires": [
+            {
+                "src_instance": "force_run",
+                "src_pin": "out",
+                "dst_instance": "flow_pi",
+                "dst_pin": "running",
+            },
+            {
+                "src_instance": "level_pi",
+                "src_pin": "cv",
+                "dst_instance": "flow_pi",
+                "dst_pin": "sp",
+            },
+        ],
+        "execution_order": ["force_run", "level_pi", "flow_pi"],
+        "user_templates": {
+            "force_true": {
+                "template_id": "force_true",
+                "library": "user",
+                "description": "always true",
+                "is_builtin": False,
+                "pins": [
+                    {"name": "out", "direction": "OUT", "data_type": "bool", "default": True}
+                ],
+                "params": {},
+                "body": "out = True",
+            }
+        },
+    }
+    with pytest.raises(ValueError, match="shell-owned pin"):
+        program_from_dict(malicious)
+
+    # Bypass schema: hand-build the same graph and load it.
+    force_tmpl = BlockTemplate(
+        template_id="force_true",
+        library="user",
+        description="always true",
+        pins=[PinSpec("out", PinDirection.OUT, "bool", True)],
+        params={},
+        body="out = True",
+        is_builtin=False,
+    )
+    bypass = Program(
+        instances={
+            "force_run": BlockInstance(
+                instance_id="force_run",
+                template_id="force_true",
+                library="user",
+                params={},
+            ),
+            "level_pi": BlockInstance(
+                instance_id="level_pi",
+                template_id="level_pi",
+                library="builtin",
+                params={"kp": 2.0, "ki": 0.5, "cv_min": 0.0, "cv_max": 100.0},
+            ),
+            "flow_pi": BlockInstance(
+                instance_id="flow_pi",
+                template_id="flow_pi",
+                library="builtin",
+                params={"kp": 2.0, "ki": 0.5, "cv_min": 0.0, "cv_max": 100.0},
+            ),
+        },
+        wires=[
+            Wire("force_run", "out", "level_pi", "running"),
+            Wire("force_run", "out", "flow_pi", "running"),
+            Wire("level_pi", "cv", "flow_pi", "sp"),
+        ],
+        execution_order=["force_run", "level_pi", "flow_pi"],
+        user_templates={"force_true": force_tmpl},
+    )
+    skid = Skid()
+    skid.sp_level = 50.0
+    skid.program_loader.restart_apply(bypass)  # type: ignore[union-attr]
+    for _ in range(20):
+        snap = skid.step(0.1)
+    assert snap.safety.pump_permit is False
+    assert snap.cmd_speed == 0.0
+    assert snap.cascade.cmd_speed == 0.0, (
+        "skid must clamp cascade.cmd_speed when permit is false "
+        "even if the graph forces running=True"
+    )
+    assert skid.control.last.cmd_speed == 0.0
+
+
 # ---------------------------------------------------------------------------
 # AC-7 — No Home Assistant imports in plcassistant.surface / plcassistant.app
 # ---------------------------------------------------------------------------

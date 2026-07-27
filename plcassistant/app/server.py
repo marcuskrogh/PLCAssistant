@@ -10,7 +10,9 @@ POST /api/library/user      Create/update a user template; body = template JSON
 DELETE /api/library/user/<tid>  Delete a user template
 POST /api/place             Place a block; body = {template_id, library, instance_id, x?, y?}
 POST /api/reset_instance    Reset instance params to library defaults; body = {instance_id}
-POST /api/apply             Apply program; body = {mode: "restart"|"hot", superuser?: bool}
+POST /api/apply             Apply program; body = {mode: "restart"|"hot"}
+                            (hot requires PLCASSISTANT_SUPERUSER_HOT_APPLY=1;
+                             client "superuser" field is ignored)
 
 The server holds an in-memory program and a ProgramLoader.  No file persistence
 by default; callers may pass an initial program dict.
@@ -297,7 +299,7 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
 
 
 def run_app(
-    host: str = "0.0.0.0",
+    host: str = "127.0.0.1",
     port: int = 8099,
     initial_program: dict[str, Any] | None = None,
     *,

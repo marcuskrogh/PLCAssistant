@@ -198,7 +198,11 @@ class BlockRuntime:
     ) -> BlockTemplate:
         tmpl = self._library.get(library, template_id)
         if tmpl is None:
-            tmpl = program.user_templates.get(template_id)
+            candidate = program.user_templates.get(template_id)
+            # Fall back only when the stored template's library matches the
+            # instance's library — never cross-resolve by template_id alone.
+            if candidate is not None and candidate.library == library:
+                tmpl = candidate
         if tmpl is None:
             raise ValueError(
                 f"template {library!r}/{template_id!r} not found in library "

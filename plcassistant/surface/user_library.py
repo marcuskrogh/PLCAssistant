@@ -52,6 +52,11 @@ def add_user_template(program: Program, template: BlockTemplate) -> None:
             f"template {template.template_id!r} is a built-in (is_builtin=True); "
             "built-in templates cannot be stored as user templates"
         )
+    if template.library == "builtin":
+        raise ValueError(
+            f"template {template.template_id!r} uses library='builtin'; "
+            "user templates must use a non-builtin library (e.g. 'user')"
+        )
     program.user_templates[template.template_id] = copy.deepcopy(template)
 
 
@@ -135,6 +140,11 @@ def make_user_template(
             params={"gain": 1.0},
         )
     """
+    if library == "builtin":
+        raise ValueError(
+            "user templates cannot use library='builtin'; "
+            "use library='user' (or another non-builtin name)"
+        )
     pin_specs: list[PinSpec] = []
     for raw in pins or []:
         raw_dir = str(raw.get("direction", "IN")).upper()

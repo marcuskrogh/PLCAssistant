@@ -206,13 +206,14 @@ class ProgramLoader:
         for inst_id in list(self._runtime.state.keys()):
             if inst_id not in new_program.instances:
                 self._runtime.reset_state(inst_id)
-            elif (
-                old_program is not None
-                and inst_id in old_program.instances
-                and old_program.instances[inst_id].template_id
-                != new_program.instances[inst_id].template_id
-            ):
-                self._runtime.reset_state(inst_id)
+            elif old_program is not None and inst_id in old_program.instances:
+                old_inst = old_program.instances[inst_id]
+                new_inst = new_program.instances[inst_id]
+                if (old_inst.library, old_inst.template_id) != (
+                    new_inst.library,
+                    new_inst.template_id,
+                ):
+                    self._runtime.reset_state(inst_id)
 
 
 __all__ = [

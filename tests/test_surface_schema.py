@@ -356,6 +356,28 @@ def test_validate_duplicate_dst_pin_raises():
         program_from_dict(d)
 
 
+def test_validate_wire_to_running_pin_raises():
+    """Shell-owned ``running`` pins cannot be driven by wires."""
+    d = {
+        "version": "1.0",
+        "instances": {
+            "src": {"template_id": "t", "library": "user", "params": {}},
+            "flow_pi": {"template_id": "flow_pi", "library": "builtin", "params": {}},
+        },
+        "wires": [
+            {
+                "src_instance": "src",
+                "src_pin": "out",
+                "dst_instance": "flow_pi",
+                "dst_pin": "running",
+            }
+        ],
+        "execution_order": ["src", "flow_pi"],
+    }
+    with pytest.raises(ValueError, match="shell-owned pin"):
+        program_from_dict(d)
+
+
 def test_fanout_from_same_source_is_valid():
     """Multiple wires from one source to different destinations are allowed."""
     d = {

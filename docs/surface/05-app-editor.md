@@ -154,19 +154,23 @@ Apply the current in-memory program to the runtime.
 { "mode": "restart" }
 ```
 
-or (superuser hot-apply):
+or (hot-apply — requires server-side authority):
 
 ```json
-{ "mode": "hot", "superuser": true }
+{ "mode": "hot" }
 ```
 
-| `mode` | `superuser` | Effect |
-|---|---|---|
-| `"restart"` | (any) | `ProgramLoader.restart_apply` — clears runtime state |
-| `"hot"` | `true` | `ProgramLoader.hot_apply` — preserves runtime state |
-| `"hot"` | `false` | `403 PermissionError` unless `PLCASSISTANT_SUPERUSER_HOT_APPLY=1` is set |
+| `mode` | Effect |
+|---|---|
+| `"restart"` | `ProgramLoader.restart_apply` — clears runtime state |
+| `"hot"` | `ProgramLoader.hot_apply` — preserves runtime state |
 
-Returns `{"applied": "restart"}` or `{"applied": "hot"}`.
+Hot-apply succeeds only when `PLCASSISTANT_SUPERUSER_HOT_APPLY=1` was set in
+the process environment before the App started.  Any client-supplied
+`superuser` field is **ignored**.
+
+Returns `{"applied": "restart"}` or `{"applied": "hot"}`.  Hot without
+authority returns `403`.
 
 ---
 

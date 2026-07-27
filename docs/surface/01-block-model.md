@@ -182,6 +182,7 @@ execution_order:
 | Duplicate entry in `execution_order` | `execution_order contains duplicate instance …` |
 | Wire `src_instance` / `dst_instance` not in `instances` | `wire src_instance … not in instances` |
 | Two wires drive same `(dst_instance, dst_pin)` | `multiple wires drive pin … on instance …` |
+| Wire drives shell-owned pin (`running`) | `wire cannot drive shell-owned pin …` |
 | `reset_instance` template mismatch | `template mismatch: instance references …` |
 
 ---

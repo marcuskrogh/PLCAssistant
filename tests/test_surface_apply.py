@@ -358,6 +358,39 @@ def test_hot_apply_resets_state_on_template_id_change(monkeypatch):
     )
 
 
+def test_hot_apply_resets_state_on_library_change(monkeypatch):
+    """hot_apply() resets state when an instance switches library (same template_id)."""
+    monkeypatch.delenv("PLCASSISTANT_SUPERUSER_HOT_APPLY", raising=False)
+    loader, lib, rt = _make_loader()
+    prog, _ = _counter_program()
+    loader.load(prog)
+    ctx = DictContext()
+    rt.tick(loader.program, ctx, 0.1)
+    rt.tick(loader.program, ctx, 0.1)
+    assert rt.state.get("c1", {}).get("n", 0) == 2
+
+    # Same template_id string, different library namespace.
+    other = make_user_template(
+        "counter",
+        body="state['n'] = state.get('n', 0) + 1\nout = state['n']",
+        library="user_alt",
+        pins=[{"name": "out", "direction": "OUT", "data_type": "float"}],
+    )
+    from plcassistant.surface.model import BlockInstance, Program
+    prog2 = Program(
+        instances={"c1": BlockInstance(
+            instance_id="c1", template_id="counter", library="user_alt", params={}
+        )},
+        wires=[],
+        execution_order=["c1"],
+    )
+    add_user_template(prog2, other)
+    loader.hot_apply(prog2, superuser=True)
+    assert rt.state.get("c1", {}).get("n", 0) == 0, (
+        "hot_apply must reset state when library changes for same instance_id"
+    )
+
+
 def test_on_apply_hook_fires_on_load():
     """add_on_apply_hook callback is invoked with is_restart=True on load."""
     loader, lib, rt = _make_loader()

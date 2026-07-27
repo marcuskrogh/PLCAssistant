@@ -82,6 +82,11 @@ def reset_instance(instance: BlockInstance, template: BlockTemplate) -> BlockIns
 # ---------------------------------------------------------------------------
 
 
+# Pin names owned by the fixed mode/safety shell.  They must be fed from the
+# scan context (e.g. pump permit), never from another block via a wire.
+_SHELL_OWNED_IN_PINS: frozenset[str] = frozenset({"running"})
+
+
 def validate_program(program: Program) -> None:
     """Validate structural consistency of *program*.
 
@@ -92,6 +97,7 @@ def validate_program(program: Program) -> None:
     * ``execution_order`` entries exist in ``instances``; no duplicates.
     * Wire ``src_instance`` / ``dst_instance`` exist in ``instances``.
     * At most one wire drives a given ``(dst_instance, dst_pin)`` pair.
+    * No wire drives a shell-owned IN pin (currently ``running``).
     """
     for iid, inst in program.instances.items():
         if not iid:
@@ -126,6 +132,12 @@ def validate_program(program: Program) -> None:
         if wire.dst_instance not in program.instances:
             raise ValueError(
                 f"wire dst_instance {wire.dst_instance!r} not in instances"
+            )
+        if wire.dst_pin in _SHELL_OWNED_IN_PINS:
+            raise ValueError(
+                f"wire cannot drive shell-owned pin {wire.dst_pin!r} on "
+                f"instance {wire.dst_instance!r}; that pin is fed by the "
+                f"fixed mode/safety shell via context"
             )
         dst_key = (wire.dst_instance, wire.dst_pin)
         if dst_key in dst_pins:
@@ -190,9 +202,15 @@ def _template_from_dict(tid: str, data: Mapping[str, Any]) -> BlockTemplate:
     raw_params = data.get("params") or {}
     if not isinstance(raw_params, Mapping):
         raise ValueError(f"template {tid!r} 'params' must be a mapping")
+    library = str(data.get("library", "user"))
+    if library == "builtin":
+        raise ValueError(
+            f"user_templates[{tid!r}] cannot use library='builtin'; "
+            "built-in templates stay stock and are not embedded in the program"
+        )
     return BlockTemplate(
         template_id=tid,
-        library=str(data.get("library", "user")),
+        library=library,
         description=str(data.get("description", "")),
         pins=pins,
         params=dict(raw_params),

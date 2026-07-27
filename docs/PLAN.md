@@ -2,7 +2,7 @@
 
 ## Summary
 - Progressive **Python block library**: place copies → edit that copy → or author new library blocks in-App.
-- **YAML is canonical**; App **visual editor** reads/writes the same YAML. HA **integration stays connections-only** (entities ↔ tags).
+- **JSON-shaped program dict is the v1 program-of-record** (YAML-ready: same structure for `yaml.safe_load` / `yaml.safe_dump`). App visual editor reads/writes that dict via JSON API. HA **integration stays connections-only** (entities ↔ tags).
 - **Hybrid graph**: pin wiring + explicit deterministic execution order on the scan.
 - **Fixed** mode/safety shell (non-bypassable). User graph runs in CONTROL only.
 - **Hybrid wedge**: framework + enough blocks to run the mock skid on the new surface.
@@ -10,11 +10,11 @@
 
 ## Scope
 **In**
-- Block model + YAML schema (instances as copies, pins/wires, params, execution order)
+- Block model + YAML-ready schema (instances as copies, pins/wires, params, execution order)
 - Python block runtime API (scan tick; tag/pin I/O) inside Soft-PLC App
 - Built-in library (read-only) with wedge-capable blocks (e.g. Level/Flow PI and supporting pieces)
 - User library: create/edit custom Python blocks via **in-App editor**; place always **copies**; **reset-to-library** on a placed copy
-- App visual canvas + YAML editing of the same program
+- App visual canvas + JSON editing of the same program dict
 - Loader: restart-apply default; super-user on-the-fly apply
 - Migrate mock skid control path onto the block program (safety/mode shell unchanged)
 - Contract/unit tests + a minimal App editor smoke path
@@ -29,10 +29,10 @@
 - Physical rig
 
 ## Decisions
-- Easy path = **block library + params** on a visual canvas (YAML equivalent)
+- Easy path = **block library + params** on a visual canvas (JSON/YAML-shaped dict)
 - Depth = edit **placed copy** or add **custom user-library** Python block
 - Python only for v1 block bodies
-- YAML program-of-record; visual updates YAML
+- JSON-shaped dict program-of-record (YAML-ready); visual updates the same dict
 - Safety/mode **fixed shell**; user blocks cannot bypass
 - Built-ins **stock** (read-only templates); user library for new templates
 - Place always **copies** the template; editing a placed block never mutates the library; **reset-to-library** restores a placed copy from its template
@@ -44,7 +44,7 @@
 - Preserve SWD-85 scan order: IN → safety → control → OUT; user graph executes only in CONTROL
 - Preserve SWD-86 I/O image, quality, and bindings; integration must not grow a program authoring surface
 - Must not claim SIL or certified safety PLC
-- Soft-PLC ≠ HA automations — program-of-record lives in the App (YAML), not HA automation YAML
+- Soft-PLC ≠ HA automations — program-of-record lives in the App (JSON-shaped / YAML-ready dict), not HA automation YAML
 - Built-in library templates remain stock; no in-place mutation of shipped blocks
 - Demo-grade wedge behavior must still pass existing mock acceptance intent after migration
 
@@ -53,20 +53,20 @@
 - Prior locks: `docs/control/*`, `docs/io/*`, `docs/wedge/*`
 
 ## Acceptance criteria
-- Mock skid runnable as a YAML + visual program of built-in blocks under the fixed safety shell
+- Mock skid runnable as a JSON-shaped / visual program of built-in blocks under the fixed safety shell
 - Placing a block creates an independent copy; editing it does not change the library; reset restores from template
 - User can create a custom Python block in-App, place it, and see it run in CONTROL
-- YAML ↔ visual round-trip for the same program
+- Program dict ↔ visual round-trip for the same program
 - Restart applies program changes; super-user hot-apply documented and testable
 - Safety still forces CV safe the same scan regardless of user graph
 - Tests cover loader, copy-on-place, reset, execution order, and safety precedence without real HA
 
 ## Work packages
-1. **Block model + YAML schema** — instance copies, pins/wires, params, execution order → `docs/surface/`, schema module ([SWD-119](https://marcusknielsen.atlassian.net/browse/SWD-119))
+1. **Block model + YAML-ready schema** — instance copies, pins/wires, params, execution order → `docs/surface/`, schema module ([SWD-119](https://marcusknielsen.atlassian.net/browse/SWD-119))
 2. **Python block runtime + scan integration** — tick API; CONTROL-phase execution ([SWD-116](https://marcusknielsen.atlassian.net/browse/SWD-116))
 3. **Built-in wedge block library** — Level/Flow PI and supporting stock blocks ([SWD-115](https://marcusknielsen.atlassian.net/browse/SWD-115))
 4. **User library + in-App Python editor** — create/edit user templates; copy-on-place; reset-to-library ([SWD-114](https://marcusknielsen.atlassian.net/browse/SWD-114))
-5. **App visual canvas** — wires + order bound to YAML ([SWD-120](https://marcusknielsen.atlassian.net/browse/SWD-120))
+5. **App visual canvas** — wires + order bound to the program dict ([SWD-120](https://marcusknielsen.atlassian.net/browse/SWD-120))
 6. **Apply policy** — restart default + super-user hot-apply ([SWD-117](https://marcusknielsen.atlassian.net/browse/SWD-117))
 7. **Wedge skid migration** — mock skid control path onto block program; shell unchanged ([SWD-121](https://marcusknielsen.atlassian.net/browse/SWD-121))
 8. **Contract/unit tests + acceptance doc** ([SWD-118](https://marcusknielsen.atlassian.net/browse/SWD-118))
@@ -92,4 +92,4 @@
   - [SWD-118](https://marcusknielsen.atlassian.net/browse/SWD-118) — Contract/unit tests + acceptance
 
 ## Next
-`/review-fix SWD-82` — Review and auto-fix until clean
+`/ship SWD-82` — Programming surface review CLEAN; ready to merge
