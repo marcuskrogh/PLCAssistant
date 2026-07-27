@@ -86,4 +86,4 @@
   - [SWD-124](https://marcusknielsen.atlassian.net/browse/SWD-124) — Acceptance tests + checklist
 
 ## Next
-`/review-fix SWD-84` — Implement complete; Task In Review
+`/ship SWD-84` — review-fix CLEAN (iter 3)
