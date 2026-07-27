@@ -92,4 +92,4 @@
   - [SWD-118](https://marcusknielsen.atlassian.net/browse/SWD-118) — Contract/unit tests + acceptance
 
 ## Next
-`/ship SWD-82` — Programming surface review CLEAN; ready to merge
+`/research SWD-84` — Packaging shape (last explore theme)

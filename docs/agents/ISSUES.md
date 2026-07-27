@@ -4,7 +4,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 | Key | Type | Title | Status | Parent | Artifact | Next |
 |-----|------|-------|--------|--------|----------|------|
-| SWD-81 | Story | PLCAssistant — Virtual PLC for Home Assistant | To Do | — | docs/ROADMAP.md | `/ship SWD-82` |
+| SWD-81 | Story | PLCAssistant — Virtual PLC for Home Assistant | To Do | — | docs/ROADMAP.md | `/research SWD-84` |
 | SWD-83 | Task | Explore theme: Lab / hobby / small-process wedge | Done | SWD-81 | docs/PLAN.md (prior), docs/wedge/, plcassistant/wedge/ | Done — phase closed |
 | SWD-88 | Sub-task | SWD-83: Reference process spec | Done | SWD-83 | docs/wedge/01-reference-process.md | — |
 | SWD-87 | Sub-task | SWD-83: I/O & HMI contract for the skid | Done | SWD-83 | docs/wedge/02-io-hmi-contract.md | — |
@@ -28,7 +28,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-101 | Sub-task | SWD-85: HA↔cyclic boundary note | Done | SWD-85 | docs/control/04-ha-cyclic-boundary.md | — |
 | SWD-102 | Sub-task | SWD-85: Wedge control-story update | Done | SWD-85 | docs/wedge/03-control-story.md (+ 02/07) | — |
 | SWD-106 | Sub-task | SWD-85: Contract/unit tests | Done | SWD-85 | docs/control/05-acceptance.md, tests/test_swd85_acceptance.py | — |
-| SWD-82 | Task | Explore theme: Programming surface | In Review | SWD-81 | docs/PLAN.md, docs/surface/, plcassistant/surface/, plcassistant/app/ | `/ship SWD-82` |
+| SWD-82 | Task | Explore theme: Programming surface | Done | SWD-81 | docs/PLAN.md, docs/surface/, plcassistant/surface/, plcassistant/app/ | Done — phase closed |
 | SWD-119 | Sub-task | SWD-82: Block model + YAML schema | Done | SWD-82 | docs/surface/01-block-model.md, plcassistant/surface/ | — |
 | SWD-116 | Sub-task | SWD-82: Python block runtime + scan integration | Done | SWD-82 | docs/surface/02-runtime.md, plcassistant/surface/runtime.py | — |
 | SWD-115 | Sub-task | SWD-82: Built-in wedge block library | Done | SWD-82 | docs/surface/03-builtin-library.md, plcassistant/surface/builtin.py | — |
@@ -37,7 +37,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-117 | Sub-task | SWD-82: Apply policy (restart + hot-apply) | Done | SWD-82 | docs/surface/04-apply-policy.md, plcassistant/surface/apply.py | — |
 | SWD-121 | Sub-task | SWD-82: Wedge skid migration onto blocks | Done | SWD-82 | docs/surface/06-wedge-migration.md, plcassistant/wedge/skid.py | — |
 | SWD-118 | Sub-task | SWD-82: Contract/unit tests + acceptance | Done | SWD-82 | docs/surface/07-acceptance.md, tests/test_swd82_acceptance.py | — |
-| SWD-84 | Task | Explore theme: Packaging shape | To Do | SWD-81 | docs/ROADMAP.md | later |
+| SWD-84 | Task | Explore theme: Packaging shape | To Do | SWD-81 | docs/ROADMAP.md | `/research SWD-84` |
 
 ## Log
 
@@ -68,3 +68,4 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 - 2026-07-27 — Define complete for SWD-82: `docs/PLAN.md`; Sub-tasks SWD-119, SWD-116, SWD-115, SWD-114, SWD-120, SWD-117, SWD-121, SWD-118; Next `/implement SWD-82`.
 - 2026-07-27 — Implement SWD-82 complete: surface + App editor + wedge CONTROL on blocks; Sub-tasks Done; Task → In Review; Next `/review-fix SWD-82`.
 - 2026-07-27 — review-fix SWD-82 CLEAN after 2 iterations (iter1: stale context/sandbox/hot-apply/etc.; iter2: shell-owned `running` wires + CMD clamp, builtin overwrite guard, localhost default, docs JSON/YAML align); Next `/ship SWD-82`.
+- 2026-07-27 — Shipped SWD-82 via PR #26; Task Done; Story SWD-81 remains open (SWD-84 packaging remains); Next `/research SWD-84`.
