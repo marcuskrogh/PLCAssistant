@@ -1,138 +1,181 @@
-# Research: Control semantics (SWD-85)
+# Research: Compare state estimation methods for SDEs
 
-**Tracker:** [SWD-85](https://marcusknielsen.atlassian.net/browse/SWD-85)  
-**Parent:** [SWD-81](https://marcusknielsen.atlassian.net/browse/SWD-81) · Roadmap theme 3  
-**Date:** 2026-07-26  
+**Tracker:** [SWD-113](https://marcusknielsen.atlassian.net/browse/SWD-113)  
+**Scope:** Independent research track — **not** PLCAssistant / [SWD-81](https://marcusknielsen.atlassian.net/browse/SWD-81)  
+**Date:** 2026-07-27  
 **Tooling:** `scripts/arxiv_research.py` (stdlib arXiv Atom client)
 
 ## Question
 
-What must “PLC-like” **control semantics** mean for PLCAssistant (lab / hobby soft-PLC on Home Assistant) — especially:
+How do continuous-discrete state estimation methods for systems involving stochastic differential equations (SDEs) compare — on accuracy, computational cost, nonlinearity / non-Gaussianity, stiffness, and when to prefer each?
 
-1. Must-have loops, feedback, and timing for a soft-PLC *feeling*
-2. What “safety” means at this ambition (not SIL / certified safety PLC)
-3. How HA’s event-driven world should interact with PLC cyclic expectations
+Focus methods:
 
-Scope: inform `/define SWD-85` without locking runtime packaging (SWD-84) or programming surface (SWD-82).
+1. Extended Kalman filter (EKF / CD-EKF)
+2. Unscented Kalman filter (UKF / CD-UKF)
+3. Cubature Kalman filter (CKF / CD-CKF)
+4. Ensemble Kalman filter (EnKF / CD-EnKF)
+5. Particle filter (PF / CD-PF)
+6. Adjacent: moving horizon estimation (MHE), deep / Fokker–Planck approximators
 
 ## Strategy
 
 | Step | What |
 |------|------|
-| Seed queries | soft/software PLC; IEC 61131 + scan/cyclic; programmable-logic runtime; industrial automation controllers / behavior trees; OpenPLC |
-| Lookup cores | Formal ST/LD/SFC semantics, 61131 vs 61499, scan-cycle timing, OpenPLC security, cascade PID safety |
-| Snowball | Authors/categories from cores (noisy — many physics/PLC=power-line false positives; hand-filtered) |
-| Triage | Keep IEC 61131-3 / OpenPLC / scan-cycle / cascade control; drop power-line comms, HEP, generic LLM codegen unless PLC-runtime relevant |
-| Grounding | Cross-check against wedge control/safety stories (`docs/wedge/03`, `04`) and I/O image (`docs/io/`) |
+| Seed queries | continuous-discrete + SDE state estimation; Kalman vs particle / unscented / cubature / ensemble |
+| Lookup cores | [2205.02730](https://arxiv.org/abs/2205.02730), [2212.02139](https://arxiv.org/abs/2212.02139), [2303.04035](https://arxiv.org/abs/2303.04035), [1604.04498](https://arxiv.org/abs/1604.04498), Kulikova/Kulikov CD-UKF/CKF numerics |
+| Snowball | Authors/categories from cores (noisy — hand-filtered physics/comms false positives) |
+| Triage | Keep CD filtering comparisons, stiff-SDE filter studies, DA/CSTR/MFTS benchmarks; drop unrelated Kalman-in-name-only papers |
+| Grounding | Method taxonomy via Fokker–Planck / Bayesian DA approximations (Diaa-Eldeen et al.) |
 
-Raw JSON under `/tmp/swd85-research/` (not committed).
+Raw JSON under `/tmp/sde-estimation-research/` (not committed).
 
-## Summary (answers for define)
+## Problem setting
 
-### Must-have soft-PLC semantics
+Continuous-discrete (CD) models:
 
-Literature and prior art converge on a **cyclic scan model** as the distinctive PLC runtime contract, not event callbacks:
+\[
+\begin{aligned}
+dx(t) &= f(t,x,u,d,\theta)\,dt + \sigma(t,x,u,d,\theta)\,d\omega(t), \\
+y(t_k) &= h(t_k,x(t_k),\theta) + v(t_k).
+\end{aligned}
+\]
 
-1. **Scan cycle** — read inputs → evaluate logic → write outputs, repeatedly, with a notion of cycle time / retentive state across scans ([K-ESBMC](https://arxiv.org/abs/2607.10499), [ESBMC-PLC](https://arxiv.org/abs/2606.15461), [Scanning the Cycle](https://arxiv.org/abs/2102.08985)).
-2. **Deterministic I/O image** — logic sees a frozen input image for the scan; outputs commit at end of scan (already aligned with SWD-86).
-3. **Continuous control as FB-like blocks** — cascade PI(D) with clamps / anti-windup; literature treats cascade gain tuning and stability as first-class ([Safety-Aware Cascade Tuning](https://arxiv.org/abs/2010.15211)); wedge already requires directional cascade, not certified tuning.
-4. **Discrete orchestration** — modes, permissives, latched trips (wedge `STOP`/`RUNNING`/`TRIPPED`) map cleanly to SFC-style sequential structure or simple state machines; formal SFC work ([Coq SFC](https://arxiv.org/abs/1301.3047), [CERTPLC](https://arxiv.org/abs/1102.3529)) shows why latch/reset semantics need an explicit model.
-5. **Timers / edges as scan-relative** — TON/TOF/edge detection defined in scan ticks or wall-clock sampled once per scan (LD formalizations in K-ESBMC).
+Exact conditional density evolution between measurements is the **Fokker–Planck / Kolmogorov forward PDE**. Dimension equals state dimension → impractical beyond a few states ([Jazwinski](https://arxiv.org/abs/2212.02139) framing in Nielsen et al.). All practical filters are **approximate Bayesian updates**: time update (propagate prior via SDE) + measurement update (assimilate \(y_{t_k}\)).
 
-**IEC 61499 event-driven FBs** are a research alternative for distributed CPS ([61131 vs 61499](https://arxiv.org/abs/1303.4761)); industry still centers **61131 cyclic**. For HA adjacency, prefer **cyclic soft-PLC core** with HA as I/O/HMI bus — not adopting 61499 as the primary mental model.
+## Method map (what each approximates)
 
-**Behavior trees** ([BT in industrial controllers](https://arxiv.org/abs/2404.14030)) are a useful *programming-surface* idea for modularity (SWD-82), not a substitute for the scan contract.
+| Method | Time-update idea | Posterior shape | Needs Jacobians? | Cost scaling (typical) |
+|--------|------------------|-----------------|------------------|------------------------|
+| **CD-EKF** | Integrate mean + linearized covariance ODEs | Gaussian | Yes | Low (1 trajectory + \(P\) ODE / sensitivity) |
+| **CD-UKF** | Propagate \(2n+1\) (or augmented) sigma points through nonlinear SDE | Gaussian from sample moments | No | Moderate (\(\propto n\)) |
+| **CD-CKF** | Third-degree cubature points + (often) Itô–Taylor discretization | Gaussian | No | Moderate (\(\propto n\)), similar class to UKF |
+| **CD-EnKF** | Monte Carlo ensemble; Kalman update in ensemble space | Implicitly Gaussian update | No | High (\(\propto N_{\text{ens}}\)); localization/inflation often needed |
+| **CD-PF** | Weighted particles + resampling (e.g. SIR) | Nonparametric | No | Very high; curse of dimensionality |
+| **MHE** | Optimize trajectory over a horizon (constraints OK) | Point / MAP-ish; uncertainty secondary | Via NLP | High (online NLP); strong on constraints |
+| **Deep / FP solvers** | Learn density / BSDE / splitting approximations | Flexible | N/A (train) | Research / high-dim niche |
 
-### Safety at this ambition
+Shared Bayesian view ([2303.04035](https://arxiv.org/abs/2303.04035)): KF exact for linear-Gaussian; EKF = dynamical linearization + Gaussian; UKF = deterministic sampling + Gaussian; EnKF = MC + Gaussian Kalman update; PF = MC of full posterior (fewest distributional assumptions, highest sample cost).
 
-Academic “safety” for PLCs usually means **formal verification of LD/ST/SFC** or security of soft-PLC stacks ([OpenPLC issues](https://arxiv.org/abs/2509.22664)), not SIL certification.
+## Empirical comparisons (literature)
 
-For PLCAssistant v1 (already locked in wedge safety story):
+### A. Modified four-tank system (MFTS) — non-stiff CD SDEs
 
-| Keep | Defer |
-|------|-------|
-| Latched trips, Start permissives, immediate stop CV | SIL / certified safety PLC / dual-channel |
-| Trip on non-GOOD PV (LOS) using SWD-86 quality | Formal model checking of user programs |
-| Safety evaluated **every scan**, before/overriding continuous control | Rich bypass/audit frameworks |
-| Illustrative “middle-ground” semantics | Claiming IEC 61508/62061 compliance |
+[Nielsen et al., arXiv:2205.02730](https://arxiv.org/abs/2205.02730) / [2212.02139](https://arxiv.org/abs/2212.02139): Matlab, explicit integration, Joseph-form EKF. 30 min, 120 samples; EnKF \(N=250\), PF \(N=1000\).
 
-OpenPLC security work is a reminder: soft-PLC on commodity hosts needs basic isolation/auth later (packaging / SWD-84), but is out of control-semantics define scope.
+| | EKF | UKF | EnKF | PF |
+|--|-----|-----|------|-----|
+| Time update [s] | 0.31 | 2.9 | 34 | 136 |
+| Meas. update [s] | 0.012 | 0.041 | 0.23 | 1.05 |
+| MAPE states [%] | 2.55 | 2.97 | **2.35** | 2.40 |
+| MAPE disturbances [%] | 15.7 | 17.5 | 14.7 | **13.7** |
 
-### HA event-driven vs PLC cyclic
+**Takeaway:** All four track states/disturbances successfully. **EKF cheapest**; **EnKF/PF slightly more accurate** at ~10²–10³× time-update cost. On this mildly nonlinear plant, UKF did not beat EKF on MAPE (and was slower).
 
-| Layer | Role |
-|-------|------|
-| HA | Entity state changes, services, dashboards — **asynchronous** |
-| Thin integration (SWD-86) | Sample/declare bindings; mock entities |
-| Soft-PLC runtime | Own the **scan clock**; build I/O image each cycle; run cascade + safety; flush OUT |
+### B. Stochastic CSTR — joint state + parameter estimation
 
-Practical contract for define:
+[Diaa-Eldeen, Nielsen, Jørgensen, arXiv:2303.04035](https://arxiv.org/abs/2303.04035): adiabatic CSTR SDE; estimate \(C_A,C_B,T,\beta\); \(N_{\text{ens}}=N_{\text{PF}}=1000\).
 
-- HA events **update a sample buffer**; they do **not** directly execute control logic mid-scan.
-- Scan period is configurable; undersampling / stale samples → `UNCERTAIN`/`BAD` (existing quality model), not ad-hoc event handlers.
-- OUT writes every scan (SWD-86) so HA actuators see PLC-paced commands even when PVs are quiet.
-- Optional future: “scan overrun” / jitter diagnostics for hobby credibility — not SIL timing guarantees.
+| | EKF | UKF | EnKF | PF |
+|--|-----|-----|------|-----|
+| \(MSE_x\) | 0.66 | 0.64 | **0.48** | 0.53 |
+| \(MSE_p\) | 6.30 | 6.30 | **4.52** | 4.95 |
+| \(t_{CPU}\) / step [s] | **0.030** | 0.082 | 4.03 | 4.17 |
 
-## Key papers
+**Takeaway:** **EnKF best accuracy**; EKF/UKF similar MSE; PF close to EnKF but not better here. **EnKF more robust than PF to reducing ensemble size** down toward state dimension; PF collapsed earlier. EKF remains the efficiency default when Jacobians are cheap.
 
-| arXiv | Title | Why it matters |
-|-------|-------|----------------|
-| [2607.10499](https://arxiv.org/abs/2607.10499) | K-ESBMC: Executable formal semantics of IEC 61131-3 LD | Scan-for-scan oracle vs OpenPLC/Matiec; retentive scan cycle, timers, edges |
-| [2606.15461](https://arxiv.org/abs/2606.15461) | ESBMC-PLC | Models PLC scan as `while(true)` + nondeterministic inputs — crisp runtime picture |
-| [2202.04076](https://arxiv.org/abs/2202.04076) | K-ST | Formal ST semantics from IEC 61131-3 + vendor manuals |
-| [1301.3047](https://arxiv.org/abs/1301.3047) | Coq semantics for PLC (SFC/IL/LD/FBD) | Multi-language top-level control-flow; latch/sequence thinking |
-| [1303.4761](https://arxiv.org/abs/1303.4761) | IEC 61499 vs 61131 | Why cyclic 61131 remains the industrial default vs event FBs |
-| [2102.08985](https://arxiv.org/abs/2102.08985) | Scanning the Cycle | Scan cycle as observable PLC fingerprint — timing is part of the product feel |
-| [2010.15211](https://arxiv.org/abs/2010.15211) | Safety-aware cascade PID tuning | Cascade + constraints; tuning ≠ safety interlocks |
-| [2404.14030](https://arxiv.org/abs/2404.14030) | Behavior trees in industrial controllers | Modular high-level control — feed SWD-82, not scan replacement |
-| [2509.22664](https://arxiv.org/abs/2509.22664) | OpenPLC security issues | Soft-PLC on Pi/PC: trust boundary / packaging caution |
-| [2504.04224](https://arxiv.org/abs/2504.04224) | Robustness & safety in low-code factory automation | Adjacent “approachable industrial” ambition without overclaiming SIL |
+### C. Stiff continuous-discrete SDEs — EKF vs UKF vs CKF
+
+[Kulikov & Kulikova, arXiv:1604.04498](https://arxiv.org/abs/1604.04498): Van der Pol and related models, nonstiff vs stiff (\(\lambda\) up to \(10^4\)).
+
+- **Nonstiff:** CD-CKF ≳ CD-UKF ≳ CD-EKF (higher-order Gaussian moment matching wins), especially at longer sampling intervals.
+- **Stiff:** accuracies degrade sharply; **CD-EKF can outperform CD-UKF/CD-CKF** — counter to the “UKF/CKF always better” folklore. Stiff CD-SDEs need careful discretization / square-root / stiff ODE numerics, not just a “better” sigma-point transform ([2310.04126](https://arxiv.org/abs/2310.04126), [2311.11299](https://arxiv.org/abs/2311.11299)).
+
+### D. Adjacent families (not head-to-head in the same MFTS/CSTR tables)
+
+| Family | Relative position |
+|--------|-------------------|
+| **MHE** | Best when **constraints** and nonlinear model fidelity matter; heavier than EKF; often more robust to bad initials than EKF (Haseltine & Rawlings-type comparisons). Complementary to PF (hybrid MHE+PF discussed in process-control tutorials). |
+| **Deep density / BSDE / FP ML** | Target **high-dimensional** filtering where particle methods fail; still early vs industrial CD-EKF practice ([2511.07261](https://arxiv.org/abs/2511.07261)). |
+
+## Comparison axes (synthesis)
+
+| Axis | Winner / guidance |
+|------|-------------------|
+| **Speed / APC embedding** | **EKF** first; UKF/CKF if Jacobians painful or mild nonlinearity needs better moment match |
+| **Mild–moderate nonlinearity, Gaussian-ish noise** | EKF ≈ UKF often; don’t assume UKF wins without a twin experiment |
+| **Strong nonlinearity / non-Gaussian posterior** | **PF** (full distribution) or **EnKF** (practical middle ground); MHE if constraints dominate |
+| **Joint parameter + state (augmented)** | EnKF strong in CSTR twin; watch dual-estimation bias vs joint augmentation |
+| **High dimension** | EnKF (+ localization/inflation); PF scales poorly; EKF covariance ODE can also hurt |
+| **Stiffness** | Prefer **stable numerics + EKF (or square-root CD filters)**; sigma-point/IT discretizations can lose |
+| **Long sampling intervals** | Higher-order Gaussian filters (UKF/CKF) or finer SDE steps matter more; EKF linearization drifts |
+| **Uncertainty quantification** | PF / large ensemble reference; Kalman family only gives Gaussian \(P\) |
+
+## Decision cheat-sheet
+
+```
+IF linear-Gaussian CD → Kalman filter (exact)
+ELIF stiff SDE + need industrial reliability → CD-EKF with robust stiff integration / Joseph or square-root form
+ELIF mild nonlinearity, cheap Jacobians, real-time APC → CD-EKF
+ELIF mild–moderate nonlinearity, no Jacobians → CD-UKF or CD-CKF
+ELIF multimodal / strongly non-Gaussian, low–moderate dim → CD-PF (budget particles carefully)
+ELIF nonlinear, moderate–high dim, Gaussian update acceptable → CD-EnKF (+ localization)
+ELIF hard state constraints / MAP trajectory → MHE (optionally hybrid with PF/EKF)
+ELIF very high dim density estimation research → deep FP / BSDE filters
+```
 
 ## Themes
 
-1. **Scan is the product metaphor** — users expect cyclic evaluate + I/O image, not pure HA automations.
-2. **61131-shaped, not 61499-first** — keep cyclic core; event distribution stays HA’s job.
-3. **Separate “process safety interlocks” from “formal/verified PLC”** — wedge latch/LOS is enough for SWD-85 define.
-4. **Cascade PID is continuous FB semantics inside the scan** — clamps, anti-windup, bumpless; quantitative autotune optional later.
-5. **OpenPLC/Matiec as reference peers** — useful for behavioral comparison, not a required dependency.
-6. **Programming surface ≠ semantics** — BTs / ST / high-level DSL can sit atop the same scan + FB contract (SWD-82).
+1. **All CD filters are Fokker–Planck approximations** — choose by which error you can afford (linearization vs Gaussian closure vs sample size vs NLP).
+2. **Accuracy ≠ order of moment matching** when stiffness or discretization dominates (Kulikov/Kulikova).
+3. **EnKF often matches or beats PF at lower \(N\)** on process examples that stay near-Gaussian after update (CSTR dual estimation).
+4. **UKF is not a free upgrade over EKF** on every plant (MFTS MAPE; stiff cases).
+5. **Numerics of the time update** (explicit vs stiff solvers, Itô–Taylor order, square-root covariance) are first-class accuracy factors, not implementation footnotes.
+6. **MHE is the constraint-aware sibling**, not a drop-in replacement in the EKF–PF speed ladder.
 
 ## Gaps
 
-- Little peer-reviewed work on **Home Assistant ↔ soft-PLC** bridging; design must be original, guided by PLC scan + HA entity realities (SWD-86).
-- Soft-PLC *feel* timing (jitter, overrun UX) under-specified in papers aimed at ICS security or formal methods.
-- Cascade tuning literature assumes plants/labs richer than our mock skid — define should set **demo-grade** timing/gains, not research autotune.
-- No need to adopt full IEC language semantics now; formal papers are **conceptual anchors**, not implementation mandates.
+- Few **single-benchmark, multi-method** studies spanning EKF/UKF/CKF/EnKF/PF/**MHE** with identical SDE discretizations and tuning protocols.
+- **Stiff + high-dimensional** CD filtering still under-served by theory and software.
+- Fair comparisons need **matched process-noise / measurement-noise / integrator step** — published tables sometimes retune \(\sigma,\lambda\) per filter (noted in MFTS setup).
+- Deep FP filters lack mature process-control head-to-heads against EnKF/PF on CSTRs/tank systems.
 
 ## Suggested reading order
 
-1. [1303.4761](https://arxiv.org/abs/1303.4761) — frame 61131 vs 61499  
-2. [2606.15461](https://arxiv.org/abs/2606.15461) / [2607.10499](https://arxiv.org/abs/2607.10499) — scan-cycle mental model (+ OpenPLC alignment)  
-3. Wedge `03-control-story.md` + `04-safety-story.md` — product constraints already locked  
-4. [2010.15211](https://arxiv.org/abs/2010.15211) — cascade continuous-control expectations  
-5. [2404.14030](https://arxiv.org/abs/2404.14030) — only if jumping ahead to SWD-82  
-6. [2509.22664](https://arxiv.org/abs/2509.22664) — packaging/threat note for SWD-84  
-
-## Implications for `/define SWD-85`
-
-Draft define should lock (conceptually, not necessarily code):
-
-- **Scan scheduler** contract (period, order: IN → safety → control → OUT)
-- **Mode / permissive / trip** evaluation relative to continuous loops
-- **PID/FB minimum semantics** for cascade (sample time = scan or explicit `Ts`, clamps, anti-windup, bumpless init)
-- **Safety precedence** every scan; interaction with non-GOOD quality (already in wedge)
-- Explicit **non-goals**: SIL, full IEC language runtime, 61499 distribution, HA-automation-as-PLC
+1. [2205.02730](https://arxiv.org/abs/2205.02730) — compact CD EKF/UKF/EnKF/PF + MFTS numbers  
+2. [2303.04035](https://arxiv.org/abs/2303.04035) — Bayesian DA taxonomy + CSTR joint estimation table  
+3. [1604.04498](https://arxiv.org/abs/1604.04498) — stiff vs nonstiff EKF/UKF/CKF  
+4. [2310.04126](https://arxiv.org/abs/2310.04126) — accurate CD-UKF numerics (MATLAB ODE / square-root)  
+5. Haseltine & Rawlings (MHE vs EKF) — when optimization beats recursive Gaussians  
+6. [2511.07261](https://arxiv.org/abs/2511.07261) — only if pursuing high-dim deep density filters  
 
 ## Sources
 
-- arXiv Atom API via `scripts/arxiv_research.py`
-- Repo: `docs/ROADMAP.md`, `docs/wedge/03-control-story.md`, `docs/wedge/04-safety-story.md`, `docs/io/`
+**Core arXiv:**
+- [2205.02730](https://arxiv.org/abs/2205.02730) — Nielsen et al., CD methods + MFTS  
+- [2212.02139](https://arxiv.org/abs/2212.02139) — Nielsen et al., FOCAPO/CPC companion  
+- [2303.04035](https://arxiv.org/abs/2303.04035) — Diaa-Eldeen et al., DA + CSTR  
+- [1604.04498](https://arxiv.org/abs/1604.04498) — Kulikov & Kulikova, stiff EKF vs UKF/CKF  
+- [2310.04126](https://arxiv.org/abs/2310.04126) — Kulikova & Kulikov, CD-UKF frameworks  
+- [2311.11299](https://arxiv.org/abs/2311.11299) — square-root CD-EKF covariance factors  
+- [2511.07261](https://arxiv.org/abs/2511.07261) — deep density high-dim filtering  
+
+**External (non-arXiv Atom):**
+- Arasaratnam, Haykin, Hurd — CD cubature Kalman filter (IEEE TSP 2010)  
+- Haseltine & Rawlings — critical EKF vs MHE evaluation  
+- Rawlings & Bakshi — particle filtering and MHE survey (Comp. Chem. Eng.)
+
+**Tooling:** arXiv Atom API via `scripts/arxiv_research.py`
 
 ## Tracker
 
-- Task [SWD-85](https://marcusknielsen.atlassian.net/browse/SWD-85) is **Done** (shipped PR #18 merge `a51cdbe`); research artifact is this doc; definition is `docs/PLAN.md`.
-- Story [SWD-81](https://marcusknielsen.atlassian.net/browse/SWD-81) Next → `/define SWD-82`.
+- Story [SWD-113](https://marcusknielsen.atlassian.net/browse/SWD-113) — independent of PLCAssistant; research artifact is this doc.
+- Do **not** route next steps into `/define SWD-82`.
 
 ## Next
 
-Done — phase closed. Suggested initiative next: `/define SWD-82`
+Research synthesis complete for SWD-113. Optional follow-ons (separate tickets if pursued):
+
+- Reproduce MFTS/CSTR tables in one shared codebase with locked \(\sigma\), step size, and seeds  
+- Add CD-CKF + MHE to the same harness  
+- Stiffness sweep (Van der Pol-style) for EKF/UKF/CKF with identical integrators  

@@ -30,6 +30,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-106 | Sub-task | SWD-85: Contract/unit tests | Done | SWD-85 | docs/control/05-acceptance.md, tests/test_swd85_acceptance.py | — |
 | SWD-82 | Task | Explore theme: Programming surface | To Do | SWD-81 | docs/ROADMAP.md | `/define SWD-82` |
 | SWD-84 | Task | Explore theme: Packaging shape | To Do | SWD-81 | docs/ROADMAP.md | later |
+| SWD-113 | Story | Independent research: Compare state estimation methods for SDEs | Done | — | docs/RESEARCH.md | Independent of SWD-81; optional follow-ons in RESEARCH.md |
 
 ## Log
 
@@ -56,3 +57,4 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 - 2026-07-27 — review-fix SWD-85 CLEAN after 2 iterations (2→0 should-fix); Next `/ship SWD-85`.
 - 2026-07-27 — Shipped SWD-85 via PR #18 (merge `a51cdbe`); Task Done; Story SWD-81 remains open; Next `/define SWD-82`.
 - 2026-07-27 — Reverted incorrect SWD-82 `/research` + `/define` (PRs #20/#21 closed unmerged; Sub-tasks SWD-107..112 cancelled). Continuity remains post–SWD-85 ship; Next `/define SWD-82`.
+- 2026-07-27 — Independent `/research` for SWD-113 (SDE state-estimation method comparisons); artifact `docs/RESEARCH.md` (replaces prior SWD-85 research content in that path); Story Done. PLCAssistant continuity unchanged: Next `/define SWD-82`.
