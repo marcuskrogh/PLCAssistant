@@ -49,6 +49,8 @@ are optional wrappers the caller may supply; the library works with plain dicts.
 - [ ] A LOS trip (e.g. force LT_TANK BAD) on scan N sets `cmd_speed = 0` on **the same** scan N.
 - [ ] `SkidSnapshot.cascade.cmd_speed == 0` and `SkidSnapshot.cmd_speed == 0` when tripped.
 - [ ] The safety/mode shell runs in `SAFETY` phase **before** `CONTROL`; user blocks cannot override.
+- [ ] Wires into shell-owned ``running`` pins are rejected by `validate_program`.
+- [ ] Even if a bypassed graph forces ``running=True`` while permit is false, cascade/`control.last` CMD is clamped to 0.
 
 ### AC-7 — No Home Assistant imports
 
