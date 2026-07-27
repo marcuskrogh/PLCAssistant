@@ -32,4 +32,4 @@
 - Tasks: [SWD-83](https://marcusknielsen.atlassian.net/browse/SWD-83) **Done**, [SWD-86](https://marcusknielsen.atlassian.net/browse/SWD-86) **Done**, [SWD-85](https://marcusknielsen.atlassian.net/browse/SWD-85) (In Review), [SWD-82](https://marcusknielsen.atlassian.net/browse/SWD-82), [SWD-84](https://marcusknielsen.atlassian.net/browse/SWD-84)
 
 ## Next
-`/review-fix SWD-85` — Control semantics implement ready for review
+`/ship SWD-85` — Control semantics review-fix CLEAN

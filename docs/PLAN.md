@@ -85,4 +85,4 @@
 - Tests: `tests/test_swd85_acceptance.py` — `python3 -m pytest -q` green
 
 ## Next
-`/review-fix SWD-85` — Review and auto-fix until clean
+`/ship SWD-85` — Merge PR and close the Task

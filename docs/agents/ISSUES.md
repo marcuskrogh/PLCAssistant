@@ -4,7 +4,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 | Key | Type | Title | Status | Parent | Artifact | Next |
 |-----|------|-------|--------|--------|----------|------|
-| SWD-81 | Story | PLCAssistant — Virtual PLC for Home Assistant | To Do | — | docs/ROADMAP.md | `/review-fix SWD-85` |
+| SWD-81 | Story | PLCAssistant — Virtual PLC for Home Assistant | To Do | — | docs/ROADMAP.md | `/ship SWD-85` |
 | SWD-83 | Task | Explore theme: Lab / hobby / small-process wedge | Done | SWD-81 | docs/PLAN.md (prior), docs/wedge/, plcassistant/wedge/ | Done — phase closed |
 | SWD-88 | Sub-task | SWD-83: Reference process spec | Done | SWD-83 | docs/wedge/01-reference-process.md | — |
 | SWD-87 | Sub-task | SWD-83: I/O & HMI contract for the skid | Done | SWD-83 | docs/wedge/02-io-hmi-contract.md | — |
@@ -21,7 +21,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-97 | Sub-task | SWD-86: Packaging note revision | Done | SWD-86 | docs/wedge/08-packaging-sketch.md (+ 05/07/README) | — |
 | SWD-99 | Sub-task | SWD-86: Thin-integration stub | Done | SWD-86 | docs/io/03-thin-integration-stub.md, plcassistant/io/integration.py | — |
 | SWD-100 | Sub-task | SWD-86: Contract/unit tests | Done | SWD-86 | docs/io/04-acceptance.md, tests/test_swd86_acceptance.py | — |
-| SWD-85 | Task | Explore theme: Control semantics | In Review | SWD-81 | docs/PLAN.md, docs/control/, plcassistant/control/ | `/review-fix SWD-85` |
+| SWD-85 | Task | Explore theme: Control semantics | In Review | SWD-81 | docs/PLAN.md, docs/control/, plcassistant/control/ | `/ship SWD-85` |
 | SWD-103 | Sub-task | SWD-85: Scan scheduler contract | Done | SWD-85 | docs/control/01-scan-scheduler.md, plcassistant/control/ | — |
 | SWD-105 | Sub-task | SWD-85: Continuous FB / PID semantics | Done | SWD-85 | docs/control/02-fb-pid.md, plcassistant/wedge/control.py | — |
 | SWD-104 | Sub-task | SWD-85: Safety precedence in the scan | Done | SWD-85 | docs/control/03-safety-precedence.md, plcassistant/wedge/skid.py | — |
@@ -52,4 +52,5 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 - 2026-07-26 — Fix-forward SWD-86 review iteration 2: apply_in GOOD None/non-numeric/non-finite demote, set_output non-finite demote, SP_LEVEL naming docs; Task stays In Review; Next `/review-fix SWD-86`.
 - 2026-07-26 — Research complete for SWD-85: `docs/RESEARCH.md` (scan-cycle semantics, safety ambition, HA vs cyclic); tool `scripts/arxiv_research.py`; Next `/define SWD-85`.
 - 2026-07-27 — Define complete for SWD-85: `docs/PLAN.md`; Sub-tasks SWD-103, SWD-105, SWD-104, SWD-101, SWD-102, SWD-106; Next `/implement SWD-85`.
-- 2026-07-27 — Implement SWD-85 complete: Sub-tasks Done; Task → In Review; Next `/review-fix SWD-85`.
+- 2026-07-27 — Implement SWD-85 complete: Sub-tasks Done; Task → In Review; Next `/ship SWD-85`.
+- 2026-07-27 — review-fix SWD-85 CLEAN after 2 iterations (2→0 should-fix); Next `/ship SWD-85`.
