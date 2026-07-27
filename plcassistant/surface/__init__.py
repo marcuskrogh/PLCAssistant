@@ -4,6 +4,7 @@ See docs/surface/ for the full contract.
 No Home Assistant dependency.
 """
 
+from plcassistant.surface.apply import ProgramLoader
 from plcassistant.surface.builtin import (
     register_builtins,
     wedge_cascade_program,
@@ -64,6 +65,8 @@ __all__ = [
     # built-in library
     "register_builtins",
     "wedge_cascade_program",
+    # apply policy (SWD-117)
+    "ProgramLoader",
     # user library (SWD-114)
     "add_user_template",
     "get_user_template",

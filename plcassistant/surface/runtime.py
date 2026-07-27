@@ -226,6 +226,17 @@ class BlockRuntime:
         else:
             self._state.pop(instance_id, None)
 
+    def set_instance_state(self, instance_id: str, updates: dict) -> None:
+        """Merge *updates* into the per-instance state dict.
+
+        Creates the entry for *instance_id* if it does not yet exist.
+        Used by callers that need to pre-seed integrator or bumpless-start
+        state before the first RUNNING tick (e.g. SWD-121 wedge migration).
+        """
+        if instance_id not in self._state:
+            self._state[instance_id] = {}
+        self._state[instance_id].update(updates)
+
     @property
     def state(self) -> dict[str, dict]:
         """Read-only view of current per-instance state (for diagnostics)."""
