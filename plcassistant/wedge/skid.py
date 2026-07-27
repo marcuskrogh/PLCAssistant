@@ -29,6 +29,11 @@ from plcassistant.control.scan import (
     ScanShell,
 )
 from plcassistant.io.quality import QualityStatus, ReasonCode, TagQuality, is_good
+from plcassistant.surface.apply import ProgramLoader
+from plcassistant.surface.builtin import register_builtins, wedge_cascade_program
+from plcassistant.surface.model import TemplateLibrary
+from plcassistant.surface.runtime import BlockRuntime, DictContext
+from plcassistant.surface.schema import program_from_dict
 from plcassistant.wedge.control import CascadeConfig, CascadeController, CascadeOutputs
 from plcassistant.wedge.process import MockProcess, ProcessConfig, ProcessPort, ProcessState
 from plcassistant.wedge.quality import resolve_tag_quality
@@ -176,7 +181,6 @@ class Skid:
         self.config = config or SkidConfig()
         self._apply_limits()
         self.process: ProcessPort = process or MockProcess(self.config.process)
-        self.control = control or CascadeController(self.config.cascade)
         self.safety = safety or SafetyLayer(self.config.safety)
         self.scan_shell = ScanShell(self.config.scan)
         # Re-sync in case injected process/safety carried stale thresholds
@@ -188,6 +192,38 @@ class Skid:
         self._override_lt_tank: object = _UNSET
         self._override_lt_res: object = _UNSET
         self._override_ft_inlet: object = _UNSET
+
+        if control is None:
+            # Default path: block runtime executes wedge_cascade_program in CONTROL.
+            _lib = TemplateLibrary()
+            self._block_runtime = BlockRuntime(_lib)
+            register_builtins(_lib, self._block_runtime)
+            self._loader = ProgramLoader(_lib, self._block_runtime)
+            # Create context before initial load so the on-apply hook can clear it.
+            self._block_context = DictContext()
+            self._loader.add_on_apply_hook(self._on_program_apply)
+            cfg = self.config.cascade
+            self._loader.load(
+                program_from_dict(
+                    wedge_cascade_program(
+                        level_kp=cfg.level_kp,
+                        level_ki=cfg.level_ki,
+                        flow_kp=cfg.flow_kp,
+                        flow_ki=cfg.flow_ki,
+                        sp_flow_min=cfg.sp_flow_min,
+                        sp_flow_max=cfg.sp_flow_max,
+                        cmd_speed_min=cfg.cmd_speed_min,
+                        cmd_speed_max=cfg.cmd_speed_max,
+                    )
+                )
+            )
+            self._use_block_runtime = True
+            # Keep CascadeController for API compatibility; synced each scan.
+            self.control = CascadeController(self.config.cascade)
+        else:
+            # Fallback path: explicit CascadeController injection.
+            self.control = control
+            self._use_block_runtime = False
 
     def _apply_limits(self) -> None:
         """Push LimitConfig into process derate + safety trip thresholds."""
@@ -349,23 +385,63 @@ class Skid:
             assert isinstance(mv, MeasurementView)
             assert isinstance(safety, SafetyState)
             running = safety.pump_permit
-            # Bumpless Start: rising edge of pump permit.
-            if running and not self._was_running:
-                if mv.lt_tank is not None and mv.ft_inlet is not None:
-                    self.control.prepare_bumpless(
-                        lt_tank=mv.lt_tank,
-                        ft_inlet=mv.ft_inlet,
-                        sp_level=self.sp_level,
-                        target_sp_flow=self.control.last.sp_flow,
-                        target_cmd_speed=0.0,
-                    )
-            box["cascade"] = self.control.step(
-                dt,
-                lt_tank=mv.lt_tank,
-                ft_inlet=mv.ft_inlet,
-                sp_level=self.sp_level,
-                running=running,
-            )
+
+            if self._use_block_runtime:
+                # Block runtime path (default).
+                if running and not self._was_running:
+                    if mv.lt_tank is not None and mv.ft_inlet is not None:
+                        self._prepare_bumpless_blocks(
+                            lt_tank=mv.lt_tank,
+                            ft_inlet=mv.ft_inlet,
+                        )
+
+                ctx = self._block_context
+                ctx["level_pi.pv"] = mv.lt_tank if mv.lt_tank is not None else 0.0
+                ctx["level_pi.sp"] = self.sp_level
+                ctx["level_pi.running"] = running
+                ctx["flow_pi.pv"] = mv.ft_inlet if mv.ft_inlet is not None else 0.0
+                ctx["flow_pi.running"] = running
+
+                assert self._loader.program is not None
+                self._block_runtime.tick(self._loader.program, ctx, dt)
+
+                sp_flow = float(ctx.get("level_pi.cv") or 0.0)
+                cmd_speed_raw = float(ctx.get("flow_pi.cv") or 0.0)
+                # Shell precedence: when permit is false, force CMD_SPEED safe in
+                # cascade / control.last as well as the OUT-phase process write.
+                # Defense in depth if a graph somehow overrides ``running``.
+                if not running:
+                    cmd_speed_raw = 0.0
+                    ctx["flow_pi.cv"] = 0.0
+                lt_val = mv.lt_tank if mv.lt_tank is not None else 0.0
+                ft_val = mv.ft_inlet if mv.ft_inlet is not None else 0.0
+                cascade = CascadeOutputs(
+                    sp_flow=sp_flow,
+                    cmd_speed=cmd_speed_raw,
+                    level_error=self.sp_level - lt_val,
+                    flow_error=sp_flow - ft_val,
+                )
+                box["cascade"] = cascade
+                # Sync control.last for callers that use the CascadeController API.
+                self.control._last = cascade  # type: ignore[attr-defined]
+            else:
+                # CascadeController fallback path (explicit injection).
+                if running and not self._was_running:
+                    if mv.lt_tank is not None and mv.ft_inlet is not None:
+                        self.control.prepare_bumpless(
+                            lt_tank=mv.lt_tank,
+                            ft_inlet=mv.ft_inlet,
+                            sp_level=self.sp_level,
+                            target_sp_flow=self.control.last.sp_flow,
+                            target_cmd_speed=0.0,
+                        )
+                box["cascade"] = self.control.step(
+                    dt,
+                    lt_tank=mv.lt_tank,
+                    ft_inlet=mv.ft_inlet,
+                    sp_level=self.sp_level,
+                    running=running,
+                )
             self._was_running = running
 
         def on_out() -> None:
@@ -423,6 +499,119 @@ class Skid:
         )
         self._last = snap
         return snap
+
+    # ------------------------------------------------------------------
+    # On-apply hook (registered with ProgramLoader on default path)
+    # ------------------------------------------------------------------
+
+    def _on_program_apply(self, is_restart: bool) -> None:
+        """Called by ProgramLoader after each apply.
+
+        Clears the scan context so stale CV / pin values from the previous
+        program cannot bleed into the new program's first tick.  On restart
+        also resets ``_was_running`` so bumpless prep fires correctly on the
+        first RUNNING scan of the new program.
+        """
+        self._block_context = DictContext()
+        if is_restart:
+            self._was_running = False
+
+    # ------------------------------------------------------------------
+    # Block-runtime accessors (public, only set on default path)
+    # ------------------------------------------------------------------
+
+    @property
+    def block_runtime(self) -> BlockRuntime | None:
+        """Block runtime when using the default block path; ``None`` if fallback."""
+        return getattr(self, "_block_runtime", None)
+
+    @property
+    def program_loader(self) -> ProgramLoader | None:
+        """``ProgramLoader`` when using the default block path; ``None`` if fallback."""
+        return getattr(self, "_loader", None)
+
+    @property
+    def block_context(self) -> DictContext | None:
+        """``DictContext`` shared between scans; ``None`` if fallback."""
+        return getattr(self, "_block_context", None)
+
+    # ------------------------------------------------------------------
+    # Bumpless-start helper for block runtime
+    # ------------------------------------------------------------------
+
+    def _prepare_bumpless_blocks(self, *, lt_tank: float, ft_inlet: float) -> None:
+        """Pre-seed block runtime integrators for a bumpless Start.
+
+        Mirrors ``CascadeController.prepare_bumpless``:
+        - target_sp_flow = last held level_pi output (0.0 on first start).
+        - target_cmd_speed = 0.0 (always start from rest).
+
+        Gains are read from the active program's instance params first so that
+        per-instance overrides (different from ``SkidConfig.cascade``) are
+        respected; falls back to ``SkidConfig.cascade`` if the instance or
+        param is absent.
+
+        Sets ``bumpless_pending=True`` on both PI instances so that the first
+        RUNNING scan skips the I-advance and matches the target outputs.
+        """
+        cfg = self.config.cascade
+
+        # Prefer instance params over SkidConfig for bumpless seeding.
+        prog = self._loader.program
+        level_inst = prog.instances.get("level_pi") if prog else None
+        flow_inst = prog.instances.get("flow_pi") if prog else None
+
+        def _p(inst: object, key: str, fallback: float) -> float:
+            if inst is not None and hasattr(inst, "params"):
+                v = inst.params.get(key)  # type: ignore[attr-defined]
+                if v is not None:
+                    return float(v)
+            return fallback
+
+        level_kp = _p(level_inst, "kp", cfg.level_kp)
+        level_ki = _p(level_inst, "ki", cfg.level_ki)
+        sp_flow_min = _p(level_inst, "cv_min", cfg.sp_flow_min)
+        sp_flow_max = _p(level_inst, "cv_max", cfg.sp_flow_max)
+        flow_kp = _p(flow_inst, "kp", cfg.flow_kp)
+        flow_ki = _p(flow_inst, "ki", cfg.flow_ki)
+
+        last_cv = self._block_context.get("level_pi.cv")
+        target_sp_flow = float(last_cv) if last_cv is not None else 0.0
+        target_sp_flow = max(sp_flow_min, min(sp_flow_max, target_sp_flow))
+        target_cmd_speed = 0.0
+
+        level_error = self.sp_level - lt_tank
+        flow_error = target_sp_flow - ft_inlet
+
+        level_integral = (
+            (target_sp_flow - level_kp * level_error) / level_ki
+            if level_ki != 0.0
+            else 0.0
+        )
+        self._block_runtime.set_instance_state(
+            "level_pi",
+            {
+                "integral": level_integral,
+                "bumpless_pending": True,
+                "last_cv": target_sp_flow,
+            },
+        )
+
+        flow_integral = (
+            (target_cmd_speed - flow_kp * flow_error) / flow_ki
+            if flow_ki != 0.0
+            else 0.0
+        )
+        self._block_runtime.set_instance_state(
+            "flow_pi",
+            {
+                "integral": flow_integral,
+                "bumpless_pending": True,
+                "last_cv": target_cmd_speed,
+            },
+        )
+
+    # ------------------------------------------------------------------
 
     @staticmethod
     def _read(override: object, live: float) -> Optional[float]:

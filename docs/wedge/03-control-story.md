@@ -98,9 +98,21 @@ Quantitative tuning targets use demo-grade defaults; formal FB contract (sample 
 - Full ISA-88 batch sequencing
 - Certified motion / drive profiles
 
+## Implementation note (SWD-121)
+
+As of SWD-82 the **CONTROL phase executes the block surface**
+(`BlockRuntime` + `wedge_cascade_program`) instead of a
+`CascadeController` directly. The cascade structure, mode/safety shell,
+bumpless Start, and all behavioral requirements above are unchanged —
+they are now fulfilled by the `level_pi` and `flow_pi` built-in blocks.
+
+See [`docs/surface/06-wedge-migration.md`](../surface/06-wedge-migration.md)
+for the full migration note and context-tag mapping.
+
 ## Related specs
 
 - Tags: [`02-io-hmi-contract.md`](02-io-hmi-contract.md)
 - Permissives & trips: [`04-safety-story.md`](04-safety-story.md)
 - Acceptance: [`06-mock-acceptance.md`](06-mock-acceptance.md)
 - Control semantics (SWD-85): [`docs/control/`](../control/01-scan-scheduler.md)
+- Block surface migration (SWD-121): [`docs/surface/06-wedge-migration.md`](../surface/06-wedge-migration.md)
