@@ -1,138 +1,195 @@
-# Research: Control semantics (SWD-85)
+# Research: Programming surface (SWD-82)
 
-**Tracker:** [SWD-85](https://marcusknielsen.atlassian.net/browse/SWD-85)  
-**Parent:** [SWD-81](https://marcusknielsen.atlassian.net/browse/SWD-81) · Roadmap theme 3  
-**Date:** 2026-07-26  
-**Tooling:** `scripts/arxiv_research.py` (stdlib arXiv Atom client)
+**Tracker:** [SWD-82](https://marcusknielsen.atlassian.net/browse/SWD-82)  
+**Parent:** [SWD-81](https://marcusknielsen.atlassian.net/browse/SWD-81) · Roadmap theme 4  
+**Date:** 2026-07-27  
+**Tooling:** `scripts/arxiv_research.py` (stdlib arXiv Atom client) + WebSearch / WebFetch
 
 ## Question
 
-What must “PLC-like” **control semantics** mean for PLCAssistant (lab / hobby soft-PLC on Home Assistant) — especially:
+What do external sources say about a **programming surface** for a lab / hobby soft-PLC on Home Assistant — especially:
 
-1. Must-have loops, feedback, and timing for a soft-PLC *feeling*
-2. What “safety” means at this ambition (not SIL / certified safety PLC)
-3. How HA’s event-driven world should interact with PLC cyclic expectations
+1. What “**easy high-level**” entry looks like for lab / non-PLC-expert users across industrial and hobby practice
+2. What **escape hatches** preserve a path toward a **credible soft-PLC** (IEC-shaped depth without requiring a full IDE on day one)
+3. How authoring layers relate to an already-locked **cyclic scan** runtime (SWD-85) and to **HA’s event-driven** world
 
-Scope: inform `/define SWD-85` without locking runtime packaging (SWD-84) or programming surface (SWD-82).
+Scope: inform `/define SWD-82` with evidence. This brief does **not** choose a language, layer model, or UX. A prior research/define pass for this Task was **reverted**; this pass does not reuse that brief.
 
-## Strategy
+## Axes covered
 
-| Step | What |
-|------|------|
-| Seed queries | soft/software PLC; IEC 61131 + scan/cyclic; programmable-logic runtime; industrial automation controllers / behavior trees; OpenPLC |
-| Lookup cores | Formal ST/LD/SFC semantics, 61131 vs 61499, scan-cycle timing, OpenPLC security, cascade PID safety |
-| Snowball | Authors/categories from cores (noisy — many physics/PLC=power-line false positives; hand-filtered) |
-| Triage | Keep IEC 61131-3 / OpenPLC / scan-cycle / cascade control; drop power-line comms, HEP, generic LLM codegen unless PLC-runtime relevant |
-| Grounding | Cross-check against wedge control/safety stories (`docs/wedge/03`, `04`) and I/O image (`docs/io/`) |
+| Axis | Status | Notes |
+|------|--------|-------|
+| Preprints (arXiv) | covered | Multi-query search + ID lookup + snowball from BT / LLM-PLC / low-code seeds |
+| Formal written | covered | IEC 61131-3 via PLCopen; PLCopen Software Construction Guidelines; ISA-88 / IEC 61512 as structure (not a language) |
+| Web discovery | covered | Soft-PLC / OpenPLC / CODESYS / modern vPLC product surfaces; language-selection surveys |
+| Informal / practitioner | covered | HA forum on ladder-on-HA; hobby soft-PLC repos; Node-RED vs PLC guidance; beginner learning paths |
 
-Raw JSON under `/tmp/swd85-research/` (not committed).
+## Search strategy
 
-## Summary (answers for define)
+| Axis | Queries / targets |
+|------|-------------------|
+| Preprints | `behavior tree` + industrial/PLC; `IEC 61131` + language/ST/SFC/LD; OpenPLC; low-code + industrial; Node-RED + industrial; LLM + IEC 61131 graphic/ST. Lookup cores: `2404.14030`, `2403.19602`, `2401.05443`, `2410.15200`, `2410.22159`, `2512.06787`, `2509.12593`, `2504.04224`, `2212.05918`, `1303.4761`. Snowball from BT / LLM4PLC / low-code seeds. |
+| Formal | [PLCopen IEC 61131-3](https://www.plcopen.org/standards/logic/iec-61131-3/); [Software Construction Guidelines](https://www.plcopen.org/guidelines/software-construction-guidelines/); ISA-88 / IEC 61512 recipe vs equipment separation |
+| Web | IEC language comparison surveys; OpenPLC / Autonomy Edge; CODESYS SoftPLC; Chronax / OTee / Interkey (modern authoring pitches) |
+| Informal | HA community thread on ladder/FBD-like programming; `honeytreelabs/homeautomation-plc`; `Auda29/ST_HA_Automation`; Node-RED industrial-control boundary posts; beginner LD→ST paths |
 
-### Must-have soft-PLC semantics
+Raw JSON under `/tmp/swd82-research/` (not committed).
 
-Literature and prior art converge on a **cyclic scan model** as the distinctive PLC runtime contract, not event callbacks:
+## Executive summary (what the sources say)
 
-1. **Scan cycle** — read inputs → evaluate logic → write outputs, repeatedly, with a notion of cycle time / retentive state across scans ([K-ESBMC](https://arxiv.org/abs/2607.10499), [ESBMC-PLC](https://arxiv.org/abs/2606.15461), [Scanning the Cycle](https://arxiv.org/abs/2102.08985)).
-2. **Deterministic I/O image** — logic sees a frozen input image for the scan; outputs commit at end of scan (already aligned with SWD-86).
-3. **Continuous control as FB-like blocks** — cascade PI(D) with clamps / anti-windup; literature treats cascade gain tuning and stability as first-class ([Safety-Aware Cascade Tuning](https://arxiv.org/abs/2010.15211)); wedge already requires directional cascade, not certified tuning.
-4. **Discrete orchestration** — modes, permissives, latched trips (wedge `STOP`/`RUNNING`/`TRIPPED`) map cleanly to SFC-style sequential structure or simple state machines; formal SFC work ([Coq SFC](https://arxiv.org/abs/1301.3047), [CERTPLC](https://arxiv.org/abs/1102.3529)) shows why latch/reset semantics need an explicit model.
-5. **Timers / edges as scan-relative** — TON/TOF/edge detection defined in scan ticks or wall-clock sampled once per scan (LD formalizations in K-ESBMC).
+Sources do **not** converge on a single “easy high-level” authoring paradigm. They converge on a **tension**:
 
-**IEC 61499 event-driven FBs** are a research alternative for distributed CPS ([61131 vs 61499](https://arxiv.org/abs/1303.4761)); industry still centers **61131 cyclic**. For HA adjacency, prefer **cyclic soft-PLC core** with HA as I/O/HMI bus — not adopting 61499 as the primary mental model.
+- Industrial practice and standards still center **IEC 61131-3 languages** (LD, FBD, ST, SFC; IL removed in edition 4.0 / 2025 per PLCopen) as the credible programming surface, usually **mixed in one project** by task type.
+- “Easy” in training literature usually means **Ladder first**, then ST/FBD/SFC — not a non-IEC DSL.
+- “Easy” in Industry 4.0 / robotics research often means **skill composition / behavior trees / low-code orchestration** *above* device-level FBs — still assuming a PLC-shaped runtime underneath.
+- Hobby / HA-adjacent practice splits three ways: (a) **cyclic soft-PLC beside HA** with Lua/Python/config; (b) **transpile ST into HA automations** (event-driven, not scan); (c) **bridge to real PLCs**. HA community voices strongly reject treating HA itself as a PLC.
 
-**Behavior trees** ([BT in industrial controllers](https://arxiv.org/abs/2404.14030)) are a useful *programming-surface* idea for modularity (SWD-82), not a substitute for the scan contract.
+Escape hatches that preserve soft-PLC credibility, across axes, look like **access to IEC semantics or FB libraries under a scan**, not replacing the scan with flows. Flow tools (Node-RED and kin) are repeatedly positioned as **data / integration layers**, not deterministic control engines. LLM → IEC codegen is an active research assist path with validity/verification caveats — not a primary surface by itself.
 
-### Safety at this ambition
+Grounding already locked in-repo (SWD-85/86): authoring must sit **atop** cyclic IN → safety → control → OUT; HA remains async I/O/HMI. That constraint filters the design space but does not pick the surface.
 
-Academic “safety” for PLCs usually means **formal verification of LD/ST/SFC** or security of soft-PLC stacks ([OpenPLC issues](https://arxiv.org/abs/2509.22664)), not SIL certification.
+## Key sources
 
-For PLCAssistant v1 (already locked in wedge safety story):
+| Source | Axis | ID/URL | Relevance |
+|--------|------|--------|-----------|
+| IEC 61131-3 via PLCopen | Formal | [plcopen.org/…/iec-61131-3](https://www.plcopen.org/standards/logic/iec-61131-3/) | Normative language suite + SFC as structuring; edition 4.0 (2025) |
+| PLCopen Software Construction Guidelines | Formal | [guidelines…](https://www.plcopen.org/guidelines/software-construction-guidelines/) | Coding rules, FB libraries (Execute/Enable), SFC dos/don’ts, OOP guidance — progressive *craft*, not a different language |
+| ISA-88 / IEC 61512 practice notes | Formal / web | [ISA-88 intro](https://www.symestic.com/en-us/what-is/isa-88); industrial implementer guides | Recipe/procedure vs equipment separation = config-level “easy” without inventing a PLC language |
+| Sidorenko et al. — BTs in industrial controllers | Preprint | [2404.14030](https://arxiv.org/abs/2404.14030) | BTs as modular coordination *integrated into* 61131/61499; separates device FBs from frequently changing logic |
+| BT industrial case study | Preprint | [2403.19602](https://arxiv.org/abs/2403.19602) | Few published industrial BT successes; modularity vs FSM claimed |
+| LLM4PLC | Preprint (+ DOI) | [2401.05443](https://arxiv.org/abs/2401.05443) | LLMs need verification/feedback to produce valid PLC programs |
+| LLM ST / graphic / SFC generation | Preprint | [2410.22159](https://arxiv.org/abs/2410.22159), [2410.15200](https://arxiv.org/abs/2410.15200), [2512.06787](https://arxiv.org/abs/2512.06787) | Assistive codegen across IEC surfaces; graphic/SFC harder than ST |
+| Low-code open factory automation (Siemens/Berkeley) | Preprint | [2504.04224](https://arxiv.org/abs/2504.04224) | Low-code + coordination/safety; leans 61499 / Lingua Franca — adjacent ambition, different runtime story than our 61131-shaped scan |
+| Complexity of graphical vs textual IEC | Preprint (+ DOI) | [2212.05918](https://arxiv.org/abs/2212.05918) | Measuring understandability cost of IEC units — relevant to “easy vs deep” |
+| 61131 vs 61499 | Preprint (+ DOI) | [1303.4761](https://arxiv.org/abs/1303.4761) | Why cyclic 61131 remains industrial default (already used in SWD-85) |
+| OpenPLC / Autonomy Edge | Web / informal | [autonomylogic.com docs](https://autonomylogic.com/docs); archived OpenPLC Editor notes | Soft-PLC peer: full IEC language editor as the product surface |
+| CODESYS SoftPLC language suite | Web / informal | vendor SoftPLC summaries | Complete IEC editors + reusable FBs as commercial soft-PLC norm |
+| Node-RED vs PLC control | Informal | Robustel industrial posts; hardloop PID README | Flows OK for data; not a substitute for cyclic deterministic control |
+| HA forum: ladder on HA | Informal | [community thread](https://community.home-assistant.io/t/integration-of-ladder-programming-or-functional-plan-similar-step7/620120) | Event-driven HA ≠ PLC scan; users want organization, maintainers reject PLC emulation of core |
+| homeautomation-plc | Informal | [honeytreelabs/…](https://github.com/honeytreelabs/homeautomation-plc) | Cyclic soft-PLC on Embedded Linux; YAML config + Lua/C++; IEC interpreter aspirational |
+| ST → HA automations | Informal | [Auda29/ST_HA_Automation](https://github.com/Auda29/ST_HA_Automation) | ST *syntax* over HA event model — opposite of soft-PLC-beside-HA |
+| Beginner LD → ST paths | Informal | industrial training blogs / exercise progressions | “Easy” = LD + scan mental model first; ST as power path |
 
-| Keep | Defer |
-|------|-------|
-| Latched trips, Start permissives, immediate stop CV | SIL / certified safety PLC / dual-channel |
-| Trip on non-GOOD PV (LOS) using SWD-86 quality | Formal model checking of user programs |
-| Safety evaluated **every scan**, before/overriding continuous control | Rich bypass/audit frameworks |
-| Illustrative “middle-ground” semantics | Claiming IEC 61508/62061 compliance |
+## Themes and trends
 
-OpenPLC security work is a reminder: soft-PLC on commodity hosts needs basic isolation/auth later (packaging / SWD-84), but is out of control-semantics define scope.
+### 1. “Easy high-level” is overloaded
 
-### HA event-driven vs PLC cyclic
+Sources use the phrase for at least five different things:
 
-| Layer | Role |
-|-------|------|
-| HA | Entity state changes, services, dashboards — **asynchronous** |
-| Thin integration (SWD-86) | Sample/declare bindings; mock entities |
-| Soft-PLC runtime | Own the **scan clock**; build I/O image each cycle; run cascade + safety; flush OUT |
+| Sense of “easy” | Typical surface | Soft-PLC credibility |
+|-----------------|-----------------|----------------------|
+| Visual Boolean / electrician mental model | LD | High (is IEC) |
+| Wire continuous loops from libraries | FBD + FB params | High |
+| Step / mode sequences | SFC (plus ST/LD actions) | High |
+| Parameterize / recipe without rewriting logic | ISA-88-style recipes, FB instances, YAML config | Medium–high if FBs are IEC-shaped under a scan |
+| Compose skills / tasks without device code | Behavior trees, skill SOA | Research / niche; needs PLC integration story |
+| Event flows / mashups | Node-RED, HA automations | Low as *control* engine (sources warn) |
+| Natural language → program | LLM assist | Assist only; validity gated |
 
-Practical contract for define:
+Define must pick which sense(s) PLCAssistant means — sources do not settle it.
 
-- HA events **update a sample buffer**; they do **not** directly execute control logic mid-scan.
-- Scan period is configurable; undersampling / stale samples → `UNCERTAIN`/`BAD` (existing quality model), not ad-hoc event handlers.
-- OUT writes every scan (SWD-86) so HA actuators see PLC-paced commands even when PVs are quiet.
-- Optional future: “scan overrun” / jitter diagnostics for hobby credibility — not SIL timing guarantees.
+### 2. Credible soft-PLC surfaces still look like IEC (or FB libraries on a scan)
 
-## Key papers
+OpenPLC/CODESYS/Autonomy-style peers treat **multi-language IEC editors** as the programming product. PLCopen’s progressive story is **better structure and reusable FBs** (libraries, SFC structuring, naming/coding rules, optional OOP), not abandoning 61131. Escape hatches cited in practice: **ST for algorithms**, **user FB libraries**, **SFC for sequences**, **OOP extensions** — still inside the standard.
 
-| arXiv | Title | Why it matters |
-|-------|-------|----------------|
-| [2607.10499](https://arxiv.org/abs/2607.10499) | K-ESBMC: Executable formal semantics of IEC 61131-3 LD | Scan-for-scan oracle vs OpenPLC/Matiec; retentive scan cycle, timers, edges |
-| [2606.15461](https://arxiv.org/abs/2606.15461) | ESBMC-PLC | Models PLC scan as `while(true)` + nondeterministic inputs — crisp runtime picture |
-| [2202.04076](https://arxiv.org/abs/2202.04076) | K-ST | Formal ST semantics from IEC 61131-3 + vendor manuals |
-| [1301.3047](https://arxiv.org/abs/1301.3047) | Coq semantics for PLC (SFC/IL/LD/FBD) | Multi-language top-level control-flow; latch/sequence thinking |
-| [1303.4761](https://arxiv.org/abs/1303.4761) | IEC 61499 vs 61131 | Why cyclic 61131 remains the industrial default vs event FBs |
-| [2102.08985](https://arxiv.org/abs/2102.08985) | Scanning the Cycle | Scan cycle as observable PLC fingerprint — timing is part of the product feel |
-| [2010.15211](https://arxiv.org/abs/2010.15211) | Safety-aware cascade PID tuning | Cascade + constraints; tuning ≠ safety interlocks |
-| [2404.14030](https://arxiv.org/abs/2404.14030) | Behavior trees in industrial controllers | Modular high-level control — feed SWD-82, not scan replacement |
-| [2509.22664](https://arxiv.org/abs/2509.22664) | OpenPLC security issues | Soft-PLC on Pi/PC: trust boundary / packaging caution |
-| [2504.04224](https://arxiv.org/abs/2504.04224) | Robustness & safety in low-code factory automation | Adjacent “approachable industrial” ambition without overclaiming SIL |
+### 3. High-level composition research assumes a PLC underneath
 
-## Themes
+Behavior-tree work for industrial controllers ([2404.14030](https://arxiv.org/abs/2404.14030)) explicitly integrates BTs **with** IEC 61131 / 61499 and PLCopen Common Behavior Model FBs: device skills stay low-level; BTs coordinate. That is evidence for *optional* high-level orchestration — **not** evidence that BTs replace LD/ST/FBD as the only surface, and industrial case literature remains thin ([2403.19602](https://arxiv.org/abs/2403.19602)).
 
-1. **Scan is the product metaphor** — users expect cyclic evaluate + I/O image, not pure HA automations.
-2. **61131-shaped, not 61499-first** — keep cyclic core; event distribution stays HA’s job.
-3. **Separate “process safety interlocks” from “formal/verified PLC”** — wedge latch/LOS is enough for SWD-85 define.
-4. **Cascade PID is continuous FB semantics inside the scan** — clamps, anti-windup, bumpless; quantitative autotune optional later.
-5. **OpenPLC/Matiec as reference peers** — useful for behavioral comparison, not a required dependency.
-6. **Programming surface ≠ semantics** — BTs / ST / high-level DSL can sit atop the same scan + FB contract (SWD-82).
+### 4. Config / recipe layer is a real “easy” path in process industries
 
-## Gaps
+ISA-88 separates **procedural / recipe** content from **equipment control**. Operators change formulas and phase parameters without rewriting PLC code; phases still run on IEC-shaped modules. For a lab wedge with fixed cascade + modes, a **parameterized default program** (tune gains, SPs, trip limits; optional sequence params) is a documented industrial pattern — orthogonal to inventing a new language.
 
-- Little peer-reviewed work on **Home Assistant ↔ soft-PLC** bridging; design must be original, guided by PLC scan + HA entity realities (SWD-86).
-- Soft-PLC *feel* timing (jitter, overrun UX) under-specified in papers aimed at ICS security or formal methods.
-- Cascade tuning literature assumes plants/labs richer than our mock skid — define should set **demo-grade** timing/gains, not research autotune.
-- No need to adopt full IEC language semantics now; formal papers are **conceptual anchors**, not implementation mandates.
+### 5. Soft-PLC ≠ HA automations (practitioner consensus)
 
-## Suggested reading order
+HA forum consensus: HA is **event-driven**; PLC is **cyclic evaluate**. Emulating ladder *inside* HA fights the platform. Hobby soft-PLCs that feel PLC-like keep a **scan loop** and treat MQTT/HA as I/O. Transpiling ST *into* HA automations reuses ST syntax but **drops** cyclic semantics. This aligns with SWD-85’s HA↔cyclic boundary — authoring should target the Soft-PLC artifact, not HA YAML as the program of record.
 
-1. [1303.4761](https://arxiv.org/abs/1303.4761) — frame 61131 vs 61499  
-2. [2606.15461](https://arxiv.org/abs/2606.15461) / [2607.10499](https://arxiv.org/abs/2607.10499) — scan-cycle mental model (+ OpenPLC alignment)  
-3. Wedge `03-control-story.md` + `04-safety-story.md` — product constraints already locked  
-4. [2010.15211](https://arxiv.org/abs/2010.15211) — cascade continuous-control expectations  
-5. [2404.14030](https://arxiv.org/abs/2404.14030) — only if jumping ahead to SWD-82  
-6. [2509.22664](https://arxiv.org/abs/2509.22664) — packaging/threat note for SWD-84  
+### 6. Flow / low-code tools are popular and category-confused
 
-## Implications for `/define SWD-85`
+Node-RED (and Node-RED-based industrial shells) excel at integration and dashboards. Practitioner and vendor guidance: do **not** use them as the deterministic control path. Siemens/Berkeley low-code work ([2504.04224](https://arxiv.org/abs/2504.04224)) explores robust low-code with explicit coordination (Lingua Franca / 61499) — interesting for packaging later, but it pulls toward **event-driven** distribution that SWD-85 already deprioritized vs cyclic 61131.
 
-Draft define should lock (conceptually, not necessarily code):
+### 7. LLM assist is rising, verification is the gate
 
-- **Scan scheduler** contract (period, order: IN → safety → control → OUT)
-- **Mode / permissive / trip** evaluation relative to continuous loops
-- **PID/FB minimum semantics** for cascade (sample time = scan or explicit `Ts`, clamps, anti-windup, bumpless init)
-- **Safety precedence** every scan; interaction with non-GOOD quality (already in wedge)
-- Explicit **non-goals**: SIL, full IEC language runtime, 61499 distribution, HA-automation-as-PLC
+Recent papers train or constrain LLMs for ST, LD→SFC, graphic languages, and SFC generation. Common finding: raw generation is brittle; **compiler / verifier feedback** matters ([2401.05443](https://arxiv.org/abs/2401.05443)). Treat as optional assist over a chosen artifact format — not as the definition of the surface.
+
+### 8. Progressive depth in training ≠ a product layer cake
+
+Industry pedagogy progresses **LD → timers/counters/state → ST/FBD/SFC**. That is a **learning path**, not a requirement that the product ship four locked abstraction layers on day one. Prior art products often expose **multiple editors on one project** rather than a strict L0/L1/L2 ladder.
+
+## Gaps and limitations
+
+- Almost no peer-reviewed work on **Home Assistant + soft-PLC authoring** as a combined product; HA evidence is forum + hobby repos.
+- “Lab / hobby user” personas are under-studied in IEC literature (written for plant/machine engineers).
+- Behavior-tree industrial adoption evidence is sparse beyond proposals and isolated case studies.
+- Soft-PLC *feel* of authoring (online monitoring, force, cross-reference) is product UX, barely covered in papers.
+- Snowball from author names on BT/LLM seeds was noisy (many off-topic math hits); triage was hand-filtered.
+- Modern commercial pitches (Chronax text+AI, OTee vPLC browser ST, Interkey NL→IEC) are marketing-heavy; treat as signals of market interest, not validated designs.
+- This brief intentionally **does not** prescribe progressive L0–L3 layers or a primary L1 paradigm — those are define questions (and were part of a reverted prior pass).
+
+## Recommended reading order
+
+1. PLCopen [IEC 61131-3 page](https://www.plcopen.org/standards/logic/iec-61131-3/) + [Software Construction Guidelines overview](https://www.plcopen.org/guidelines/software-construction-guidelines/) — normative surface + progressive craft  
+2. Repo locks: `docs/control/04-ha-cyclic-boundary.md`, wedge `03`/`04` — what authoring must not break  
+3. [2404.14030](https://arxiv.org/abs/2404.14030) — high-level composition *on* PLC (one option among many)  
+4. HA community [ladder thread](https://community.home-assistant.io/t/integration-of-ladder-programming-or-functional-plan-similar-step7/620120) + [homeautomation-plc](https://github.com/honeytreelabs/homeautomation-plc) — Soft-PLC ≠ HA  
+5. Node-RED industrial-control boundary posts — why flows ≠ scan  
+6. [2401.05443](https://arxiv.org/abs/2401.05443) / [2410.15200](https://arxiv.org/abs/2410.15200) — only if considering LLM assist  
+7. ISA-88 overview — only if considering recipe/config-first “easy”  
+
+## Role in pipeline
+
+Supportive context for `/define SWD-82`. Does **not** settle user alignment.
+
+Particulars for define that remain open (non-exhaustive):
+
+- Which sense of “easy high-level” is in-scope for the lab wedge v1?
+- Is the first artifact **config of a fixed wedge program**, an **IEC subset**, a **custom DSL**, **BT/skill composition**, or something else?
+- What escape hatch is required for “credible soft-PLC” in v1 vs later (ST? LD? FB library? full OpenPLC-class IDE)?
+- Where does the program-of-record live (Add-on files, git, HA config) — packaging touchpoint with SWD-84?
+- Non-goals: full commercial IDE parity; HA-automation-as-PLC; SIL authoring; requiring LLM?
 
 ## Sources
 
-- arXiv Atom API via `scripts/arxiv_research.py`
-- Repo: `docs/ROADMAP.md`, `docs/wedge/03-control-story.md`, `docs/wedge/04-safety-story.md`, `docs/io/`
+### Preprints (arXiv)
+
+- [2404.14030](https://arxiv.org/abs/2404.14030) — Towards Using Behavior Trees in Industrial Automation Controllers  
+- [2403.19602](https://arxiv.org/abs/2403.19602) — Behavior Trees in Industrial Applications: Case Study  
+- [2401.05443](https://arxiv.org/abs/2401.05443) — LLM4PLC (DOI 10.1145/3639477.3639743)  
+- [2410.15200](https://arxiv.org/abs/2410.15200) — LLM support for IEC 61131-3 graphic languages (DOI 10.1109/INDIN58382.2024.10774464)  
+- [2410.22159](https://arxiv.org/abs/2410.22159) — Training LLMs for ST with online feedback  
+- [2512.06787](https://arxiv.org/abs/2512.06787) — LLM4SFC  
+- [2509.12593](https://arxiv.org/abs/2509.12593) — LD→SFC via LLM (DOI 10.1109/ETFA65518.2025.11205542)  
+- [2504.04224](https://arxiv.org/abs/2504.04224) — Robustness & safety in low-code factory automation  
+- [2212.05918](https://arxiv.org/abs/2212.05918) — Complexity of graphical and textual IEC 61131-3 (DOI 10.1109/LRA.2021.3084886)  
+- [1303.4761](https://arxiv.org/abs/1303.4761) — IEC 61499 vs 61131 (DOI 10.4236/jsea.2013.68050)  
+- Related runtime anchors (from prior SWD-85 pass, still relevant): [2607.10499](https://arxiv.org/abs/2607.10499), [2606.15461](https://arxiv.org/abs/2606.15461), [2202.04076](https://arxiv.org/abs/2202.04076)
+
+### Formal / standards
+
+- PLCopen — IEC 61131-3 overview (edition 4.0 – 2025): https://www.plcopen.org/standards/logic/iec-61131-3/  
+- PLCopen Software Construction Guidelines: https://www.plcopen.org/guidelines/software-construction-guidelines/  
+- ISA-88 / IEC 61512 models (recipe vs equipment) — secondary summaries cited above  
+
+### Web / informal
+
+- OpenPLC / Autonomy Edge docs: https://autonomylogic.com/docs  
+- Archived OpenPLC Editor language list (historical): https://openplcproject.gitlab.io/openplc-editor/  
+- HA community thread: https://community.home-assistant.io/t/integration-of-ladder-programming-or-functional-plan-similar-step7/620120  
+- honeytreelabs/homeautomation-plc: https://github.com/honeytreelabs/homeautomation-plc  
+- Auda29/ST_HA_Automation: https://github.com/Auda29/ST_HA_Automation  
+- Node-RED vs industrial control (Robustel): https://robustel.com/can-node-red-support-industrial-control-edge-gateway-recommendation/  
+- IEC language comparison surveys (instrumentationblog.in, feelautom.fr, industrialmonitordirect.com)  
+
+### Repo grounding
+
+- `docs/ROADMAP.md`, `docs/control/*`, `docs/wedge/03-control-story.md`, `docs/wedge/08-packaging-sketch.md` (deep authoring deferred to SWD-82)
 
 ## Tracker
 
-- Task [SWD-85](https://marcusknielsen.atlassian.net/browse/SWD-85) is **Done** (shipped PR #18 merge `a51cdbe`); research artifact is this doc; definition is `docs/PLAN.md`.
-- Story [SWD-81](https://marcusknielsen.atlassian.net/browse/SWD-81) Next → `/define SWD-82`.
+- Task [SWD-82](https://marcusknielsen.atlassian.net/browse/SWD-82) remains **To Do** (research does not advance status).
+- Artifact: this `docs/RESEARCH.md` (replaces SWD-85 research content on this path for the active theme).
+- Prior incorrect research/define for SWD-82 was reverted (PRs #20/#21); this brief is a fresh multi-axis pass.
 
 ## Next
 
-Done — phase closed. Suggested initiative next: `/define SWD-82`
+`/define SWD-82` — Probe user on which “easy” sense and which escape hatches belong in v1; research brief is supportive context only

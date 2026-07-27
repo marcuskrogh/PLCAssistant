@@ -11,7 +11,7 @@
 | 1 | Lab / hobby / small-process wedge | Sharpen who this is for and what “success” looks like in that world | **Done** — [PR #11](https://github.com/marcuskrogh/PLCAssistant/pull/11) | [SWD-83](https://marcusknielsen.atlassian.net/browse/SWD-83) |
 | 2 | HA entities as PLC I/O | Core inversion: devices live in HA, then participate in PLC-style control | **Done** — [PR #14](https://github.com/marcuskrogh/PLCAssistant/pull/14) merge `b64a0cd` | [SWD-86](https://marcusknielsen.atlassian.net/browse/SWD-86) |
 | 3 | Control semantics | What “PLC-like” means here: loops, feedback, safety, timing — without locking runtime design yet | **Done** — [PR #18](https://github.com/marcuskrogh/PLCAssistant/pull/18) merge `a51cdbe` | [SWD-85](https://marcusknielsen.atlassian.net/browse/SWD-85) |
-| 4 | Programming surface | Easy high-level entry with a deep customization path | research / define | [SWD-82](https://marcusknielsen.atlassian.net/browse/SWD-82) |
+| 4 | Programming surface | Easy high-level entry with a deep customization path | research done → define | [SWD-82](https://marcusknielsen.atlassian.net/browse/SWD-82) · [`docs/RESEARCH.md`](RESEARCH.md) |
 | 5 | Packaging shape | Integration vs app/add-on vs hybrid — still intentionally open | research | [SWD-84](https://marcusknielsen.atlassian.net/browse/SWD-84) |
 
 ## Open questions
@@ -32,4 +32,4 @@
 - Tasks: [SWD-83](https://marcusknielsen.atlassian.net/browse/SWD-83) **Done**, [SWD-86](https://marcusknielsen.atlassian.net/browse/SWD-86) **Done**, [SWD-85](https://marcusknielsen.atlassian.net/browse/SWD-85) **Done**, [SWD-82](https://marcusknielsen.atlassian.net/browse/SWD-82), [SWD-84](https://marcusknielsen.atlassian.net/browse/SWD-84)
 
 ## Next
-`/define SWD-82` — Programming surface (optional `/research SWD-82` first)
+`/define SWD-82` — Programming surface (research brief: [`docs/RESEARCH.md`](RESEARCH.md); supportive only)
