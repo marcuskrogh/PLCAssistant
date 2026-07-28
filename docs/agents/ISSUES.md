@@ -46,7 +46,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-124 | Sub-task | SWD-84: Acceptance tests + checklist | Done | SWD-84 | docs/packaging/03-acceptance.md, tests/test_swd84_acceptance.py | — |
 | SWD-128 | Bug | [Iterate] App configure after reinstall: Supervisor job-group stop/stats errors | Done | Relates SWD-84 | docs/ITERATE.md | Done — shipped PR #40 |
 | SWD-129 | Bug | [Iterate] App Update stale image + hass.components integration after reinstall | Done | Relates SWD-128 | docs/ITERATE.md | Done — shipped PR #41 |
-| SWD-130 | Bug | [Iterate] Store Latest stuck at 0.1.6 while GitHub has newer App version | In Progress | Relates SWD-129 | docs/ITERATE.md | `/review-fix SWD-130` |
+| SWD-130 | Bug | [Iterate] Store Latest stuck at 0.1.6 while GitHub has newer App version | In Review | Relates SWD-129 | docs/ITERATE.md | `/review-fix SWD-130` |
 
 ## Log
 
