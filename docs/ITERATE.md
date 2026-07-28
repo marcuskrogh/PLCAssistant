@@ -43,4 +43,4 @@ Two overlapping failure modes:
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/42
 
 ## Next
-`/review-fix SWD-130` — Review and auto-fix until clean
+`/ship SWD-130` — review-fix CLEAN (iter 2)
