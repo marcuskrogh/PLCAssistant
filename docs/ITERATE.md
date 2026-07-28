@@ -1,7 +1,7 @@
 # Iterate: Operator dashboard default + major App UI refresh
 
 ## Status
-**In Progress** — App **0.1.10** via branch `cursor/swd-132-operator-dashboard-ui-1bbe`
+**In Review** — App **0.1.10** via [PR #44](https://github.com/marcuskrogh/PLCAssistant/pull/44)
 
 ## Prior work
 - Task: SWD-131 (PR #43, App 0.1.9 Ingress + thin-integration tags)
@@ -35,6 +35,7 @@ After SWD-131 the Soft-PLC runs, but the App UI is still a crude Block Editor-on
 - Task: [SWD-132](https://marcusknielsen.atlassian.net/browse/SWD-132)
 - Relates: SWD-131
 - Branch: `cursor/swd-132-operator-dashboard-ui-1bbe`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/44
 
 ## Next
 `/review-fix SWD-132` — Review and auto-fix until clean
