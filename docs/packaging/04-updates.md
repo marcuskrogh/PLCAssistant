@@ -42,12 +42,28 @@ A second file with the same `slug` makes update detection unreliable (store can 
    ```bash
    ./scripts/sync-ha-app-package.sh
    ```
-3. Bump **`version`** in `plc_assistant/config.yaml` (required for the Update button).
-4. Run `pytest` (includes the single-App-config guard).
+3. Bump **`version`** in **both** `plc_assistant/config.yaml` and
+   `custom_components/plcassistant/manifest.json` to the **same** value
+   (required for the Update button and so HA’s integration version matches the App).
+   Also keep `plc_assistant/Dockerfile` `ARG BUILD_VERSION=` equal to that value.
+   CI enforces App ↔ integration version equality.
+4. Run `pytest` (includes the single-App-config guard + version lock).
 5. Merge to `main`.
-6. On HA: **Check for updates** → hard-refresh → **Update** PLCAssistant.
+6. On HA: **Check for updates** → hard-refresh → **Update** PLCAssistant → restart Core
+   so the synced thin integration reloads.
 
-No repository remove/re-add should be required when the invariant holds and the store clone is healthy.
+## Version lock (App ≡ integration)
+
+The App and the bundled thin integration **always share one version string**.
+
+| File | Field |
+|------|-------|
+| `plc_assistant/config.yaml` | `version` |
+| `custom_components/plcassistant/manifest.json` | `version` |
+| `plc_assistant/Dockerfile` | `ARG BUILD_VERSION=` (default equals config) |
+
+Do not ship an App bump without the matching integration manifest bump (and vice versa).
+After sync, `plc_assistant/custom_components/plcassistant/manifest.json` must match too.
 
 ### If Update does not change the installed version
 

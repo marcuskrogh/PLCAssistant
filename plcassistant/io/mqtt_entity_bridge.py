@@ -116,23 +116,69 @@ class MqttEntityBridge:
 
 
 def default_wedge_binding_config() -> dict[str, Any]:
-    """Minimal wedge-shaped bindings for packaging demos / mock mode."""
+    """Wedge process I/O bindings for packaging demos / mock mode.
+
+    Covers required PVs (tank, reservoir, flow), level setpoint request/active,
+    active flow SP, and pump speed command — aligned with
+    ``docs/wedge/02-io-hmi-contract.md``. Entity IDs match the thin
+    integration's mock Number platforms.
+    """
     return {
         "tags": {
             "LT_TANK": {"default": 0.0, "unit": "m"},
+            "LT_RES": {"default": 0.3, "unit": "m"},
+            "FT_INLET": {"default": 0.0, "unit": "L/min"},
+            "SP_LEVEL_REQ": {"default": 0.20, "unit": "m"},
+            "SP_LEVEL": {"default": 0.20, "unit": "m"},
+            "SP_FLOW": {"default": 0.0, "unit": "L/min"},
             "CMD_SPEED": {"default": 0.0, "unit": "pct"},
         },
         "bindings": [
             {
                 "tag": "LT_TANK",
-                "entity": "sensor.plcassistant_lt_tank",
+                "entity": "number.plcassistant_lt_tank_in",
+                "direction": "IN",
+                "scale": 1.0,
+                "offset": 0.0,
+            },
+            {
+                "tag": "LT_RES",
+                "entity": "number.plcassistant_lt_res_in",
+                "direction": "IN",
+                "scale": 1.0,
+                "offset": 0.0,
+            },
+            {
+                "tag": "FT_INLET",
+                "entity": "number.plcassistant_ft_inlet_in",
+                "direction": "IN",
+                "scale": 1.0,
+                "offset": 0.0,
+            },
+            {
+                "tag": "SP_LEVEL_REQ",
+                "entity": "number.plcassistant_sp_level_req_in",
                 "direction": "IN",
                 "scale": 1.0,
                 "offset": 0.0,
             },
             {
                 "tag": "CMD_SPEED",
-                "entity": "number.plcassistant_cmd_speed",
+                "entity": "number.plcassistant_cmd_speed_out",
+                "direction": "OUT",
+                "scale": 1.0,
+                "offset": 0.0,
+            },
+            {
+                "tag": "SP_LEVEL",
+                "entity": "number.plcassistant_sp_level_out",
+                "direction": "OUT",
+                "scale": 1.0,
+                "offset": 0.0,
+            },
+            {
+                "tag": "SP_FLOW",
+                "entity": "number.plcassistant_sp_flow_out",
                 "direction": "OUT",
                 "scale": 1.0,
                 "offset": 0.0,

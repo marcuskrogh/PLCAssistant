@@ -27,7 +27,7 @@ from .const import (
 )
 from .mqtt_topics import cmd_topic, tag_in_topic, tag_out_topic
 
-PLATFORMS: list[Platform] = [Platform.NUMBER]
+PLATFORMS: list[Platform] = [Platform.NUMBER, Platform.BUTTON]
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -36,6 +36,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 
 def _default_bindings() -> list[dict]:
+    """Default mock bindings — keep in sync with ``default_wedge_binding_config``."""
     return [
         {
             "tag": "LT_TANK",
@@ -45,8 +46,43 @@ def _default_bindings() -> list[dict]:
             "offset": 0.0,
         },
         {
+            "tag": "LT_RES",
+            "entity": "number.plcassistant_lt_res_in",
+            "direction": "IN",
+            "scale": 1.0,
+            "offset": 0.0,
+        },
+        {
+            "tag": "FT_INLET",
+            "entity": "number.plcassistant_ft_inlet_in",
+            "direction": "IN",
+            "scale": 1.0,
+            "offset": 0.0,
+        },
+        {
+            "tag": "SP_LEVEL_REQ",
+            "entity": "number.plcassistant_sp_level_req_in",
+            "direction": "IN",
+            "scale": 1.0,
+            "offset": 0.0,
+        },
+        {
             "tag": "CMD_SPEED",
             "entity": "number.plcassistant_cmd_speed_out",
+            "direction": "OUT",
+            "scale": 1.0,
+            "offset": 0.0,
+        },
+        {
+            "tag": "SP_LEVEL",
+            "entity": "number.plcassistant_sp_level_out",
+            "direction": "OUT",
+            "scale": 1.0,
+            "offset": 0.0,
+        },
+        {
+            "tag": "SP_FLOW",
+            "entity": "number.plcassistant_sp_flow_out",
             "direction": "OUT",
             "scale": 1.0,
             "offset": 0.0,

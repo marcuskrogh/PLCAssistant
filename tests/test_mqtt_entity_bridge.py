@@ -19,7 +19,7 @@ def test_entity_bridge_roundtrip_with_app_bridge():
     bus = InMemoryMqttBus()
     table = BindingTable.from_config(default_wedge_binding_config())
     entities = MockEntityStore()
-    entities.set("sensor.plcassistant_lt_tank", 0.25)
+    entities.set("number.plcassistant_lt_tank_in", 0.25)
 
     app_image = declare_default_image()
     app = MqttIoBridge(bus, instance_id="default")
@@ -34,8 +34,10 @@ def test_entity_bridge_roundtrip_with_app_bridge():
     applied = integ.apply_outputs()
 
     assert "CMD_SPEED" in applied
-    assert entities.get("number.plcassistant_cmd_speed").value == 25.0
-    assert entities.get("number.plcassistant_cmd_speed").status is QualityStatus.GOOD
+    assert entities.get("number.plcassistant_cmd_speed_out").value == 25.0
+    assert entities.get("number.plcassistant_cmd_speed_out").status is QualityStatus.GOOD
+    assert "FT_INLET" in table.tags
+    assert any(b.tag == "FT_INLET" for b in table.bindings)
 
 
 def test_scan_loop_once_and_commands():

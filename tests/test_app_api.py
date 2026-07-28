@@ -94,6 +94,25 @@ def test_get_root_returns_html(app_server):
     assert "text/html" in ct
 
 
+def test_canvas_uses_relative_api_paths(app_server):
+    """Ingress serves under /api/hassio_ingress/<token>/; absolute /api hits HA Core."""
+    _, base_url, _ = app_server
+    status, body, _ = _get(base_url + "/")
+    assert status == 200
+    html = body.decode("utf-8")
+    assert "function apiUrl(" in html
+    assert "apiFetch('api/library')" in html
+    assert "apiFetch('api/program')" in html
+    # Must not call apiFetch with a leading-slash absolute Soft-PLC API path.
+    assert "apiFetch('/api/" not in html
+    # Strip comments before checking raw fetch('/api/...') call sites.
+    import re
+
+    no_comments = re.sub(r"//.*?$", "", html, flags=re.M)
+    assert "fetch('/api/" not in no_comments
+    assert "fetch(\"/api/" not in no_comments
+
+
 # ---------------------------------------------------------------------------
 # GET /api/program
 # ---------------------------------------------------------------------------

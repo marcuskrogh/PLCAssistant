@@ -79,16 +79,18 @@ Then:
 2. Go to **Settings → Devices & services → Add integration**.
 3. Search for **PLCAssistant** and add it.
 4. Use the **same `instance_id`** as the App (default `default`).
-5. Leave **mock mode** on for a first smoke test (creates writable Number IN entities and Number OUT sinks over MQTT).
+5. Leave **mock mode** on for a first smoke test (creates writable Number IN entities — tank/reservoir/flow/setpoint — Number OUT sinks, and Start/Stop/Reset **buttons** over MQTT).
+
+The App and thin integration **share one version** (`plc_assistant/config.yaml` ≡ `custom_components/plcassistant/manifest.json`). After an App Update, restart Core so HA reloads the matching integration.
 
 Manual copy is no longer required on HA OS. Fallback if the config mount is unavailable: copy [`custom_components/plcassistant`](custom_components/plcassistant) into `/config/custom_components/` yourself (Samba / SSH / Studio Code Server).
 
 ### 6. Verify the install
 
-1. Open the App UI (Ingress or port 8099) — the block editor should load.
-2. In HA, confirm mock Number entities appear under the PLCAssistant integration.
+1. Open the App UI (Ingress or port 8099) — the block editor should load with a populated **Block Library** (if Ingress shows `Error: 404`, Update the App and hard-refresh).
+2. In HA, confirm mock Number entities appear under the PLCAssistant integration (including **FT_INLET** / flow) plus Start/Stop/Reset buttons.
 3. Change a mock IN value; the Soft-PLC should see it on the corresponding tag (and OUT entities update when the program writes).
-4. Call services `plcassistant.start`, `plcassistant.stop`, or `plcassistant.reset` (Developer tools → Services) — these publish command pulses to the App.
+4. Press the **Start** / **Stop** / **Reset** buttons (or call services `plcassistant.start` / `stop` / `reset`) — these publish command pulses to the App.
 5. Place or edit a program in the editor, restart the App, and confirm it reloads from persistent storage (`/data/program.json` inside the App).
 
 ---

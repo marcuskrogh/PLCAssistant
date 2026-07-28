@@ -221,9 +221,21 @@ function setStatus(msg, ok = true) {
 }
 
 // ── API calls ──────────────────────────────────────────────────────────────
-async function apiFetch(url, opts = {}) {
+// HA Ingress serves this page under /api/hassio_ingress/<token>/. Absolute
+// fetch('/api/...') hits Home Assistant Core (404) instead of the Soft-PLC App.
+// Resolve every API path relative to the current document directory.
+function apiUrl(path) {
+  const rel = String(path || '').replace(/^\//, '');
+  let dir = window.location.pathname || '/';
+  if (!dir.endsWith('/')) {
+    dir = dir.slice(0, dir.lastIndexOf('/') + 1);
+  }
+  return dir + rel;
+}
+
+async function apiFetch(path, opts = {}) {
   try {
-    const r = await fetch(url, opts);
+    const r = await fetch(apiUrl(path), opts);
     if (!r.ok) {
       const txt = await r.text();
       throw new Error(txt || r.statusText);
@@ -233,19 +245,19 @@ async function apiFetch(url, opts = {}) {
 }
 
 async function fetchLibrary() {
-  library = await apiFetch('/api/library');
+  library = await apiFetch('api/library');
   renderLibrary();
 }
 
 async function fetchProgram() {
-  program = await apiFetch('/api/program');
+  program = await apiFetch('api/program');
   syncYamlPane();
   renderCanvas();
   setStatus('Loaded', true);
 }
 
 async function putProgram(prog) {
-  program = await apiFetch('/api/program', {
+  program = await apiFetch('api/program', {
     method: 'PUT',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(prog)
@@ -256,7 +268,7 @@ async function putProgram(prog) {
 }
 
 async function applyRestart() {
-  await apiFetch('/api/apply', {
+  await apiFetch('api/apply', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({mode: 'restart'})
@@ -268,7 +280,7 @@ async function applyHot() {
   // Hot-apply authority is controlled by the server-side env var
   // PLCASSISTANT_SUPERUSER_HOT_APPLY=1. The server ignores any
   // superuser field from the client.
-  await apiFetch('/api/apply', {
+  await apiFetch('api/apply', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({mode: 'hot'})
@@ -313,7 +325,7 @@ canvasSvg.addEventListener('drop', async e => {
   const x = e.clientX - rect.left;
   const y = e.clientY - rect.top;
   const iid = tid + '_' + Date.now();
-  const resp = await apiFetch('/api/place', {
+  const resp = await apiFetch('api/place', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({template_id: tid, library: tlib, instance_id: iid, x, y})
@@ -600,7 +612,7 @@ async function applyOverlay() {
 
 async function resetInstanceOverlay() {
   if (!overlayInst) return;
-  const resp = await apiFetch('/api/reset_instance', {
+  const resp = await apiFetch('api/reset_instance', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({instance_id: overlayInst})
@@ -639,7 +651,7 @@ async function saveUserBlock() {
   catch(e) { setStatus('Params JSON invalid: ' + e.message, false); return; }
   const body = document.getElementById('ue-body').value;
   const desc = document.getElementById('ue-desc').value;
-  await apiFetch('/api/library/user', {
+  await apiFetch('api/library/user', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({template_id: tid, description: desc, pins, params, body})
@@ -653,7 +665,7 @@ async function deleteUserBlock() {
   const tid = document.getElementById('ue-tid').value.trim();
   if (!tid) { setStatus('Template ID required', false); return; }
   if (!confirm('Delete user block ' + tid + '?')) return;
-  await apiFetch('/api/library/user/' + encodeURIComponent(tid), {method: 'DELETE'});
+  await apiFetch('api/library/user/' + encodeURIComponent(tid), {method: 'DELETE'});
   await fetchLibrary();
   await fetchProgram();
   setStatus('Deleted ' + tid, true);
