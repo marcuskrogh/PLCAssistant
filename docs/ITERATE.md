@@ -34,15 +34,15 @@ Amplifier in our tree: `run.sh` uses `set -eu`, so a thin-integration install fa
 - Thin integration config-flow UX redesign
 
 ## Work packages
-1. Harden `run.sh` install path + defer MQTT connect in HA runtime
-2. Docs troubleshooting + version bump `0.1.6`
-3. Regression tests
+1. Harden `run.sh` install path + defer MQTT connect in HA runtime — **Done**
+2. Docs troubleshooting + version bump `0.1.6` — **Done**
+3. Regression tests — **Done**
 
 ## Tracker
-- Task: [SWD-128](https://marcusknielsen.atlassian.net/browse/SWD-128)
+- Task: [SWD-128](https://marcusknielsen.atlassian.net/browse/SWD-128) — **Done** (ship)
 - Relates: SWD-84
 - Branch: `cursor/fix-app-supervisor-jobs-9777`
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/40
 
 ## Next
-`/ship SWD-128` — Merge PR and close the Task
+Done — iterate closed.
