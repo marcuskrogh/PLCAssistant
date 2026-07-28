@@ -53,7 +53,7 @@ Home Assistant renamed **add-ons → Apps**. This repo uses **App** in packaging
 
 ## Bundle mechanism (v1)
 
-**Documented one-time copy** of `custom_components/plcassistant/` into Home Assistant `config/custom_components/`. The App entrypoint does not auto-register the integration (avoids needing a writable Core config mount). See [`ha_app/INSTALL.md`](../../ha_app/INSTALL.md).
+**Documented one-time copy** of `custom_components/plcassistant/` into Home Assistant `config/custom_components/`. The App entrypoint does not auto-register the integration (avoids needing a writable Core config mount). See root [`README.md`](../../README.md).
 
 ## Related
 

@@ -30,10 +30,17 @@ def test_app_folder_is_direct_child():
 
 
 def test_install_docs_exist():
+    """Canonical install guide is the root README; INSTALL.md points there."""
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert "Mosquitto" in readme
+    assert "plc_assistant" in readme
+    assert "8099" in readme
+    assert "no App-side auth" in readme or "LAN-trust" in readme
+    assert "custom_components/plcassistant" in readme
+    assert "https://github.com/marcuskrogh/PLCAssistant" in readme
+
     install = ROOT / "ha_app" / "INSTALL.md"
     assert install.is_file()
-    text = install.read_text(encoding="utf-8")
-    assert "Mosquitto" in text
-    assert "plc_assistant" in text
-    assert "8099" in text
-    assert "no App-side auth" in text or "LAN-trust" in text
+    pointer = install.read_text(encoding="utf-8")
+    assert "README.md" in pointer
+    assert "Mosquitto" in pointer or "8099" in pointer

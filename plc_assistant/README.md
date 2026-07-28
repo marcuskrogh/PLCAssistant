@@ -13,7 +13,7 @@ Supervisor App that runs the Soft-PLC scan runtime and block editor.
 
 - Home Assistant **OS**
 - **Mosquitto** App (or equivalent MQTT broker) installed and running
-- Bundled thin integration copied into `config/custom_components/plcassistant/` (see [`../INSTALL.md`](../INSTALL.md))
+- Bundled thin integration copied into `config/custom_components/plcassistant/` (see [`../README.md`](../README.md))
 
 ## Build note
 
