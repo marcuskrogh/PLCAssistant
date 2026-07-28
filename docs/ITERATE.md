@@ -40,4 +40,4 @@ HAOS local-build Apps can keep **stale Docker/containerd build layers** across U
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/41
 
 ## Next
-`/review-fix SWD-129` — Review and auto-fix until clean
+`/ship SWD-129` — review-fix CLEAN (iter 2)

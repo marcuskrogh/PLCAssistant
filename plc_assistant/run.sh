@@ -12,6 +12,7 @@ HA_CONFIG="${PLCASSISTANT_HA_CONFIG:-/homeassistant}"
 INTEGRATION_SRC="${PLCASSISTANT_INTEGRATION_SRC:-/usr/share/plcassistant/custom_components/plcassistant}"
 INTEGRATION_DST="${HA_CONFIG}/custom_components/plcassistant"
 APP_VERSION_FILE="${PLCASSISTANT_APP_VERSION_FILE:-/usr/share/plcassistant/APP_VERSION}"
+MIGRATE_SCRIPT="${PLCASSISTANT_MIGRATE_SCRIPT:-/usr/share/plcassistant/migrate_legacy_mqtt_subscribe.py}"
 INTEGRATION_STAMP="${DATA_DIR}/bundled_integration_from_app"
 
 mkdir -p "${DATA_DIR}"
@@ -58,49 +59,13 @@ dst_has_legacy_hass_components() {
 # Runs even when the App image itself is still a stale Docker layer.
 migrate_legacy_mqtt_subscribe() {
   [ -f "${INTEGRATION_DST}/__init__.py" ] || return 0
-  python3 - "${INTEGRATION_DST}/__init__.py" <<'PY'
-import pathlib
-import sys
-
-path = pathlib.Path(sys.argv[1])
-text = path.read_text(encoding="utf-8")
-if "hass.components" not in text:
-    sys.exit(0)
-
-if "from homeassistant.components.mqtt import async_subscribe" not in text:
-    needle = "from homeassistant.config_entries import ConfigEntry"
-    insert = (
-        "from homeassistant.components.mqtt import async_subscribe\n"
-        "from homeassistant.config_entries import ConfigEntry"
-    )
-    if needle not in text:
-        sys.exit(1)
-    text = text.replace(needle, insert, 1)
-
-text = text.replace(
-    "await hass.components.mqtt.async_subscribe(\n            topic,",
-    "await async_subscribe(\n            hass, topic,",
-)
-text = text.replace(
-    "await hass.components.mqtt.async_subscribe(topic,",
-    "await async_subscribe(hass, topic,",
-)
-text = text.replace(
-    "await hass.components.mqtt.async_subscribe(",
-    "await async_subscribe(hass, ",
-)
-
-if "hass.components" in text:
-    sys.exit(1)
-
-path.write_text(text, encoding="utf-8")
-# Drop stale bytecode so Core cannot reload the broken module from __pycache__.
-for pyc in path.parent.rglob("__pycache__"):
-    if pyc.is_dir():
-        for child in pyc.iterdir():
-            child.unlink(missing_ok=True)
-print("PLCAssistant: migrated thin integration off hass.components mqtt subscribe")
-PY
+  if [ -f "${MIGRATE_SCRIPT}" ]; then
+    python3 "${MIGRATE_SCRIPT}" "${INTEGRATION_DST}/__init__.py"
+  else
+    # Local pytest / repo checkout: script lives next to run.sh.
+    python3 "$(dirname "$0")/migrate_legacy_mqtt_subscribe.py" \
+      "${INTEGRATION_DST}/__init__.py"
+  fi
 }
 
 needs_integration_sync() {
@@ -138,14 +103,9 @@ install_thin_integration() {
   fi
 
   if ! needs_integration_sync; then
+    # Legacy hass.components already forces sync above, so this path is clean.
     echo "PLCAssistant: thin integration already up to date at ${INTEGRATION_DST}"
-    # Belt-and-suspenders: migrate even when file hash matched a patched tree.
-    if dst_has_legacy_hass_components; then
-      migrate_legacy_mqtt_subscribe || return 1
-      date -u +"%Y-%m-%dT%H:%M:%SZ" > "${DATA_DIR}/integration_needs_core_restart" || true
-    else
-      rm -f "${DATA_DIR}/integration_needs_core_restart"
-    fi
+    rm -f "${DATA_DIR}/integration_needs_core_restart"
     return 0
   fi
 

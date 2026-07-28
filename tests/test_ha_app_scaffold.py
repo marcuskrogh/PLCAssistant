@@ -34,17 +34,29 @@ def test_app_required_files_exist():
 def test_dockerfile_installs_from_local_context():
     """Supervisor build context is the App folder; no git clone at build time."""
     text = (APP / "Dockerfile").read_text(encoding="utf-8")
+    config_version = yaml.safe_load((APP / "config.yaml").read_text(encoding="utf-8"))[
+        "version"
+    ]
     assert "COPY plcassistant" in text
     assert "COPY custom_components" in text
     assert "pip3 install" in text
     assert "git+https://" not in text
     assert "apk add" not in text
     assert "ARG BUILD_VERSION" in text
+    assert "ARG BUILD_ARCH" in text
     assert "APP_VERSION" in text
-    assert "io.hass.version" in text
+    assert 'io.hass.version="${BUILD_VERSION}"' in text
+    assert 'io.hass.type="app"' in text
+    assert 'io.hass.arch="${BUILD_ARCH}"' in text
+    assert f"ARG BUILD_VERSION={config_version}" in text
+    assert "migrate_legacy_mqtt_subscribe.py" in text
     # Cache-bust RUN must appear before package/integration COPY.
     assert text.index("APP_VERSION") < text.index("COPY plcassistant")
     assert text.index("APP_VERSION") < text.index("COPY custom_components")
+
+
+def test_migrate_legacy_script_exists():
+    assert (APP / "migrate_legacy_mqtt_subscribe.py").is_file()
 
 
 def test_bundled_package_matches_repo_root():
@@ -105,10 +117,13 @@ def test_run_sh_wires_ha_runtime():
     assert "install_thin_integration" in text
     assert "continuing App start" in text
     assert "migrate_legacy_mqtt_subscribe" in text
+    assert "migrate_legacy_mqtt_subscribe.py" in text
     assert "bundled_integration_from_app" in text
     assert "hass.components" in text
     assert "/homeassistant" in text
     assert "custom_components/plcassistant" in text
+    # Dead path under !needs_integration_sync must not re-check legacy migrate.
+    assert "Belt-and-suspenders" not in text
 
 
 def test_run_sh_auto_installs_integration(tmp_path: pathlib.Path):
@@ -254,7 +269,7 @@ _LEGACY_INIT = textwrap.dedent(
 
     async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         unsub = await hass.components.mqtt.async_subscribe(
-            topic, lambda msg: None, qos=1
+            topic, _make_out_handler(tag, entry.entry_id), qos=1
         )
         return True
     '''
@@ -307,29 +322,27 @@ def test_run_sh_migrates_legacy_hass_components_subscribe(tmp_path: pathlib.Path
     init_text = (dst / "__init__.py").read_text(encoding="utf-8")
     assert "hass.components" not in init_text
     assert "from homeassistant.components.mqtt import async_subscribe" in init_text
-    assert "await async_subscribe(" in init_text
+    assert "await async_subscribe(\n            hass, topic," in init_text
     assert "migrated thin integration off hass.components" in result.stdout
     assert not (pycache / "stale.pyc").exists()
 
 
 def test_run_sh_forces_sync_when_app_version_stamp_changes(tmp_path: pathlib.Path):
     """App version bump must re-copy even if file bytes already matched."""
+    content_init = "from homeassistant.components.mqtt import async_subscribe\n"
+    content_manifest = '{"domain":"plcassistant","version":"0.1.7"}\n'
+
     src = tmp_path / "src" / "plcassistant"
     src.mkdir(parents=True)
-    (src / "manifest.json").write_text('{"domain":"plcassistant","version":"0.1.7"}\n', encoding="utf-8")
-    (src / "__init__.py").write_text(
-        "from homeassistant.components.mqtt import async_subscribe\n",
-        encoding="utf-8",
-    )
+    (src / "manifest.json").write_text(content_manifest, encoding="utf-8")
+    (src / "__init__.py").write_text(content_init, encoding="utf-8")
 
     ha_config = tmp_path / "homeassistant"
     dst = ha_config / "custom_components" / "plcassistant"
     dst.mkdir(parents=True)
-    (dst / "manifest.json").write_text('{"domain":"plcassistant","version":"0.1.6"}\n', encoding="utf-8")
-    (dst / "__init__.py").write_text(
-        "from homeassistant.components.mqtt import async_subscribe\n",
-        encoding="utf-8",
-    )
+    # Byte-identical to SRC so only the App version stamp forces the sync.
+    (dst / "manifest.json").write_text(content_manifest, encoding="utf-8")
+    (dst / "__init__.py").write_text(content_init, encoding="utf-8")
 
     data_dir = tmp_path / "data"
     data_dir.mkdir()
@@ -360,5 +373,4 @@ def test_run_sh_forces_sync_when_app_version_stamp_changes(tmp_path: pathlib.Pat
     assert result.returncode == 0, result.stderr + result.stdout
     assert "requires thin-integration sync" in result.stdout
     assert "thin integration installed/updated" in result.stdout
-    assert (dst / "manifest.json").read_text(encoding="utf-8").find("0.1.7") >= 0
     assert (data_dir / "bundled_integration_from_app").read_text(encoding="utf-8").strip() == "0.1.7"
