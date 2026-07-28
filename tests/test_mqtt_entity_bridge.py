@@ -36,8 +36,35 @@ def test_entity_bridge_roundtrip_with_app_bridge():
     assert "CMD_SPEED" in applied
     assert entities.get("number.plcassistant_cmd_speed_out").value == 25.0
     assert entities.get("number.plcassistant_cmd_speed_out").status is QualityStatus.GOOD
-    assert "FT_INLET" in table.tags
-    assert any(b.tag == "FT_INLET" for b in table.bindings)
+
+
+def test_ha_default_bindings_match_app_wedge_config():
+    """HA thin-integration defaults must equal App packaging bindings (SWD-131)."""
+    import ast
+    import pathlib
+
+    init_path = pathlib.Path("custom_components/plcassistant/__init__.py")
+    tree = ast.parse(init_path.read_text(encoding="utf-8"))
+    fn = next(
+        n
+        for n in tree.body
+        if isinstance(n, ast.FunctionDef) and n.name == "_default_bindings"
+    )
+    # Expect: return [ {...}, ... ]
+    ret = next(s for s in fn.body if isinstance(s, ast.Return))
+    ha_bindings = ast.literal_eval(ret.value)
+
+    app_bindings = default_wedge_binding_config()["bindings"]
+    assert ha_bindings == app_bindings
+    assert {b["tag"] for b in ha_bindings} >= {
+        "LT_TANK",
+        "LT_RES",
+        "FT_INLET",
+        "CMD_SPEED",
+        "SP_LEVEL_REQ",
+        "SP_LEVEL",
+        "SP_FLOW",
+    }
 
 
 def test_scan_loop_once_and_commands():

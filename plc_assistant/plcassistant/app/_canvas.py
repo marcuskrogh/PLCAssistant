@@ -227,8 +227,11 @@ function setStatus(msg, ok = true) {
 function apiUrl(path) {
   const rel = String(path || '').replace(/^\//, '');
   let dir = window.location.pathname || '/';
+  // Ingress may omit the trailing slash. Treat the whole pathname as a
+  // directory (append '/') — do NOT strip the last segment (that drops the
+  // ingress token and yields /api/hassio_ingress/api/...).
   if (!dir.endsWith('/')) {
-    dir = dir.slice(0, dir.lastIndexOf('/') + 1);
+    dir = dir + '/';
   }
   return dir + rel;
 }

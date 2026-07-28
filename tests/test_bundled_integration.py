@@ -92,8 +92,9 @@ def test_platforms_publish_and_subscribe_paths():
     button = (CC / "button.py").read_text(encoding="utf-8")
     assert "cmd_topic" in button
     assert "async_press" in button
-    assert "SERVICE_START" in button or "start" in button
     assert "PlcAssistantCmdButton" in button
+    for svc in ("SERVICE_START", "SERVICE_STOP", "SERVICE_RESET"):
+        assert svc in button
 
 def test_services_yaml_has_operator_actions():
     text = (CC / "services.yaml").read_text(encoding="utf-8")
