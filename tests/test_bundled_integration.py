@@ -48,6 +48,10 @@ def test_manifest_mqtt_dependency_and_config_keys():
     assert "tag_in_topic" in init_text
     assert "tag_out_topic" in init_text
     assert "Platform.NUMBER" in init_text
+    # hass.components was removed in modern HA Core; subscribe via mqtt helper.
+    assert "hass.components" not in init_text
+    assert "from homeassistant.components.mqtt import async_subscribe" in init_text
+    assert "await async_subscribe(" in init_text
 
 
 def test_platforms_publish_and_subscribe_paths():
