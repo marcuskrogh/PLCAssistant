@@ -1,7 +1,7 @@
 # Iterate: Block Editor Ingress 404 + thin integration value / version lock
 
 ## Status
-**In Progress** — App **0.1.9** via branch `cursor/swd-131-ingress-integration-1bbe`
+**In Review** — App **0.1.9** via [PR #43](https://github.com/marcuskrogh/PLCAssistant/pull/43)
 
 ## Prior work
 - Task: SWD-130 (PR #42, App 0.1.8 store Latest / `#main`)
@@ -34,6 +34,7 @@ After SWD-130 / App **0.1.8** on HA OS:
 - Task: [SWD-131](https://marcusknielsen.atlassian.net/browse/SWD-131)
 - Relates: SWD-130
 - Branch: `cursor/swd-131-ingress-integration-1bbe`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/43
 
 ## Next
 `/review-fix SWD-131` — Review and auto-fix until clean
