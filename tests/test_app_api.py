@@ -90,8 +90,49 @@ def test_get_root_returns_html(app_server):
     _, base_url, _ = app_server
     status, body, ct = _get(base_url + "/")
     assert status == 200
-    assert b"PLC Assistant" in body
+    assert b"PLCAssistant" in body or b"PLC Assistant" in body
+    assert b"Dashboard" in body or b"dashboard" in body
     assert "text/html" in ct
+
+
+def test_canvas_dashboard_default_and_runtime_hooks(app_server):
+    """SWD-132: default surface is operator dashboard with runtime/cmd APIs."""
+    _, base_url, _ = app_server
+    status, body, _ = _get(base_url + "/")
+    assert status == 200
+    html = body.decode("utf-8")
+    assert "api/runtime" in html
+    assert "api/cmd" in html
+    assert "Start" in html and "Stop" in html and "Reset" in html
+    for tag in ("LT_TANK", "FT_INLET", "CMD_SPEED"):
+        assert tag in html
+
+
+def test_get_runtime_returns_tags(app_server):
+    _, base_url, _ = app_server
+    status, data = _json_get(base_url + "/api/runtime")
+    assert status == 200
+    assert data["status"] in ("running", "stopped", "offline")
+    assert "tags" in data
+    assert "LT_TANK" in data["tags"]
+    assert "FT_INLET" in data["tags"]
+    assert "CMD_SPEED" in data["tags"]
+    assert data["tags"]["LT_TANK"]["status"] in ("GOOD", "BAD", "UNCERTAIN")
+
+
+def test_post_cmd_start_stop_reset(app_server):
+    _, base_url, _ = app_server
+    status, data = _json_request(base_url + "/api/cmd", "POST", {"name": "start"})
+    assert status == 200
+    assert data["scanning"] is True
+    status, data = _json_request(base_url + "/api/cmd", "POST", {"name": "stop"})
+    assert status == 200
+    assert data["scanning"] is False
+    status, data = _json_request(base_url + "/api/cmd", "POST", {"name": "reset"})
+    assert status == 200
+    assert data["scanning"] is False
+    status, bad = _json_request(base_url + "/api/cmd", "POST", {"name": "nope"})
+    assert status == 400
 
 
 def test_canvas_uses_relative_api_paths(app_server):

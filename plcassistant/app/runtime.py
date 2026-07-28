@@ -195,6 +195,10 @@ class MqttScanLoop:
             self.logic(self.image)
             self.bridge.publish_outputs(self.image)
 
+    def issue_command(self, name: str) -> None:
+        """Apply an operator command from the App UI (same path as MQTT cmds)."""
+        self._apply_commands((str(name).lower(),))
+
     def _run(self) -> None:
         self._alive = True
         while self._alive:
@@ -275,10 +279,12 @@ def run_ha_runtime(
         or DEFAULT_INSTANCE_ID
     )
     state = AppState(program_path=program_path)
+    state.instance_id = instance_id
     # Bind the editor first so Ingress / host port respond even if MQTT is slow.
     server = run_app(host=host, port=port, state=state)
 
     lifecycle = _mqtt_supervisor(options, instance_id, bus=bus)
+    state.attach_runtime(lifecycle)
 
     if serve_forever:
         try:

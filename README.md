@@ -42,7 +42,7 @@ Home Assistant OS
 
 Catalog metadata lives in root [`repository.yaml`](repository.yaml). The Supervisor App folder is [`plc_assistant/`](plc_assistant/) (slug `plcassistant`).
 
-### 3. Open the block editor
+### 3. Open the operator dashboard
 
 After the App is running:
 
@@ -50,6 +50,8 @@ After the App is running:
 |------|-----|
 | **Ingress (recommended)** | Apps → PLCAssistant → **Open UI** (uses your HA session) |
 | **Host port** | `http://<ha-host>:8099` |
+
+The App opens on an **operator dashboard** (live signals + Start/Stop/Reset). Switch to **Program** for the block editor.
 
 #### Auth note (exposed port)
 
