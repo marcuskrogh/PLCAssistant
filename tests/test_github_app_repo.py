@@ -93,9 +93,19 @@ def test_install_docs_exist():
     assert "https://github.com/marcuskrogh/PLCAssistant" in readme
     assert "Check for updates" in readme
     assert "plc_assistant/config.yaml" in readme
+    assert "https://github.com/marcuskrogh/PLCAssistant#main" in readme
+    assert "Latest stuck" in readme or "latest" in readme.lower()
+    assert "Repositories" in readme
 
     install = ROOT / "ha_app" / "INSTALL.md"
     assert install.is_file()
     pointer = install.read_text(encoding="utf-8")
     assert "README.md" in pointer
     assert "Mosquitto" in pointer or "8099" in pointer
+
+
+def test_updates_doc_covers_stuck_latest_recovery():
+    text = (ROOT / "docs" / "packaging" / "04-updates.md").read_text(encoding="utf-8")
+    assert "PLCAssistant#main" in text
+    assert "Latest is stuck" in text or "stuck behind GitHub" in text
+    assert "remove the repository" in text.lower() or "re-add" in text.lower()

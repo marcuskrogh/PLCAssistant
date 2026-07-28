@@ -7,11 +7,17 @@
 Custom GitHub App repositories are **pulled on demand**, not watched.
 
 1. Developer bumps `version` in [`plc_assistant/config.yaml`](../../plc_assistant/config.yaml) and merges to `main`.
-2. On the HA host: **Settings → Apps → ⋮ → Check for updates** → Supervisor `git pull`s the repo.
+2. On the HA host: **Settings → Apps → ⋮ → Check for updates** → Supervisor shallow-fetches the repo branch.
 3. Supervisor compares **installed** `version` to the store copy of `config.yaml`.
 4. If they differ, the App detail page shows **Update**.
 
-Hard-refresh the browser after step 2 (store UI is often cached).
+Hard-refresh the browser after step 2 (store UI is often cached). Prefer adding the repository as:
+
+```text
+https://github.com/marcuskrogh/PLCAssistant#main
+```
+
+so Supervisor pins the `main` branch explicitly.
 
 There is **no** GitHub webhook into Supervisor. Shipping a new commit without bumping `version` will not offer an Update button (rebuild requires uninstall/reinstall or a version bump).
 
@@ -41,7 +47,7 @@ A second file with the same `slug` makes update detection unreliable (store can 
 5. Merge to `main`.
 6. On HA: **Check for updates** → hard-refresh → **Update** PLCAssistant.
 
-No repository remove/re-add should be required when the invariant holds.
+No repository remove/re-add should be required when the invariant holds and the store clone is healthy.
 
 ### If Update does not change the installed version
 
@@ -53,6 +59,17 @@ Mitigations in-repo (0.1.7+):
 - App start force-syncs the thin integration when the App version stamp changes, and migrates any remaining `hass.components` subscribe path on disk.
 
 Operator fallback: hard-refresh after **Check for updates**, restart Core after App Update, or `docker builder prune` then uninstall/reinstall.
+
+### If Latest is stuck behind GitHub
+
+When GitHub `main` already has a newer `plc_assistant/config.yaml` `version`, but HA still shows **Latest = installed** (for example both `0.1.6`):
+
+1. Confirm the GitHub file version.
+2. **Check for updates** → hard-refresh → **Restart Home Assistant Core** (Core update entities can lag after store reload).
+3. If still stuck: remove the repository and re-add `https://github.com/marcuskrogh/PLCAssistant#main`.
+4. Inspect Supervisor logs for `Can't update` / corrupt-repository errors.
+
+This is separate from the Docker layer-cache issue above: here the **store** never advanced, so Update cannot offer the real latest.
 
 ## Optional later improvement
 
