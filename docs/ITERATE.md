@@ -45,4 +45,4 @@ Amplifier in our tree: `run.sh` uses `set -eu`, so a thin-integration install fa
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/40
 
 ## Next
-`/review-fix SWD-128` — Review and auto-fix until clean
+`/ship SWD-128` — Merge PR and close the Task

@@ -44,10 +44,11 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-126 | Sub-task | SWD-84: Bundled thin integration | Done | SWD-84 | custom_components/plcassistant/ | — |
 | SWD-127 | Sub-task | SWD-84: GitHub App repository + install docs | Done | SWD-84 | ha_app/repository.yaml, ha_app/INSTALL.md | — |
 | SWD-124 | Sub-task | SWD-84: Acceptance tests + checklist | Done | SWD-84 | docs/packaging/03-acceptance.md, tests/test_swd84_acceptance.py | — |
-| SWD-128 | Bug | [Iterate] App configure after reinstall: Supervisor job-group stop/stats errors | In Review | Relates SWD-84 | docs/ITERATE.md | `/review-fix SWD-128` |
+| SWD-128 | Bug | [Iterate] App configure after reinstall: Supervisor job-group stop/stats errors | In Review | Relates SWD-84 | docs/ITERATE.md | `/ship SWD-128` |
 
 ## Log
 
+- 2026-07-28 — review-fix SWD-128 CLEAN after 2 iterations (iter1: 1B+6SF watchdog/install/MQTT lifecycle; iter2: 0); Next `/ship SWD-128`.
 - 2026-07-28 — Iterate SWD-128: after 0.1.5 reinstall, configuring App logs Supervisor `Another job is running` / `App is not running`. Hardening App start (integration install must not crash-loop; MQTT off HTTP thread); docs troubleshooting; bump App to 0.1.6.
 - 2026-07-26 — Cleared first PLCAssistant development session (Story SWD-66 and Tasks/Sub-tasks SWD-67..SWD-80; removed explore/implement artifacts from the repo) for a fresh exploration start.
 - 2026-07-26 — Explore complete: Story SWD-81 + theme Tasks SWD-83, SWD-86, SWD-85, SWD-82, SWD-84; artifact `docs/ROADMAP.md`; Next `/define SWD-83`.
