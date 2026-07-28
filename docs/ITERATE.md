@@ -41,6 +41,8 @@ Amplifier in our tree: `run.sh` uses `set -eu`, so a thin-integration install fa
 ## Tracker
 - Task: [SWD-128](https://marcusknielsen.atlassian.net/browse/SWD-128)
 - Relates: SWD-84
+- Branch: `cursor/fix-app-supervisor-jobs-9777`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/40
 
 ## Next
 `/review-fix SWD-128` — Review and auto-fix until clean
