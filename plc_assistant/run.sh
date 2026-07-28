@@ -19,7 +19,7 @@ export PLCASSISTANT_PROGRAM_PATH="${PROGRAM_PATH}"
 export PLCASSISTANT_HA_RUNTIME=1
 
 # Bundled thin integration: documented one-time copy into HA
-# config/custom_components (see INSTALL.md). Not auto-copied in v1.
+# config/custom_components (see README.md). Not auto-copied in v1.
 
 exec python3 -m plcassistant.app \
   --host "${HOST}" \

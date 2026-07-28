@@ -6,6 +6,6 @@ Home Assistant custom component that owns:
 - **Mock / sim** entities (writable Number IN + Number OUT; mock path ≡ field path)
 - Operator services **start / stop / reset** (MQTT cmd topics)
 
-Talks to the Soft-PLC **App** over MQTT (`dependencies: ["mqtt"]`). See [`docs/packaging/`](../../docs/packaging/README.md) and [`ha_app/INSTALL.md`](../../ha_app/INSTALL.md).
+Talks to the Soft-PLC **App** over MQTT (`dependencies: ["mqtt"]`). Full install steps: [`README.md`](../../README.md). Packaging contract: [`docs/packaging/`](../../docs/packaging/README.md).
 
 **Install (v1):** copy this folder to `/config/custom_components/plcassistant/` then restart Core.

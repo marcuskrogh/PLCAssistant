@@ -66,6 +66,10 @@ def test_services_yaml_has_operator_actions():
 
 
 def test_bundle_docs_mention_copy_install():
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    assert "custom_components/plcassistant" in readme
+    assert "copy" in readme.lower()
+
     install = (ROOT / "ha_app" / "INSTALL.md").read_text(encoding="utf-8")
     assert "custom_components/plcassistant" in install
-    assert "copy" in install.lower()
+    assert "README.md" in install
