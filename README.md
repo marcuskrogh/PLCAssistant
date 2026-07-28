@@ -156,7 +156,17 @@ Supervisor allows only one start/stop/restart job at a time for the App. This us
 3. If it stays stuck for several minutes: **host reboot** (Settings → System → Hardware → Advanced → Reboot host), not only Core restart. Optional CLI: `ha jobs info`, `ha supervisor repair`.
 4. After reboot, Start PLCAssistant once, wait for Started, then configure.
 
-From **0.1.6**, thin-integration copy failures no longer abort Soft-PLC start (they are logged and the editor still comes up).
+From **0.1.6**, thin-integration copy failures no longer abort Soft-PLC start (they are logged and the editor still comes up). From **0.1.7**, App builds bust Docker layer cache on each `version` bump, and App start migrates any remaining `hass.components` MQTT subscribe on disk (stale-image escape hatch). **Restart Home Assistant Core** after App Update/reinstall so Core reloads `custom_components/plcassistant`.
+
+### Update button shows but installed version stays old
+
+Local-build Apps can keep **stale Docker/containerd layers** on some HA OS versions.
+
+1. **Settings → Apps → ⋮ → Check for updates**, then hard-refresh the browser.
+2. Open PLCAssistant → **Update** (or uninstall + install).
+3. Confirm App log shows the new version / `thin integration installed/updated` / migration line.
+4. **Restart Home Assistant Core**.
+5. If the installed version still does not move: host SSH/`ha` console → `docker builder prune` (or reboot host) → uninstall PLCAssistant → install again.
 
 ## Updates
 

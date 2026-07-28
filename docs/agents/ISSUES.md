@@ -45,9 +45,11 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-127 | Sub-task | SWD-84: GitHub App repository + install docs | Done | SWD-84 | ha_app/repository.yaml, ha_app/INSTALL.md | — |
 | SWD-124 | Sub-task | SWD-84: Acceptance tests + checklist | Done | SWD-84 | docs/packaging/03-acceptance.md, tests/test_swd84_acceptance.py | — |
 | SWD-128 | Bug | [Iterate] App configure after reinstall: Supervisor job-group stop/stats errors | Done | Relates SWD-84 | docs/ITERATE.md | Done — shipped PR #40 |
+| SWD-129 | Bug | [Iterate] App Update stale image + hass.components integration after reinstall | In Review | Relates SWD-128 | docs/ITERATE.md | `/ship SWD-129` |
 
 ## Log
 
+- 2026-07-28 — Iterate SWD-129: Update leaves installed version stuck; reinstall still loads pre-0.1.5 `hass.components` integration (stale Docker layers). Dockerfile BUILD_VERSION cache-bust + runtime migration + force-sync; bump 0.1.7.
 - 2026-07-28 — Shipped SWD-128 via PR #40; App 0.1.6 hardens start against Supervisor job-group configure races. Bug Done; SWD-84/SWD-81 remain Done.
 - 2026-07-28 — review-fix SWD-128 CLEAN after 2 iterations (iter1: 1B+6SF watchdog/install/MQTT lifecycle; iter2: 0); Next `/ship SWD-128`.
 - 2026-07-28 — Iterate SWD-128: after 0.1.5 reinstall, configuring App logs Supervisor `Another job is running` / `App is not running`. Hardening App start (integration install must not crash-loop; MQTT off HTTP thread); docs troubleshooting; bump App to 0.1.6.

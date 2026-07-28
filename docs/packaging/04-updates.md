@@ -43,6 +43,17 @@ A second file with the same `slug` makes update detection unreliable (store can 
 
 No repository remove/re-add should be required when the invariant holds.
 
+### If Update does not change the installed version
+
+On some HA OS releases, local-build Apps reuse **containerd/Docker layer cache**, so Update can finish while the container still runs old files (thin integration may keep pre-0.1.5 `hass.components` MQTT code).
+
+Mitigations in-repo (0.1.7+):
+
+- Dockerfile uses Supervisor `BUILD_VERSION` before `COPY` to invalidate layers on each `version` bump.
+- App start force-syncs the thin integration when the App version stamp changes, and migrates any remaining `hass.components` subscribe path on disk.
+
+Operator fallback: hard-refresh after **Check for updates**, restart Core after App Update, or `docker builder prune` then uninstall/reinstall.
+
 ## Optional later improvement
 
-Pre-building and publishing container images (`image:` in `config.yaml`) makes installs faster, but update discovery still uses the same `version` + Check for updates flow.
+Pre-building and publishing container images (`image:` in `config.yaml`) makes installs faster and avoids local build cache issues, but update discovery still uses the same `version` + Check for updates flow.

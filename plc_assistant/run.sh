@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# PLCAssistant HA App entry (SWD-123 / SWD-84 fix-forward / SWD-128).
+# PLCAssistant HA App entry (SWD-123 / SWD-84 / SWD-128 / SWD-129).
 # Supervisor mounts persistent storage at /data and HA config at /homeassistant.
 set -eu
 
@@ -11,6 +11,9 @@ PORT="${PLCASSISTANT_PORT:-8099}"
 HA_CONFIG="${PLCASSISTANT_HA_CONFIG:-/homeassistant}"
 INTEGRATION_SRC="${PLCASSISTANT_INTEGRATION_SRC:-/usr/share/plcassistant/custom_components/plcassistant}"
 INTEGRATION_DST="${HA_CONFIG}/custom_components/plcassistant"
+APP_VERSION_FILE="${PLCASSISTANT_APP_VERSION_FILE:-/usr/share/plcassistant/APP_VERSION}"
+MIGRATE_SCRIPT="${PLCASSISTANT_MIGRATE_SCRIPT:-/usr/share/plcassistant/migrate_legacy_mqtt_subscribe.py}"
+INTEGRATION_STAMP="${DATA_DIR}/bundled_integration_from_app"
 
 mkdir -p "${DATA_DIR}"
 
@@ -20,6 +23,14 @@ if [ -f "${OPTIONS_PATH}" ]; then
 fi
 export PLCASSISTANT_PROGRAM_PATH="${PROGRAM_PATH}"
 export PLCASSISTANT_HA_RUNTIME=1
+
+app_version() {
+  if [ -f "${APP_VERSION_FILE}" ]; then
+    tr -d '[:space:]' < "${APP_VERSION_FILE}"
+  else
+    printf '%s\n' "unknown"
+  fi
+}
 
 integration_up_to_date() {
   [ -d "${INTEGRATION_DST}" ] || return 1
@@ -39,6 +50,40 @@ sys.exit(0 if files(Path(sys.argv[1])) == files(Path(sys.argv[2])) else 1)
 PY
 }
 
+dst_has_legacy_hass_components() {
+  [ -f "${INTEGRATION_DST}/__init__.py" ] || return 1
+  grep -q "hass\\.components" "${INTEGRATION_DST}/__init__.py"
+}
+
+# Rewrite pre-0.1.5 mqtt subscribe that uses removed hass.components.
+# Runs even when the App image itself is still a stale Docker layer.
+migrate_legacy_mqtt_subscribe() {
+  [ -f "${INTEGRATION_DST}/__init__.py" ] || return 0
+  if [ -f "${MIGRATE_SCRIPT}" ]; then
+    python3 "${MIGRATE_SCRIPT}" "${INTEGRATION_DST}/__init__.py"
+  else
+    # Local pytest / repo checkout: script lives next to run.sh.
+    python3 "$(dirname "$0")/migrate_legacy_mqtt_subscribe.py" \
+      "${INTEGRATION_DST}/__init__.py"
+  fi
+}
+
+needs_integration_sync() {
+  ver="$(app_version)"
+  if [ ! -f "${INTEGRATION_STAMP}" ] || [ "$(cat "${INTEGRATION_STAMP}")" != "${ver}" ]; then
+    echo "PLCAssistant: App version stamp ${ver} requires thin-integration sync."
+    return 0
+  fi
+  if dst_has_legacy_hass_components; then
+    echo "PLCAssistant: installed integration still uses hass.components; forcing sync."
+    return 0
+  fi
+  if ! integration_up_to_date; then
+    return 0
+  fi
+  return 1
+}
+
 # Copy bundled thin integration into HA config.
 # Critical steps use `|| return 1` (errexit alone is unreliable when the caller
 # temporarily disables it). Soft-PLC start must not abort if install fails.
@@ -49,10 +94,16 @@ install_thin_integration() {
   fi
   if [ ! -d "${INTEGRATION_SRC}" ]; then
     echo "PLCAssistant: bundled integration missing at ${INTEGRATION_SRC}; skip install."
+    # Still try to migrate whatever is already on disk (stale-image escape hatch).
+    if dst_has_legacy_hass_components; then
+      migrate_legacy_mqtt_subscribe || return 1
+      date -u +"%Y-%m-%dT%H:%M:%SZ" > "${DATA_DIR}/integration_needs_core_restart" || true
+    fi
     return 0
   fi
 
-  if integration_up_to_date; then
+  if ! needs_integration_sync; then
+    # Legacy hass.components already forces sync above, so this path is clean.
     echo "PLCAssistant: thin integration already up to date at ${INTEGRATION_DST}"
     rm -f "${DATA_DIR}/integration_needs_core_restart"
     return 0
@@ -100,9 +151,21 @@ install_thin_integration() {
   fi
   rm -rf "${bak}"
 
+  # If the App image itself is stale, bundled SRC may still be broken — migrate DST.
+  if dst_has_legacy_hass_components; then
+    migrate_legacy_mqtt_subscribe || {
+      echo "PLCAssistant: failed to migrate hass.components subscribe path" >&2
+      return 1
+    }
+  fi
+
+  # Drop any leftover bytecode from previous installs.
+  rm -rf "${INTEGRATION_DST}/__pycache__"
+
   echo "PLCAssistant: thin integration installed/updated at ${INTEGRATION_DST}"
   echo "PLCAssistant: Restart Home Assistant Core, then add PLCAssistant under Devices & services (if not already)."
-  # Restart flag is best-effort; copy already succeeded.
+  printf '%s\n' "$(app_version)" > "${INTEGRATION_STAMP}" || \
+    echo "PLCAssistant: warning: could not write ${INTEGRATION_STAMP}" >&2
   date -u +"%Y-%m-%dT%H:%M:%SZ" > "${DATA_DIR}/integration_needs_core_restart" || \
     echo "PLCAssistant: warning: could not write integration_needs_core_restart" >&2
   return 0
