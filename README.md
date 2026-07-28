@@ -2,6 +2,8 @@
 
 Virtual / soft-PLC for **lab, hobby, and small-scale process equipment**, using [Home Assistant](https://www.home-assistant.io/) as the low-friction I/O, HMI, and logging surface.
 
+Licensed under the **[MIT License](LICENSE)**.
+
 **v1 installs on Home Assistant OS only** (Supervisor Apps). HA Container / Core / Supervised are not first-class targets yet. Publication is a **custom App from GitHub** — not the official Home Assistant Apps store.
 
 ```
@@ -27,35 +29,21 @@ Home Assistant OS
 
 ### 2. Add the App repository
 
+The repository must be **public** on GitHub (MIT). Supervisor clones App repos anonymously and cannot use a private URL.
+
 1. Go to **Settings → Apps**.
 2. Open the overflow menu (⋮) → **Repositories**.
-3. Add the repository URL (see **Private vs public** below) and confirm.
+3. Add this URL and confirm:
+
+   ```text
+   https://github.com/marcuskrogh/PLCAssistant
+   ```
+
 4. Refresh the Apps list.
 5. Find **PLCAssistant** and **Install**, then **Start**.
 
 Catalog metadata lives in root [`repository.yaml`](repository.yaml). The Supervisor App folder is [`plc_assistant/`](plc_assistant/) (slug `plcassistant`).
 
-#### Private vs public GitHub repo
-
-Supervisor clones App repositories over HTTPS **without your GitHub login**. If this repository is **private**, the plain URL will fail when you try to add it:
-
-```text
-https://github.com/marcuskrogh/PLCAssistant
-```
-
-**Option A — make the repo public** (simplest for installs): GitHub → Settings → Danger Zone → Change visibility → Public. Then use the URL above.
-
-**Option B — keep it private** and embed a Personal Access Token in the repository URL:
-
-1. GitHub → **Settings → Developer settings → Personal access tokens**.
-2. Create a token with **Contents: Read-only** on this repository (fine-grained) or classic `repo` scope.
-3. Add the repository in HA as:
-
-   ```text
-   https://GITHUB_USERNAME:TOKEN@github.com/marcuskrogh/PLCAssistant.git
-   ```
-
-Treat that URL like a password (anyone with Supervisor access can see it). Prefer a fine-grained, read-only token scoped to this repo only.
 ### 3. Open the block editor
 
 After the App is running:
@@ -185,3 +173,7 @@ Authoritative App files live in [`plc_assistant/`](plc_assistant/); keep [`ha_ap
 | [`docs/surface/`](docs/surface/01-block-model.md) | Block program model, runtime, editor, apply policy |
 | [`docs/wedge/`](docs/wedge/README.md) | Skid / process wedge specifications |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | Product direction |
+
+## License
+
+[MIT](LICENSE) — Copyright (c) 2026 Marcus Krogh Nielsen, Ph.D.
