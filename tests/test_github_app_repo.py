@@ -29,6 +29,23 @@ def test_app_folder_is_direct_child():
     assert data["ingress"] is True
 
 
+def test_only_one_app_config_yaml():
+    """Duplicate config.yaml + same slug breaks Supervisor update detection."""
+    configs = sorted(ROOT.rglob("config.yaml"))
+    # Ignore anything under caches / venv if present.
+    configs = [
+        p
+        for p in configs
+        if ".git" not in p.parts
+        and ".venv" not in p.parts
+        and "venv" not in p.parts
+        and "node_modules" not in p.parts
+    ]
+    assert configs == [ROOT / "plc_assistant" / "config.yaml"], configs
+    data = yaml.safe_load(configs[0].read_text(encoding="utf-8"))
+    assert data["slug"] == "plcassistant"
+
+
 def test_install_docs_exist():
     """Canonical install guide is the root README; INSTALL.md points there."""
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
@@ -38,6 +55,7 @@ def test_install_docs_exist():
     assert "no App-side auth" in readme or "LAN-trust" in readme
     assert "custom_components/plcassistant" in readme
     assert "https://github.com/marcuskrogh/PLCAssistant" in readme
+    assert "Check for updates" in readme
 
     install = ROOT / "ha_app" / "INSTALL.md"
     assert install.is_file()

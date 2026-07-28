@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
-# Copy the installable Python package + thin integration into HA App build contexts.
-# Supervisor docker-builds only the App folder, so those trees must live there.
+# Copy the installable Python package + thin integration into the HA App build context.
+# Supervisor docker-builds only the App folder (plc_assistant/), so those trees must live there.
+# Do NOT place a second config.yaml elsewhere in the repo — Supervisor discovers Apps
+# recursively and duplicate slug "plcassistant" breaks update detection.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+DEST="${ROOT}/plc_assistant"
 
 copy_tree() {
   local src="$1"
@@ -16,7 +19,6 @@ copy_tree() {
       --exclude '.pytest_cache/' \
       "${src}/" "${dest}/"
   else
-    # Clear destination contents without removing dest itself when empty-safe.
     find "${dest}" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
     (cd "${src}" && tar cf - \
       --exclude='__pycache__' \
@@ -27,22 +29,16 @@ copy_tree() {
   fi
 }
 
-sync_into() {
-  local dest="$1"
-  mkdir -p "${dest}"
+mkdir -p "${DEST}"
 
-  rm -rf "${dest}/plcassistant"
-  copy_tree "${ROOT}/plcassistant" "${dest}/plcassistant"
-  cp "${ROOT}/pyproject.toml" "${dest}/pyproject.toml"
+rm -rf "${DEST}/plcassistant"
+copy_tree "${ROOT}/plcassistant" "${DEST}/plcassistant"
+cp "${ROOT}/pyproject.toml" "${DEST}/pyproject.toml"
 
-  rm -rf "${dest}/custom_components"
-  mkdir -p "${dest}/custom_components/plcassistant"
-  copy_tree \
-    "${ROOT}/custom_components/plcassistant" \
-    "${dest}/custom_components/plcassistant"
+rm -rf "${DEST}/custom_components"
+mkdir -p "${DEST}/custom_components/plcassistant"
+copy_tree \
+  "${ROOT}/custom_components/plcassistant" \
+  "${DEST}/custom_components/plcassistant"
 
-  echo "Synced package + integration into ${dest}"
-}
-
-sync_into "${ROOT}/plc_assistant"
-sync_into "${ROOT}/ha_app/plcassistant"
+echo "Synced package + integration into ${DEST}"
