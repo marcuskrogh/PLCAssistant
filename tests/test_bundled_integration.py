@@ -74,6 +74,7 @@ def test_bundle_docs_mention_auto_install():
     assert "custom_components/plcassistant" in readme
     assert "auto-installed" in readme.lower() or "copies" in readme.lower()
     assert "Restart Home Assistant Core" in readme
+    assert "Another job is running" in readme or "job group" in readme
 
     install = (ROOT / "ha_app" / "INSTALL.md").read_text(encoding="utf-8")
     assert "custom_components/plcassistant" in install or "README.md" in install

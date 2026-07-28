@@ -1,5 +1,5 @@
 name: "PLCAssistant"
-version: "0.1.5"
+version: "0.1.6"
 slug: plcassistant
 description: "Soft-PLC runtime and block editor for Home Assistant OS (SWD-84)"
 url: "https://github.com/marcuskrogh/PLCAssistant"
@@ -9,6 +9,8 @@ arch:
 init: false
 startup: application
 boot: auto
+timeout: 120
+watchdog: true
 ingress: true
 ingress_port: 8099
 panel_icon: mdi:memory

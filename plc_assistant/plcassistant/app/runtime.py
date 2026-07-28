@@ -222,12 +222,15 @@ def run_ha_runtime(
         or DEFAULT_INSTANCE_ID
     )
     state = AppState(program_path=program_path)
+    # Bind the editor first so Ingress / host port respond even if MQTT is slow.
     server = run_app(host=host, port=port, state=state)
 
-    if bus is None:
-        bus = build_bus_from_options(options)
-
-    loop = _mqtt_supervisor(options, instance_id, bus=bus)
+    # Injected bus (unit tests): start immediately.
+    # Live App: never block this thread on broker TCP connect — background retry owns it.
+    if bus is not None:
+        loop = _mqtt_supervisor(options, instance_id, bus=bus)
+    else:
+        loop = _mqtt_supervisor(options, instance_id, bus=None)
 
     if serve_forever:
         try:

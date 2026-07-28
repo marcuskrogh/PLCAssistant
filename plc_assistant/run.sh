@@ -39,6 +39,9 @@ sys.exit(0 if files(Path(sys.argv[1])) == files(Path(sys.argv[2])) else 1)
 PY
 }
 
+# Copy bundled thin integration into HA config.
+# Uses explicit `|| return` (not bare set -e): dash/bash disable errexit inside
+# `if`/`||` contexts, which is how we invoke this without aborting App start.
 install_thin_integration() {
   if [ ! -d "${HA_CONFIG}" ]; then
     echo "PLCAssistant: HA config not mounted at ${HA_CONFIG}; skip integration install."
@@ -49,7 +52,7 @@ install_thin_integration() {
     return 0
   fi
 
-  mkdir -p "${HA_CONFIG}/custom_components"
+  mkdir -p "${HA_CONFIG}/custom_components" || return 1
 
   needs_restart=1
   if integration_up_to_date; then
@@ -58,22 +61,34 @@ install_thin_integration() {
 
   tmp="${INTEGRATION_DST}.new"
   rm -rf "${tmp}"
-  mkdir -p "${tmp}"
-  (cd "${INTEGRATION_SRC}" && tar cf - .) | (cd "${tmp}" && tar xf -)
+  mkdir -p "${tmp}" || return 1
+  (cd "${INTEGRATION_SRC}" && tar cf - .) | (cd "${tmp}" && tar xf -) || return 1
+  # Pipeline above: also require the staged tree to look populated.
+  [ -f "${tmp}/manifest.json" ] || return 1
   rm -rf "${INTEGRATION_DST}"
-  mv "${tmp}" "${INTEGRATION_DST}"
+  mv "${tmp}" "${INTEGRATION_DST}" || return 1
 
   if [ "${needs_restart}" -eq 1 ]; then
     echo "PLCAssistant: thin integration installed/updated at ${INTEGRATION_DST}"
     echo "PLCAssistant: Restart Home Assistant Core, then add PLCAssistant under Devices & services (if not already)."
-    date -u +"%Y-%m-%dT%H:%M:%SZ" > "${DATA_DIR}/integration_needs_core_restart"
+    date -u +"%Y-%m-%dT%H:%M:%SZ" > "${DATA_DIR}/integration_needs_core_restart" || return 1
   else
     echo "PLCAssistant: thin integration already up to date at ${INTEGRATION_DST}"
     rm -f "${DATA_DIR}/integration_needs_core_restart"
   fi
+  return 0
 }
 
+# Never abort Soft-PLC start on integration copy failure. A crash-loop here holds
+# Supervisor's per-App job group and surfaces "Another job is running" / "not running"
+# when the user tries to configure or restart the App.
+set +e
 install_thin_integration
+install_rc=$?
+set -e
+if [ "${install_rc}" -ne 0 ]; then
+  echo "PLCAssistant: thin integration install failed; continuing App start." >&2
+fi
 
 exec python3 -m plcassistant.app \
   --host "${HOST}" \
