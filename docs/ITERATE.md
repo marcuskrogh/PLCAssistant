@@ -1,5 +1,8 @@
 # Iterate: Store Latest stuck behind GitHub App version
 
+## Status
+**Shipped** — App **0.1.8** via [PR #42](https://github.com/marcuskrogh/PLCAssistant/pull/42)
+
 ## Prior work
 - Task: SWD-129 (PR #41, App 0.1.7 Docker cache-bust + hass.components migrate)
 - Also: single-config store discovery (removed duplicate `ha_app` App config)
@@ -43,4 +46,4 @@ Two overlapping failure modes:
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/42
 
 ## Next
-`/ship SWD-130` — review-fix CLEAN (iter 2)
+Done — shipped PR #42 (App 0.1.8).
