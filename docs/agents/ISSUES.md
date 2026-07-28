@@ -46,9 +46,11 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-124 | Sub-task | SWD-84: Acceptance tests + checklist | Done | SWD-84 | docs/packaging/03-acceptance.md, tests/test_swd84_acceptance.py | — |
 | SWD-128 | Bug | [Iterate] App configure after reinstall: Supervisor job-group stop/stats errors | Done | Relates SWD-84 | docs/ITERATE.md | Done — shipped PR #40 |
 | SWD-129 | Bug | [Iterate] App Update stale image + hass.components integration after reinstall | Done | Relates SWD-128 | docs/ITERATE.md | Done — shipped PR #41 |
+| SWD-130 | Bug | [Iterate] Store Latest stuck at 0.1.6 while GitHub has newer App version | In Review | Relates SWD-129 | docs/ITERATE.md | `/ship SWD-130` |
 
 ## Log
 
+- 2026-07-28 — Iterate SWD-130: HA Latest stuck at 0.1.6 while GitHub has newer; pin `#main`, document store/update-entity recovery, bump App 0.1.8.
 - 2026-07-28 — Shipped SWD-129 via PR #41; App 0.1.7 cache-busts Docker layers + migrates leftover hass.components thin integration. Bug Done.
 - 2026-07-28 — Iterate SWD-129: Update leaves installed version stuck; reinstall still loads pre-0.1.5 `hass.components` integration (stale Docker layers). Dockerfile BUILD_VERSION cache-bust + runtime migration + force-sync; bump 0.1.7.
 - 2026-07-28 — Shipped SWD-128 via PR #40; App 0.1.6 hardens start against Supervisor job-group configure races. Bug Done; SWD-84/SWD-81 remain Done.

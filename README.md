@@ -31,8 +31,11 @@ Home Assistant OS
 3. Add this URL and confirm:
 
    ```text
-   https://github.com/marcuskrogh/PLCAssistant
+   https://github.com/marcuskrogh/PLCAssistant#main
    ```
+
+   The `#main` pin selects the branch Supervisor shallow-clones; later
+   **Check for updates** fetches that same branch.
 
 4. Refresh the Apps list.
 5. Find **PLCAssistant** and **Install**, then **Start**.
@@ -168,21 +171,38 @@ Local-build Apps can keep **stale Docker/containerd layers** on some HA OS versi
 4. **Restart Home Assistant Core**.
 5. If the installed version still does not move: host SSH/`ha` console → `docker builder prune` (or reboot host) → uninstall PLCAssistant → install again.
 
+### Latest stuck at an old version (store / Updates dialog)
+
+If GitHub already has a newer `version` in [`plc_assistant/config.yaml`](plc_assistant/config.yaml) but HA still shows **Latest = installed** (for example both `0.1.6`), either the Supervisor store clone is stale **or** the Core update entity has not refreshed yet (~15 minutes after store reload).
+
+1. Confirm GitHub `main`: open [`plc_assistant/config.yaml`](https://github.com/marcuskrogh/PLCAssistant/blob/main/plc_assistant/config.yaml) and note `version`.
+2. **Settings → Apps → ⋮ → Repositories** — if the URL is missing `#main`, remove it and re-add:
+
+   ```text
+   https://github.com/marcuskrogh/PLCAssistant#main
+   ```
+
+   Then hard-refresh and confirm **Latest** matches GitHub.
+3. Otherwise: **Check for updates** → hard-refresh (**Ctrl/Cmd+Shift+R**) → **Restart Home Assistant Core**.
+4. If **Latest** is still behind GitHub: remove the repository and re-add `#main` (step 2), then Check for updates again.
+5. Check **Settings → System → Logs → Supervisor** for `Can't update … PLCAssistant` / corrupt repository errors.
+
 ## Updates
 
 Home Assistant does **not** poll custom GitHub App repos continuously. After we bump
 `version` in [`plc_assistant/config.yaml`](plc_assistant/config.yaml) on `main`:
 
-1. **Settings → Apps → ⋮ → Check for updates** (this `git pull`s the repository).
+1. **Settings → Apps → ⋮ → Check for updates** (this shallow-fetches the repository branch).
 2. Hard-refresh the browser (**Ctrl/Cmd+Shift+R**) — the store UI is often cached.
 3. Open PLCAssistant — an **Update** button appears when the store version is newer than the installed one.
+4. If the Apps page and the Updates dialog disagree, restart Core (see “Latest stuck…”).
 
 This works for **every** future release as long as the repo keeps a single App
 `config.yaml` (enforced by CI). Full release checklist:
 [`docs/packaging/04-updates.md`](docs/packaging/04-updates.md).
 
 If an update still does not appear, check **Settings → System → Logs → Supervisor**.
-Removing and re-adding the repository forces a fresh clone but should not be needed.
+Removing and re-adding the repository (`#main`) forces a fresh clone.
 
 ## Versioning
 

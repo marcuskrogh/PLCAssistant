@@ -1,46 +1,49 @@
-# Iterate: App Update stale image + hass.components after reinstall
+# Iterate: Store Latest stuck behind GitHub App version
 
 ## Status
-**Shipped** — App **0.1.7** via [PR #41](https://github.com/marcuskrogh/PLCAssistant/pull/41)
+**Shipped** — App **0.1.8** via [PR #42](https://github.com/marcuskrogh/PLCAssistant/pull/42)
 
 ## Prior work
-- Task: SWD-128 (PR #40, App 0.1.6 start hardening)
-- Also: PR #39 (`async_subscribe` MQTT fix, App 0.1.5)
-- Spec context: `plc_assistant/Dockerfile`, `plc_assistant/run.sh`, `custom_components/plcassistant/`
+- Task: SWD-129 (PR #41, App 0.1.7 Docker cache-bust + hass.components migrate)
+- Also: single-config store discovery (removed duplicate `ha_app` App config)
+- Spec context: `docs/packaging/04-updates.md`, `plc_assistant/config.yaml`, `repository.yaml`
 
 ## Problem
-1. **Update button shows but installed App version stays previous** after Update.
-2. **Uninstall/reinstall** still loads old thin integration:
-   ```text
-   AttributeError: 'HomeAssistant' object has no attribute 'components'
-   File "/config/custom_components/plcassistant/__init__.py", line 138
-   ```
-   That line is pre-0.1.5 `hass.components.mqtt.async_subscribe` (already fixed on `main`).
+On HA OS after 0.1.7 shipped on GitHub `main`:
 
-## Cause
-HAOS local-build Apps can keep **stale Docker/containerd build layers** across Update/reinstall. The running image may still ship the old bundled `custom_components`, so auto-install copies or skips as “up to date” while Core keeps the broken subscribe path.
+1. UI claims an update is available.
+2. The update detail/menu shows **installed = 0.1.6** and **latest = 0.1.6**.
+3. That “latest” is wrong — GitHub `plc_assistant/config.yaml` is already newer.
+
+This is **Supervisor store discovery / stale update-entity metadata**, not the Docker layer-cache bug fixed in SWD-129.
+
+Two overlapping failure modes:
+
+| Mode | What you see | Cause |
+|------|----------------|-------|
+| A. Store git stuck | Apps page **and** Updates dialog both show Latest = old | Supervisor’s shallow clone under `/data/addons/git/…` did not advance; or frontend never reloaded store |
+| B. Update entity lag | Apps page shows Update to new version, but Updates / more-info still says installed = latest = old | Core `HassioAddOnDataUpdateCoordinator` can lag ~15 min after store reload (HA Core quirk) |
 
 ## Acceptance criteria
-1. Dockerfile consumes Supervisor `BUILD_VERSION` in a layer **before** package/integration `COPY`, and sets `io.hass.version`.
-2. App start force-syncs thin integration when App version stamp changes **or** DST still contains `hass.components`.
-3. Runtime migration rewrites remaining `hass.components.mqtt` subscribe → `async_subscribe` even if the image bundle is stale.
-4. App + integration manifest version **0.1.7**; README/updates doc mention Update cache / `docker builder prune` if Update still sticks.
-5. Tests cover migration + version-stamp force-sync.
+1. Install/update docs pin the repository URL as `https://github.com/marcuskrogh/PLCAssistant#main`.
+2. Docs explain how to verify GitHub version vs HA **Latest**, and recovery: Check for updates → hard-refresh → Core restart; if Latest still stuck, remove/re-add the repository (`#main`).
+3. App + integration version bumped to **0.1.8** so a successful store refresh shows a clear new Latest.
+4. Tests cover `#main` URL in README / packaging docs and mention stuck-Latest recovery.
 
 ## Out of scope
-- Publishing pre-built `image:` to GHCR (follow-on)
-- Changing Supervisor/containerd itself
+- Fixing Home Assistant Core’s update-entity coordinator (upstream)
+- Pre-built `image:` / GHCR publishing (follow-on)
 
 ## Work packages
-1. Dockerfile cache-bust + labels + version bump
-2. run.sh stamp force-sync + hass.components migration
-3. Docs + regression tests
+1. Docs: `#main` pin + stuck-Latest recovery
+2. Version bump 0.1.8 + sync manifests / Dockerfile default
+3. Tests
 
 ## Tracker
-- Task: [SWD-129](https://marcusknielsen.atlassian.net/browse/SWD-129)
-- Relates: SWD-128
-- Branch: `cursor/fix-app-update-stale-image-9777`
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/41
+- Task: [SWD-130](https://marcusknielsen.atlassian.net/browse/SWD-130)
+- Relates: SWD-129
+- Branch: `cursor/fix-store-latest-stuck-9777`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/42
 
 ## Next
-Done — shipped PR #41 (App 0.1.7).
+Done — shipped PR #42 (App 0.1.8).
