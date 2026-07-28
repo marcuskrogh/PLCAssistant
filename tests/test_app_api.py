@@ -94,6 +94,46 @@ def test_get_root_returns_html(app_server):
     assert "text/html" in ct
 
 
+def test_canvas_uses_relative_api_paths(app_server):
+    """Ingress serves under /api/hassio_ingress/<token>/; absolute /api hits HA Core."""
+    _, base_url, _ = app_server
+    status, body, _ = _get(base_url + "/")
+    assert status == 200
+    html = body.decode("utf-8")
+    assert "function apiUrl(" in html
+    assert "apiFetch('api/library')" in html
+    assert "apiFetch('api/program')" in html
+    # Must not call apiFetch with a leading-slash absolute Soft-PLC API path.
+    assert "apiFetch('/api/" not in html
+    # Fixed resolution appends '/' — must NOT strip the last pathname segment
+    # (that drops the Ingress token when HA omits the trailing slash).
+    assert "dir = dir + '/'" in html or "dir += '/'" in html
+    assert "lastIndexOf('/')" not in html
+    # Strip comments before checking raw fetch('/api/...') call sites.
+    import re
+
+    no_comments = re.sub(r"//.*?$", "", html, flags=re.M)
+    assert "fetch('/api/" not in no_comments
+    assert 'fetch("/api/' not in no_comments
+
+
+def _canvas_api_url(pathname: str, path: str) -> str:
+    """Python twin of canvas ``apiUrl`` — keep in sync with ``_canvas.py``."""
+    rel = str(path or "").lstrip("/")
+    directory = pathname or "/"
+    if not directory.endswith("/"):
+        directory = directory + "/"
+    return directory + rel
+
+
+def test_canvas_api_url_preserves_ingress_token():
+    """No-slash Ingress paths must keep the token directory."""
+    token = "/api/hassio_ingress/abcTOKEN"
+    assert _canvas_api_url(token + "/", "api/library") == token + "/api/library"
+    assert _canvas_api_url(token, "api/library") == token + "/api/library"
+    assert _canvas_api_url("/", "api/program") == "/api/program"
+
+
 # ---------------------------------------------------------------------------
 # GET /api/program
 # ---------------------------------------------------------------------------

@@ -119,3 +119,7 @@ def test_updates_doc_covers_stuck_latest_recovery():
     assert "remove" in text.lower() and "re-add" in text.lower()
     # Catalog homepage URL must stay bare (no branch fragment).
     assert "no `#branch`" in text or "bare homepage" in text
+    # SWD-131: App and integration share one version.
+    assert "Version lock" in text or "share one version" in text
+    assert "manifest.json" in text
+    assert "BUILD_VERSION" in text

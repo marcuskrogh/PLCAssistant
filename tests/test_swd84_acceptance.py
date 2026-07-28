@@ -32,7 +32,7 @@ def test_app_ha_mqtt_roundtrip_without_broker():
     bus = InMemoryMqttBus()
     table = BindingTable.from_config(default_wedge_binding_config())
     entities = MockEntityStore()
-    entities.set("sensor.plcassistant_lt_tank", 0.3)
+    entities.set("number.plcassistant_lt_tank_in", 0.3)
 
     image = declare_default_image()
     app = MqttIoBridge(bus, instance_id="default")
@@ -45,7 +45,7 @@ def test_app_ha_mqtt_roundtrip_without_broker():
     default_scan_logic(image)
     app.publish_outputs(image)
     integ.apply_outputs()
-    assert entities.get("number.plcassistant_cmd_speed").value == pytest.approx(30.0)
+    assert entities.get("number.plcassistant_cmd_speed_out").value == pytest.approx(30.0)
 
 
 def test_scaffold_and_github_app_trees():
@@ -53,7 +53,17 @@ def test_scaffold_and_github_app_trees():
     assert (ROOT / "repository.yaml").is_file()
     assert (ROOT / "custom_components" / "plcassistant" / "manifest.json").is_file()
     assert (ROOT / "custom_components" / "plcassistant" / "number.py").is_file()
+    assert (ROOT / "custom_components" / "plcassistant" / "button.py").is_file()
     assert not (ROOT / "custom_components" / "plcassistant" / "sensor.py").exists()
+
+
+def test_default_wedge_bindings_include_flow():
+    cfg = default_wedge_binding_config()
+    tags = set(cfg["tags"])
+    assert {"LT_TANK", "LT_RES", "FT_INLET", "CMD_SPEED", "SP_LEVEL_REQ", "SP_LEVEL", "SP_FLOW"} <= tags
+    bound = {b["tag"] for b in cfg["bindings"]}
+    assert "FT_INLET" in bound
+    assert any(b["tag"] == "FT_INLET" and b["direction"] == "IN" for b in cfg["bindings"])
 
 def test_non_ha_stub_still_works():
     """In-process ThinIntegrationStub remains the non-HA CI path."""

@@ -47,9 +47,13 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-128 | Bug | [Iterate] App configure after reinstall: Supervisor job-group stop/stats errors | Done | Relates SWD-84 | docs/ITERATE.md | Done — shipped PR #40 |
 | SWD-129 | Bug | [Iterate] App Update stale image + hass.components integration after reinstall | Done | Relates SWD-128 | docs/ITERATE.md | Done — shipped PR #41 |
 | SWD-130 | Bug | [Iterate] Store Latest stuck at 0.1.6 while GitHub has newer App version | Done | Relates SWD-129 | docs/ITERATE.md | Done — shipped PR #42 |
+| SWD-131 | Bug | [Iterate] App Block Editor 404 under Ingress + thin integration too thin / version lock | In Review | Relates SWD-130 | docs/ITERATE.md | `/ship SWD-131` |
 
 ## Log
 
+- 2026-07-28 — review-fix SWD-131 CLEAN after 2 iterations (iter1: 0B+3SF apiUrl/tests/bindings; iter2: 0); Next `/ship SWD-131`.
+- 2026-07-28 — Iterate SWD-131: PR #43 opened (App 0.1.9); Ingress relative API, version lock, FT_INLET + buttons; Task → In Review.
+- 2026-07-28 — Iterate SWD-131: Ingress Block Editor 404 (absolute `/api`), App↔integration version lock 0.1.9, expand mock tags (incl. FT_INLET) + Start/Stop/Reset buttons.
 - 2026-07-28 — Shipped SWD-130 via PR #42; App 0.1.8 pins `#main` + stuck-Latest recovery docs. Bug Done.
 - 2026-07-28 — Iterate SWD-130: HA Latest stuck at 0.1.6 while GitHub has newer; pin `#main`, document store/update-entity recovery, bump App 0.1.8.
 - 2026-07-28 — Shipped SWD-129 via PR #41; App 0.1.7 cache-busts Docker layers + migrates leftover hass.components thin integration. Bug Done.

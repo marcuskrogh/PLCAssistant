@@ -19,6 +19,7 @@ def test_integration_required_files():
         "services.yaml",
         "strings.json",
         "number.py",
+        "button.py",
         "README.md",
     ):
         assert (CC / name).is_file(), name
@@ -48,10 +49,36 @@ def test_manifest_mqtt_dependency_and_config_keys():
     assert "tag_in_topic" in init_text
     assert "tag_out_topic" in init_text
     assert "Platform.NUMBER" in init_text
+    assert "Platform.BUTTON" in init_text
+    assert "FT_INLET" in init_text
     # hass.components was removed in modern HA Core; subscribe via mqtt helper.
     assert "hass.components" not in init_text
     assert "from homeassistant.components.mqtt import async_subscribe" in init_text
     assert "await async_subscribe(" in init_text
+
+
+def test_app_and_integration_versions_match():
+    """App config.yaml version must equal thin-integration manifest version."""
+    import yaml
+
+    root = pathlib.Path(__file__).resolve().parents[1]
+    app_ver = yaml.safe_load(
+        (root / "plc_assistant" / "config.yaml").read_text(encoding="utf-8")
+    )["version"]
+    man = json.loads((CC / "manifest.json").read_text(encoding="utf-8"))
+    assert man["version"] == app_ver
+    bundled = json.loads(
+        (
+            root
+            / "plc_assistant"
+            / "custom_components"
+            / "plcassistant"
+            / "manifest.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert bundled["version"] == app_ver
+    dockerfile = (root / "plc_assistant" / "Dockerfile").read_text(encoding="utf-8")
+    assert f"ARG BUILD_VERSION={app_ver}" in dockerfile
 
 
 def test_platforms_publish_and_subscribe_paths():
@@ -61,6 +88,13 @@ def test_platforms_publish_and_subscribe_paths():
     assert "_tag_out" in number
     assert "PlcAssistantMockInNumber" in number
     assert "PlcAssistantMockOutNumber" in number
+
+    button = (CC / "button.py").read_text(encoding="utf-8")
+    assert "cmd_topic" in button
+    assert "async_press" in button
+    assert "PlcAssistantCmdButton" in button
+    for svc in ("SERVICE_START", "SERVICE_STOP", "SERVICE_RESET"):
+        assert svc in button
 
 def test_services_yaml_has_operator_actions():
     text = (CC / "services.yaml").read_text(encoding="utf-8")

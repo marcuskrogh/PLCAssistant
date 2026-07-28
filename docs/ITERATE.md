@@ -1,49 +1,40 @@
-# Iterate: Store Latest stuck behind GitHub App version
+# Iterate: Block Editor Ingress 404 + thin integration value / version lock
 
 ## Status
-**Shipped** — App **0.1.8** via [PR #42](https://github.com/marcuskrogh/PLCAssistant/pull/42)
+**Shipped** — App **0.1.9** via [PR #43](https://github.com/marcuskrogh/PLCAssistant/pull/43)
 
 ## Prior work
-- Task: SWD-129 (PR #41, App 0.1.7 Docker cache-bust + hass.components migrate)
-- Also: single-config store discovery (removed duplicate `ha_app` App config)
-- Spec context: `docs/packaging/04-updates.md`, `plc_assistant/config.yaml`, `repository.yaml`
+- Task: SWD-130 (PR #42, App 0.1.8 store Latest / `#main`)
+- Spec context: `docs/packaging/01-shape.md`, `docs/packaging/04-updates.md`, `docs/wedge/02-io-hmi-contract.md`, `docs/io/03-thin-integration-stub.md`
 
 ## Problem
-On HA OS after 0.1.7 shipped on GitHub `main`:
+After SWD-130 / App **0.1.8** on HA OS:
 
-1. UI claims an update is available.
-2. The update detail/menu shows **installed = 0.1.6** and **latest = 0.1.6**.
-3. That “latest” is wrong — GitHub `plc_assistant/config.yaml` is already newer.
-
-This is **Supervisor store discovery / stale update-entity metadata**, not the Docker layer-cache bug fixed in SWD-129.
-
-Two overlapping failure modes:
-
-| Mode | What you see | Cause |
-|------|----------------|-------|
-| A. Store git stuck | Apps page **and** Updates dialog both show Latest = old | Supervisor’s shallow clone under `/data/addons/git/…` did not advance; or frontend never reloaded store |
-| B. Update entity lag | Apps page shows Update to new version, but Updates / more-info still says installed = latest = old | Core `HassioAddOnDataUpdateCoordinator` can lag ~15 min after store reload (HA Core quirk) |
+1. **Block Editor empty + `Error: 404: Not Found`** (top-right) when opened via HA Ingress. Absolute `fetch('/api/...')` hits Home Assistant Core’s `/api/...` instead of the App under the ingress prefix. Library and program panes stay empty.
+2. **App and thin integration should share one version.** Separate versioning is confusing; operator reports the integration only loads properly at **0.1.1**. `plc_assistant/config.yaml` and both `custom_components/plcassistant/manifest.json` copies must always match.
+3. **Thin integration has little visible value.** Mock mode only exposes `LT_TANK` IN and `CMD_Speed` OUT. No flow (`FT_INLET`), no other wedge PVs/setpoints, and Start/Stop/Reset are services-only (no button entities).
 
 ## Acceptance criteria
-1. Install/update docs pin the repository URL as `https://github.com/marcuskrogh/PLCAssistant#main`.
-2. Docs explain how to verify GitHub version vs HA **Latest**, and recovery: Check for updates → hard-refresh → Core restart; if Latest still stuck, remove/re-add the repository (`#main`).
-3. App + integration version bumped to **0.1.8** so a successful store refresh shows a clear new Latest.
-4. Tests cover `#main` URL in README / packaging docs and mention stuck-Latest recovery.
+1. Canvas API calls use **relative** paths so Ingress and host-port **8099** both load library + program (no 404 status banner).
+2. App `version` and integration `manifest.json` `version` are **identical**; CI/tests enforce the lock; bump both to **0.1.9**.
+3. Default mock bindings cover wedge process I/O including **`FT_INLET` (flow)**, `LT_TANK`, `LT_RES`, and useful setpoints/outputs (`SP_LEVEL_REQ`, `SP_LEVEL`, `SP_FLOW`, `CMD_SPEED`). Start/Stop/Reset exposed as HA **button** entities.
+4. Docs note shared versioning and expanded mock entities.
 
 ## Out of scope
-- Fixing Home Assistant Core’s update-entity coordinator (upstream)
-- Pre-built `image:` / GHCR publishing (follow-on)
+- Full Lovelace dashboard packaging
+- Binding UI / reconfigure flow for custom entity maps
+- Fixing HA Core Ingress itself
 
 ## Work packages
-1. Docs: `#main` pin + stuck-Latest recovery
-2. Version bump 0.1.8 + sync manifests / Dockerfile default
-3. Tests
+1. Ingress-safe relative API base in canvas JS + regression test
+2. Expand default wedge bindings (incl. flow) + button platform; sync App `default_wedge_binding_config`
+3. Version lock 0.1.9 + tests/docs
 
 ## Tracker
-- Task: [SWD-130](https://marcusknielsen.atlassian.net/browse/SWD-130)
-- Relates: SWD-129
-- Branch: `cursor/fix-store-latest-stuck-9777`
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/42
+- Task: [SWD-131](https://marcusknielsen.atlassian.net/browse/SWD-131)
+- Relates: SWD-130
+- Branch: `cursor/swd-131-ingress-integration-1bbe`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/43
 
 ## Next
-Done — shipped PR #42 (App 0.1.8).
+Done — shipped PR #43 (App 0.1.9).

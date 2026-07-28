@@ -39,14 +39,24 @@ def declare_default_image(image: IoImage | None = None) -> IoImage:
 
 
 def default_scan_logic(image: IoImage) -> None:
-    """Demo logic: CMD_SPEED = LT_TANK * 100 when both tags exist."""
+    """Demo logic: mirror SP request; CMD_SPEED from level; SP_FLOW from FT_INLET."""
     names = image.names()
+    if "SP_LEVEL_REQ" in names and "SP_LEVEL" in names:
+        try:
+            image.set_output("SP_LEVEL", float(image.get_value("SP_LEVEL_REQ")))
+        except (TypeError, ValueError):
+            pass
     if "LT_TANK" in names and "CMD_SPEED" in names:
         try:
             level = float(image.get_value("LT_TANK"))
         except (TypeError, ValueError):
             level = 0.0
         image.set_output("CMD_SPEED", level * 100.0)
+    if "FT_INLET" in names and "SP_FLOW" in names:
+        try:
+            image.set_output("SP_FLOW", float(image.get_value("FT_INLET")))
+        except (TypeError, ValueError):
+            pass
 
 
 def build_bus_from_options(options: dict[str, Any]) -> MqttBus | None:

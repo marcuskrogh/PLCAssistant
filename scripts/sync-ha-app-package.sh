@@ -70,5 +70,29 @@ copy_tree \
 rm -rf "${ROOT}/ha_app/plcassistant"
 
 assert_single_app_config
+# App and thin-integration versions must stay identical (SWD-131).
+python3 - "${CANONICAL_CONFIG}" "${ROOT}/custom_components/plcassistant/manifest.json" \
+  "${DEST}/custom_components/plcassistant/manifest.json" <<'PY'
+import json, sys, pathlib
+try:
+    import yaml
+except ImportError:
+    # Minimal fallback: parse "version: \"x\"" from config.yaml
+    text = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
+    app_ver = None
+    for line in text.splitlines():
+        if line.strip().startswith("version:"):
+            app_ver = line.split(":", 1)[1].strip().strip('"').strip("'")
+            break
+else:
+    app_ver = yaml.safe_load(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))["version"]
+for path in sys.argv[2:]:
+    man = json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
+    if man.get("version") != app_ver:
+        raise SystemExit(
+            f"version mismatch: App {app_ver!r} vs {path} {man.get('version')!r}"
+        )
+print(f"OK: App + integration version {app_ver}")
+PY
 echo "Synced package + integration into ${DEST}"
 echo "OK: single App config ${CANONICAL_CONFIG}"
