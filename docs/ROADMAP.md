@@ -12,7 +12,7 @@
 | 2 | HA entities as PLC I/O | Core inversion: devices live in HA, then participate in PLC-style control | **Done** — [PR #14](https://github.com/marcuskrogh/PLCAssistant/pull/14) merge `b64a0cd` | [SWD-86](https://marcusknielsen.atlassian.net/browse/SWD-86) |
 | 3 | Control semantics | What “PLC-like” means here: loops, feedback, safety, timing — without locking runtime design yet | **Done** — [PR #18](https://github.com/marcuskrogh/PLCAssistant/pull/18) merge `a51cdbe` | [SWD-85](https://marcusknielsen.atlassian.net/browse/SWD-85) |
 | 4 | Programming surface | Easy high-level entry with a deep customization path | **Done** — [PR #26](https://github.com/marcuskrogh/PLCAssistant/pull/26) | [SWD-82](https://marcusknielsen.atlassian.net/browse/SWD-82) · [`docs/PLAN.md`](PLAN.md) · [`docs/surface/`](surface/01-block-model.md) |
-| 5 | Packaging shape | Integration vs app/add-on vs hybrid — still intentionally open | research | [SWD-84](https://marcusknielsen.atlassian.net/browse/SWD-84) |
+| 5 | Packaging shape | Hybrid HA App + thin integration (MQTT); HA OS; custom GitHub App | review-fix → ship | [SWD-84](https://marcusknielsen.atlassian.net/browse/SWD-84) · [`docs/PLAN.md`](PLAN.md) · [`docs/packaging/`](packaging/) |
 
 ## Open questions
 - Where the PLC runtime should live relative to HA (inside vs beside), and what “integration” vs “app” should mean (preliminary: Add-on + thin integration; mock/sim owned by thin integration per SWD-86)
@@ -32,4 +32,4 @@
 - Tasks: [SWD-83](https://marcusknielsen.atlassian.net/browse/SWD-83) **Done**, [SWD-86](https://marcusknielsen.atlassian.net/browse/SWD-86) **Done**, [SWD-85](https://marcusknielsen.atlassian.net/browse/SWD-85) **Done**, [SWD-82](https://marcusknielsen.atlassian.net/browse/SWD-82) **Done**, [SWD-84](https://marcusknielsen.atlassian.net/browse/SWD-84)
 
 ## Next
-`/research SWD-84` — Packaging shape (last explore theme; Story SWD-81 remains open)
+`/ship SWD-84` — review-fix CLEAN; merge PR and close Task
