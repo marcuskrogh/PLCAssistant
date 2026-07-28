@@ -154,13 +154,18 @@ Home Assistant does **not** poll custom GitHub App repos continuously. After we 
 2. Hard-refresh the browser (**Ctrl/Cmd+Shift+R**) — the store UI is often cached.
 3. Open PLCAssistant — an **Update** button appears when the store version is newer than the installed one.
 
-If an update still does not appear, check **Settings → System → Logs → Supervisor** for store/validation errors. Removing and re-adding the repository also forces a fresh clone, but should not be necessary once only one App `config.yaml` exists in the repo.
+This works for **every** future release as long as the repo keeps a single App
+`config.yaml` (enforced by CI). Full release checklist:
+[`docs/packaging/04-updates.md`](docs/packaging/04-updates.md).
+
+If an update still does not appear, check **Settings → System → Logs → Supervisor**.
+Removing and re-adding the repository forces a fresh clone but should not be needed.
 
 ## Versioning
 
 Bump `version` in [`plc_assistant/config.yaml`](plc_assistant/config.yaml) whenever the App image or runtime changes — that string is what Supervisor compares for updates. Tag releases as `ha-app-vX.Y.Z` optionally. After changing the Python package or thin integration, run `./scripts/sync-ha-app-package.sh` so [`plc_assistant/`](plc_assistant/) stays installable from the Supervisor build context.
 
-There must be **exactly one** App `config.yaml` in this repository (under `plc_assistant/`). Supervisor searches recursively; a second file with the same `slug` breaks update detection.
+There must be **exactly one** App `config.yaml` / `config.yml` / `config.json` in this repository (under `plc_assistant/`). Supervisor searches recursively; a second file with the same `slug` breaks update detection for all later releases.
 
 ---
 
@@ -168,7 +173,7 @@ There must be **exactly one** App `config.yaml` in this repository (under `plc_a
 
 | Doc | Description |
 |-----|-------------|
-| [`docs/packaging/`](docs/packaging/) | Packaging shape, MQTT map, acceptance checklist |
+| [`docs/packaging/`](docs/packaging/) | Packaging shape, MQTT map, acceptance checklist, App updates |
 | [`docs/control/`](docs/control/01-scan-scheduler.md) | Scan scheduler, FB/PID, safety, HA↔cyclic boundary |
 | [`docs/io/`](docs/io/01-image-quality.md) | Soft-PLC I/O image, bindings, thin-integration stub |
 | [`docs/surface/`](docs/surface/01-block-model.md) | Block program model, runtime, editor, apply policy |
