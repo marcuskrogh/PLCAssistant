@@ -36,6 +36,8 @@ HAOS local-build Apps can keep **stale Docker/containerd build layers** across U
 ## Tracker
 - Task: [SWD-129](https://marcusknielsen.atlassian.net/browse/SWD-129)
 - Relates: SWD-128
+- Branch: `cursor/fix-app-update-stale-image-9777`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/41
 
 ## Next
 `/review-fix SWD-129` — Review and auto-fix until clean
