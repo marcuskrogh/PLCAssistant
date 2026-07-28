@@ -51,9 +51,13 @@
 
 Home Assistant renamed **add-ons → Apps**. This repo uses **App** in packaging docs. Historical wedge text may still say “Add-on”; treat those as synonyms pointing at the same Supervisor container role. The frozen contract is this document.
 
-## Bundle mechanism (v1)
+## Bundle mechanism (v1+)
 
-**Documented one-time copy** of `custom_components/plcassistant/` into Home Assistant `config/custom_components/`. The App entrypoint does not auto-register the integration (avoids needing a writable Core config mount). See root [`README.md`](../../README.md).
+The App maps `homeassistant_config` (rw) and, on start, syncs the bundled
+`custom_components/plcassistant/` into Home Assistant’s
+`/config/custom_components/plcassistant`. Core still needs **one restart**
+after first install or integration updates so it loads the files; then add
+the integration under **Devices & services**. See root [`README.md`](../../README.md).
 
 ## Related
 

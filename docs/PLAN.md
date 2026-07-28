@@ -71,7 +71,7 @@
 
 ## Locked during implement
 - MQTT topic namespace + payload schema → `docs/packaging/02-mqtt-topics.md` + `plcassistant.io.mqtt_topics`
-- Bundle mechanism → documented one-time copy of `custom_components/plcassistant/` (not auto-copy)
+- Bundle mechanism → App auto-syncs `custom_components/plcassistant/` into HA config on start (`homeassistant_config` map); Core restart still required once
 
 ## Tracker
 - Provider: jira

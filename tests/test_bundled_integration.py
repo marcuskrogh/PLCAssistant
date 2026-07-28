@@ -65,11 +65,12 @@ def test_services_yaml_has_operator_actions():
     assert "reset:" in text
 
 
-def test_bundle_docs_mention_copy_install():
+def test_bundle_docs_mention_auto_install():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "custom_components/plcassistant" in readme
-    assert "copy" in readme.lower()
+    assert "auto-installed" in readme.lower() or "copies" in readme.lower()
+    assert "Restart Home Assistant Core" in readme
 
     install = (ROOT / "ha_app" / "INSTALL.md").read_text(encoding="utf-8")
-    assert "custom_components/plcassistant" in install
+    assert "custom_components/plcassistant" in install or "README.md" in install
     assert "README.md" in install

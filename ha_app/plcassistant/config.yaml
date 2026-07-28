@@ -1,5 +1,5 @@
 name: "PLCAssistant"
-version: "0.1.2"
+version: "0.1.3"
 slug: plcassistant
 description: "Soft-PLC runtime and block editor for Home Assistant OS (SWD-84)"
 url: "https://github.com/marcuskrogh/PLCAssistant"
@@ -19,6 +19,8 @@ ports_description:
   8099/tcp: "Block editor (optional exposed host port)"
 map:
   - type: data
+    read_only: false
+  - type: homeassistant_config
     read_only: false
 options:
   instance_id: default
