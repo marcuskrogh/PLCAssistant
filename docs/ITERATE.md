@@ -1,5 +1,8 @@
 # Iterate: App Update stale image + hass.components after reinstall
 
+## Status
+**Shipped** — App **0.1.7** via [PR #41](https://github.com/marcuskrogh/PLCAssistant/pull/41)
+
 ## Prior work
 - Task: SWD-128 (PR #40, App 0.1.6 start hardening)
 - Also: PR #39 (`async_subscribe` MQTT fix, App 0.1.5)
@@ -40,4 +43,4 @@ HAOS local-build Apps can keep **stale Docker/containerd build layers** across U
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/41
 
 ## Next
-`/ship SWD-129` — review-fix CLEAN (iter 2)
+Done — shipped PR #41 (App 0.1.7).
