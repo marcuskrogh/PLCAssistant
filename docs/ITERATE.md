@@ -37,4 +37,4 @@ After SWD-130 / App **0.1.8** on HA OS:
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/43
 
 ## Next
-`/review-fix SWD-131` — Review and auto-fix until clean
+`/ship SWD-131` — Merge PR and close the Task
