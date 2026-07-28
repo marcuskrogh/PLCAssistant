@@ -1,12 +1,11 @@
 name: "PLCAssistant"
-version: "0.1.0"
+version: "0.1.1"
 slug: plcassistant
 description: "Soft-PLC runtime and block editor for Home Assistant OS (SWD-84)"
 url: "https://github.com/marcuskrogh/PLCAssistant"
 arch:
   - amd64
   - aarch64
-  - armv7
 init: false
 startup: application
 boot: auto

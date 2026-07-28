@@ -16,12 +16,21 @@ def test_app_required_files_exist():
         assert path.is_file(), f"missing {path}"
 
 
+def test_dockerfile_installs_git_for_pip_git_url():
+    """Alpine HA base images lack git; pip git+ installs require it."""
+    text = (APP / "Dockerfile").read_text(encoding="utf-8")
+    assert "apk add" in text
+    assert "git" in text
+    assert "git+https://" in text or "PLCASSISTANT_PIP_REF" in text
+
+
 def test_config_ingress_and_port():
     data = yaml.safe_load((APP / "config.yaml").read_text(encoding="utf-8"))
     assert data["ingress"] is True
     assert data["ingress_port"] == 8099
     assert "8099/tcp" in data["ports"]
     assert data["slug"] == "plcassistant"
+    assert "armv7" not in (data.get("arch") or [])
     maps = data.get("map") or []
     assert any(
         (isinstance(m, dict) and m.get("type") == "data")
