@@ -67,6 +67,11 @@ def test_config_ingress_and_port():
     assert "8099/tcp" in data["ports"]
     assert data["slug"] == "plcassistant"
     assert "armv7" not in (data.get("arch") or [])
+    assert int(data.get("timeout") or 0) >= 60
+    watchdog = str(data.get("watchdog") or "")
+    assert "[HOST]" in watchdog
+    assert "[PORT:8099]" in watchdog
+    assert watchdog.startswith(("http://", "tcp://"))
     maps = data.get("map") or []
     assert any(
         (isinstance(m, dict) and m.get("type") == "data")
@@ -92,6 +97,7 @@ def test_run_sh_wires_ha_runtime():
     assert "--ha-runtime" in text or "PLCASSISTANT_HA_RUNTIME" in text
     assert "options.json" in text
     assert "install_thin_integration" in text
+    assert "continuing App start" in text
     assert "/homeassistant" in text
     assert "custom_components/plcassistant" in text
 
@@ -161,3 +167,54 @@ def test_run_sh_auto_installs_integration(tmp_path: pathlib.Path):
     assert result2.returncode == 0, result2.stderr + result2.stdout
     assert "already up to date" in result2.stdout
     assert not (data_dir / "integration_needs_core_restart").exists()
+
+
+def test_run_sh_continues_when_integration_install_fails(tmp_path: pathlib.Path):
+    """Install failure must not abort Soft-PLC start (Supervisor job-group races)."""
+    src = tmp_path / "src" / "plcassistant"
+    src.mkdir(parents=True)
+    (src / "manifest.json").write_text('{"domain":"plcassistant","version":"0.1.6"}\n', encoding="utf-8")
+
+    ha_config = tmp_path / "homeassistant"
+    ha_config.mkdir()
+    # Make custom_components a file so mkdir -p fails inside install_thin_integration.
+    (ha_config / "custom_components").write_text("not-a-directory\n", encoding="utf-8")
+
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    fake_python = bin_dir / "python3"
+    fake_python.write_text(
+        textwrap.dedent(
+            """\
+            #!/usr/bin/env sh
+            if [ "$1" = "-m" ] && [ "$2" = "plcassistant.app" ]; then
+              echo stub-runtime
+              exit 0
+            fi
+            exec /usr/bin/python3 "$@"
+            """
+        ),
+        encoding="utf-8",
+    )
+    fake_python.chmod(0o755)
+
+    env = {
+        "PLCASSISTANT_DATA": str(data_dir),
+        "PLCASSISTANT_HA_CONFIG": str(ha_config),
+        "PLCASSISTANT_INTEGRATION_SRC": str(src),
+        "PLCASSISTANT_HOST": "127.0.0.1",
+        "PLCASSISTANT_PORT": "8099",
+        "PATH": f"{bin_dir}:/usr/bin:/bin",
+    }
+    result = subprocess.run(
+        ["sh", str(APP / "run.sh")],
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert "stub-runtime" in result.stdout
+    assert "continuing App start" in (result.stdout + result.stderr)

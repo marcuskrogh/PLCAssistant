@@ -54,7 +54,7 @@ Ingress is gated by the Home Assistant session. The optional host port binds `0.
 
 ### 4. Configure the App
 
-In **Settings → Apps → PLCAssistant → Configuration**, set:
+Wait until the App shows **Started** (reinstall / first Start can take a while — local image build). Then open **Settings → Apps → PLCAssistant → Configuration** and set:
 
 | Option | Default | Notes |
 |--------|---------|--------|
@@ -64,7 +64,7 @@ In **Settings → Apps → PLCAssistant → Configuration**, set:
 | `mqtt_username` | _(empty)_ | Optional |
 | `mqtt_password` | _(empty)_ | Optional |
 
-Restart the App after changing options.
+Saving options restarts the App. Do not Save while Install/Start is still in progress (Supervisor will log job-group conflicts).
 
 ### 5. Enable the thin integration
 
@@ -144,6 +144,19 @@ python3 -m plcassistant.app --host 127.0.0.1 --port 8099
 ```
 
 ---
+
+## Troubleshooting
+
+### `Another job is running for job group app_…_plcassistant` / `App … is not running`
+
+Supervisor allows only one start/stop/restart job at a time for the App. This usually appears right after **Install / Reinstall / Update** if Configuration is saved (or Start/Stop clicked) before the previous job finishes — or if the App crash-looped on boot.
+
+1. Open **Settings → Apps → PLCAssistant** and wait until the status is **Started** (check the App log for `thin integration` / `HA runtime` lines).
+2. Retry Configuration only after it is Started.
+3. If it stays stuck for several minutes: **host reboot** (Settings → System → Hardware → Advanced → Reboot host), not only Core restart. Optional CLI: `ha jobs info`, `ha supervisor repair`.
+4. After reboot, Start PLCAssistant once, wait for Started, then configure.
+
+From **0.1.6**, thin-integration copy failures no longer abort Soft-PLC start (they are logged and the editor still comes up).
 
 ## Updates
 

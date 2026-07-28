@@ -68,6 +68,7 @@ def build_bus_from_options(options: dict[str, Any]) -> MqttBus | None:
     try:
         from plcassistant.io.mqtt_paho import PahoMqttBus
     except ImportError:
+        print("PLCAssistant: paho-mqtt not installed; MQTT scan disabled", flush=True)
         return None
     try:
         return PahoMqttBus(
@@ -76,8 +77,45 @@ def build_bus_from_options(options: dict[str, Any]) -> MqttBus | None:
             username=str(username) or None,
             password=str(password) or None,
         )
-    except Exception:
+    except Exception as exc:  # noqa: BLE001 — keep editor up; retry in background
+        print(
+            f"PLCAssistant: MQTT connect to {host}:{port} failed: {exc!s}",
+            flush=True,
+        )
         return None
+
+
+class MqttLifecycle:
+    """Owns optional MQTT scan loop + background connect retry (stoppable)."""
+
+    def __init__(self) -> None:
+        self._loop: MqttScanLoop | None = None
+        self._stop = threading.Event()
+        self._lock = threading.Lock()
+
+    @property
+    def loop(self) -> MqttScanLoop | None:
+        with self._lock:
+            return self._loop
+
+    def attach(self, loop: MqttScanLoop) -> None:
+        with self._lock:
+            self._loop = loop
+
+    def wait(self, timeout: float) -> bool:
+        """Block until stop requested or *timeout* seconds. True if stopped."""
+        return self._stop.wait(timeout)
+
+    def stopped(self) -> bool:
+        return self._stop.is_set()
+
+    def stop(self) -> None:
+        self._stop.set()
+        with self._lock:
+            loop = self._loop
+            self._loop = None
+        if loop is not None:
+            loop.stop()
 
 
 class MqttScanLoop:
@@ -165,39 +203,44 @@ def _mqtt_supervisor(
     *,
     bus: MqttBus | None,
     period_s: float = 0.1,
-) -> MqttScanLoop | None:
-    """Start scan loop immediately when bus given; else retry connect in background."""
+) -> MqttLifecycle:
+    """Start scan loop immediately when bus given; else retry connect in background.
 
-    holder: dict[str, MqttScanLoop | None] = {"loop": None}
+    Always returns a ``MqttLifecycle`` so callers can ``stop()`` even when connect
+    is deferred (live App must never block the HTTP thread on broker TCP).
+    """
+    life = MqttLifecycle()
 
     def _start_with(bus_obj: MqttBus) -> MqttScanLoop:
         image = declare_default_image()
         bridge = MqttIoBridge(bus_obj, instance_id=instance_id)
         loop = MqttScanLoop(bridge, image, period_s=period_s)
         loop.start()
-        holder["loop"] = loop
+        life.attach(loop)
         return loop
 
     if bus is not None:
-        return _start_with(bus)
+        _start_with(bus)
+        return life
 
-    # Want MQTT (options present) but connect failed — retry until broker is up.
+    # Want MQTT (options present) but connect not ready — retry until broker is up.
     host = str(options.get("mqtt_broker") or "")
     if not host and not options:
-        return None
+        return life
 
     def _retry() -> None:
         delay = 2.0
-        while holder["loop"] is None:
+        while not life.stopped() and life.loop is None:
             new_bus = build_bus_from_options(options)
             if new_bus is not None:
                 _start_with(new_bus)
                 return
-            time.sleep(delay)
+            if life.wait(delay):
+                return
             delay = min(delay * 1.5, 30.0)
 
     threading.Thread(target=_retry, name="mqtt-retry", daemon=True).start()
-    return None
+    return life
 
 
 def run_ha_runtime(
@@ -208,12 +251,12 @@ def run_ha_runtime(
     options_path: str | None = None,
     bus: MqttBus | None = None,
     serve_forever: bool = True,
-) -> tuple[Any, MqttScanLoop | None]:
+) -> tuple[Any, MqttLifecycle]:
     """Start editor HTTP server and optional MQTT scan loop.
 
-    Returns ``(HTTPServer, scan_loop_or_None)``.
-    When MQTT connect fails at boot, a background retry starts the loop later
-    (``scan_loop`` may be ``None`` immediately; editor still serves).
+    Returns ``(HTTPServer, MqttLifecycle)``.
+    Live App never blocks this thread on broker TCP connect — background retry
+    owns connect; ``lifecycle.stop()`` cancels retry and stops a late loop.
     """
     options = load_options(options_path or os.environ.get("PLCASSISTANT_OPTIONS_PATH"))
     instance_id = str(
@@ -222,23 +265,21 @@ def run_ha_runtime(
         or DEFAULT_INSTANCE_ID
     )
     state = AppState(program_path=program_path)
+    # Bind the editor first so Ingress / host port respond even if MQTT is slow.
     server = run_app(host=host, port=port, state=state)
 
-    if bus is None:
-        bus = build_bus_from_options(options)
-
-    loop = _mqtt_supervisor(options, instance_id, bus=bus)
+    lifecycle = _mqtt_supervisor(options, instance_id, bus=bus)
 
     if serve_forever:
         try:
             server.serve_forever()
         finally:
-            if loop is not None:
-                loop.stop()
-    return server, loop
+            lifecycle.stop()
+    return server, lifecycle
 
 
 __all__ = [
+    "MqttLifecycle",
     "MqttScanLoop",
     "build_bus_from_options",
     "declare_default_image",
