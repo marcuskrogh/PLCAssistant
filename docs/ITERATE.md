@@ -39,6 +39,8 @@ Two overlapping failure modes:
 ## Tracker
 - Task: [SWD-130](https://marcusknielsen.atlassian.net/browse/SWD-130)
 - Relates: SWD-129
+- Branch: `cursor/fix-store-latest-stuck-9777`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/42
 
 ## Next
 `/review-fix SWD-130` — Review and auto-fix until clean
