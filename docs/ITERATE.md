@@ -1,7 +1,7 @@
 # Iterate: Block Editor Ingress 404 + thin integration value / version lock
 
 ## Status
-**In Review** — App **0.1.9** via [PR #43](https://github.com/marcuskrogh/PLCAssistant/pull/43)
+**Shipped** — App **0.1.9** via [PR #43](https://github.com/marcuskrogh/PLCAssistant/pull/43)
 
 ## Prior work
 - Task: SWD-130 (PR #42, App 0.1.8 store Latest / `#main`)
@@ -37,4 +37,4 @@ After SWD-130 / App **0.1.8** on HA OS:
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/43
 
 ## Next
-`/ship SWD-131` — Merge PR and close the Task
+Done — shipped PR #43 (App 0.1.9).
