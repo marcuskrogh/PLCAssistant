@@ -41,3 +41,13 @@ def test_run_sh_wires_ha_runtime():
     assert "0.0.0.0" in text
     assert "--ha-runtime" in text or "PLCASSISTANT_HA_RUNTIME" in text
     assert "options.json" in text
+
+
+def test_dockerfile_installs_git_for_pip_git_url():
+    """Supervisor build context is the App folder; pip pulls the package via git+https."""
+    text = (APP / "Dockerfile").read_text(encoding="utf-8")
+    assert "git+https://" in text
+    assert "apk add" in text and "git" in text
+    assert "pip3 install" in text
+    mirror = ROOT / "ha_app" / "plcassistant" / "Dockerfile"
+    assert mirror.read_text(encoding="utf-8") == text

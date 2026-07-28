@@ -17,5 +17,6 @@ Supervisor App that runs the Soft-PLC scan runtime and block editor.
 
 ## Build note
 
-The Dockerfile installs `plcassistant` from GitHub via pip. Pin
+The Dockerfile installs `plcassistant` from GitHub via pip (`git+https`), so the
+image build installs Alpine `git` for that step and removes it afterward. Pin
 `PLCASSISTANT_PIP_REF` to a tag/commit for production builds.

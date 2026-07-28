@@ -153,7 +153,7 @@ python3 -m plcassistant.app --host 127.0.0.1 --port 8099
 
 ## Versioning
 
-Tag App releases as `ha-app-vX.Y.Z` (or reuse the package version). Pin `PLCASSISTANT_PIP_REF` in [`plc_assistant/Dockerfile`](plc_assistant/Dockerfile) for reproducible builds.
+Tag App releases as `ha-app-vX.Y.Z` (or reuse the package version). Pin `PLCASSISTANT_PIP_REF` in [`plc_assistant/Dockerfile`](plc_assistant/Dockerfile) for reproducible builds. That Dockerfile installs Alpine `git` only for the `pip git+https` step (Supervisor build context is the App folder).
 
 Authoritative App files live in [`plc_assistant/`](plc_assistant/); keep [`ha_app/plcassistant/`](ha_app/plcassistant/) in sync when editing.
 
