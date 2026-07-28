@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# PLCAssistant HA App entry (SWD-123 / SWD-84 fix-forward).
+# PLCAssistant HA App entry (SWD-123 / SWD-84 fix-forward / SWD-128).
 # Supervisor mounts persistent storage at /data and HA config at /homeassistant.
 set -eu
 
@@ -40,8 +40,8 @@ PY
 }
 
 # Copy bundled thin integration into HA config.
-# Uses explicit `|| return` (not bare set -e): dash/bash disable errexit inside
-# `if`/`||` contexts, which is how we invoke this without aborting App start.
+# Critical steps use `|| return 1` (errexit alone is unreliable when the caller
+# temporarily disables it). Soft-PLC start must not abort if install fails.
 install_thin_integration() {
   if [ ! -d "${HA_CONFIG}" ]; then
     echo "PLCAssistant: HA config not mounted at ${HA_CONFIG}; skip integration install."
@@ -52,30 +52,59 @@ install_thin_integration() {
     return 0
   fi
 
-  mkdir -p "${HA_CONFIG}/custom_components" || return 1
-
-  needs_restart=1
   if integration_up_to_date; then
-    needs_restart=0
-  fi
-
-  tmp="${INTEGRATION_DST}.new"
-  rm -rf "${tmp}"
-  mkdir -p "${tmp}" || return 1
-  (cd "${INTEGRATION_SRC}" && tar cf - .) | (cd "${tmp}" && tar xf -) || return 1
-  # Pipeline above: also require the staged tree to look populated.
-  [ -f "${tmp}/manifest.json" ] || return 1
-  rm -rf "${INTEGRATION_DST}"
-  mv "${tmp}" "${INTEGRATION_DST}" || return 1
-
-  if [ "${needs_restart}" -eq 1 ]; then
-    echo "PLCAssistant: thin integration installed/updated at ${INTEGRATION_DST}"
-    echo "PLCAssistant: Restart Home Assistant Core, then add PLCAssistant under Devices & services (if not already)."
-    date -u +"%Y-%m-%dT%H:%M:%SZ" > "${DATA_DIR}/integration_needs_core_restart" || return 1
-  else
     echo "PLCAssistant: thin integration already up to date at ${INTEGRATION_DST}"
     rm -f "${DATA_DIR}/integration_needs_core_restart"
+    return 0
   fi
+
+  mkdir -p "${HA_CONFIG}/custom_components" || {
+    echo "PLCAssistant: failed to create ${HA_CONFIG}/custom_components" >&2
+    return 1
+  }
+
+  tmp="${INTEGRATION_DST}.new"
+  bak="${INTEGRATION_DST}.bak"
+  rm -rf "${tmp}" "${bak}"
+  mkdir -p "${tmp}" || {
+    echo "PLCAssistant: failed to create staging dir ${tmp}" >&2
+    return 1
+  }
+  # Prefer cp -a over a tar pipe (no pipefail required on dash).
+  cp -a "${INTEGRATION_SRC}/." "${tmp}/" || {
+    echo "PLCAssistant: failed to stage integration from ${INTEGRATION_SRC}" >&2
+    rm -rf "${tmp}"
+    return 1
+  }
+  [ -f "${tmp}/manifest.json" ] || {
+    echo "PLCAssistant: staged integration missing manifest.json" >&2
+    rm -rf "${tmp}"
+    return 1
+  }
+
+  if [ -e "${INTEGRATION_DST}" ]; then
+    mv "${INTEGRATION_DST}" "${bak}" || {
+      echo "PLCAssistant: failed to move existing integration aside" >&2
+      rm -rf "${tmp}"
+      return 1
+    }
+  fi
+  if ! mv "${tmp}" "${INTEGRATION_DST}"; then
+    echo "PLCAssistant: failed to activate staged integration at ${INTEGRATION_DST}" >&2
+    rm -rf "${tmp}"
+    if [ -e "${bak}" ]; then
+      mv "${bak}" "${INTEGRATION_DST}" || \
+        echo "PLCAssistant: also failed to restore previous integration" >&2
+    fi
+    return 1
+  fi
+  rm -rf "${bak}"
+
+  echo "PLCAssistant: thin integration installed/updated at ${INTEGRATION_DST}"
+  echo "PLCAssistant: Restart Home Assistant Core, then add PLCAssistant under Devices & services (if not already)."
+  # Restart flag is best-effort; copy already succeeded.
+  date -u +"%Y-%m-%dT%H:%M:%SZ" > "${DATA_DIR}/integration_needs_core_restart" || \
+    echo "PLCAssistant: warning: could not write integration_needs_core_restart" >&2
   return 0
 }
 

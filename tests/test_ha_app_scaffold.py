@@ -68,7 +68,10 @@ def test_config_ingress_and_port():
     assert data["slug"] == "plcassistant"
     assert "armv7" not in (data.get("arch") or [])
     assert int(data.get("timeout") or 0) >= 60
-    assert data.get("watchdog") is True
+    watchdog = str(data.get("watchdog") or "")
+    assert "[HOST]" in watchdog
+    assert "[PORT:8099]" in watchdog
+    assert watchdog.startswith(("http://", "tcp://"))
     maps = data.get("map") or []
     assert any(
         (isinstance(m, dict) and m.get("type") == "data")

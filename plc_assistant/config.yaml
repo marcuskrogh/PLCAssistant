@@ -10,7 +10,7 @@ init: false
 startup: application
 boot: auto
 timeout: 120
-watchdog: true
+watchdog: "http://[HOST]:[PORT:8099]/"
 ingress: true
 ingress_port: 8099
 panel_icon: mdi:memory
