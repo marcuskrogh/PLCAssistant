@@ -145,11 +145,27 @@ python3 -m plcassistant.app --host 127.0.0.1 --port 8099
 
 ---
 
+## Updates
+
+Home Assistant does **not** poll custom GitHub App repos continuously. After we bump
+`version` in [`plc_assistant/config.yaml`](plc_assistant/config.yaml) on `main`:
+
+1. **Settings → Apps → ⋮ → Check for updates** (this `git pull`s the repository).
+2. Hard-refresh the browser (**Ctrl/Cmd+Shift+R**) — the store UI is often cached.
+3. Open PLCAssistant — an **Update** button appears when the store version is newer than the installed one.
+
+This works for **every** future release as long as the repo keeps a single App
+`config.yaml` (enforced by CI). Full release checklist:
+[`docs/packaging/04-updates.md`](docs/packaging/04-updates.md).
+
+If an update still does not appear, check **Settings → System → Logs → Supervisor**.
+Removing and re-adding the repository forces a fresh clone but should not be needed.
+
 ## Versioning
 
-Tag App releases as `ha-app-vX.Y.Z` (or reuse the package version). After changing the Python package or thin integration, run `./scripts/sync-ha-app-package.sh` so [`plc_assistant/`](plc_assistant/) stays installable from the Supervisor build context.
+Bump `version` in [`plc_assistant/config.yaml`](plc_assistant/config.yaml) whenever the App image or runtime changes — that string is what Supervisor compares for updates. Tag releases as `ha-app-vX.Y.Z` optionally. After changing the Python package or thin integration, run `./scripts/sync-ha-app-package.sh` so [`plc_assistant/`](plc_assistant/) stays installable from the Supervisor build context.
 
-Authoritative App files live in [`plc_assistant/`](plc_assistant/); keep [`ha_app/plcassistant/`](ha_app/plcassistant/) in sync when editing.
+There must be **exactly one** App `config.yaml` / `config.yml` / `config.json` in this repository (under `plc_assistant/`). Supervisor searches recursively; a second file with the same `slug` breaks update detection for all later releases.
 
 ---
 
@@ -157,7 +173,7 @@ Authoritative App files live in [`plc_assistant/`](plc_assistant/); keep [`ha_ap
 
 | Doc | Description |
 |-----|-------------|
-| [`docs/packaging/`](docs/packaging/) | Packaging shape, MQTT map, acceptance checklist |
+| [`docs/packaging/`](docs/packaging/) | Packaging shape, MQTT map, acceptance checklist, App updates |
 | [`docs/control/`](docs/control/01-scan-scheduler.md) | Scan scheduler, FB/PID, safety, HA↔cyclic boundary |
 | [`docs/io/`](docs/io/01-image-quality.md) | Soft-PLC I/O image, bindings, thin-integration stub |
 | [`docs/surface/`](docs/surface/01-block-model.md) | Block program model, runtime, editor, apply policy |

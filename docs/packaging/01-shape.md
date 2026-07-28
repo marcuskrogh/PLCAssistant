@@ -63,6 +63,7 @@ the integration under **Devices & services**. See root [`README.md`](../../READM
 
 - MQTT map: [`02-mqtt-topics.md`](02-mqtt-topics.md)
 - Acceptance: [`03-acceptance.md`](03-acceptance.md)
+- Updates: [`04-updates.md`](04-updates.md)
 - Prior sketch (superseded for freeze): [`../wedge/08-packaging-sketch.md`](../wedge/08-packaging-sketch.md)
 - I/O stub (non-HA CI): [`../io/03-thin-integration-stub.md`](../io/03-thin-integration-stub.md)
-- App tree: `plc_assistant/` (HA Apps folder; slug `plcassistant`) · Integration: `custom_components/plcassistant/` · Mirror: `ha_app/`
+- App tree: `plc_assistant/` (HA Apps folder; slug `plcassistant`) · Integration: `custom_components/plcassistant/` · Install pointer: `ha_app/INSTALL.md`
