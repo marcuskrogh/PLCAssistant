@@ -9,6 +9,7 @@ Testable MQTT mapping lives in ``plcassistant.io.mqtt_entity_bridge``.
 
 from __future__ import annotations
 
+from homeassistant.components.mqtt import async_subscribe
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -135,8 +136,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
             return _on_out
 
-        unsub = await hass.components.mqtt.async_subscribe(
-            topic, _make_out_handler(tag, entry.entry_id), qos=1
+        unsub = await async_subscribe(
+            hass, topic, _make_out_handler(tag, entry.entry_id), qos=1
         )
         hass.data[DOMAIN][entry.entry_id]["unsubs"].append(unsub)
 
