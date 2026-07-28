@@ -94,8 +94,11 @@ def test_install_docs_exist():
     assert "Check for updates" in readme
     assert "plc_assistant/config.yaml" in readme
     assert "https://github.com/marcuskrogh/PLCAssistant#main" in readme
-    assert "Latest stuck" in readme or "latest" in readme.lower()
+    assert "Latest stuck" in readme
+    assert "Restart Home Assistant Core" in readme
+    assert "missing `#main`" in readme
     assert "Repositories" in readme
+    assert readme.count("https://github.com/marcuskrogh/PLCAssistant#main") >= 2
 
     install = ROOT / "ha_app" / "INSTALL.md"
     assert install.is_file()
@@ -105,7 +108,14 @@ def test_install_docs_exist():
 
 
 def test_updates_doc_covers_stuck_latest_recovery():
+    """SWD-130: packaging doc must teach stuck-Latest recovery end-to-end."""
     text = (ROOT / "docs" / "packaging" / "04-updates.md").read_text(encoding="utf-8")
+    assert "stuck behind GitHub" in text
     assert "PLCAssistant#main" in text
-    assert "Latest is stuck" in text or "stuck behind GitHub" in text
-    assert "remove the repository" in text.lower() or "re-add" in text.lower()
+    assert "Check for updates" in text
+    assert "hard-refresh" in text
+    assert "Restart Home Assistant Core" in text or "~15 minutes" in text
+    assert "missing `#main`" in text
+    assert "remove" in text.lower() and "re-add" in text.lower()
+    # Catalog homepage URL must stay bare (no branch fragment).
+    assert "no `#branch`" in text or "bare homepage" in text

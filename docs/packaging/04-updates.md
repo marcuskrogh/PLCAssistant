@@ -17,7 +17,7 @@ Hard-refresh the browser after step 2 (store UI is often cached). Prefer adding 
 https://github.com/marcuskrogh/PLCAssistant#main
 ```
 
-so Supervisor pins the `main` branch explicitly.
+so Supervisor pins the `main` branch explicitly. Keep [`repository.yaml`](../../repository.yaml) / App `config.yaml` `url` as the bare homepage (no `#branch`) — only the Supervisor **Repositories** field uses the fragment.
 
 There is **no** GitHub webhook into Supervisor. Shipping a new commit without bumping `version` will not offer an Update button (rebuild requires uninstall/reinstall or a version bump).
 
@@ -65,11 +65,12 @@ Operator fallback: hard-refresh after **Check for updates**, restart Core after 
 When GitHub `main` already has a newer `plc_assistant/config.yaml` `version`, but HA still shows **Latest = installed** (for example both `0.1.6`):
 
 1. Confirm the GitHub file version.
-2. **Check for updates** → hard-refresh → **Restart Home Assistant Core** (Core update entities can lag after store reload).
-3. If still stuck: remove the repository and re-add `https://github.com/marcuskrogh/PLCAssistant#main`.
-4. Inspect Supervisor logs for `Can't update` / corrupt-repository errors.
+2. **Settings → Apps → ⋮ → Repositories** — if the URL is missing `#main`, remove it and re-add `https://github.com/marcuskrogh/PLCAssistant#main`, then hard-refresh and confirm **Latest**.
+3. Otherwise: **Check for updates** → hard-refresh → **Restart Home Assistant Core** (Core update entities can lag ~15 minutes after a successful store reload).
+4. If still stuck: remove/re-add `#main` again, then Check for updates + hard-refresh.
+5. Inspect Supervisor logs for `Can't update` / corrupt-repository errors.
 
-This is separate from the Docker layer-cache issue above: here the **store** never advanced, so Update cannot offer the real latest.
+This is separate from the Docker layer-cache issue above. Either the store clone never advanced (Mode A), or Core’s update entity is still showing the pre-reload Latest (Mode B).
 
 ## Optional later improvement
 
