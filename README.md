@@ -29,17 +29,33 @@ Home Assistant OS
 
 1. Go to **Settings → Apps**.
 2. Open the overflow menu (⋮) → **Repositories**.
-3. Add this URL and confirm:
-
-   ```text
-   https://github.com/marcuskrogh/PLCAssistant
-   ```
-
+3. Add the repository URL (see **Private vs public** below) and confirm.
 4. Refresh the Apps list.
 5. Find **PLCAssistant** and **Install**, then **Start**.
 
 Catalog metadata lives in root [`repository.yaml`](repository.yaml). The Supervisor App folder is [`plc_assistant/`](plc_assistant/) (slug `plcassistant`).
 
+#### Private vs public GitHub repo
+
+Supervisor clones App repositories over HTTPS **without your GitHub login**. If this repository is **private**, the plain URL will fail when you try to add it:
+
+```text
+https://github.com/marcuskrogh/PLCAssistant
+```
+
+**Option A — make the repo public** (simplest for installs): GitHub → Settings → Danger Zone → Change visibility → Public. Then use the URL above.
+
+**Option B — keep it private** and embed a Personal Access Token in the repository URL:
+
+1. GitHub → **Settings → Developer settings → Personal access tokens**.
+2. Create a token with **Contents: Read-only** on this repository (fine-grained) or classic `repo` scope.
+3. Add the repository in HA as:
+
+   ```text
+   https://GITHUB_USERNAME:TOKEN@github.com/marcuskrogh/PLCAssistant.git
+   ```
+
+Treat that URL like a password (anyone with Supervisor access can see it). Prefer a fine-grained, read-only token scoped to this repo only.
 ### 3. Open the block editor
 
 After the App is running:
