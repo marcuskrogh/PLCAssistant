@@ -19,6 +19,6 @@
 1. Exact auth between Ingress and exposed port (token / network-only).
 2. App repository versioning / release tagging convention (see `ha_app/INSTALL.md`).
 
-**Locked in implement:** v1 bundle = documented one-time copy into `custom_components` (not auto-copy on App start).
+**Locked in implement (updated):** v1+ bundle = App auto-syncs into `custom_components` on start (`homeassistant_config` map); Core restart still required once.
 
 Do not re-litigate closed decisions in [`docs/PLAN.md`](../PLAN.md) without a new define pass.

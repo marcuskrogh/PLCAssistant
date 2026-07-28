@@ -8,8 +8,7 @@ Virtual / soft-PLC for **lab, hobby, and small-scale process equipment**, using 
 Home Assistant OS
 ├── Mosquitto App          ← MQTT broker (required)
 ├── PLCAssistant App       ← Soft-PLC scan + block editor
-└── Thin integration       ← bindings, mock entities, start/stop/reset
-        (manual copy into config/custom_components/)
+└── Thin integration       ← auto-installed into config/custom_components/ on App start
 ```
 
 ---
@@ -67,24 +66,19 @@ In **Settings → Apps → PLCAssistant → Configuration**, set:
 
 Restart the App after changing options.
 
-### 5. Install the thin integration (one-time copy)
+### 5. Enable the thin integration
 
-The Soft-PLC App does **not** auto-register into Core. Copy the bundled integration into your Home Assistant config:
-
-```bash
-# From a machine that can reach this repo and your HA /config share
-cp -a custom_components/plcassistant /config/custom_components/plcassistant
-```
-
-On HA OS you can do this via the **Samba** / **Studio Code Server** / **SSH** App, or by cloning the repo and copying the folder into `/config/custom_components/`.
+On **Start** (and on App updates), the App copies `custom_components/plcassistant` into your Home Assistant config (`/homeassistant` → host `/config`). Check the App log for `thin integration installed/updated`.
 
 Then:
 
-1. **Restart Home Assistant Core** (Developer tools → Restart, or reboot the host).
+1. **Restart Home Assistant Core** once (Developer tools → Restart) so Core loads the new files.
 2. Go to **Settings → Devices & services → Add integration**.
 3. Search for **PLCAssistant** and add it.
 4. Use the **same `instance_id`** as the App (default `default`).
 5. Leave **mock mode** on for a first smoke test (creates writable Number IN entities and Number OUT sinks over MQTT).
+
+Manual copy is no longer required on HA OS. Fallback if the config mount is unavailable: copy [`custom_components/plcassistant`](custom_components/plcassistant) into `/config/custom_components/` yourself (Samba / SSH / Studio Code Server).
 
 ### 6. Verify the install
 
@@ -153,7 +147,7 @@ python3 -m plcassistant.app --host 127.0.0.1 --port 8099
 
 ## Versioning
 
-Tag App releases as `ha-app-vX.Y.Z` (or reuse the package version). After changing the Python package, run `./scripts/sync-ha-app-package.sh` so [`plc_assistant/`](plc_assistant/) stays installable from the Supervisor build context.
+Tag App releases as `ha-app-vX.Y.Z` (or reuse the package version). After changing the Python package or thin integration, run `./scripts/sync-ha-app-package.sh` so [`plc_assistant/`](plc_assistant/) stays installable from the Supervisor build context.
 
 Authoritative App files live in [`plc_assistant/`](plc_assistant/); keep [`ha_app/plcassistant/`](ha_app/plcassistant/) in sync when editing.
 

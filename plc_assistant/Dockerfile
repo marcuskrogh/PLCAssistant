@@ -8,6 +8,9 @@ COPY pyproject.toml README.md ./
 COPY plcassistant ./plcassistant
 RUN pip3 install --no-cache-dir . "paho-mqtt>=1.6"
 
+# Thin integration is auto-copied into HA /config on App start.
+COPY custom_components /usr/share/plcassistant/custom_components
+
 COPY run.sh /
 RUN chmod a+x /run.sh
 
