@@ -18,6 +18,10 @@ Default mock bindings (wedge process I/O):
 | `CMD_SPEED` | OUT | `sensor.plcassistant_cmd_speed` | Pump speed command |
 | `SP_LEVEL` | OUT | `sensor.plcassistant_sp_level` | Active level setpoint |
 | `SP_FLOW` | OUT | `sensor.plcassistant_sp_flow` | Active flow setpoint |
+| `MODE` | OUT | `sensor.plcassistant_mode` | `STOP` / `RUNNING` / `TRIPPED` |
+| `PERM_OK` | OUT | `sensor.plcassistant_perm_ok` | Start permissive (`on`/`off`) |
+| `TRIP_ACTIVE` | OUT | `sensor.plcassistant_trip_active` | Latched trip (`on`/`off`) |
+| *(App status)* | — | `sensor.plcassistant_status` | Soft-PLC scan: `running` / `stopped` / `fault` / `offline` |
 
 Talks to the Soft-PLC **App** over MQTT (`dependencies: ["mqtt", "frontend", "lovelace"]`). Full install steps: [`README.md`](../../README.md). Packaging contract: [`docs/packaging/`](../../docs/packaging/README.md).
 

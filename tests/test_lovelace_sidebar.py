@@ -32,14 +32,14 @@ def test_manifest_depends_on_frontend_and_lovelace() -> None:
     assert "frontend" in deps
     assert "lovelace" in deps
     assert "mqtt" in deps
-    assert manifest["version"] == "0.1.12"
+    assert manifest["version"] == "0.1.13"
 
 
 def test_app_version_locked_to_integration() -> None:
     text = (ROOT / "plc_assistant" / "config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.12"' in text
+    assert 'version: "0.1.13"' in text
     docker = (ROOT / "plc_assistant" / "Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.12" in docker
+    assert "BUILD_VERSION=0.1.13" in docker
 
 
 def test_url_path_contains_hyphen() -> None:
@@ -64,6 +64,9 @@ def test_bundled_yaml_exists() -> None:
     assert "button.plcassistant_start" in text
     assert "number.plcassistant_sp_level_req" in text
     assert "sensor.plcassistant_lt_tank" in text
+    assert "sensor.plcassistant_status" in text
+    assert "sensor.plcassistant_mode" in text
+    assert text.lstrip().startswith("# plcassistant_dashboard_version:")
 
 
 def test_setup_entry_calls_sidebar_dashboard() -> None:
@@ -97,7 +100,7 @@ def test_root_readme_mentions_sidebar_not_manual_paste() -> None:
     assert "paste the contents" not in text.lower()
 
 
-def test_ensure_does_not_overwrite_existing(tmp_path) -> None:
+def test_ensure_does_not_overwrite_custom(tmp_path) -> None:
     mod = _load("plcassistant_lovelace_dashboard3", CC / "lovelace_dashboard.py")
 
     class FakeConfig:
@@ -114,6 +117,33 @@ def test_ensure_does_not_overwrite_existing(tmp_path) -> None:
     out = mod.ensure_dashboard_yaml(FakeHass())  # type: ignore[arg-type]
     assert out == dest
     assert dest.read_text(encoding="utf-8").startswith("# operator edit")
+
+
+def test_ensure_refreshes_stock_board_missing_status(tmp_path) -> None:
+    """SWD-135: prior stock Lovelace without status card is upgraded."""
+    mod = _load("plcassistant_lovelace_dashboard3b", CC / "lovelace_dashboard.py")
+
+    class FakeConfig:
+        def path(self, *parts: str) -> str:
+            return str(tmp_path.joinpath(*parts))
+
+    class FakeHass:
+        config = FakeConfig()
+
+    dest = tmp_path / "dashboards" / "plcassistant.yaml"
+    dest.parent.mkdir(parents=True)
+    dest.write_text(
+        "title: PLCAssistant\nviews:\n"
+        "  - cards:\n"
+        "      - type: entities\n"
+        "        entities:\n"
+        "          - entity: button.plcassistant_start\n",
+        encoding="utf-8",
+    )
+    out = mod.ensure_dashboard_yaml(FakeHass())  # type: ignore[arg-type]
+    text = out.read_text(encoding="utf-8")
+    assert "sensor.plcassistant_status" in text
+    assert "sensor.plcassistant_mode" in text
 
 
 def test_ensure_writes_when_missing(tmp_path) -> None:
@@ -133,11 +163,12 @@ def test_ensure_writes_when_missing(tmp_path) -> None:
     assert "button.plcassistant_start" in text
 
 
-def test_run_sh_does_not_clobber_existing_dashboard_yaml() -> None:
-    """App Start must install Lovelace YAML only when missing (SWD-134)."""
+def test_run_sh_refreshes_stock_missing_status_not_custom() -> None:
+    """App Start refreshes stock boards lacking status; still no -nt clobber."""
     text = (ROOT / "plc_assistant" / "run.sh").read_text(encoding="utf-8")
     assert "install_lovelace_dashboard()" in text
-    assert '[ ! -f "${dst_dash}" ]' in text
+    assert "sensor.plcassistant_status" in text
+    assert "button.plcassistant_start" in text
     # Regression: never refresh-on-newer (would clobber operator edits).
     assert 'src_dash}" -nt' not in text
     assert "[ \"${src_dash}\" -nt" not in text

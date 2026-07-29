@@ -116,3 +116,9 @@ class PlcAssistantRequestNumber(NumberEntity):
             blocking=False,
         )
         self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        """Publish the initial request so Soft-PLC sees SP_LEVEL_REQ without a UI change."""
+        await super().async_added_to_hass()
+        if self._attr_native_value is not None:
+            await self.async_set_native_value(float(self._attr_native_value))

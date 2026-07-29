@@ -93,7 +93,7 @@ def test_platforms_publish_and_subscribe_paths():
     assert "PlcAssistantOutSensor" in sensor
 
     button = (CC / "button.py").read_text(encoding="utf-8")
-    assert "cmd_topic" in button
+    assert "DOMAIN" in button
     assert "async_press" in button
     assert "PlcAssistantCmdButton" in button
     for svc in ("SERVICE_START", "SERVICE_STOP", "SERVICE_RESET"):
@@ -103,9 +103,13 @@ def test_platforms_publish_and_subscribe_paths():
     assert "number.plcassistant_sp_level_req" in lovelace
     assert "button.plcassistant_start" in lovelace
     assert "sensor.plcassistant_lt_tank" in lovelace
+    assert "sensor.plcassistant_status" in lovelace
+    assert "sensor.plcassistant_mode" in lovelace
     assert 'entity_id = f"number.' in number or "suggested_object_id" in number
     assert "plcassistant_sp_level_req" in number
     assert "plcassistant_lt_tank" in sensor
+    assert "PlcAssistantStatusSensor" in sensor
+    assert "status_topic" in (CC / "__init__.py").read_text(encoding="utf-8")
 
 def test_services_yaml_has_operator_actions():
     text = (CC / "services.yaml").read_text(encoding="utf-8")

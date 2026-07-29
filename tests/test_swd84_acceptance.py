@@ -71,11 +71,12 @@ def test_scaffold_and_github_app_trees():
 def test_default_wedge_bindings_include_flow():
     cfg = default_wedge_binding_config()
     tags = set(cfg["tags"])
-    assert {"LT_TANK", "LT_RES", "FT_INLET", "CMD_SPEED", "SP_LEVEL_REQ", "SP_LEVEL", "SP_FLOW"} <= tags
+    assert {"LT_TANK", "LT_RES", "FT_INLET", "CMD_SPEED", "SP_LEVEL_REQ", "SP_LEVEL", "SP_FLOW", "MODE", "PERM_OK", "TRIP_ACTIVE"} <= tags
     bound = {b["tag"] for b in cfg["bindings"]}
     assert "FT_INLET" in bound
     assert any(b["tag"] == "FT_INLET" and b["direction"] == "OUT" for b in cfg["bindings"])
     assert any(b["tag"] == "SP_LEVEL_REQ" and b["direction"] == "IN" for b in cfg["bindings"])
+    assert any(b["tag"] == "MODE" and b["direction"] == "OUT" for b in cfg["bindings"])
 
 def test_non_ha_stub_still_works():
     """In-process ThinIntegrationStub remains the non-HA CI path."""

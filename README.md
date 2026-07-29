@@ -81,7 +81,7 @@ Then:
 2. Go to **Settings → Devices & services → Add integration**.
 3. Search for **PLCAssistant** and add it.
 4. Use the **same `instance_id`** as the App (default `default`).
-5. Leave **mock mode** on for a first smoke test (creates a writable **Level setpoint** Number, read-only **sensors** for tank/flow/speed/active SPs, and Start/Stop/Reset **buttons** over MQTT).
+5. Leave **mock mode** on for a first smoke test (creates a writable **Level setpoint** Number, read-only **sensors** for tank/flow/speed/active SPs/status/MODE, and Start/Stop/Reset **buttons** over MQTT).
 
 The App and thin integration **share one version** (`plc_assistant/config.yaml` ≡ `custom_components/plcassistant/manifest.json`). After an App Update, restart Core so HA reloads the matching integration.
 
@@ -92,8 +92,8 @@ Manual copy is no longer required on HA OS. Fallback if the config mount is unav
 ### 6. Verify the install
 
 1. Open the App UI (Ingress or port 8099) — the **program editor** should load with a populated **Block Library** (if Ingress shows `Error: 404`, Update the App and hard-refresh).
-2. In HA, confirm **Level setpoint** (`number.plcassistant_sp_level_req`), process **sensors**, and Start/Stop/Reset buttons under the PLCAssistant integration.
-3. Open **PLCAssistant** in the HA **sidebar** — set the level setpoint, press **Start** — tank level, flow SP, and pump speed should move.
+2. In HA, confirm **Level setpoint** (`number.plcassistant_sp_level_req`), process **sensors** (including **Status** / **Mode**), and Start/Stop/Reset buttons under the PLCAssistant integration.
+3. Open **PLCAssistant** in the HA **sidebar** — status is at the top. Set the level setpoint, press **Start** — Soft-PLC status becomes `running`, MODE `RUNNING`, and tank/flow/speed move.
 4. Press **Stop** / **Reset** (or call services `plcassistant.start` / `stop` / `reset`) — these publish command pulses to the App.
 5. Place or edit a program in the App editor, restart the App, and confirm it reloads from persistent storage (`/data/program.json` inside the App).
 

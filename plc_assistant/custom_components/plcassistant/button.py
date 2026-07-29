@@ -14,7 +14,6 @@ from .const import (
     SERVICE_START,
     SERVICE_STOP,
 )
-from .mqtt_topics import cmd_topic
 
 
 async def async_setup_entry(
@@ -40,7 +39,7 @@ async def async_setup_entry(
 
 
 class PlcAssistantCmdButton(ButtonEntity):
-    """Press publishes a Soft-PLC command topic pulse."""
+    """Press routes through ``plcassistant.start|stop|reset`` (MQTT cmd pulse)."""
 
     _attr_should_poll = False
 
@@ -59,16 +58,19 @@ class PlcAssistantCmdButton(ButtonEntity):
         self._attr_unique_id = f"{entry_id}_cmd_{cmd}"
         self._attr_suggested_object_id = object_id
         self.entity_id = f"button.{object_id}"
+        icons = {
+            SERVICE_START: "mdi:play",
+            SERVICE_STOP: "mdi:stop",
+            SERVICE_RESET: "mdi:restart",
+        }
+        self._attr_icon = icons.get(cmd, "mdi:gesture-tap-button")
 
     async def async_press(self) -> None:
+        # Use domain services so Start/Stop/Reset share one publish path with
+        # Developer Tools / automations (instance_id targeting included).
         await self.hass.services.async_call(
-            "mqtt",
-            "publish",
-            {
-                "topic": cmd_topic(self._instance_id, self._cmd),
-                "payload": "1",
-                "qos": 1,
-                "retain": False,
-            },
+            DOMAIN,
+            self._cmd,
+            {CONF_INSTANCE_ID: self._instance_id},
             blocking=False,
         )

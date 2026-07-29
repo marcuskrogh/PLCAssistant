@@ -275,20 +275,25 @@ class BindingTable:
                 # Placeholder only: do not float/scale non-GOOD payloads (may be None).
                 image.apply_input(binding.tag, 0.0, status, reason)
 
-    def apply_out(self, image: IoImage) -> dict[str, float]:
+    def apply_out(self, image: IoImage) -> dict[str, Any]:
         """Scan-end: convert written OUT/INOUT tag values to HA raw.
 
         Only tags present in ``image.snapshot_outputs()`` (logic called
         ``set_output`` / ``is_output``) are flushed. Never-written OUT bindings
         are omitted so callers do not publish defaults as GOOD.
+
+        Numeric tags use scale/offset; string/bool status tags pass through.
         """
         written = image.snapshot_outputs()
-        flush: dict[str, float] = {}
+        flush: dict[str, Any] = {}
         for binding in self._bindings:
             if not binding.direction.writes:
                 continue
             if binding.tag not in written:
                 continue
-            engineering = float(written[binding.tag])
-            flush[binding.entity] = binding.to_raw(engineering)
+            engineering = written[binding.tag]
+            try:
+                flush[binding.entity] = binding.to_raw(float(engineering))
+            except (TypeError, ValueError):
+                flush[binding.entity] = engineering
         return flush
