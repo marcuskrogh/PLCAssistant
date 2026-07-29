@@ -30,17 +30,20 @@ Default `instance_id` = `default`.
 
 Tag names match the Soft-PLC image / binding table (e.g. `LT_TANK`, `CMD_SPEED`, `SP_LEVEL_REQ`).
 
-### App status topic (SWD-135 / SWD-136)
+**Direction (SWD-145):** plant PVs (`LT_TANK`, `LT_RES`, `FT_INLET`) are Soft-PLC **IN** (`…/tag/{tag}/in`); Soft-PLC CVs/status (`CMD_SPEED`, `SP_LEVEL`, `SP_FLOW`, `MODE`, `PERM_OK`, `TRIP_ACTIVE`) are **OUT** (`…/tag/{tag}/out`). Process ↔ Soft-PLC transport is MQTT (mock ≡ field).
+
+### App status topic (SWD-135 / SWD-136 / SWD-145)
 
 JSON object, QoS **1**, **retain true**:
 
 ```json
-{"state": "stopped", "mode": "STOP"}
+{"state": "stopped", "mode": "STOP", "scan_period_s": 0.1}
 ```
 
 | Field | Notes |
 |-------|-------|
 | `state` | `running` / `stopped` / `fault` / `offline` (legacy `reset` → treat as `stopped`) |
+| `scan_period_s` | Soft-PLC scan period in seconds (numeric). Integration may observe; Soft-PLC gets no mock identity back. |
 | extras | Optional (e.g. `mode`, `error`) — informational for the HMI chip |
 
 Soft-PLC republishes retained status on mode changes and on a ~2 s heartbeat so late HA listeners recover. Live App MQTT clients register a last-will of `{"state":"offline"}` (retain) on this topic so disconnect surfaces as offline.

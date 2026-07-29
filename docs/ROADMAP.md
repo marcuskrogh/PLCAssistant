@@ -33,4 +33,4 @@
 - Prior initiative: [SWD-81](https://marcusknielsen.atlassian.net/browse/SWD-81) (Done)
 
 ## Next
-`/implement SWD-145` — Build ownership boundary per [`docs/PLAN.md`](PLAN.md)
+`/review-fix SWD-145` — ownership implement on PR #59 (App 0.1.20); then `/ship SWD-145` · next theme `/define SWD-146`

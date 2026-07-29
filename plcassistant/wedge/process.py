@@ -1,7 +1,10 @@
-"""Mock process physics for the one-tank + reservoir recycled loop.
+"""Process plant ports for the one-tank + reservoir recycled loop.
 
-First-class simulation surface (see docs/wedge/05-mock-process.md) — not a
-test-only stub. Publishes/consumes the tag contract in 02-io-hmi-contract.md:
+``MockProcess`` is the offline / unit-test physics library (see
+docs/wedge/05-mock-process.md). Live Soft-PLC App scan uses ``HeldProcess``
+(SWD-145) and consumes plant PVs as MQTT IN — Soft-PLC stays mock-unaware.
+
+Tag contract in 02-io-hmi-contract.md:
 
 - LT_TANK, LT_RES — levels in metres
 - FT_INLET — inlet volumetric flow in L/min
@@ -79,6 +82,40 @@ class ProcessPort(Protocol):
     def state(self) -> ProcessState: ...
 
     def step(self, dt: float, cmd_speed: float) -> ProcessState: ...
+
+
+class HeldProcess:
+    """No-dynamics plant holder for the live Soft-PLC App path (SWD-145).
+
+    Soft-PLC stays mock-unaware: measurements arrive as MQTT IN and are fed
+    via ``Skid.set_signal_override``. This port only holds last values so
+    ``Skid.step`` still has a ``ProcessPort`` without running ``MockProcess``.
+    """
+
+    def __init__(self, config: ProcessConfig | None = None) -> None:
+        cfg = config or ProcessConfig()
+        self._lt_tank = _clamp(cfg.initial_h_tank, 0.0, cfg.h_tank_max)
+        self._lt_res = _clamp(cfg.initial_h_res, 0.0, cfg.h_res_max)
+        self._ft_inlet = 0.0
+        self._cmd_speed = 0.0
+        self._sc_pump = 0.0
+
+    @property
+    def state(self) -> ProcessState:
+        return ProcessState(
+            lt_tank=self._lt_tank,
+            lt_res=self._lt_res,
+            ft_inlet=self._ft_inlet,
+            cmd_speed=self._cmd_speed,
+            sc_pump=self._sc_pump,
+        )
+
+    def step(self, dt: float, cmd_speed: float) -> ProcessState:
+        if dt < 0:
+            raise ValueError("dt must be non-negative")
+        self._cmd_speed = _clamp(cmd_speed, 0.0, 100.0)
+        self._sc_pump = self._cmd_speed
+        return self.state
 
 
 class MockProcess:

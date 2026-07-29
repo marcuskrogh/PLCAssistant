@@ -73,4 +73,4 @@
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/59
 
 ## Next
-`/implement SWD-145` — Build per this plan (same branch/PR)
+`/review-fix SWD-145` — Verify acceptance criteria; then `/ship SWD-145`

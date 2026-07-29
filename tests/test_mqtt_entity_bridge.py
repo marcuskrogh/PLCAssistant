@@ -22,6 +22,9 @@ def test_entity_bridge_roundtrip_with_skid_logic():
     table = BindingTable.from_config(default_wedge_binding_config())
     entities = MockEntityStore()
     entities.set("number.plcassistant_sp_level_req", 0.20)
+    entities.set("number.plcassistant_lt_tank_in", 0.15)
+    entities.set("number.plcassistant_lt_res_in", 0.20)
+    entities.set("number.plcassistant_ft_inlet_in", 0.0)
 
     app_image = declare_default_image()
     app = MqttIoBridge(bus, instance_id="default")
@@ -40,7 +43,7 @@ def test_entity_bridge_roundtrip_with_skid_logic():
     applied = integ.apply_outputs()
 
     assert "CMD_SPEED" in applied
-    assert "LT_TANK" in applied
+    assert "LT_TANK" not in applied
     assert entities.get("sensor.plcassistant_cmd_speed").value > 0.0
     assert entities.get("sensor.plcassistant_cmd_speed").status is QualityStatus.GOOD
 
@@ -76,7 +79,9 @@ def test_ha_default_bindings_match_app_wedge_config():
     }
     by_tag = {b["tag"]: b for b in ha_bindings}
     assert by_tag["SP_LEVEL_REQ"]["direction"] == "IN"
-    assert by_tag["LT_TANK"]["direction"] == "OUT"
+    assert by_tag["LT_TANK"]["direction"] == "IN"
+    assert by_tag["LT_RES"]["direction"] == "IN"
+    assert by_tag["FT_INLET"]["direction"] == "IN"
     assert by_tag["SP_FLOW"]["direction"] == "OUT"
     assert by_tag["MODE"]["direction"] == "OUT"
 

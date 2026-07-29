@@ -210,8 +210,8 @@ class MqttScanLoop:
         self.bridge.on_command("stop", lambda: None)
         self.bridge.on_command("reset", lambda: None)
     def _status_extras(self) -> dict[str, Any]:
-        """MODE / permissive extras for the retained status topic (HMI)."""
-        extra: dict[str, Any] = {}
+        """MODE / scan period extras for the retained status topic (HMI / SWD-145)."""
+        extra: dict[str, Any] = {"scan_period_s": float(self.period_s)}
         mode = getattr(self.logic, "mode", None)
         if mode is not None:
             value = getattr(mode, "value", mode)
@@ -219,8 +219,9 @@ class MqttScanLoop:
                 extra["mode"] = str(value)
         return extra
 
-    def _publish_scan_status(self, state: str) -> None:
-        self.bridge.publish_status(state, **self._status_extras())
+    def _publish_scan_status(self, state: str, **extra: Any) -> None:
+        merged = {**self._status_extras(), **extra}
+        self.bridge.publish_status(state, **merged)
         self._write_ha_config_runtime(state)
 
     def _write_ha_config_runtime(self, state: str | None = None) -> None:
@@ -229,14 +230,11 @@ class MqttScanLoop:
         if status is None:
             status = "running" if self.scanning else "stopped"
         tags: dict[str, Any] = {}
-        # Full Soft-PLC OUT HMI set (SWD-140: include SP_LEVEL/SP_FLOW/LT_RES).
+        # Soft-PLC control/status OUT only (SWD-145: plant PVs are IN, not mirrored).
         for name in (
             "MODE",
             "PERM_OK",
             "TRIP_ACTIVE",
-            "LT_TANK",
-            "LT_RES",
-            "FT_INLET",
             "CMD_SPEED",
             "SP_LEVEL",
             "SP_FLOW",
@@ -259,14 +257,19 @@ class MqttScanLoop:
         ):
             self._last_file_bridge = time.monotonic()
 
+    # Operator request tags only — plant process↔PLC stays MQTT (SWD-145).
+    _FILE_INPUT_TAGS = frozenset({"SP_LEVEL_REQ"})
+
     def _apply_file_inputs(self) -> None:
-        """Apply retained HA-config IN tags (SP_LEVEL_REQ) into the image (SWD-141)."""
+        """Apply retained HA-config operator IN tags (SP_LEVEL_REQ) (SWD-141)."""
         snap = read_inputs()
         if not snap:
             return
         tags = snap.get("tags") if isinstance(snap.get("tags"), dict) else {}
         known = set(self.image.names())
         for name, body in tags.items():
+            if name not in self._FILE_INPUT_TAGS:
+                continue
             if name not in known or not isinstance(body, dict) or "value" not in body:
                 continue
             status_raw = str(body.get("status") or "GOOD").upper()
@@ -387,7 +390,7 @@ class MqttScanLoop:
             try:
                 self.scan_once()
             except Exception as exc:  # noqa: BLE001 — keep editor reachable
-                self.bridge.publish_status("fault", error=str(exc)[:200])
+                self._publish_scan_status("fault", error=str(exc)[:200])
                 self._last_status_heartbeat = time.monotonic()
             elapsed = time.monotonic() - t0
             time.sleep(max(0.0, self.period_s - elapsed))

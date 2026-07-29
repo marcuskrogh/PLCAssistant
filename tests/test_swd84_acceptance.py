@@ -36,6 +36,9 @@ def test_app_ha_mqtt_roundtrip_without_broker():
     table = BindingTable.from_config(default_wedge_binding_config())
     entities = MockEntityStore()
     entities.set("number.plcassistant_sp_level_req", 0.20)
+    entities.set("number.plcassistant_lt_tank_in", 0.15)
+    entities.set("number.plcassistant_lt_res_in", 0.20)
+    entities.set("number.plcassistant_ft_inlet_in", 0.0)
 
     image = declare_default_image()
     app = MqttIoBridge(bus, instance_id="default")
@@ -51,9 +54,10 @@ def test_app_ha_mqtt_roundtrip_without_broker():
     for _ in range(5):
         logic(image)
     app.publish_outputs(image)
-    integ.apply_outputs()
+    applied = integ.apply_outputs()
+    assert "CMD_SPEED" in applied
+    assert "LT_TANK" not in applied
     assert entities.get("sensor.plcassistant_cmd_speed").value > 0.0
-    assert entities.get("sensor.plcassistant_lt_tank").status is QualityStatus.GOOD
 
 
 def test_scaffold_and_github_app_trees():
@@ -74,7 +78,7 @@ def test_default_wedge_bindings_include_flow():
     assert {"LT_TANK", "LT_RES", "FT_INLET", "CMD_SPEED", "SP_LEVEL_REQ", "SP_LEVEL", "SP_FLOW", "MODE", "PERM_OK", "TRIP_ACTIVE"} <= tags
     bound = {b["tag"] for b in cfg["bindings"]}
     assert "FT_INLET" in bound
-    assert any(b["tag"] == "FT_INLET" and b["direction"] == "OUT" for b in cfg["bindings"])
+    assert any(b["tag"] == "FT_INLET" and b["direction"] == "IN" for b in cfg["bindings"])
     assert any(b["tag"] == "SP_LEVEL_REQ" and b["direction"] == "IN" for b in cfg["bindings"])
     assert any(b["tag"] == "MODE" and b["direction"] == "OUT" for b in cfg["bindings"])
 

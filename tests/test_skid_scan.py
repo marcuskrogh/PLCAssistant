@@ -5,24 +5,37 @@ from __future__ import annotations
 from plcassistant.app.default_image import declare_default_image
 from plcassistant.app.skid_scan import SkidImageLogic
 from plcassistant.io.quality import QualityStatus
+from plcassistant.wedge.process import HeldProcess, MockProcess
 from plcassistant.wedge.skid import Mode
 
 
-def test_skid_image_logic_start_moves_flow_and_tank():
+def test_skid_image_logic_start_drives_cv_without_plant_out():
+    """SWD-145: control OUT moves; plant PVs are IN and stay static (no Soft-PLC physics)."""
     image = declare_default_image()
     image.begin_inputs()
     image.apply_input("SP_LEVEL_REQ", 0.20, QualityStatus.GOOD)
+    image.apply_input("LT_TANK", 0.15, QualityStatus.GOOD)
+    image.apply_input("LT_RES", 0.20, QualityStatus.GOOD)
+    image.apply_input("FT_INLET", 0.0, QualityStatus.GOOD)
     logic = SkidImageLogic(period_s=0.1)
+    assert isinstance(logic.skid.process, HeldProcess)
+    assert not isinstance(logic.skid.process, MockProcess)
     logic.enqueue_operator("start")
     logic(image)
     assert logic.skid.last is not None
     assert logic.skid.last.mode is Mode.RUNNING
     assert image.get_value("MODE") == "RUNNING"
+    tank0 = float(image.get_value("LT_TANK"))
     for _ in range(20):
         logic(image)
     assert float(image.get_value("SP_FLOW")) > 0.0
     assert float(image.get_value("CMD_SPEED")) > 0.0
-    assert float(image.get_value("LT_TANK")) > 0.0
+    assert float(image.get_value("LT_TANK")) == tank0
+    outs = image.snapshot_outputs()
+    assert "LT_TANK" not in outs
+    assert "LT_RES" not in outs
+    assert "FT_INLET" not in outs
+    assert "CMD_SPEED" in outs
 
 
 def test_scan_loop_start_publishes_status_with_mode():
@@ -47,6 +60,7 @@ def test_scan_loop_start_publishes_status_with_mode():
     assert statuses
     assert statuses[-1]["state"] == "running"
     assert statuses[-1].get("mode") == "RUNNING"
+    assert statuses[-1].get("scan_period_s") == 0.01
 
 
 def test_scan_loop_status_heartbeat_republishes_when_idle():
@@ -76,6 +90,7 @@ def test_scan_loop_status_heartbeat_republishes_when_idle():
     ]
     assert statuses
     assert statuses[-1]["state"] == "stopped"
+    assert statuses[-1].get("scan_period_s") == 0.01
     assert all(
         retain
         for topic, _payload, _qos, retain in bus.published[before:]

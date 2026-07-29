@@ -42,13 +42,11 @@ _FILE_BRIDGE_POLL_S = 1.0
 _FILE_BRIDGE_FRESH_S = 3.0
 _MQTT_SILENT_S = 3.0
 # Soft-PLC OUT tags hydrated from HA-config runtime.json when MQTT is silent.
+# Plant PVs are Soft-PLC IN (SWD-145) — not mirrored from Soft-PLC runtime.
 _HMI_TAGS = (
     "MODE",
     "PERM_OK",
     "TRIP_ACTIVE",
-    "LT_TANK",
-    "LT_RES",
-    "FT_INLET",
     "CMD_SPEED",
     "SP_LEVEL",
     "SP_FLOW",
@@ -72,22 +70,22 @@ def _default_bindings() -> list[dict]:
         },
         {
             "tag": "LT_TANK",
-            "entity": "sensor.plcassistant_lt_tank",
-            "direction": "OUT",
+            "entity": "number.plcassistant_lt_tank_in",
+            "direction": "IN",
             "scale": 1.0,
             "offset": 0.0,
         },
         {
             "tag": "LT_RES",
-            "entity": "sensor.plcassistant_lt_res",
-            "direction": "OUT",
+            "entity": "number.plcassistant_lt_res_in",
+            "direction": "IN",
             "scale": 1.0,
             "offset": 0.0,
         },
         {
             "tag": "FT_INLET",
-            "entity": "sensor.plcassistant_ft_inlet",
-            "direction": "OUT",
+            "entity": "number.plcassistant_ft_inlet_in",
+            "direction": "IN",
             "scale": 1.0,
             "offset": 0.0,
         },

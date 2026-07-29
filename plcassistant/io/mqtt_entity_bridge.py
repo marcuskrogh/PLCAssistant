@@ -116,17 +116,17 @@ class MqttEntityBridge:
 
 
 def default_wedge_binding_config() -> dict[str, Any]:
-    """Wedge process I/O bindings for packaging demos / mock mode.
+    """Wedge process I/O bindings for packaging demos (SWD-145).
 
-    Mock Soft-PLC owns plant PVs (``LT_*``, ``FT_INLET``) as **OUT**; HA shows
-    them as read-only sensors. Operator writable request is ``SP_LEVEL_REQ`` IN.
-    Active SPs and ``CMD_SPEED`` are Soft-PLC OUT. Aligned with
-    ``docs/wedge/02-io-hmi-contract.md``.
+    Plant PVs (``LT_*``, ``FT_INLET``) are Soft-PLC **IN** (MQTT ≡ field);
+    the thin integration owns the stand-alone simulator (SWD-146). Operator
+    writable request is ``SP_LEVEL_REQ`` IN. Active SPs and ``CMD_SPEED`` are
+    Soft-PLC OUT. Aligned with ``docs/wedge/02-io-hmi-contract.md``.
     """
     return {
         "tags": {
-            "LT_TANK": {"default": 0.0, "unit": "m"},
-            "LT_RES": {"default": 0.3, "unit": "m"},
+            "LT_TANK": {"default": 0.15, "unit": "m"},
+            "LT_RES": {"default": 0.20, "unit": "m"},
             "FT_INLET": {"default": 0.0, "unit": "L/min"},
             "SP_LEVEL_REQ": {"default": 0.20, "unit": "m"},
             "SP_LEVEL": {"default": 0.20, "unit": "m"},
@@ -146,22 +146,22 @@ def default_wedge_binding_config() -> dict[str, Any]:
             },
             {
                 "tag": "LT_TANK",
-                "entity": "sensor.plcassistant_lt_tank",
-                "direction": "OUT",
+                "entity": "number.plcassistant_lt_tank_in",
+                "direction": "IN",
                 "scale": 1.0,
                 "offset": 0.0,
             },
             {
                 "tag": "LT_RES",
-                "entity": "sensor.plcassistant_lt_res",
-                "direction": "OUT",
+                "entity": "number.plcassistant_lt_res_in",
+                "direction": "IN",
                 "scale": 1.0,
                 "offset": 0.0,
             },
             {
                 "tag": "FT_INLET",
-                "entity": "sensor.plcassistant_ft_inlet",
-                "direction": "OUT",
+                "entity": "number.plcassistant_ft_inlet_in",
+                "direction": "IN",
                 "scale": 1.0,
                 "offset": 0.0,
             },
