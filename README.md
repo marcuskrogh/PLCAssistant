@@ -93,7 +93,7 @@ Manual copy is no longer required on HA OS. Fallback if the config mount is unav
 
 1. Open the App UI (Ingress or port 8099) — the **program editor** should load with a populated **Block Library** (if Ingress shows `Error: 404`, Update the App and hard-refresh).
 2. In HA, confirm **Level setpoint** (`number.plcassistant_sp_level_req`), process **sensors** (including **Status** / **Mode**), and Start/Stop/Reset buttons under the PLCAssistant integration.
-3. Open **PLCAssistant** in the HA **sidebar** — status is at the top. After Core restart with the App **Started**, Soft-PLC should show `stopped` (not stuck `offline`) with Start permissive On when healthy. Set the level setpoint, press **Start** — Soft-PLC status becomes `running`, MODE `RUNNING`, and tank/flow/speed move.
+3. Open **PLCAssistant** in the HA **sidebar** — status is at the top. After Core restart with the App **Started**, Soft-PLC should show `stopped` (not stuck `offline`) with Start ready On when healthy. Set the level setpoint, press **Start** — Soft-PLC status becomes `running`, MODE `RUNNING`, and tank/flow/speed/active SPs move. Start ready correctly shows Off while RUNNING.
 4. Press **Stop** / **Reset** (or call services `plcassistant.start` / `stop` / `reset`) — these publish command pulses to the App.
 5. Place or edit a program in the App editor, restart the App, and confirm it reloads from persistent storage (`/data/program.json` inside the App).
 
@@ -169,15 +169,15 @@ From **0.1.6**, thin-integration copy failures no longer abort Soft-PLC start (t
 
 ### Soft-PLC stuck `offline` / Start does nothing
 
-If the Lovelace board shows Soft-PLC **offline**, Mode **STOP**, Start permissive **Off**, and pressing Start has no effect:
+If the Lovelace board shows Soft-PLC **offline**, Mode **STOP**, Start ready **Off**, and pressing Start has no effect:
 
 1. Confirm **Mosquitto** is running and HA’s **MQTT** integration is connected to that broker.
 2. Confirm **PLCAssistant** App is **Started**. Soft-PLC and the thin integration must share the same `instance_id` (default `default`).
 3. Open the App log and look for `Soft-PLC MQTT connecting` / `Soft-PLC MQTT scan attached`. Connect failures usually mean Mosquitto is down or App MQTT username/password do not match the broker.
-4. **Update** the App to **0.1.17+**. From **0.1.16**, App Start that syncs the thin integration **requests a Core restart** automatically (opt out with `PLCASSISTANT_AUTO_CORE_RESTART=0`). From **0.1.17**, Soft-PLC also writes `config/plcassistant/runtime.json` and the HMI polls it when MQTT is silent.
-5. Re-open the **PLCAssistant** sidebar — Soft-PLC should show `stopped` and Start permissive **On** when healthy; then press **Start**.
+4. **Update** the App to **0.1.18+**. From **0.1.16**, App Start that syncs the thin integration **requests a Core restart** automatically (opt out with `PLCASSISTANT_AUTO_CORE_RESTART=0`). From **0.1.17**, Soft-PLC also writes `config/plcassistant/runtime.json` and the HMI polls it when MQTT is silent. From **0.1.18**, that file bridge also mirrors active setpoints and reservoir level.
+5. Re-open the **PLCAssistant** sidebar — Soft-PLC should show `stopped` and Start ready **On** when healthy; then press **Start**.
 
-From **0.1.14**, the App heartbeats retained status and publishes an MQTT last-will `offline`; the integration caches MQTT payloads and hydrates sensors on add. From **0.1.15**, HA runtime always attempts Mosquitto even when `/data/options.json` is missing/empty (seeds defaults on App Start) and retains MODE / PERM_OK / TRIP_ACTIVE for hydrate. From **0.1.16**, thin-integration sync requests Core restart so the HMI picks up Soft-PLC status without a missed manual step. From **0.1.17**, a shared HA-config file bridge hydrates the HMI when MQTT never reaches Core.
+From **0.1.14**, the App heartbeats retained status and publishes an MQTT last-will `offline`; the integration caches MQTT payloads and hydrates sensors on add. From **0.1.15**, HA runtime always attempts Mosquitto even when `/data/options.json` is missing/empty (seeds defaults on App Start) and retains MODE / PERM_OK / TRIP_ACTIVE for hydrate. From **0.1.16**, thin-integration sync requests Core restart so the HMI picks up Soft-PLC status without a missed manual step. From **0.1.17**, a shared HA-config file bridge hydrates the HMI when MQTT never reaches Core. From **0.1.18**, the bridge includes `SP_LEVEL` / `SP_FLOW` / `LT_RES` so active setpoints and reservoir are not stuck at 0 when MQTT is silent.
 
 ### Update button shows but installed version stays old
 

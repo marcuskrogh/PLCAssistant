@@ -41,7 +41,18 @@ PLATFORMS: list[Platform] = [Platform.NUMBER, Platform.SENSOR, Platform.BUTTON]
 _FILE_BRIDGE_POLL_S = 1.0
 _FILE_BRIDGE_FRESH_S = 3.0
 _MQTT_SILENT_S = 3.0
-_HMI_TAGS = ("MODE", "PERM_OK", "TRIP_ACTIVE", "LT_TANK", "FT_INLET", "CMD_SPEED")
+# Soft-PLC OUT tags hydrated from HA-config runtime.json when MQTT is silent.
+_HMI_TAGS = (
+    "MODE",
+    "PERM_OK",
+    "TRIP_ACTIVE",
+    "LT_TANK",
+    "LT_RES",
+    "FT_INLET",
+    "CMD_SPEED",
+    "SP_LEVEL",
+    "SP_FLOW",
+)
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
