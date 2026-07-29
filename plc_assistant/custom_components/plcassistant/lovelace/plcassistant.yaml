@@ -1,4 +1,4 @@
-# plcassistant_dashboard_version: 8
+# plcassistant_dashboard_version: 9
 title: PLCAssistant
 views:
   - title: Skid
@@ -19,7 +19,7 @@ views:
             name: Trip active
       - type: markdown
         content: |
-          **PLCAssistant** — Soft-PLC skid HMI. Soft-PLC must show **stopped** (not offline) before Start works. **Start ready** is On only while idle and healthy; it correctly shows Off while Mode is RUNNING (Start already succeeded). From App **0.1.20**, plant levels/flow are Soft-PLC **IN** (integration-owned; static until the stand-alone simulator in SWD-146). Soft-PLC no longer synthesizes process motion. Update App, wait for Core reload, then reopen this board. Confirm Mosquitto + matching `instance_id` if still offline. Change the **Level setpoint**, press **Start**, then watch pump speed and active setpoints.
+          **PLCAssistant** — Soft-PLC skid HMI. Soft-PLC must show **stopped** (not offline) before Start works. **Start ready** is On only while idle and healthy; it correctly shows Off while Mode is RUNNING (Start already succeeded). From App **0.1.21**, plant levels/flow are Soft-PLC **IN** (integration-owned; static until the stand-alone simulator in SWD-146). Soft-PLC no longer synthesizes process motion. Update App, wait for Core reload, then reopen this board. Confirm Mosquitto + matching `instance_id` if still offline. Change the **Level setpoint**, press **Start**, then watch pump speed and active setpoints.
       - type: entities
         title: Operate
         show_header_toggle: false

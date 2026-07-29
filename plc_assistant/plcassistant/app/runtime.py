@@ -56,6 +56,7 @@ def build_bus_from_options(
     *,
     instance_id: str | None = None,
     ha_runtime: bool | None = None,
+    period_s: float = 0.1,
 ) -> MqttBus | None:
     """Return a live paho bus when MQTT is configured; None to skip."""
     if os.environ.get("PLCASSISTANT_MQTT", "1") in ("0", "false", "no"):
@@ -89,7 +90,10 @@ def build_bus_from_options(
         print("PLCAssistant: paho-mqtt not installed; MQTT scan disabled", flush=True)
         return None
     will_topic = status_topic(iid)
-    will_payload = json.dumps({"state": "offline"}).encode("utf-8")
+    # Keep scan_period_s on retained LWT so observe still works when offline (SWD-145).
+    will_payload = json.dumps(
+        {"state": "offline", "scan_period_s": float(period_s)}
+    ).encode("utf-8")
     try:
         return PahoMqttBus(
             host,
@@ -457,7 +461,10 @@ def _mqtt_supervisor(
         )
         while not life.stopped() and life.loop is None:
             new_bus = build_bus_from_options(
-                options, instance_id=instance_id, ha_runtime=ha_runtime
+                options,
+                instance_id=instance_id,
+                ha_runtime=ha_runtime,
+                period_s=period_s,
             )
             # Re-check after a potentially blocking connect/build.
             if life.stopped():
