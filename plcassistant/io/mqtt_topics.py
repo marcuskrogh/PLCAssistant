@@ -39,6 +39,37 @@ def status_topic(instance_id: str) -> str:
     return f"{TOPIC_ROOT}/{instance_id}/status"
 
 
+_STATUS_STATES = frozenset({"running", "stopped", "fault", "offline"})
+
+
+def parse_app_status_payload(payload: str | bytes | None) -> str | None:
+    """Normalize App status JSON to a chip state, or None if unusable.
+
+    Vocabulary: ``running`` / ``stopped`` / ``fault`` / ``offline``.
+    Legacy sticky ``reset`` pulses map to ``stopped`` (SWD-135 / SWD-136).
+    """
+    if payload is None:
+        return None
+    try:
+        if isinstance(payload, bytes):
+            text = payload.decode("utf-8")
+        else:
+            text = str(payload)
+        body = json.loads(text or "{}")
+    except (TypeError, ValueError, UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    if not isinstance(body, dict):
+        return None
+    state = str(body.get("state") or "").strip().lower()
+    if not state:
+        return None
+    if state == "reset":
+        return "stopped"
+    if state not in _STATUS_STATES:
+        return "fault"
+    return state
+
+
 def parse_tag_topic(topic: str) -> tuple[str, str, Direction] | None:
     """Parse ``plcassistant/{id}/tag/{tag}/in|out`` → (instance_id, tag, direction)."""
     parts = topic.split("/")
@@ -138,6 +169,7 @@ __all__ = [
     "TOPIC_ROOT",
     "MqttTagPayload",
     "cmd_topic",
+    "parse_app_status_payload",
     "parse_tag_topic",
     "status_topic",
     "tag_in_topic",

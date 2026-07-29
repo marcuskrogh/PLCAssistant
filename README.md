@@ -93,7 +93,7 @@ Manual copy is no longer required on HA OS. Fallback if the config mount is unav
 
 1. Open the App UI (Ingress or port 8099) — the **program editor** should load with a populated **Block Library** (if Ingress shows `Error: 404`, Update the App and hard-refresh).
 2. In HA, confirm **Level setpoint** (`number.plcassistant_sp_level_req`), process **sensors** (including **Status** / **Mode**), and Start/Stop/Reset buttons under the PLCAssistant integration.
-3. Open **PLCAssistant** in the HA **sidebar** — status is at the top. Set the level setpoint, press **Start** — Soft-PLC status becomes `running`, MODE `RUNNING`, and tank/flow/speed move.
+3. Open **PLCAssistant** in the HA **sidebar** — status is at the top. After Core restart with the App **Started**, Soft-PLC should show `stopped` (not stuck `offline`) with Start permissive On when healthy. Set the level setpoint, press **Start** — Soft-PLC status becomes `running`, MODE `RUNNING`, and tank/flow/speed move.
 4. Press **Stop** / **Reset** (or call services `plcassistant.start` / `stop` / `reset`) — these publish command pulses to the App.
 5. Place or edit a program in the App editor, restart the App, and confirm it reloads from persistent storage (`/data/program.json` inside the App).
 
@@ -166,6 +166,17 @@ Supervisor allows only one start/stop/restart job at a time for the App. This us
 4. After reboot, Start PLCAssistant once, wait for Started, then configure.
 
 From **0.1.6**, thin-integration copy failures no longer abort Soft-PLC start (they are logged and the editor still comes up). From **0.1.7**, App builds bust Docker layer cache on each `version` bump, and App start migrates any remaining `hass.components` MQTT subscribe on disk (stale-image escape hatch). **Restart Home Assistant Core** after App Update/reinstall so Core reloads `custom_components/plcassistant`.
+
+### Soft-PLC stuck `offline` / Start does nothing
+
+If the Lovelace board shows Soft-PLC **offline**, Mode **STOP**, Start permissive **Off**, and pressing Start has no effect:
+
+1. Confirm **Mosquitto** is running and HA’s **MQTT** integration is connected to it.
+2. Confirm **PLCAssistant** App is **Started** (log should show MQTT / scan activity). Soft-PLC and the thin integration must share the same `instance_id` (default `default`).
+3. **Update** the App to **0.1.14+**, then **Restart Home Assistant Core** so the thin integration reloads.
+4. Re-open the **PLCAssistant** sidebar board — within a couple of seconds Soft-PLC should show `stopped` and Start permissive **On** when healthy; then press **Start**.
+
+From **0.1.14**, the App heartbeats retained status and publishes an MQTT last-will `offline`; the integration caches MQTT payloads and hydrates sensors on add so a missed retained delivery no longer leaves the chip stuck offline forever.
 
 ### Update button shows but installed version stays old
 

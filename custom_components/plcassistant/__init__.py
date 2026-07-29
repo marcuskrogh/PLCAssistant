@@ -125,7 +125,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         CONF_INSTANCE_ID: instance_id,
         CONF_BINDINGS: bindings,
         CONF_MOCK_MODE: mock_mode,
+        # MQTT payload caches — filled on subscribe (incl. retained) before
+        # platform entities listen on the HA bus (SWD-136 hydrate-on-add).
         "out_values": {},
+        "status_payload": None,
         "unsubs": [],
     }
 
@@ -203,6 +206,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[DOMAIN][entry.entry_id]["unsubs"].append(unsub)
 
     # App scan status (retained) — powers sensor.plcassistant_status on the HMI.
+    # Cache the payload before firing so sensors that register later can hydrate
+    # (retained delivery often lands before async_forward_entry_setups).
     async def _on_status(msg) -> None:
         try:
             payload = msg.payload
@@ -212,6 +217,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 text = str(payload)
         except UnicodeDecodeError:
             return
+        store = hass.data[DOMAIN].get(entry.entry_id)
+        if store is not None:
+            store["status_payload"] = text
         hass.bus.async_fire(
             f"{DOMAIN}_status",
             {"payload": text, "entry_id": entry.entry_id},

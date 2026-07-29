@@ -24,6 +24,8 @@ class PahoMqttBus:
         username: str | None = None,
         password: str | None = None,
         client_id: str = "plcassistant-app",
+        will_topic: str | None = None,
+        will_payload: bytes | None = None,
     ) -> None:
         if mqtt is None:
             raise ImportError(
@@ -33,6 +35,9 @@ class PahoMqttBus:
         self._client = mqtt.Client(client_id=client_id, protocol=mqtt.MQTTv311)
         if username:
             self._client.username_pw_set(username, password or None)
+        # Soft-PLC disconnect → retained offline on the HMI status topic (SWD-136).
+        if will_topic and will_payload is not None:
+            self._client.will_set(will_topic, will_payload, qos=MQTT_QOS, retain=True)
         self._subs: dict[str, list[Callable[[str, bytes], None]]] = {}
         self._client.on_message = self._on_message
         self._client.connect(host, port, keepalive=60)

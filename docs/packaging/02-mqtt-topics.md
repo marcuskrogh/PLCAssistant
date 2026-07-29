@@ -30,6 +30,21 @@ Default `instance_id` = `default`.
 
 Tag names match the Soft-PLC image / binding table (e.g. `LT_TANK`, `CMD_SPEED`, `SP_LEVEL_REQ`).
 
+### App status topic (SWD-135 / SWD-136)
+
+JSON object, QoS **1**, **retain true**:
+
+```json
+{"state": "stopped", "mode": "STOP"}
+```
+
+| Field | Notes |
+|-------|-------|
+| `state` | `running` / `stopped` / `fault` / `offline` (legacy `reset` → treat as `stopped`) |
+| extras | Optional (e.g. `mode`, `error`) — informational for the HMI chip |
+
+Soft-PLC republishes retained status on mode changes and on a ~2 s heartbeat so late HA listeners recover. Live App MQTT clients register a last-will of `{"state":"offline"}` (retain) on this topic so disconnect surfaces as offline.
+
 ## Payload (JSON)
 
 ```json
@@ -48,7 +63,7 @@ Tag names match the Soft-PLC image / binding table (e.g. `LT_TANK`, `CMD_SPEED`,
 | `reason` | string / null | `ReasonCode` name when not GOOD (e.g. `unavailable`, `fault`) |
 | `ts` | number / null | Optional Unix time (seconds); informational |
 
-QoS: **1** (at least once). Retain: **false** for scan tags (image is refreshed each scan). Optional retain on `status`.
+QoS: **1** (at least once). Retain: **false** for scan tags (image is refreshed each scan). Retain **true** on `status` (boot + heartbeat + LWT).
 
 ## Code
 
