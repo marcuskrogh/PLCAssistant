@@ -1,8 +1,8 @@
-"""Shared HA-config bridge between Soft-PLC App and thin integration (SWD-139).
+"""Shared HA-config bridge between Soft-PLC App and thin integration (SWD-139+).
 
 Both sides mount the Home Assistant config directory. Soft-PLC writes a runtime
-snapshot; the integration polls it when MQTT is silent. Operator cmds travel
-the other way via a one-shot cmd file.
+snapshot; the integration polls it when MQTT is silent. Operator cmds and IN
+request tags (e.g. ``SP_LEVEL_REQ``) travel the other way via shared files.
 """
 
 from __future__ import annotations
@@ -15,6 +15,7 @@ from typing import Any
 
 RUNTIME_REL = "plcassistant/runtime.json"
 CMD_REL = "plcassistant/cmd.json"
+INPUTS_REL = "plcassistant/inputs.json"
 VALID_CMDS = frozenset({"start", "stop", "reset"})
 
 
@@ -42,6 +43,13 @@ def cmd_path(root: Path | None = None) -> Path | None:
     if base is None:
         return None
     return base / CMD_REL
+
+
+def inputs_path(root: Path | None = None) -> Path | None:
+    base = root if root is not None else ha_config_root()
+    if base is None:
+        return None
+    return base / INPUTS_REL
 
 
 def write_runtime_snapshot(snapshot: dict[str, Any], root: Path | None = None) -> bool:
@@ -114,15 +122,68 @@ def drain_cmd(root: Path | None = None) -> str | None:
     return cmd if cmd in VALID_CMDS else None
 
 
+def write_input_tag(
+    tag: str,
+    value: Any,
+    *,
+    status: str = "GOOD",
+    reason: str | None = None,
+    root: Path | None = None,
+) -> bool:
+    """Merge one operator IN tag into the retained inputs file (SWD-141)."""
+    name = str(tag or "").strip()
+    if not name:
+        return False
+    path = inputs_path(root)
+    if path is None:
+        return False
+    existing: dict[str, Any] = {}
+    if path.is_file():
+        try:
+            loaded = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                existing = loaded
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+            existing = {}
+    tags = existing.get("tags") if isinstance(existing.get("tags"), dict) else {}
+    tags = dict(tags)
+    tags[name] = {"value": value, "status": status, "reason": reason}
+    body = {"tags": tags, "ts": time.time()}
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(body, separators=(",", ":")), encoding="utf-8")
+        os.replace(tmp, path)
+        return True
+    except OSError:
+        return False
+
+
+def read_inputs(root: Path | None = None) -> dict[str, Any] | None:
+    """Read retained operator IN tags under HA config, or None."""
+    path = inputs_path(root)
+    if path is None or not path.is_file():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
 __all__ = [
     "CMD_REL",
+    "INPUTS_REL",
     "RUNTIME_REL",
     "VALID_CMDS",
     "cmd_path",
     "drain_cmd",
     "ha_config_root",
+    "inputs_path",
+    "read_inputs",
     "read_runtime_snapshot",
     "runtime_path",
     "write_cmd",
+    "write_input_tag",
     "write_runtime_snapshot",
 ]

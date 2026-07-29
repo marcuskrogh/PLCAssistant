@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from homeassistant.components.number import NumberEntity
 from homeassistant.config_entries import ConfigEntry
@@ -10,6 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import CONF_BINDINGS, CONF_INSTANCE_ID, CONF_MOCK_MODE, DOMAIN
+from .ha_config_bridge import write_input_tag
 from .mqtt_topics import tag_in_topic
 
 # Friendly operator ranges for known request tags (SWD-133).
@@ -115,6 +117,18 @@ class PlcAssistantRequestNumber(NumberEntity):
             },
             blocking=False,
         )
+        # Shared-config fallback when MQTT never reaches Soft-PLC (SWD-141).
+        store = self.hass.data.get(DOMAIN, {}).get(self._entry_id) or {}
+        root = store.get("config_root")
+        if isinstance(root, Path):
+            await self.hass.async_add_executor_job(
+                write_input_tag,
+                self._tag,
+                eng,
+                "GOOD",
+                None,
+                root,
+            )
         self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
