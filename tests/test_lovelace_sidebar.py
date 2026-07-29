@@ -228,7 +228,7 @@ def test_run_sh_refreshes_stock_missing_status_not_custom() -> None:
     assert "button.plcassistant_start" in text
     assert "seeded default" in text or "mqtt_broker=core-mosquitto" in text
     # Explicit old versions only — do not refresh merely missing version 3.
-    assert "plcassistant_dashboard_version: [12]" in text
+    assert "plcassistant_dashboard_version:[[:space:]]*[12]" in text
     assert "! grep -q 'plcassistant_dashboard_version: 3'" not in text
     # Regression: never refresh-on-newer (would clobber operator edits).
     assert 'src_dash}" -nt' not in text

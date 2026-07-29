@@ -53,6 +53,7 @@ def build_bus_from_options(
     options: dict[str, Any],
     *,
     instance_id: str | None = None,
+    ha_runtime: bool | None = None,
 ) -> MqttBus | None:
     """Return a live paho bus when MQTT is configured; None to skip."""
     if os.environ.get("PLCASSISTANT_MQTT", "1") in ("0", "false", "no"):
@@ -65,8 +66,9 @@ def build_bus_from_options(
     if not host:
         # HA App runtime must always try Supervisor Mosquitto — empty options.json
         # is falsy in Python and previously skipped MQTT forever (SWD-137).
-        ha_runtime = os.environ.get("PLCASSISTANT_HA_RUNTIME", "") == "1"
-        host = "core-mosquitto" if (options or ha_runtime) else ""
+        if ha_runtime is None:
+            ha_runtime = os.environ.get("PLCASSISTANT_HA_RUNTIME", "") == "1"
+        host = "core-mosquitto" if ha_runtime else ""
     if not host:
         return None
     port = int(options.get("mqtt_port") or os.environ.get("PLCASSISTANT_MQTT_PORT") or 1883)
@@ -239,10 +241,12 @@ class MqttScanLoop:
         self.bridge.start()
         self._publish_scan_status("stopped")
         self._last_status_heartbeat = time.monotonic()
+        self._alive = True
         thread = threading.Thread(target=self._run, name="mqtt-scan", daemon=True)
         self._thread = thread
         # stop() may clear self._thread between assign and .start() (SWD-137).
         if self._thread is not thread:
+            self._alive = False
             return
         thread.start()
         if self._thread is not thread:
@@ -293,9 +297,9 @@ class MqttScanLoop:
 
     def _run(self) -> None:
         # Do not resurrect a scan that stop() already cleared (SWD-137 race).
-        if self._thread is not threading.current_thread():
+        # ``_alive`` is set in start() — never flip it True here.
+        if self._thread is not threading.current_thread() or not self._alive:
             return
-        self._alive = True
         while self._alive:
             t0 = time.monotonic()
             try:
@@ -313,6 +317,7 @@ def _mqtt_supervisor(
     *,
     bus: MqttBus | None,
     period_s: float = 0.1,
+    ha_runtime: bool | None = None,
 ) -> MqttLifecycle:
     """Start scan loop immediately when bus given; else retry connect in background.
 
@@ -320,6 +325,8 @@ def _mqtt_supervisor(
     is deferred (live App must never block the HTTP thread on broker TCP).
     """
     life = MqttLifecycle()
+    if ha_runtime is None:
+        ha_runtime = os.environ.get("PLCASSISTANT_HA_RUNTIME", "") == "1"
 
     def _start_with(bus_obj: MqttBus) -> MqttScanLoop | None:
         if life.stopped():
@@ -351,7 +358,6 @@ def _mqtt_supervisor(
     # Want MQTT — retry until broker is up. HA App runtime always retries even
     # when options.json is missing/empty (defaults to core-mosquitto, SWD-137).
     host = str(options.get("mqtt_broker") or "")
-    ha_runtime = os.environ.get("PLCASSISTANT_HA_RUNTIME", "") == "1"
     if not host and not options and not ha_runtime:
         return life
 
@@ -365,7 +371,9 @@ def _mqtt_supervisor(
             flush=True,
         )
         while not life.stopped() and life.loop is None:
-            new_bus = build_bus_from_options(options, instance_id=instance_id)
+            new_bus = build_bus_from_options(
+                options, instance_id=instance_id, ha_runtime=ha_runtime
+            )
             # Re-check after a potentially blocking connect/build.
             if life.stopped():
                 return
@@ -401,6 +409,9 @@ def run_ha_runtime(
     Live App never blocks this thread on broker TCP connect — background retry
     owns connect; ``lifecycle.stop()`` cancels retry and stops a late loop.
     """
+    # Authoritative HA path — do not rely on env alone for Soft-PLC MQTT attach
+    # when options.json is empty (SWD-137).
+    os.environ["PLCASSISTANT_HA_RUNTIME"] = "1"
     options = load_options(options_path or os.environ.get("PLCASSISTANT_OPTIONS_PATH"))
     instance_id = str(
         options.get("instance_id")
@@ -412,7 +423,7 @@ def run_ha_runtime(
     # Bind the editor first so Ingress / host port respond even if MQTT is slow.
     server = run_app(host=host, port=port, state=state)
 
-    lifecycle = _mqtt_supervisor(options, instance_id, bus=bus)
+    lifecycle = _mqtt_supervisor(options, instance_id, bus=bus, ha_runtime=True)
     state.attach_runtime(lifecycle)
 
     if serve_forever:

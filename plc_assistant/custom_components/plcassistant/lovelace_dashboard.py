@@ -11,6 +11,7 @@ Mirrors how Core registers YAML dashboards from ``configuration.yaml``
 from __future__ import annotations
 
 import logging
+import re
 import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
@@ -46,8 +47,8 @@ def _is_stock_board_needing_status_upgrade(text: str) -> bool:
         return False
     if "sensor.plcassistant_status" not in text:
         return True
-    # Only refresh when an explicit older stock version is present.
-    if "plcassistant_dashboard_version: 1" in text or "plcassistant_dashboard_version: 2" in text:
+    # Only refresh when an explicit older stock version is present (not 10+).
+    if re.search(r"plcassistant_dashboard_version:\s*[12]\b", text):
         return True
     return False
 

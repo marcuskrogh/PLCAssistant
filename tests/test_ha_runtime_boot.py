@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import threading
 import time
 import urllib.request
@@ -296,7 +297,7 @@ def test_ha_runtime_empty_options_defaults_mosquitto_and_retries(monkeypatch):
     """SWD-137: missing/empty options must not skip Mosquitto forever."""
     from plcassistant.app.runtime import _mqtt_supervisor, build_bus_from_options
 
-    monkeypatch.setenv("PLCASSISTANT_HA_RUNTIME", "1")
+    monkeypatch.delenv("PLCASSISTANT_HA_RUNTIME", raising=False)
     monkeypatch.delenv("PLCASSISTANT_MQTT_BUS", raising=False)
 
     seen: dict[str, object] = {}
@@ -313,10 +314,12 @@ def test_ha_runtime_empty_options_defaults_mosquitto_and_retries(monkeypatch):
             return None
 
     monkeypatch.setattr("plcassistant.io.mqtt_paho.PahoMqttBus", FakeBus)
-    bus = build_bus_from_options({})
+    # Explicit ha_runtime — do not rely on env (run_ha_runtime path).
+    bus = build_bus_from_options({}, ha_runtime=True)
     assert bus is not None
     assert seen["host"] == "core-mosquitto"
     assert seen["port"] == 1883
+    assert build_bus_from_options({}) is None
 
     attached = threading.Event()
 
@@ -328,7 +331,7 @@ def test_ha_runtime_empty_options_defaults_mosquitto_and_retries(monkeypatch):
         "plcassistant.app.runtime.build_bus_from_options",
         capture,
     )
-    life = _mqtt_supervisor({}, "default", bus=None)
+    life = _mqtt_supervisor({}, "default", bus=None, ha_runtime=True)
     try:
         assert attached.wait(timeout=2.0), "MQTT retry never started for empty options"
         deadline = time.monotonic() + 2.0
@@ -338,6 +341,38 @@ def test_ha_runtime_empty_options_defaults_mosquitto_and_retries(monkeypatch):
     finally:
         life.stop()
 
+
+def test_run_ha_runtime_empty_options_attaches_without_env(tmp_path: Path, monkeypatch):
+    """SWD-137: run_ha_runtime itself must attach MQTT even if HA env unset."""
+    monkeypatch.delenv("PLCASSISTANT_HA_RUNTIME", raising=False)
+    monkeypatch.delenv("PLCASSISTANT_MQTT_BUS", raising=False)
+    options_path = tmp_path / "options.json"
+    # Missing options file → load_options returns {}.
+    assert not options_path.is_file()
+
+    attached = threading.Event()
+
+    def capture(options, **kwargs):
+        assert kwargs.get("ha_runtime") is True or os.environ.get("PLCASSISTANT_HA_RUNTIME") == "1"
+        attached.set()
+        return InMemoryMqttBus()
+
+    monkeypatch.setattr("plcassistant.app.runtime.build_bus_from_options", capture)
+    _server, life = run_ha_runtime(
+        host="127.0.0.1",
+        port=0,
+        options_path=str(options_path),
+        serve_forever=False,
+    )
+    try:
+        assert os.environ.get("PLCASSISTANT_HA_RUNTIME") == "1"
+        assert attached.wait(timeout=2.0), "run_ha_runtime did not retry MQTT"
+        deadline = time.monotonic() + 2.0
+        while life.loop is None and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert life.loop is not None
+    finally:
+        life.stop()
 
 def test_mqtt_scan_loop_start_stop_race_safe():
     """SWD-137: stop() between Thread assign and .start() must not AttributeError."""

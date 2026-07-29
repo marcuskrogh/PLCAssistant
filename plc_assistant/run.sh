@@ -125,7 +125,7 @@ install_lovelace_dashboard() {
     echo "PLCAssistant: Lovelace dashboard template at ${dst_dash}"
   elif grep -q 'button.plcassistant_start' "${dst_dash}" 2>/dev/null \
     && { ! grep -q 'sensor.plcassistant_status' "${dst_dash}" 2>/dev/null \
-      || grep -qE 'plcassistant_dashboard_version: [12]' "${dst_dash}" 2>/dev/null; }; then
+      || grep -qE 'plcassistant_dashboard_version:[[:space:]]*[12]([^0-9]|$)' "${dst_dash}" 2>/dev/null; }; then
     cp -a "${src_dash}" "${dst_dash}" || true
     echo "PLCAssistant: refreshed stock Lovelace dashboard at ${dst_dash}"
   fi
