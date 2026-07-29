@@ -65,17 +65,18 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-147 | Subtask | SWD-145: Remove App plant from live scan; plant tags as IN | Done | SWD-145 | docs/PLAN.md | — |
 | SWD-148 | Subtask | SWD-145: Bindings / HMI / file-bridge cleanup for plant OUT removal | Done | SWD-145 | docs/PLAN.md | — |
 | SWD-151 | Subtask | SWD-145: Tests + acceptance for ownership gap | Done | SWD-145 | docs/PLAN.md | — |
-| SWD-146 | Task | Configurable dynamics core + skid preset | In Review | Relates SWD-142 | docs/PLAN.md | `/implement SWD-146` |
-| SWD-156 | Subtask | SWD-146: Dynamics engine (ModelSpec + fixed-step stepper) | To Do | SWD-146 | docs/PLAN.md | — |
-| SWD-154 | Subtask | SWD-146: Skid preset + MockProcess oracle tests | To Do | SWD-146 | docs/PLAN.md | — |
-| SWD-152 | Subtask | SWD-146: HA simulator lifecycle + status/CMD_SPEED coupling | To Do | SWD-146 | docs/PLAN.md | — |
-| SWD-155 | Subtask | SWD-146: Plant Number ownership + HMI live-motion copy | To Do | SWD-146 | docs/PLAN.md | — |
-| SWD-153 | Subtask | SWD-146: Acceptance tests + packaging/docs/version | To Do | SWD-146 | docs/PLAN.md | — |
+| SWD-146 | Task | Configurable dynamics core + skid preset | In Progress | Relates SWD-142 | docs/PLAN.md | `/review-fix SWD-146` |
+| SWD-156 | Subtask | SWD-146: Dynamics engine (ModelSpec + fixed-step stepper) | In Progress | SWD-146 | docs/PLAN.md | — |
+| SWD-154 | Subtask | SWD-146: Skid preset + MockProcess oracle tests | In Progress | SWD-146 | docs/PLAN.md | — |
+| SWD-152 | Subtask | SWD-146: HA simulator lifecycle + status/CMD_SPEED coupling | In Progress | SWD-146 | docs/PLAN.md | — |
+| SWD-155 | Subtask | SWD-146: Plant Number ownership + HMI live-motion copy | In Progress | SWD-146 | docs/PLAN.md | — |
+| SWD-153 | Subtask | SWD-146: Acceptance tests + packaging/docs/version | In Progress | SWD-146 | docs/PLAN.md | — |
 | SWD-144 | Task | Explore theme: Unit-op library + custom equation authoring | To Do | Relates SWD-142 | docs/ROADMAP.md | After SWD-146 |
 | SWD-143 | Task | Explore theme: Integration mock UI + preset selection | To Do | Relates SWD-142 | docs/ROADMAP.md | After SWD-146 |
 
 ## Log
 
+- 2026-07-29 — Implement SWD-146: App 0.1.22; dynamics core + skid plant simulator; PR pending → In Review. Next `/review-fix SWD-146`.
 - 2026-07-29 — Define SWD-146: PLAN.md + Sub-tasks SWD-156/154/152/155/153; integration dynamics core + skid preset; Next `/implement SWD-146`.
 - 2026-07-29 — Shipped SWD-145 via PR #59 (0.1.20) + PR #60 (0.1.21 review-fix CLEAN 2 iter); Task Done; Next `/define SWD-146`.
 - 2026-07-29 — review-fix SWD-145 CLEAN after 2 iterations (iter1: 1B+4SF LOS/LWT/file/docs/tests; iter2: 0); Next `/ship SWD-145`.

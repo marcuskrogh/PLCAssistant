@@ -1,10 +1,11 @@
-"""Mock / binding number platforms — writable operator request tags only."""
+"""Mock / binding number platforms — writable operator request + plant nudges."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
+from homeassistant.components.mqtt import async_subscribe
 from homeassistant.components.number import NumberEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -14,7 +15,7 @@ from .const import CONF_BINDINGS, CONF_INSTANCE_ID, CONF_MOCK_MODE, DOMAIN
 from .ha_config_bridge import write_input_tag
 from .mqtt_topics import tag_in_topic
 
-# Friendly operator ranges for known IN tags (request SP + plant until SWD-146).
+# Friendly operator ranges for known IN tags (request SP + plant nudges).
 _TAG_META: dict[str, dict] = {
     "SP_LEVEL_REQ": {
         "name": "PLCAssistant Level setpoint",
@@ -53,6 +54,8 @@ _TAG_META: dict[str, dict] = {
         "default": 0.0,
     },
 }
+
+_PLANT_IN_TAGS = frozenset({"LT_TANK", "LT_RES", "FT_INLET"})
 
 
 def _object_id_from_entity(entity: str, fallback: str) -> str:
@@ -93,7 +96,7 @@ async def async_setup_entry(
 
 
 class PlcAssistantRequestNumber(NumberEntity):
-    """Writable operator request: setting publishes Soft-PLC tag IN."""
+    """Writable operator request / plant nudge Number."""
 
     _attr_should_poll = False
 
@@ -112,6 +115,7 @@ class PlcAssistantRequestNumber(NumberEntity):
         self._tag = tag
         self._scale = scale if scale else 1.0
         self._offset = offset
+        self._unsub = None
         meta = _TAG_META.get(tag, {})
         self._attr_name = meta.get("name", f"PLCAssistant {tag}")
         self._attr_unique_id = f"{entry_id}_{tag}_req"
@@ -131,9 +135,24 @@ class PlcAssistantRequestNumber(NumberEntity):
         else:
             self._attr_native_value = 0.0
 
+    def _plant_simulator(self):
+        store = self.hass.data.get(DOMAIN, {}).get(self._entry_id) or {}
+        return store.get("plant_simulator")
+
+    def _simulator_owns(self) -> bool:
+        if self._tag not in _PLANT_IN_TAGS:
+            return False
+        sim = self._plant_simulator()
+        return sim is not None and sim.owns_plant_tag(self._tag)
+
     async def async_set_native_value(self, value: float) -> None:
         self._attr_native_value = value
         eng = (float(value) * self._scale) + self._offset
+        # SWD-146: plant Numbers nudge the simulator — do not compete on MQTT IN.
+        if self._simulator_owns():
+            self._plant_simulator().set_tag(self._tag, eng)
+            self.async_write_ha_state()
+            return
         payload = json.dumps(
             {"value": eng, "status": "GOOD", "reason": None, "ts": None}
         )
@@ -165,7 +184,37 @@ class PlcAssistantRequestNumber(NumberEntity):
         self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
-        """Publish the initial request so Soft-PLC sees SP_LEVEL_REQ without a UI change."""
+        """Publish operator request, or subscribe to simulator plant IN for display."""
         await super().async_added_to_hass()
+        if self._simulator_owns():
+
+            async def _on_plant_in(msg) -> None:
+                try:
+                    raw = msg.payload
+                    text = raw.decode("utf-8") if isinstance(raw, bytes) else str(raw)
+                    body = json.loads(text or "{}")
+                    if not isinstance(body, dict) or "value" not in body:
+                        return
+                    eng = float(body["value"])
+                except (TypeError, ValueError, UnicodeDecodeError, json.JSONDecodeError):
+                    return
+                # Invert binding scale/offset for entity display.
+                display = (eng - self._offset) / self._scale if self._scale else eng
+                self._attr_native_value = display
+                self.async_write_ha_state()
+
+            self._unsub = await async_subscribe(
+                self.hass,
+                tag_in_topic(self._instance_id, self._tag),
+                _on_plant_in,
+                qos=0,
+            )
+            return
         if self._attr_native_value is not None:
             await self.async_set_native_value(float(self._attr_native_value))
+
+    async def async_will_remove_from_hass(self) -> None:
+        if self._unsub is not None:
+            self._unsub()
+            self._unsub = None
+        await super().async_will_remove_from_hass()

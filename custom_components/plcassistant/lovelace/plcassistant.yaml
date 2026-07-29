@@ -1,4 +1,4 @@
-# plcassistant_dashboard_version: 9
+# plcassistant_dashboard_version: 10
 title: PLCAssistant
 views:
   - title: Skid
@@ -19,7 +19,7 @@ views:
             name: Trip active
       - type: markdown
         content: |
-          **PLCAssistant** — Soft-PLC skid HMI. Soft-PLC must show **stopped** (not offline) before Start works. **Start ready** is On only while idle and healthy; it correctly shows Off while Mode is RUNNING (Start already succeeded). From App **0.1.21**, plant levels/flow are Soft-PLC **IN** (integration-owned; static until the stand-alone simulator in SWD-146). Soft-PLC no longer synthesizes process motion. Update App, wait for Core reload, then reopen this board. Confirm Mosquitto + matching `instance_id` if still offline. Change the **Level setpoint**, press **Start**, then watch pump speed and active setpoints.
+          **PLCAssistant** — Soft-PLC skid HMI. Soft-PLC must show **stopped** (not offline) before Start works. **Start ready** is On only while idle and healthy; it correctly shows Off while Mode is RUNNING (Start already succeeded). From App **0.1.22**, the thin integration runs the **skid plant simulator** and publishes tank/reservoir/flow as Soft-PLC **IN** over MQTT. Soft-PLC stays mock-unaware (`HeldProcess`). Plant Numbers display live motion (nudges allowed). Update App, wait for Core reload, then reopen this board. Confirm Mosquitto + matching `instance_id` if still offline. Change the **Level setpoint**, press **Start**, then watch levels, inlet flow, and pump speed.
       - type: entities
         title: Operate
         show_header_toggle: false
@@ -33,7 +33,7 @@ views:
           - entity: number.plcassistant_sp_level_req
             name: Level setpoint (request)
       - type: entities
-        title: Process (IN — static until simulator)
+        title: Process (IN — live simulator)
         show_header_toggle: false
         entities:
           - entity: number.plcassistant_lt_tank_in
@@ -53,11 +53,15 @@ views:
           - entity: sensor.plcassistant_sp_flow
             name: Active flow SP
       - type: history-graph
-        title: Speed & setpoints
+        title: Levels, speed & setpoints
         hours_to_show: 1
         entities:
           - entity: number.plcassistant_lt_tank_in
             name: Tank
+          - entity: number.plcassistant_lt_res_in
+            name: Reservoir
+          - entity: number.plcassistant_ft_inlet_in
+            name: Inlet flow
           - entity: sensor.plcassistant_cmd_speed
             name: Speed
           - entity: sensor.plcassistant_sp_flow

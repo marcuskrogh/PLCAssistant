@@ -52,6 +52,8 @@ def test_manifest_mqtt_dependency_and_config_keys():
     assert "Platform.NUMBER" in init_text
     assert "Platform.BUTTON" in init_text
     assert "FT_INLET" in init_text
+    assert "HassPlantSimulator" in init_text
+    assert "plant_simulator" in init_text
     # hass.components was removed in modern HA Core; subscribe via mqtt helper.
     assert "hass.components" not in init_text
     assert "from homeassistant.components.mqtt import async_subscribe" in init_text
@@ -88,6 +90,8 @@ def test_platforms_publish_and_subscribe_paths():
     assert "async_set_native_value" in number
     assert "PlcAssistantRequestNumber" in number
     assert "SP_LEVEL_REQ" in number
+    assert "_simulator_owns" in number
+    assert "set_tag" in number
 
     sensor = (CC / "sensor.py").read_text(encoding="utf-8")
     assert "_tag_out" in sensor
@@ -106,6 +110,7 @@ def test_platforms_publish_and_subscribe_paths():
     assert "number.plcassistant_lt_tank_in" in lovelace
     assert "sensor.plcassistant_status" in lovelace
     assert "sensor.plcassistant_mode" in lovelace
+    assert "live simulator" in lovelace.lower() or "0.1.22" in lovelace
     assert 'entity_id = f"number.' in number or "suggested_object_id" in number
     assert "plcassistant_sp_level_req" in number
     assert "plcassistant_lt_tank_in" in number

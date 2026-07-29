@@ -9,7 +9,7 @@
 | Phase | Theme | Why it matters | Deferred to | Issue |
 |-------|-------|----------------|--------------|-------|
 | 1 | Soft-PLC ↔ integration mock ownership | Docs put plant under the integration; runtime hard-wires `Skid`/`MockProcess` in the App — this choice shapes everything else | **Done** (App 0.1.21) | [SWD-145](https://marcusknielsen.atlassian.net/browse/SWD-145) |
-| 2 | Configurable dynamics core + skid preset | States/tags + collected ODE at scan period; skid as first preset | define → implement | [SWD-146](https://marcusknielsen.atlassian.net/browse/SWD-146) |
+| 2 | Configurable dynamics core + skid preset | States/tags + collected ODE at scan period; skid as first preset | **In Progress** (App 0.1.22) | [SWD-146](https://marcusknielsen.atlassian.net/browse/SWD-146) |
 | 3 | Unit-op library + custom equation authoring | Easy mocks vs expressive custom DEs | define | [SWD-144](https://marcusknielsen.atlassian.net/browse/SWD-144) |
 | 4 | Integration mock UI + preset selection | Configure and select presets in HA, not only in code | define | [SWD-143](https://marcusknielsen.atlassian.net/browse/SWD-143) |
 
@@ -33,4 +33,4 @@
 - Prior initiative: [SWD-81](https://marcusknielsen.atlassian.net/browse/SWD-81) (Done)
 
 ## Next
-`/implement SWD-146` — after define approval of [`docs/PLAN.md`](PLAN.md)
+`/review-fix SWD-146` — then `/ship SWD-146` / `/define SWD-144`

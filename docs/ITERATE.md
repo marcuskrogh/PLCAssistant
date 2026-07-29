@@ -1,15 +1,16 @@
-# Iterate notes: Soft-PLC ↔ integration mock ownership (SWD-145)
+# Iterate notes: Configurable dynamics core + skid preset (SWD-146)
 
-**Done** — App **0.1.21**; shipped PR [#59](https://github.com/marcuskrogh/PLCAssistant/pull/59) (0.1.20) + review-fix PR [#60](https://github.com/marcuskrogh/PLCAssistant/pull/60) (`53bdeda`)
+**In Progress** — App **0.1.22**; implement on `cursor/swd-146-dynamics-core-define-33f4`
 
-## Shipped
-1. Soft-PLC mock-unaware live path (`HeldProcess`); plant PVs MQTT IN
-2. MQTT status / LWT include `scan_period_s`
-3. Bindings / HMI / file-bridge cleaned; plant motion dark until SWD-146
-4. review-fix: real plant LOS after sample trips; plant Numbers do not write `inputs.json`
+## Shipped in this PR
+1. Integration dynamics core (`ModelSpec`, fixed-step ≤100 ms) under `custom_components/plcassistant/dynamics/`
+2. Skid preset ported from `MockProcess` (oracle tests at 1e-9)
+3. HA `HassPlantSimulator`: status/`scan_period_s`, `CMD_SPEED` OUT → plant IN; freeze on offline/fault; CMD watchdog
+4. Plant Numbers display/nudge only (no competing MQTT while simulator owns)
+5. Lovelace v10 live-motion copy; packaging docs updated; dual trees synced
 
 ## Operator note
-Update App to **0.1.21+**, wait for Core reload. Expect static plant Numbers until SWD-146; Start still drives CVs/status.
+Update App to **0.1.22+**, wait for Core reload. Expect live tank/reservoir/flow on Start.
 
 ## Next
-`/define SWD-146` — Configurable dynamics core + skid preset
+`/review-fix SWD-146` — then `/ship SWD-146`

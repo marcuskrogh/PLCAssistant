@@ -2,9 +2,8 @@
 
 Live App path is **mock-unaware**: plant PVs arrive as MQTT IN, control/safety
 still run on ``Skid``, and Soft-PLC publishes CVs/status as OUT. Plant physics
-live in the thin integration simulator (SWD-146); until then process values
-stay static (``HeldProcess`` + IN overrides). ``MockProcess`` remains for
-offline / unit tests only — not constructed here.
+live in the thin integration simulator (SWD-146 skid preset). ``MockProcess``
+remains for offline / unit tests only — not constructed here.
 """
 
 from __future__ import annotations
