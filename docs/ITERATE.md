@@ -1,7 +1,7 @@
 # Iterate: Lovelace HMI + Soft-PLC plant on Start
 
 ## Status
-**In Review** — App **0.1.11** via [PR #46](https://github.com/marcuskrogh/PLCAssistant/pull/46)
+**Done** — App **0.1.11** shipped via [PR #46](https://github.com/marcuskrogh/PLCAssistant/pull/46)
 
 ## Prior work
 - Task: SWD-132 (PR #44, App 0.1.10 App operator dashboard — wrong HMI home)
@@ -26,7 +26,7 @@ After 0.1.10:
 - Field (non-mock) sensor binding UI
 
 ## Next
-`/review-fix SWD-133` — Review and auto-fix until clean
+`/iterate` — next operator feedback
 
 ## Tracker
 - Task: [SWD-133](https://marcusknielsen.atlassian.net/browse/SWD-133)
