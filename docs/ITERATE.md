@@ -1,7 +1,7 @@
 # Iterate: Operator dashboard default + major App UI refresh
 
 ## Status
-**In Review** — App **0.1.10** via [PR #44](https://github.com/marcuskrogh/PLCAssistant/pull/44)
+**Done** — App **0.1.10** shipped via [PR #44](https://github.com/marcuskrogh/PLCAssistant/pull/44)
 
 ## Prior work
 - Task: SWD-131 (PR #43, App 0.1.9 Ingress + thin-integration tags)
@@ -40,4 +40,4 @@ After SWD-131 the Soft-PLC runs, but the App UI is still a crude Block Editor-on
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/44
 
 ## Next
-`/review-fix SWD-132` — Review and auto-fix until clean
+`/iterate` — next operator feedback
