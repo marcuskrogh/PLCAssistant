@@ -85,7 +85,7 @@ Then:
 
 The App and thin integration **share one version** (`plc_assistant/config.yaml` ≡ `custom_components/plcassistant/manifest.json`). After an App Update, restart Core so HA reloads the matching integration.
 
-On Start the App also copies a Lovelace template to `/config/dashboards/plcassistant.yaml` (see `dashboards/plcassistant_README.md`). Add it under **Settings → Dashboards** (paste YAML or YAML-mode include) and extend it as your SCADA board.
+On Start the App also copies a Lovelace template to `/config/dashboards/plcassistant.yaml`. The thin integration **registers it in the HA sidebar** automatically (no paste) — look for **PLCAssistant** after Core restart.
 
 Manual copy is no longer required on HA OS. Fallback if the config mount is unavailable: copy [`custom_components/plcassistant`](custom_components/plcassistant) into `/config/custom_components/` yourself (Samba / SSH / Studio Code Server).
 
@@ -93,7 +93,7 @@ Manual copy is no longer required on HA OS. Fallback if the config mount is unav
 
 1. Open the App UI (Ingress or port 8099) — the **program editor** should load with a populated **Block Library** (if Ingress shows `Error: 404`, Update the App and hard-refresh).
 2. In HA, confirm **Level setpoint** (`number.plcassistant_sp_level_req`), process **sensors**, and Start/Stop/Reset buttons under the PLCAssistant integration.
-3. Open / paste the Lovelace board from `dashboards/plcassistant.yaml`. Set the level setpoint, press **Start** — tank level, flow SP, and pump speed should move.
+3. Open **PLCAssistant** in the HA **sidebar** — set the level setpoint, press **Start** — tank level, flow SP, and pump speed should move.
 4. Press **Stop** / **Reset** (or call services `plcassistant.start` / `stop` / `reset`) — these publish command pulses to the App.
 5. Place or edit a program in the App editor, restart the App, and confirm it reloads from persistent storage (`/data/program.json` inside the App).
 

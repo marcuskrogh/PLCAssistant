@@ -1,35 +1,24 @@
-# Iterate: Lovelace HMI + Soft-PLC plant on Start
+# Iterate: Auto-register Lovelace dashboard in HA sidebar
 
 ## Status
-**Done** — App **0.1.11** shipped via [PR #46](https://github.com/marcuskrogh/PLCAssistant/pull/46)
+**In Progress** — App **0.1.12** (branch `cursor/swd-134-sidebar-lovelace-dashboard-1bbe`)
 
 ## Prior work
-- Task: SWD-132 (PR #44, App 0.1.10 App operator dashboard — wrong HMI home)
-- Spec: `docs/wedge/02-io-hmi-contract.md`, `docs/packaging/01-shape.md`
+- Task: SWD-133 (PR #46, App 0.1.11 — Lovelace template still required copy/paste)
 
 ## Problem
-After 0.1.10:
-
-1. Start looks idle — App demo scan is not wedge cascade + plant; `SP_FLOW`/`CMD_SPEED` stay 0.
-2. Setpoints appear uneditable — HA Numbers for Soft-PLC **OUT** tags; writable request is `SP_LEVEL_REQ`.
-3. Operator wanted **Lovelace** as HMI/SCADA, not an App-owned dashboard; App should be the program editor.
+Default Lovelace board required manual paste from `/config/dashboards/plcassistant.yaml`. Operator wants the dashboard **built and shown on the sidebar** automatically.
 
 ## Acceptance criteria
-1. App Ingress default is the **Program / block editor** (no Soft-PLC operator SCADA as primary).
-2. Thin integration ships a **default Lovelace dashboard** YAML under `lovelace/`; App copies it to HA `dashboards/plcassistant.yaml` with a short README.
-3. Writable setpoint is `number.plcassistant_sp_level_req`; Soft-PLC-owned tags are **sensors**.
-4. Mock Soft-PLC plant + Start moves process (`SP_FLOW` / `CMD_SPEED` / tank) via `SkidImageLogic`.
-5. App + integration version **0.1.11**.
-
-## Out of scope
-- Full auto-registration of Lovelace into HA storage UI (paste/import documented)
-- Field (non-mock) sensor binding UI
-
-## Next
-`/iterate` — next operator feedback
+1. After App Update + Core restart + PLCAssistant integration loaded, **PLCAssistant** appears in the HA **sidebar** (no Settings → Dashboards paste).
+2. Dashboard shows Start/Stop/Reset, Level setpoint, and live process sensors.
+3. Docs no longer treat copy/paste as the primary install path.
+4. App + integration version **0.1.12**.
 
 ## Tracker
-- Task: [SWD-133](https://marcusknielsen.atlassian.net/browse/SWD-133)
-- Relates: SWD-132
-- Branch: `cursor/swd-133-lovelace-hmi-plant-1bbe`
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/46
+- Task: [SWD-134](https://marcusknielsen.atlassian.net/browse/SWD-134)
+- Relates: SWD-133
+- Branch: `cursor/swd-134-sidebar-lovelace-dashboard-1bbe`
+
+## Next
+PR → `/review-fix SWD-134`

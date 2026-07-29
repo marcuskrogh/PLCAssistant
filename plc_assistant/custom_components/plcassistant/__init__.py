@@ -178,6 +178,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[DOMAIN][entry.entry_id]["unsubs"].append(unsub)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # Default Lovelace board in the HA sidebar (SWD-134) — no copy/paste.
+    try:
+        from .lovelace_dashboard import async_setup_sidebar_dashboard
+
+        await async_setup_sidebar_dashboard(hass)
+    except Exception:  # noqa: BLE001 — never block entity setup on dashboard
+        import logging
+
+        logging.getLogger(__name__).exception(
+            "PLCAssistant: sidebar Lovelace dashboard setup failed"
+        )
+
     return True
 
 

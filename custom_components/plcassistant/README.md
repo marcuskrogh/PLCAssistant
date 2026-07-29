@@ -5,7 +5,7 @@ Home Assistant custom component that owns:
 - Entity ↔ Soft-PLC tag **bindings**
 - **Mock / sim** entities (writable Number for request SPs; read-only Sensors for Soft-PLC OUT)
 - Operator **button** entities and services for **start / stop / reset** (MQTT cmd topics)
-- Default **Lovelace** dashboard template (`lovelace/plcassistant.yaml`)
+- Default **Lovelace** dashboard registered in the **HA sidebar** (`lovelace_dashboard.py`)
 
 Default mock bindings (wedge process I/O):
 
@@ -19,12 +19,12 @@ Default mock bindings (wedge process I/O):
 | `SP_LEVEL` | OUT | `sensor.plcassistant_sp_level` | Active level setpoint |
 | `SP_FLOW` | OUT | `sensor.plcassistant_sp_flow` | Active flow setpoint |
 
-Talks to the Soft-PLC **App** over MQTT (`dependencies: ["mqtt"]`). Full install steps: [`README.md`](../../README.md). Packaging contract: [`docs/packaging/`](../../docs/packaging/README.md).
+Talks to the Soft-PLC **App** over MQTT (`dependencies: ["mqtt", "frontend", "lovelace"]`). Full install steps: [`README.md`](../../README.md). Packaging contract: [`docs/packaging/`](../../docs/packaging/README.md).
 
 **Version:** always matches the PLCAssistant App (`plc_assistant/config.yaml` ↔ this `manifest.json`).
 
 **Install (HA OS):** starting the PLCAssistant App copies this folder into
-`/config/custom_components/plcassistant/` and refreshes
-`/config/dashboards/plcassistant.yaml`. Restart Core once, then add the
-integration under Devices & services, then add the Lovelace board (see
-`dashboards/plcassistant_README.md`).
+`/config/custom_components/plcassistant/`. Restart Core once, then add the
+integration under Devices & services. The integration installs
+`/config/dashboards/plcassistant.yaml` (if missing) and adds **PLCAssistant**
+to the sidebar — no paste step.
