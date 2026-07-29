@@ -1,37 +1,33 @@
-# Iterate: HMI zeros on SP_LEVEL/SP_FLOW/LT_RES + clarify PERM_OK while RUNNING
+# Iterate: Level setpoint request does not update Active level SP
 
 ## Status
-**Done** — App **0.1.18**; shipped PR [#56](https://github.com/marcuskrogh/PLCAssistant/pull/56)
+**Done** — App **0.1.19**; shipped PR [#57](https://github.com/marcuskrogh/PLCAssistant/pull/57)
 
 ## Prior work
-- Task: SWD-139 (PR #55, App 0.1.17 — HA-config file bridge)
-- Spec context: prior ITERATE.md (SWD-139)
+- Task: SWD-140 (PR #56, App 0.1.18 — OUT file-bridge tags + Start ready)
+- Spec context: prior ITERATE.md (SWD-140)
 
 ## Problem
-After SWD-139 / App **0.1.17**, Soft-PLC runs and tank/flow/speed move, but:
-
-1. **Start permissive** stays **Off** while Soft-PLC is `running` (operator unsure if correct; Start still worked).
-2. **Active level SP**, **Active flow SP**, and **Reservoir level** stay **0.0** while tank/flow/speed show live values.
+Operator sets **Level setpoint** to **0.3 m**, Stop+Start, but **Active level SP** stays **0.2 m**. Process PVs and Active flow SP otherwise move (file bridge OUT path works).
 
 ## Root cause
-1. `PERM_OK` is intentionally false whenever MODE is RUNNING (safety story) — only meaningful as Start-ready when STOP. HMI label/help does not explain this.
-2. SWD-139 file bridge only mirrors `MODE`/`PERM_OK`/`TRIP_ACTIVE`/`LT_TANK`/`FT_INLET`/`CMD_SPEED`. When MQTT is silent, `SP_LEVEL`/`SP_FLOW`/`LT_RES` never hydrate and stay at entity default 0.0.
+MQTT-silent file bridge carries Start/Stop/Reset and OUT tags, but not operator IN `SP_LEVEL_REQ`. The number entity only MQTT-publishes; Soft-PLC keeps image default **0.20 m**.
 
 ## Acceptance criteria
-1. File bridge (App write + integration poll) includes `SP_LEVEL`, `SP_FLOW`, `LT_RES` (and other Soft-PLC OUT HMI tags).
-2. Lovelace clarifies Start permissive = Start-ready when idle; Off while RUNNING is expected.
-3. After Update **0.1.18** + Core reload: while running near SP 0.2 m, Active level SP ≈ request, Active flow SP and Reservoir are non-zero (healthy mock).
-4. App + integration version **0.1.18**.
+1. HA writes `SP_LEVEL_REQ` into shared HA-config inputs file when Level setpoint changes (in addition to MQTT).
+2. Soft-PLC applies file IN tags each scan; MQTT still overrides when present.
+3. After Update **0.1.19** + Core reload: set Level setpoint to 0.3 m, Stop+Start → Active level SP ≈ 0.3 m.
+4. App + integration version **0.1.19**.
 
 ## Out of scope
-- Changing PERM_OK semantics (stays Off while RUNNING by design).
-- Replacing MQTT; file bridge remains secondary fallback.
+- Fixing Mosquitto so MQTT alone delivers IN tags.
+- Changing cascade/control math.
 
 ## Tracker
-- Task: [SWD-140](https://marcusknielsen.atlassian.net/browse/SWD-140)
-- Relates: SWD-139
-- Branch: `cursor/swd-140-hmi-sp-tags-perm-33f4`
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/56
+- Task: [SWD-141](https://marcusknielsen.atlassian.net/browse/SWD-141)
+- Relates: SWD-140
+- Branch: `cursor/swd-141-sp-level-req-file-33f4`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/57
 
 ## Next
 Done — phase closed.

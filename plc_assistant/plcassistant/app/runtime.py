@@ -11,10 +11,11 @@ from typing import Any, Callable
 from plcassistant.app.default_image import declare_default_image
 from plcassistant.app.server import AppState, run_app
 from plcassistant.app.skid_scan import SkidImageLogic
-from plcassistant.io.ha_config_bridge import drain_cmd, write_runtime_snapshot
+from plcassistant.io.ha_config_bridge import drain_cmd, read_inputs, write_runtime_snapshot
 from plcassistant.io.image import IoImage
 from plcassistant.io.mqtt_bridge import InMemoryMqttBus, MqttBus, MqttIoBridge
 from plcassistant.io.mqtt_topics import DEFAULT_INSTANCE_ID
+from plcassistant.io.quality import QualityStatus, ReasonCode
 
 
 def load_options(path: str | None) -> dict[str, Any]:
@@ -258,6 +259,36 @@ class MqttScanLoop:
         ):
             self._last_file_bridge = time.monotonic()
 
+    def _apply_file_inputs(self) -> None:
+        """Apply retained HA-config IN tags (SP_LEVEL_REQ) into the image (SWD-141)."""
+        snap = read_inputs()
+        if not snap:
+            return
+        tags = snap.get("tags") if isinstance(snap.get("tags"), dict) else {}
+        known = set(self.image.names())
+        for name, body in tags.items():
+            if name not in known or not isinstance(body, dict) or "value" not in body:
+                continue
+            status_raw = str(body.get("status") or "GOOD").upper()
+            try:
+                status = QualityStatus[status_raw]
+            except KeyError:
+                status = QualityStatus.GOOD
+            reason = None
+            reason_raw = body.get("reason")
+            if reason_raw:
+                try:
+                    reason = ReasonCode(str(reason_raw))
+                except ValueError:
+                    try:
+                        reason = ReasonCode[str(reason_raw).upper()]
+                    except KeyError:
+                        reason = None
+            try:
+                self.image.apply_input(name, body.get("value"), status, reason)
+            except Exception:  # noqa: BLE001 — best-effort IN hydrate
+                continue
+
     def _apply_commands(self, cmds: tuple[str, ...]) -> None:
         enqueue = getattr(self.logic, "enqueue_operator", None)
         for name in cmds:
@@ -310,6 +341,9 @@ class MqttScanLoop:
         file_cmd = drain_cmd()
         if file_cmd:
             self.bridge.enqueue_command(file_cmd)
+        # Retained operator IN tags (SP_LEVEL_REQ) when MQTT is silent — SWD-141.
+        # Apply before MQTT so a live broker still wins on the same scan.
+        self._apply_file_inputs()
         self.bridge.apply_inputs(self.image, clear=True)
         drained = self.bridge.drain_commands()
         if drained:

@@ -1,4 +1,4 @@
-# plcassistant_dashboard_version: 6
+# plcassistant_dashboard_version: 7
 title: PLCAssistant
 views:
   - title: Skid
@@ -19,7 +19,7 @@ views:
             name: Trip active
       - type: markdown
         content: |
-          **PLCAssistant** — Soft-PLC skid HMI. Soft-PLC must show **stopped** (not offline) before Start works. **Start ready** is On only while idle and healthy; it correctly shows Off while Mode is RUNNING (Start already succeeded). After App Update **0.1.18+**, status and process tags (tank, reservoir, flow, speed, active SPs) also sync via a shared config file when MQTT is quiet — Update App, wait for Core reload, then reopen this board. Confirm Mosquitto + matching `instance_id` if still offline. Change the **Level setpoint**, press **Start**, then watch tank level, flow, speed, and active setpoints.
+          **PLCAssistant** — Soft-PLC skid HMI. Soft-PLC must show **stopped** (not offline) before Start works. **Start ready** is On only while idle and healthy; it correctly shows Off while Mode is RUNNING (Start already succeeded). After App Update **0.1.19+**, Level setpoint requests and process tags also sync via a shared config file when MQTT is quiet — change the setpoint, wait a moment, then Active level SP should match. Update App, wait for Core reload, then reopen this board. Confirm Mosquitto + matching `instance_id` if still offline. Change the **Level setpoint**, press **Start**, then watch tank level, flow, speed, and active setpoints.
       - type: entities
         title: Operate
         show_header_toggle: false
