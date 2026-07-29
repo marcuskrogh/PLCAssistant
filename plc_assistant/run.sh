@@ -103,8 +103,8 @@ install_lovelace_dashboard() {
   fi
   mkdir -p "${HA_CONFIG}/dashboards" || return 0
   dst_dash="${HA_CONFIG}/dashboards/plcassistant.yaml"
-  # Refresh when missing or bundled file is newer.
-  if [ ! -f "${dst_dash}" ] || [ "${src_dash}" -nt "${dst_dash}" ]; then
+  # Never clobber operator edits — integration registers the sidebar panel.
+  if [ ! -f "${dst_dash}" ]; then
     cp -a "${src_dash}" "${dst_dash}" || true
     echo "PLCAssistant: Lovelace dashboard template at ${dst_dash}"
   fi
