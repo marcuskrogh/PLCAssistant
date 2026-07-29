@@ -1,7 +1,7 @@
 # Iterate: Soft-PLC HMI stuck offline — Start does nothing
 
 ## Status
-**In Review** — App **0.1.14**; PR [#51](https://github.com/marcuskrogh/PLCAssistant/pull/51)
+**Done** — shipped PR [#51](https://github.com/marcuskrogh/PLCAssistant/pull/51); App **0.1.14**
 
 ## Prior work
 - Task: SWD-135 (PR #49, App 0.1.13 — Lovelace status + Start/MODE wiring)
@@ -30,7 +30,10 @@ Root cause: thin integration subscribes to the retained App `status` topic **bef
 - Task: [SWD-136](https://marcusknielsen.atlassian.net/browse/SWD-136)
 - Relates: SWD-135
 - Branch: `cursor/swd-136-soft-plc-offline-start-33f4`
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/51
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/51 (merged)
+
+## Ship
+Merged to `main` — App + integration **0.1.14** status cache/hydrate + Soft-PLC heartbeat/LWT.
 
 ## Next
-`/review-fix SWD-136` — Review and auto-fix until clean
+Done — phase closed.
