@@ -112,7 +112,9 @@ def test_get_runtime_returns_tags(app_server):
     _, base_url, _ = app_server
     status, data = _json_get(base_url + "/api/runtime")
     assert status == 200
-    assert data["status"] in ("running", "stopped", "offline")
+    assert data["status"] == "offline"
+    assert data["scanning"] is False
+    assert data["mqtt"] is False
     assert "tags" in data
     assert "LT_TANK" in data["tags"]
     assert "FT_INLET" in data["tags"]
@@ -120,16 +122,20 @@ def test_get_runtime_returns_tags(app_server):
     assert data["tags"]["LT_TANK"]["status"] in ("GOOD", "BAD", "UNCERTAIN")
 
 
-def test_post_cmd_start_stop_reset(app_server):
+def test_post_cmd_offline_stays_offline(app_server):
+    """Without MQTT, cmds must not claim a running scan (mqtt:false → offline)."""
     _, base_url, _ = app_server
     status, data = _json_request(base_url + "/api/cmd", "POST", {"name": "start"})
     assert status == 200
-    assert data["scanning"] is True
+    assert data["status"] == "offline"
+    assert data["scanning"] is False
+    assert data["mqtt"] is False
     status, data = _json_request(base_url + "/api/cmd", "POST", {"name": "stop"})
     assert status == 200
-    assert data["scanning"] is False
+    assert data["status"] == "offline"
     status, data = _json_request(base_url + "/api/cmd", "POST", {"name": "reset"})
     assert status == 200
+    assert data["status"] == "offline"
     assert data["scanning"] is False
     status, bad = _json_request(base_url + "/api/cmd", "POST", {"name": "nope"})
     assert status == 400

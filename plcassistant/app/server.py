@@ -29,6 +29,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from plcassistant.app._canvas import get_canvas_html
+from plcassistant.app.default_image import declare_default_image
 from plcassistant.io.mqtt_entity_bridge import default_wedge_binding_config
 from plcassistant.io.mqtt_topics import DEFAULT_INSTANCE_ID
 from plcassistant.surface.apply import ProgramLoader
@@ -73,10 +74,7 @@ class AppState:
         self.program_path = program_path
         self.instance_id: str = DEFAULT_INSTANCE_ID
         self._mqtt_life: Any = None
-        from plcassistant.app.runtime import declare_default_image
-
         self._fallback_image = declare_default_image()
-        self._fallback_scanning = False
         loaded: dict[str, Any] | None = initial_program
         if loaded is None and program_path and os.path.isfile(program_path):
             try:
@@ -104,28 +102,42 @@ class AppState:
         """Attach MQTT scan lifecycle so the UI can read tags and issue cmds."""
         self._mqtt_life = lifecycle
 
+    def _scan_loop(self) -> Any | None:
+        life = self._mqtt_life
+        if life is None:
+            return None
+        return getattr(life, "loop", None)
+
     def runtime_snapshot(self) -> dict[str, Any]:
-        """JSON-serialisable Soft-PLC status for the operator dashboard."""
-        loop = None
-        if self._mqtt_life is not None:
-            loop = getattr(self._mqtt_life, "loop", None)
+        """JSON-serialisable Soft-PLC status for the operator dashboard.
+
+        Status vocabulary for the dashboard chip:
+        - ``running`` / ``stopped`` — MQTT scan loop attached
+        - ``offline`` — no MQTT loop yet (never claim scan active here)
+        Scan-thread faults publish on the MQTT status topic; they are not a
+        separate chip enum until the UI reads that topic.
+        """
+        loop = self._scan_loop()
         units = {
             name: meta.get("unit")
             for name, meta in default_wedge_binding_config()["tags"].items()
         }
         if loop is not None:
             image = loop.image
+            snap_all = image.snapshot()
             scanning = bool(loop.scanning)
             status = "running" if scanning else "stopped"
             mqtt = True
         else:
             image = self._fallback_image
-            scanning = self._fallback_scanning
-            status = "offline" if not scanning else "running"
+            snap_all = image.snapshot()
+            # No attached scan: stay offline; do not imply an active Soft-PLC.
+            scanning = False
+            status = "offline"
             mqtt = False
         tags: dict[str, Any] = {}
         for name in image.names():
-            snap = image.snapshot()[name]
+            snap = snap_all[name]
             reason = snap.quality.reason.value if snap.quality.reason else None
             tags[name] = {
                 "value": snap.value,
@@ -142,25 +154,20 @@ class AppState:
         }
 
     def issue_cmd(self, name: str) -> dict[str, Any]:
-        """Start / stop / reset via scan loop, or local fallback when offline."""
+        """Start / stop / reset via scan loop (enqueued), or defer while offline."""
         cmd = str(name).lower().strip()
         if cmd not in ("start", "stop", "reset"):
             raise ValueError(f"Unknown command {name!r}")
-        loop = None
-        if self._mqtt_life is not None:
-            loop = getattr(self._mqtt_life, "loop", None)
-        if loop is not None:
-            loop.issue_command(cmd)
+        life = self._mqtt_life
+        if life is not None and hasattr(life, "enqueue_command"):
+            # Lifecycle owns defer-until-attach + scan-thread enqueue.
+            life.enqueue_command(cmd)
+        elif self._scan_loop() is not None:
+            self._scan_loop().issue_command(cmd)
         else:
-            if cmd == "start":
-                self._fallback_scanning = True
-            elif cmd == "stop":
-                self._fallback_scanning = False
-            elif cmd == "reset":
-                from plcassistant.app.runtime import declare_default_image
-
+            # Editor-only (no MQTT lifecycle): reset local image; stay offline.
+            if cmd == "reset":
                 self._fallback_image = declare_default_image()
-                self._fallback_scanning = False
         return self.runtime_snapshot()
 
     @property

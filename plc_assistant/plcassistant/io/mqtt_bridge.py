@@ -193,6 +193,14 @@ class MqttIoBridge:
                     self._pending_in[tag] = sample
         return tuple(applied)
 
+    def enqueue_command(self, name: str) -> None:
+        """Queue an operator command for the scan thread (same path as MQTT cmd/)."""
+        cmd = str(name).lower().strip()
+        if not cmd:
+            return
+        with self._lock:
+            self._pending_cmds.append(cmd)
+
     def drain_commands(self) -> tuple[str, ...]:
         """Return and clear buffered operator command names."""
         with self._lock:

@@ -16,7 +16,9 @@ After SWD-131 the Soft-PLC runs, but the App UI is still a crude Block Editor-on
 
 ## Acceptance criteria
 1. Default App view is an **operator dashboard** showing live wedge signals (LT_TANK, LT_RES, FT_INLET, CMD_SPEED, SP_LEVEL / SP_FLOW at minimum) with quality/run indication.
-2. Prominent **Start / Stop / Reset** and clear running / stopped / offline status.
+2. Prominent **Start / Stop / Reset** and clear **running / stopped / offline** status
+   (offline = no MQTT scan attached — never claim an active scan when `mqtt: false`;
+   scan faults publish on the MQTT status topic separately from the dashboard chip).
 3. Block / program editor remains a secondary view.
 4. Large visual refresh: modern layout, expressive typography, atmospheric background, mobile-usable nav + visualisations; Ingress-relative API paths preserved.
 5. App + integration version **0.1.10** (locked equal).

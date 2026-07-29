@@ -104,3 +104,148 @@ def test_run_ha_runtime_stops_deferred_mqtt_loop(tmp_path: Path, monkeypatch):
     finally:
         release.set()
         life.stop()
+
+
+def test_deferred_stop_during_connect_applies_on_attach(tmp_path: Path, monkeypatch):
+    """Start+Stop while loop is None must survive and leave the scan stopped."""
+    options_path = tmp_path / "options.json"
+    options_path.write_text(
+        json.dumps({"instance_id": "default", "mqtt_broker": "core-mosquitto"}),
+        encoding="utf-8",
+    )
+    release = threading.Event()
+
+    def delayed_bus(options):
+        release.wait(timeout=2.0)
+        return InMemoryMqttBus()
+
+    monkeypatch.setattr(
+        "plcassistant.app.runtime.build_bus_from_options",
+        delayed_bus,
+    )
+
+    server, life = run_ha_runtime(
+        host="127.0.0.1",
+        port=0,
+        program_path=str(tmp_path / "program.json"),
+        options_path=str(options_path),
+        serve_forever=False,
+    )
+    port = server.server_address[1]
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        assert life.loop is None
+        # Connect window: operator start then stop before MQTT attaches.
+        for name in ("start", "stop"):
+            req = urllib.request.Request(
+                f"http://127.0.0.1:{port}/api/cmd",
+                data=json.dumps({"name": name}).encode(),
+                method="POST",
+                headers={"Content-Type": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=2.0) as resp:
+                body = json.loads(resp.read())
+            assert body["status"] == "offline"
+            assert body["scanning"] is False
+            assert body["mqtt"] is False
+
+        release.set()
+        deadline = time.monotonic() + 3.0
+        while life.loop is None and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert life.loop is not None
+
+        # Wait until deferred stop is drained by the scan thread.
+        deadline = time.monotonic() + 2.0
+        while life.loop.scanning and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert life.loop.scanning is False
+
+        with urllib.request.urlopen(
+            f"http://127.0.0.1:{port}/api/runtime", timeout=2.0
+        ) as resp:
+            snap = json.loads(resp.read())
+        assert snap["mqtt"] is True
+        assert snap["status"] == "stopped"
+        assert snap["scanning"] is False
+    finally:
+        release.set()
+        life.stop()
+        server.shutdown()
+
+
+def test_app_cmd_enqueues_for_scan_thread():
+    """App issue_command must not mutate scanning on the caller thread."""
+    from plcassistant.app.runtime import MqttScanLoop, declare_default_image
+    from plcassistant.io.mqtt_bridge import InMemoryMqttBus, MqttIoBridge
+
+    bus = InMemoryMqttBus()
+    image = declare_default_image()
+    bridge = MqttIoBridge(bus, instance_id="default")
+    loop = MqttScanLoop(bridge, image, period_s=0.1)
+    bridge.start()
+    assert loop.scanning is True
+
+    loop.issue_command("stop")
+    # Still True until the scan thread drains the bridge queue.
+    assert loop.scanning is True
+    assert bridge.pending_commands == ("stop",)
+
+    loop.scan_once()
+    assert loop.scanning is False
+    assert bridge.pending_commands == ()
+
+    loop.issue_command("start")
+    assert loop.scanning is False
+    loop.scan_once()
+    assert loop.scanning is True
+
+
+def test_memory_bus_runtime_cmd_via_http(tmp_path: Path):
+    """Live memory bus: /api/cmd start/stop observed after scan drain."""
+    bus = InMemoryMqttBus()
+    server, life = run_ha_runtime(
+        host="127.0.0.1",
+        port=0,
+        program_path=str(tmp_path / "program.json"),
+        bus=bus,
+        serve_forever=False,
+    )
+    port = server.server_address[1]
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        assert life.loop is not None
+
+        def post_cmd(name: str) -> dict:
+            req = urllib.request.Request(
+                f"http://127.0.0.1:{port}/api/cmd",
+                data=json.dumps({"name": name}).encode(),
+                method="POST",
+                headers={"Content-Type": "application/json"},
+            )
+            with urllib.request.urlopen(req, timeout=2.0) as resp:
+                return json.loads(resp.read())
+
+        post_cmd("stop")
+        deadline = time.monotonic() + 2.0
+        while life.loop.scanning and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert life.loop.scanning is False
+
+        with urllib.request.urlopen(
+            f"http://127.0.0.1:{port}/api/runtime", timeout=2.0
+        ) as resp:
+            snap = json.loads(resp.read())
+        assert snap["mqtt"] is True
+        assert snap["status"] == "stopped"
+
+        post_cmd("start")
+        deadline = time.monotonic() + 2.0
+        while (not life.loop.scanning) and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert life.loop.scanning is True
+    finally:
+        life.stop()
+        server.shutdown()

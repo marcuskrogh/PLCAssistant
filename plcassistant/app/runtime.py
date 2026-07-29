@@ -8,10 +8,10 @@ import threading
 import time
 from typing import Any, Callable
 
+from plcassistant.app.default_image import declare_default_image
 from plcassistant.app.server import AppState, run_app
 from plcassistant.io.image import IoImage
 from plcassistant.io.mqtt_bridge import InMemoryMqttBus, MqttBus, MqttIoBridge
-from plcassistant.io.mqtt_entity_bridge import default_wedge_binding_config
 from plcassistant.io.mqtt_topics import DEFAULT_INSTANCE_ID
 
 
@@ -25,17 +25,6 @@ def load_options(path: str | None) -> dict[str, Any]:
         return data if isinstance(data, dict) else {}
     except (OSError, json.JSONDecodeError):
         return {}
-
-
-def declare_default_image(image: IoImage | None = None) -> IoImage:
-    """Declare default packaging tags on an image."""
-    if image is None:
-        image = IoImage()
-    cfg = default_wedge_binding_config()
-    for name, meta in cfg["tags"].items():
-        if name not in image.names():
-            image.declare(name, default=meta.get("default", 0.0))
-    return image
 
 
 def default_scan_logic(image: IoImage) -> None:
@@ -102,15 +91,46 @@ class MqttLifecycle:
         self._loop: MqttScanLoop | None = None
         self._stop = threading.Event()
         self._lock = threading.Lock()
+        self._pending_cmds: list[str] = []
+        self._on_attach: Callable[[MqttScanLoop], None] | None = None
 
     @property
     def loop(self) -> MqttScanLoop | None:
         with self._lock:
             return self._loop
 
+    def set_on_attach(self, callback: Callable[[MqttScanLoop], None] | None) -> None:
+        """Register a callback invoked once when the scan loop attaches."""
+        with self._lock:
+            self._on_attach = callback
+            loop = self._loop
+        if callback is not None and loop is not None:
+            callback(loop)
+
     def attach(self, loop: MqttScanLoop) -> None:
         with self._lock:
+            pending = tuple(self._pending_cmds)
+            self._pending_cmds.clear()
+            # Flush under the lock before publishing ``loop`` so a concurrent
+            # HTTP cmd cannot race ahead of deferred connect-window intent.
+            for name in pending:
+                loop.issue_command(name)
             self._loop = loop
+            callback = self._on_attach
+        if callback is not None:
+            callback(loop)
+
+    def enqueue_command(self, name: str) -> None:
+        """Queue a cmd for the scan loop; defer until attach if not connected."""
+        cmd = str(name).lower().strip()
+        if cmd not in ("start", "stop", "reset"):
+            raise ValueError(f"Unknown command {name!r}")
+        with self._lock:
+            loop = self._loop
+            if loop is None:
+                self._pending_cmds.append(cmd)
+                return
+        loop.issue_command(cmd)
 
     def wait(self, timeout: float) -> bool:
         """Block until stop requested or *timeout* seconds. True if stopped."""
@@ -124,6 +144,7 @@ class MqttLifecycle:
         with self._lock:
             loop = self._loop
             self._loop = None
+            self._pending_cmds.clear()
         if loop is not None:
             loop.stop()
 
@@ -196,8 +217,8 @@ class MqttScanLoop:
             self.bridge.publish_outputs(self.image)
 
     def issue_command(self, name: str) -> None:
-        """Apply an operator command from the App UI (same path as MQTT cmds)."""
-        self._apply_commands((str(name).lower(),))
+        """Enqueue an operator command for the scan thread (same as MQTT cmds)."""
+        self.bridge.enqueue_command(str(name).lower())
 
     def _run(self) -> None:
         self._alive = True
@@ -229,8 +250,9 @@ def _mqtt_supervisor(
         image = declare_default_image()
         bridge = MqttIoBridge(bus_obj, instance_id=instance_id)
         loop = MqttScanLoop(bridge, image, period_s=period_s)
-        loop.start()
+        # Attach before start so deferred cmds flush into the bridge queue first.
         life.attach(loop)
+        loop.start()
         return loop
 
     if bus is not None:
