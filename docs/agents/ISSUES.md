@@ -50,7 +50,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-131 | Bug | [Iterate] App Block Editor 404 under Ingress + thin integration too thin / version lock | Done | Relates SWD-130 | docs/ITERATE.md | Done — shipped PR #43 |
 | SWD-132 | Bug | [Iterate] Operator dashboard default + major App UI refresh (mobile) | Done | Relates SWD-131 | docs/ITERATE.md | Done — shipped PR #44 |
 | SWD-133 | Bug | [Iterate] Lovelace HMI default + writable SP + Soft-PLC plant on Start (not App SCADA) | Done | Relates SWD-132 | docs/ITERATE.md | Done — shipped PR #46 |
-| SWD-134 | Bug | [Iterate] Auto-register default Lovelace dashboard in HA sidebar (no copy/paste) | In Review | Relates SWD-133 | docs/ITERATE.md | review-fix CLEAN → `/ship` |
+| SWD-134 | Bug | [Iterate] Auto-register default Lovelace dashboard in HA sidebar (no copy/paste) | Done | Relates SWD-133 | docs/ITERATE.md | Done — shipped PR #47 |
 
 ## Log
 
