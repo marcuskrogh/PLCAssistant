@@ -49,6 +49,27 @@ def test_input_tag_roundtrip(tmp_path: Path) -> None:
     assert snap2["tags"]["SP_LEVEL_REQ"]["value"] == pytest.approx(0.25)
 
 
+def test_write_input_tag_accepts_ha_executor_positional_args(tmp_path: Path) -> None:
+    """SWD-141: HA async_add_executor_job passes status/reason/root positionally."""
+    assert write_input_tag("SP_LEVEL_REQ", 0.30, "GOOD", None, tmp_path)
+    # Dual-tree CC module must match (no keyword-only star after value).
+    import importlib.util
+
+    cc = (
+        Path(__file__).resolve().parents[1]
+        / "custom_components"
+        / "plcassistant"
+        / "ha_config_bridge.py"
+    )
+    spec = importlib.util.spec_from_file_location("cc_ha_config_bridge_pos", cc)
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert mod.write_input_tag("SP_LEVEL_REQ", 0.31, "GOOD", None, tmp_path)
+    snap = mod.read_inputs(root=tmp_path)
+    assert float(snap["tags"]["SP_LEVEL_REQ"]["value"]) == pytest.approx(0.31)
+
+
 def test_scan_loop_drains_file_cmd_and_writes_runtime(tmp_path: Path, monkeypatch) -> None:
     from plcassistant.app.runtime import MqttScanLoop, declare_default_image
     from plcassistant.io.mqtt_bridge import InMemoryMqttBus, MqttIoBridge

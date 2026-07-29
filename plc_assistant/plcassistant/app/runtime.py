@@ -278,9 +278,12 @@ class MqttScanLoop:
             reason_raw = body.get("reason")
             if reason_raw:
                 try:
-                    reason = ReasonCode[str(reason_raw).upper()]
-                except KeyError:
-                    reason = None
+                    reason = ReasonCode(str(reason_raw))
+                except ValueError:
+                    try:
+                        reason = ReasonCode[str(reason_raw).upper()]
+                    except KeyError:
+                        reason = None
             try:
                 self.image.apply_input(name, body.get("value"), status, reason)
             except Exception:  # noqa: BLE001 — best-effort IN hydrate

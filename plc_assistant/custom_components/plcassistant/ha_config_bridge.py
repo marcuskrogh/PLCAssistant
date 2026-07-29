@@ -125,7 +125,6 @@ def drain_cmd(root: Path | None = None) -> str | None:
 def write_input_tag(
     tag: str,
     value: Any,
-    *,
     status: str = "GOOD",
     reason: str | None = None,
     root: Path | None = None,
