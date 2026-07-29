@@ -73,4 +73,4 @@
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/59
 
 ## Next
-`/ship SWD-145` — review-fix follow-up App **0.1.21**; then `/define SWD-146`
+Shipped (PR #59 + #60). Next: `/define SWD-146`
