@@ -1,7 +1,7 @@
 # Iterate: Lovelace HMI + Soft-PLC plant on Start
 
 ## Status
-**In Progress** — App **0.1.11** (branch `cursor/swd-133-lovelace-hmi-plant-1bbe`)
+**In Review** — App **0.1.11** via [PR #46](https://github.com/marcuskrogh/PLCAssistant/pull/46)
 
 ## Prior work
 - Task: SWD-132 (PR #44, App 0.1.10 App operator dashboard — wrong HMI home)
