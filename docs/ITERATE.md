@@ -1,7 +1,7 @@
 # Iterate: HMI zeros on SP_LEVEL/SP_FLOW/LT_RES + clarify PERM_OK while RUNNING
 
 ## Status
-**In Progress** — App **0.1.18**; PR pending review
+**In Review** — App **0.1.18**; PR [#56](https://github.com/marcuskrogh/PLCAssistant/pull/56)
 
 ## Prior work
 - Task: SWD-139 (PR #55, App 0.1.17 — HA-config file bridge)
@@ -31,7 +31,7 @@ After SWD-139 / App **0.1.17**, Soft-PLC runs and tank/flow/speed move, but:
 - Task: [SWD-140](https://marcusknielsen.atlassian.net/browse/SWD-140)
 - Relates: SWD-139
 - Branch: `cursor/swd-140-hmi-sp-tags-perm-33f4`
-- PR: (see GitHub)
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/56
 
 ## Next
 `/review-fix SWD-140`

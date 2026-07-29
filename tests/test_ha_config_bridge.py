@@ -78,12 +78,23 @@ def test_scan_loop_drains_file_cmd_and_writes_runtime(tmp_path: Path, monkeypatc
 
 
 def test_hmi_tags_list_includes_active_setpoints_and_reservoir() -> None:
-    """SWD-140: integration poll list matches App runtime write set."""
-    src = (
-        Path(__file__).resolve().parents[1]
-        / "custom_components"
-        / "plcassistant"
-        / "__init__.py"
-    ).read_text(encoding="utf-8")
-    assert '"SP_LEVEL"' in src and '"SP_FLOW"' in src and '"LT_RES"' in src
-    assert "_HMI_TAGS" in src
+    """SWD-140: integration poll list matches App runtime write set (both trees)."""
+    root = Path(__file__).resolve().parents[1]
+    init_paths = [
+        root / "custom_components" / "plcassistant" / "__init__.py",
+        root / "plc_assistant" / "custom_components" / "plcassistant" / "__init__.py",
+    ]
+    runtime_paths = [
+        root / "plcassistant" / "app" / "runtime.py",
+        root / "plc_assistant" / "plcassistant" / "app" / "runtime.py",
+    ]
+    for src_path in init_paths:
+        src = src_path.read_text(encoding="utf-8")
+        assert "_HMI_TAGS" in src
+        for tag in ("SP_LEVEL", "SP_FLOW", "LT_RES"):
+            assert f'"{tag}"' in src
+    for src_path in runtime_paths:
+        src = src_path.read_text(encoding="utf-8")
+        assert "_write_ha_config_runtime" in src
+        for tag in ("SP_LEVEL", "SP_FLOW", "LT_RES"):
+            assert f'"{tag}"' in src
