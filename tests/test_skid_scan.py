@@ -35,3 +35,39 @@ def test_skid_image_logic_stop_zeros_cmd():
     logic(image)
     assert logic.skid.last.mode is Mode.STOP
     assert float(image.get_value("CMD_SPEED")) == 0.0
+
+
+def test_skid_reset_does_not_stop_healthy_run():
+    """HMI_RESET clears latches; it must not stop a healthy RUNNING skid."""
+    image = declare_default_image()
+    image.apply_input("SP_LEVEL_REQ", 0.20, QualityStatus.GOOD)
+    logic = SkidImageLogic(period_s=0.1)
+    logic.enqueue_operator("start")
+    for _ in range(5):
+        logic(image)
+    assert logic.is_running is True
+    logic.enqueue_operator("reset")
+    logic(image)
+    assert logic.skid.last.mode is Mode.RUNNING
+    assert float(image.get_value("CMD_SPEED")) > 0.0
+
+
+def test_scan_loop_reset_keeps_running_when_healthy():
+    from plcassistant.app.runtime import MqttScanLoop
+    from plcassistant.io.mqtt_bridge import InMemoryMqttBus, MqttIoBridge
+    from plcassistant.io.mqtt_topics import MqttTagPayload, cmd_topic, tag_in_topic
+
+    bus = InMemoryMqttBus()
+    image = declare_default_image()
+    bridge = MqttIoBridge(bus, instance_id="default")
+    loop = MqttScanLoop(bridge, image, period_s=0.01)
+    bridge.start()
+    bus.publish(tag_in_topic("default", "SP_LEVEL_REQ"), MqttTagPayload.now(0.2).encode())
+    bus.publish(cmd_topic("default", "start"), b"1")
+    loop.scan_once()
+    loop.scan_once()
+    assert loop.scanning is True
+    bus.publish(cmd_topic("default", "reset"), b"1")
+    loop.scan_once()
+    assert loop.scanning is True
+    assert float(image.get_value("CMD_SPEED")) > 0.0

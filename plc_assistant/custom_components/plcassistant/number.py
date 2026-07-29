@@ -20,8 +20,17 @@ _TAG_META: dict[str, dict] = {
         "max": 0.40,
         "step": 0.01,
         "unit": "m",
+        "object_id": "plcassistant_sp_level_req",
     },
 }
+
+
+def _object_id_from_entity(entity: str, fallback: str) -> str:
+    """``number.plcassistant_sp_level_req`` → ``plcassistant_sp_level_req``."""
+    text = str(entity or "").strip()
+    if "." in text:
+        return text.split(".", 1)[1] or fallback
+    return text or fallback
 
 
 async def async_setup_entry(
@@ -47,6 +56,7 @@ async def async_setup_entry(
                 tag,
                 scale,
                 offset,
+                entity_id=str(binding.get("entity") or ""),
             )
         )
     async_add_entities(entities)
@@ -64,6 +74,8 @@ class PlcAssistantRequestNumber(NumberEntity):
         tag: str,
         scale: float,
         offset: float,
+        *,
+        entity_id: str = "",
     ) -> None:
         self._entry_id = entry_id
         self._instance_id = instance_id
@@ -73,12 +85,17 @@ class PlcAssistantRequestNumber(NumberEntity):
         meta = _TAG_META.get(tag, {})
         self._attr_name = meta.get("name", f"PLCAssistant {tag}")
         self._attr_unique_id = f"{entry_id}_{tag}_req"
+        object_id = meta.get("object_id") or _object_id_from_entity(
+            entity_id, f"plcassistant_{tag.lower()}"
+        )
+        # Pin entity_id to binding / Lovelace contract (SWD-133).
+        self._attr_suggested_object_id = object_id
+        self.entity_id = f"number.{object_id}"
         self._attr_native_min_value = float(meta.get("min", -1.0e6))
         self._attr_native_max_value = float(meta.get("max", 1.0e6))
         self._attr_native_step = float(meta.get("step", 0.001))
         if "unit" in meta:
             self._attr_native_unit_of_measurement = meta["unit"]
-        # Default level request matches Soft-PLC / wedge ref.
         self._attr_native_value = 0.20 if tag == "SP_LEVEL_REQ" else 0.0
 
     async def async_set_native_value(self, value: float) -> None:

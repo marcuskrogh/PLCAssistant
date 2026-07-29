@@ -7,7 +7,7 @@ real plant response — not the toy ``default_scan_logic`` mirror.
 from __future__ import annotations
 
 from plcassistant.io.image import IoImage
-from plcassistant.wedge.skid import OperatorCommand, Skid
+from plcassistant.wedge.skid import Mode, OperatorCommand, Skid
 
 
 class SkidImageLogic:
@@ -16,16 +16,27 @@ class SkidImageLogic:
     def __init__(self, *, period_s: float = 0.1, skid: Skid | None = None) -> None:
         self.period_s = period_s
         self.skid = skid or Skid()
-        self._pending = OperatorCommand.NONE
+        self._pending: list[OperatorCommand] = []
 
     def enqueue_operator(self, name: str) -> None:
         key = str(name).lower().strip()
         if key == "start":
-            self._pending = OperatorCommand.START
+            self._pending.append(OperatorCommand.START)
         elif key == "stop":
-            self._pending = OperatorCommand.STOP
+            self._pending.append(OperatorCommand.STOP)
         elif key == "reset":
-            self._pending = OperatorCommand.RESET
+            # HMI_RESET clears latches → STOP when trips clear; does not stop a
+            # healthy RUNNING skid (use Stop for that). Queue RESET only.
+            self._pending.append(OperatorCommand.RESET)
+
+    @property
+    def mode(self) -> Mode | None:
+        last = self.skid.last
+        return last.mode if last is not None else None
+
+    @property
+    def is_running(self) -> bool:
+        return self.mode is Mode.RUNNING
 
     def __call__(self, image: IoImage) -> None:
         names = image.names()
@@ -34,9 +45,17 @@ class SkidImageLogic:
                 self.skid.sp_level = float(image.get_value("SP_LEVEL_REQ"))
             except (TypeError, ValueError):
                 pass
-        cmd = self._pending
-        self._pending = OperatorCommand.NONE
-        snap = self.skid.step(self.period_s, cmd)
+        pending = self._pending
+        self._pending = []
+        snap = None
+        if not pending:
+            snap = self.skid.step(self.period_s, OperatorCommand.NONE)
+        else:
+            for i, cmd in enumerate(pending):
+                # Burn dt on the last pulse so plant integrates once per scan.
+                dt = self.period_s if i == len(pending) - 1 else 0.0
+                snap = self.skid.step(dt, cmd)
+        assert snap is not None
         _set = image.set_output
         if "SP_LEVEL" in names:
             _set("SP_LEVEL", float(snap.sp_level))

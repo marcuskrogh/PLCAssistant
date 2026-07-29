@@ -195,7 +195,9 @@ class MqttScanLoop:
                 self.scanning = False
                 self.bridge.publish_status("stopped")
             elif name == "reset":
-                self.scanning = False
+                # Latch-clear only (wedge HMI_RESET). Do not force scanning=False —
+                # a healthy RUNNING skid stays running; after trip clear Skid is STOP
+                # and ``scan_once`` resyncs ``scanning`` from Skid mode.
                 self.bridge.publish_status("reset")
 
     def start(self) -> None:
@@ -222,6 +224,17 @@ class MqttScanLoop:
             self._apply_commands(drained)
         # Always run logic so Skid observes Start/Stop/Reset pulses.
         self.logic(self.image)
+        # Align scan gate with Skid MODE (Reset→STOP after trip; Start→RUNNING).
+        is_running = getattr(self.logic, "is_running", None)
+        if callable(is_running):
+            running = bool(is_running())
+        elif isinstance(is_running, bool):
+            running = is_running
+        else:
+            running = self.scanning
+        if running != self.scanning:
+            self.scanning = running
+            self.bridge.publish_status("running" if running else "stopped")
         self.bridge.publish_outputs(self.image)
 
     def issue_command(self, name: str) -> None:

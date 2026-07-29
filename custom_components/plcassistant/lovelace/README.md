@@ -23,3 +23,15 @@ App Ingress is the **block / program editor**, not the operator HMI.
 | `number.plcassistant_sp_level_req` | Operator **level setpoint request** (writable) |
 | `button.plcassistant_start` / `_stop` / `_reset` | Operator commands |
 | `sensor.plcassistant_*` | Soft-PLC-owned PVs and active SPs (read-only) |
+
+## Upgrading from App 0.1.10
+
+Entity IDs changed in **0.1.11** (OUT tags became sensors; setpoint request renamed):
+
+| 0.1.10 | 0.1.11 |
+|--------|--------|
+| `number.plcassistant_sp_level_req_in` | `number.plcassistant_sp_level_req` |
+| `number.plcassistant_lt_tank_in` (mock plant IN) | `sensor.plcassistant_lt_tank` (Soft-PLC plant OUT) |
+| `number.plcassistant_*_out` | `sensor.plcassistant_*` |
+
+After App Update + Core restart: remove the old PLCAssistant integration entry (or delete stale unavailable entities in the entity registry), then add the integration again so Lovelace IDs match. Update any personal dashboards/automations that referenced the old `*_in` / `*_out` Numbers.

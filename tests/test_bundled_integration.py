@@ -103,6 +103,9 @@ def test_platforms_publish_and_subscribe_paths():
     assert "number.plcassistant_sp_level_req" in lovelace
     assert "button.plcassistant_start" in lovelace
     assert "sensor.plcassistant_lt_tank" in lovelace
+    assert 'entity_id = f"number.' in number or "suggested_object_id" in number
+    assert "plcassistant_sp_level_req" in number
+    assert "plcassistant_lt_tank" in sensor
 
 def test_services_yaml_has_operator_actions():
     text = (CC / "services.yaml").read_text(encoding="utf-8")

@@ -26,9 +26,15 @@ async def async_setup_entry(
     instance_id = data[CONF_INSTANCE_ID]
     async_add_entities(
         [
-            PlcAssistantCmdButton(entry.entry_id, instance_id, SERVICE_START, "Start"),
-            PlcAssistantCmdButton(entry.entry_id, instance_id, SERVICE_STOP, "Stop"),
-            PlcAssistantCmdButton(entry.entry_id, instance_id, SERVICE_RESET, "Reset"),
+            PlcAssistantCmdButton(
+                entry.entry_id, instance_id, SERVICE_START, "Start", "plcassistant_start"
+            ),
+            PlcAssistantCmdButton(
+                entry.entry_id, instance_id, SERVICE_STOP, "Stop", "plcassistant_stop"
+            ),
+            PlcAssistantCmdButton(
+                entry.entry_id, instance_id, SERVICE_RESET, "Reset", "plcassistant_reset"
+            ),
         ]
     )
 
@@ -44,12 +50,15 @@ class PlcAssistantCmdButton(ButtonEntity):
         instance_id: str,
         cmd: str,
         label: str,
+        object_id: str,
     ) -> None:
         self._entry_id = entry_id
         self._instance_id = instance_id
         self._cmd = cmd
         self._attr_name = f"PLCAssistant {label}"
         self._attr_unique_id = f"{entry_id}_cmd_{cmd}"
+        self._attr_suggested_object_id = object_id
+        self.entity_id = f"button.{object_id}"
 
     async def async_press(self) -> None:
         await self.hass.services.async_call(
