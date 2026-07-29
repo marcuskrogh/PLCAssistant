@@ -16,7 +16,7 @@ from plcassistant.io.mqtt_entity_bridge import (
 from plcassistant.io.mqtt_topics import MqttTagPayload, tag_in_topic
 from plcassistant.io.binding import BindingTable
 from plcassistant.io.integration import MockEntityStore
-from plcassistant.app.runtime import default_scan_logic, declare_default_image
+from plcassistant.app.runtime import declare_default_image
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
@@ -29,10 +29,13 @@ def test_packaging_docs_present():
 
 def test_app_ha_mqtt_roundtrip_without_broker():
     """App bridge + integration-side bridge over in-memory bus (PLAN MQTT AC)."""
+    from plcassistant.app.skid_scan import SkidImageLogic
+    from plcassistant.io.quality import QualityStatus
+
     bus = InMemoryMqttBus()
     table = BindingTable.from_config(default_wedge_binding_config())
     entities = MockEntityStore()
-    entities.set("number.plcassistant_lt_tank_in", 0.3)
+    entities.set("number.plcassistant_sp_level_req", 0.20)
 
     image = declare_default_image()
     app = MqttIoBridge(bus, instance_id="default")
@@ -42,10 +45,15 @@ def test_app_ha_mqtt_roundtrip_without_broker():
 
     integ.publish_inputs()
     app.apply_inputs(image)
-    default_scan_logic(image)
+    logic = SkidImageLogic(period_s=0.1)
+    logic.enqueue_operator("start")
+    logic(image)
+    for _ in range(5):
+        logic(image)
     app.publish_outputs(image)
     integ.apply_outputs()
-    assert entities.get("number.plcassistant_cmd_speed_out").value == pytest.approx(30.0)
+    assert entities.get("sensor.plcassistant_cmd_speed").value > 0.0
+    assert entities.get("sensor.plcassistant_lt_tank").status is QualityStatus.GOOD
 
 
 def test_scaffold_and_github_app_trees():
@@ -54,7 +62,10 @@ def test_scaffold_and_github_app_trees():
     assert (ROOT / "custom_components" / "plcassistant" / "manifest.json").is_file()
     assert (ROOT / "custom_components" / "plcassistant" / "number.py").is_file()
     assert (ROOT / "custom_components" / "plcassistant" / "button.py").is_file()
-    assert not (ROOT / "custom_components" / "plcassistant" / "sensor.py").exists()
+    assert (ROOT / "custom_components" / "plcassistant" / "sensor.py").is_file()
+    assert (
+        ROOT / "custom_components" / "plcassistant" / "lovelace" / "plcassistant.yaml"
+    ).is_file()
 
 
 def test_default_wedge_bindings_include_flow():
@@ -63,7 +74,8 @@ def test_default_wedge_bindings_include_flow():
     assert {"LT_TANK", "LT_RES", "FT_INLET", "CMD_SPEED", "SP_LEVEL_REQ", "SP_LEVEL", "SP_FLOW"} <= tags
     bound = {b["tag"] for b in cfg["bindings"]}
     assert "FT_INLET" in bound
-    assert any(b["tag"] == "FT_INLET" and b["direction"] == "IN" for b in cfg["bindings"])
+    assert any(b["tag"] == "FT_INLET" and b["direction"] == "OUT" for b in cfg["bindings"])
+    assert any(b["tag"] == "SP_LEVEL_REQ" and b["direction"] == "IN" for b in cfg["bindings"])
 
 def test_non_ha_stub_still_works():
     """In-process ThinIntegrationStub remains the non-HA CI path."""

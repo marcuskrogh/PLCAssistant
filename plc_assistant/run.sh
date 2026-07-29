@@ -87,6 +87,33 @@ needs_integration_sync() {
 # Copy bundled thin integration into HA config.
 # Critical steps use `|| return 1` (errexit alone is unreliable when the caller
 # temporarily disables it). Soft-PLC start must not abort if install fails.
+install_lovelace_dashboard() {
+  if [ ! -d "${HA_CONFIG}" ]; then
+    return 0
+  fi
+  src_dash="${INTEGRATION_SRC}/lovelace/plcassistant.yaml"
+  src_readme="${INTEGRATION_SRC}/lovelace/README.md"
+  # After sync, prefer DST copy (same content) if SRC path unavailable in tests.
+  if [ ! -f "${src_dash}" ] && [ -f "${INTEGRATION_DST}/lovelace/plcassistant.yaml" ]; then
+    src_dash="${INTEGRATION_DST}/lovelace/plcassistant.yaml"
+    src_readme="${INTEGRATION_DST}/lovelace/README.md"
+  fi
+  if [ ! -f "${src_dash}" ]; then
+    return 0
+  fi
+  mkdir -p "${HA_CONFIG}/dashboards" || return 0
+  dst_dash="${HA_CONFIG}/dashboards/plcassistant.yaml"
+  # Refresh when missing or bundled file is newer.
+  if [ ! -f "${dst_dash}" ] || [ "${src_dash}" -nt "${dst_dash}" ]; then
+    cp -a "${src_dash}" "${dst_dash}" || true
+    echo "PLCAssistant: Lovelace dashboard template at ${dst_dash}"
+  fi
+  if [ -f "${src_readme}" ]; then
+    cp -a "${src_readme}" "${HA_CONFIG}/dashboards/plcassistant_README.md" || true
+  fi
+  return 0
+}
+
 install_thin_integration() {
   if [ ! -d "${HA_CONFIG}" ]; then
     echo "PLCAssistant: HA config not mounted at ${HA_CONFIG}; skip integration install."
@@ -177,6 +204,7 @@ install_thin_integration() {
 set +e
 install_thin_integration
 install_rc=$?
+install_lovelace_dashboard
 set -e
 if [ "${install_rc}" -ne 0 ]; then
   echo "PLCAssistant: thin integration install failed; continuing App start." >&2

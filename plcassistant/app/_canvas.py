@@ -1,18 +1,17 @@
-"""HTML/JS operator dashboard and block program editor (SWD-132 / SWD-120).
+"""HTML/JS block program editor for Soft-PLC PLCAssistant (SWD-133).
 
-Serves a self-contained single-page application that:
-- Defaults to an operator dashboard with live runtime signals and Start/Stop/Reset.
-- Offers a secondary Program view for the block canvas (place, wire, apply).
-- Displays the JSON representation in a sync'd textarea.
-- Provides a library picker for builtin and user templates.
-- Allows editing user block Python bodies in-App.
+Serves a self-contained single-page application for editing block programs:
+library picker, canvas placement/wiring, JSON program sync, user template editor.
+Operator HMI lives in Home Assistant Lovelace — not in this App.
 """
 
 from __future__ import annotations
 
+__all__ = ["get_canvas_html"]
+
 
 def get_canvas_html() -> str:
-    """Return the complete HTML page for the operator dashboard and editor."""
+    """Return the complete HTML page for the block program editor."""
     return _HTML
 
 
@@ -22,26 +21,23 @@ _HTML = r"""<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="application-name" content="PLC Assistant">
-<title>PLCAssistant</title>
+<title>PLCAssistant — block program editor</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Sora:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --paper: #f4f1eb;
-    --paper-2: #ebe6dc;
-    --mist: #d5dde8;
-    --mist-deep: #b8c5d6;
-    --ink: #1a2332;
-    --ink-soft: #3d4a5c;
-    --muted: #6b7789;
-    --line: #c5ced9;
-    --panel: rgba(255, 252, 247, 0.72);
-    --teal: #1a7a6d;
-    --teal-bright: #249688;
-    --amber: #c47a12;
-    --bad: #b33a3a;
-    --uncertain: #a67c2a;
+    --paper: #e8eef4;
+    --paper-2: #dce5ef;
+    --mist: #c5d0dc;
+    --ink: #122033;
+    --ink-soft: #3a4a5c;
+    --muted: #5c6b7a;
+    --line: #b7c4d1;
+    --panel: rgba(248, 251, 255, 0.78);
+    --teal: #0f6b62;
+    --amber: #b86a10;
+    --bad: #a83232;
     --wire: #3a7ca5;
     --pin-in: #2f8f6b;
     --pin-out: #c47a12;
@@ -58,6 +54,8 @@ _HTML = r"""<!DOCTYPE html>
     min-height: 100dvh;
     color: var(--ink);
     font-family: var(--font-ui);
+    display: flex;
+    flex-direction: column;
     background:
       radial-gradient(ellipse 90% 55% at 12% -10%, var(--mist) 0%, transparent 55%),
       radial-gradient(ellipse 70% 45% at 95% 8%, rgba(184, 197, 214, 0.55) 0%, transparent 50%),
@@ -66,19 +64,16 @@ _HTML = r"""<!DOCTYPE html>
     background-attachment: fixed;
   }
 
-  /* ── App chrome ── */
   #app-header {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    gap: 10px 16px;
+    align-items: baseline;
+    gap: 6px 14px;
     padding: 12px 18px;
     border-bottom: 1px solid var(--line);
     background: rgba(244, 241, 235, 0.85);
     backdrop-filter: blur(8px);
-    position: sticky;
-    top: 0;
-    z-index: 40;
+    flex-shrink: 0;
   }
   #app-header .mark {
     font-family: var(--font-display);
@@ -87,242 +82,36 @@ _HTML = r"""<!DOCTYPE html>
     letter-spacing: -0.02em;
     color: var(--ink);
   }
-  .view-tabs {
-    display: flex;
-    gap: 4px;
-    background: transparent;
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 3px;
-  }
-  .view-tabs button {
-    font-family: var(--font-ui);
-    font-size: 0.78rem;
+  #app-header .subtitle {
+    font-size: 0.82rem;
     font-weight: 500;
-    border: none;
-    background: transparent;
     color: var(--muted);
-    padding: 7px 14px;
-    border-radius: 6px;
-    cursor: pointer;
   }
-  .view-tabs button.active {
-    background: var(--ink);
-    color: var(--paper);
-  }
-  #status-chip {
-    margin-left: auto;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.75rem;
-    font-weight: 500;
-    color: var(--ink-soft);
-    border: 1px solid var(--line);
-    padding: 6px 12px;
-    border-radius: var(--radius);
-    background: var(--panel);
-    text-transform: lowercase;
-  }
-  #status-chip .dot {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--muted);
-  }
-  #status-chip.running .dot {
-    background: var(--teal-bright);
-    animation: statusPulse 1.6s ease-in-out infinite;
-  }
-  #status-chip.stopped .dot { background: var(--amber); }
-  #status-chip.offline .dot { background: var(--bad); }
   #msg-status {
-    width: 100%;
+    margin-left: auto;
     font-size: 0.72rem;
     color: var(--muted);
-    order: 5;
   }
   #msg-status.ok { color: var(--teal); }
   #msg-status.err { color: var(--bad); }
 
-  @keyframes statusPulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.45; transform: scale(0.85); }
-  }
-
-  /* ── Views ── */
-  .view {
-    display: none;
-    opacity: 0;
-    transition: opacity 0.35s var(--ease);
-  }
-  .view.active {
-    display: block;
-    opacity: 1;
-    animation: viewIn 0.4s var(--ease);
-  }
-  @keyframes viewIn {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  /* ── Dashboard ── */
-  #view-dashboard {
-    padding: 28px 20px 48px;
-    max-width: 980px;
-    margin: 0 auto;
-  }
-  .dash-hero {
-    display: grid;
-    gap: 28px;
-  }
-  .dash-intro .brand {
-    font-family: var(--font-display);
-    font-size: clamp(2.6rem, 9vw, 4.2rem);
-    font-weight: 700;
-    letter-spacing: -0.03em;
-    line-height: 1.05;
-    color: var(--ink);
-    margin-bottom: 10px;
-  }
-  .dash-intro .headline {
-    font-family: var(--font-display);
-    font-size: clamp(1.35rem, 3.5vw, 1.85rem);
-    font-weight: 500;
-    color: var(--ink-soft);
-    margin-bottom: 8px;
-  }
-  .dash-intro .support {
-    font-size: 0.95rem;
-    color: var(--muted);
-    max-width: 36rem;
-    line-height: 1.5;
-    margin-bottom: 22px;
-  }
-  .op-controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-  }
-  .op-btn {
-    font-family: var(--font-ui);
-    font-size: 0.9rem;
-    font-weight: 600;
-    padding: 12px 22px;
-    border-radius: var(--radius);
-    border: 1.5px solid var(--ink);
-    background: var(--ink);
-    color: var(--paper);
-    cursor: pointer;
-    min-width: 6.5rem;
-  }
-  .op-btn:hover { background: var(--ink-soft); border-color: var(--ink-soft); }
-  .op-btn.stop {
-    background: transparent;
-    color: var(--ink);
-  }
-  .op-btn.stop:hover { background: rgba(26, 35, 50, 0.06); }
-  .op-btn.reset {
-    background: transparent;
-    color: var(--amber);
-    border-color: var(--amber);
-  }
-  .op-btn.reset:hover { background: rgba(196, 122, 18, 0.08); }
-
-  .process-stage {
-    position: relative;
-    width: 100%;
-    min-height: 280px;
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    background:
-      linear-gradient(180deg, rgba(213, 221, 232, 0.35) 0%, rgba(255, 252, 247, 0.5) 100%);
-    overflow: hidden;
-  }
-  #process-svg { width: 100%; height: auto; display: block; min-height: 280px; }
-
-  .tank-fill {
-    transition: height 0.55s var(--ease), y 0.55s var(--ease);
-  }
-  .res-fill {
-    transition: height 0.55s var(--ease), y 0.55s var(--ease);
-  }
-  .speed-fill {
-    transition: width 0.45s var(--ease);
-  }
-  .flow-needle {
-    transition: transform 0.45s var(--ease);
-    transform-origin: 545px 150px;
-  }
-
-  .setpoint-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 28px;
-    margin-top: 14px;
-    padding: 10px 4px 0;
-    border-top: 1px solid var(--line);
-    font-size: 0.8rem;
-    color: var(--ink-soft);
-  }
-  .setpoint-row .sp-item { display: inline-flex; gap: 8px; align-items: baseline; }
-  .setpoint-row .sp-name {
-    font-size: 0.68rem;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-  .setpoint-row .sp-val { font-variant-numeric: tabular-nums; font-weight: 500; }
-  .setpoint-row .q {
-    font-size: 0.65rem;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-  .setpoint-row .q.GOOD { color: var(--teal); }
-  .setpoint-row .q.BAD { color: var(--bad); }
-  .setpoint-row .q.UNCERTAIN { color: var(--uncertain); }
-
-  .signal-strip {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px 20px;
-    margin-top: 18px;
+  .hmi-banner {
+    padding: 8px 18px;
     font-size: 0.78rem;
     color: var(--ink-soft);
+    background: rgba(26, 122, 109, 0.08);
+    border-bottom: 1px solid var(--line);
+    flex-shrink: 0;
   }
-  .signal-strip .sig {
-    display: inline-flex;
-    gap: 7px;
-    align-items: baseline;
-  }
-  .signal-strip .sig-name {
-    font-size: 0.65rem;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-  .signal-strip .sig-val { font-variant-numeric: tabular-nums; font-weight: 500; }
-  .signal-strip .q {
-    font-size: 0.62rem;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-  .signal-strip .q.GOOD { color: var(--teal); }
-  .signal-strip .q.BAD { color: var(--bad); }
-  .signal-strip .q.UNCERTAIN { color: var(--uncertain); }
 
-  /* ── Program editor ── */
-  #view-program {
-    height: calc(100dvh - 58px);
-    display: none;
+  #editor-root {
+    flex: 1;
+    display: flex;
     flex-direction: column;
     overflow: hidden;
+    min-height: 0;
   }
-  #view-program.active {
-    display: flex;
-    opacity: 1;
-    animation: viewIn 0.4s var(--ease);
-  }
+
   #editor-bar {
     display: flex;
     flex-wrap: wrap;
@@ -530,8 +319,6 @@ _HTML = r"""<!DOCTYPE html>
     }
     .panel-tog { display: inline-flex; }
     #user-editor { max-height: none; }
-    #view-dashboard { padding: 20px 16px 40px; }
-    .process-stage { min-height: 240px; }
   }
 </style>
 </head>
@@ -539,98 +326,12 @@ _HTML = r"""<!DOCTYPE html>
 
 <header id="app-header">
   <div class="mark">PLCAssistant</div>
-  <nav class="view-tabs" aria-label="Views">
-    <button type="button" id="tab-dashboard" class="active" onclick="showView('dashboard')">Dashboard</button>
-    <button type="button" id="tab-program" onclick="showView('program')">Program</button>
-  </nav>
-  <div id="status-chip" class="offline"><span class="dot" aria-hidden="true"></span><span id="chip-label">offline</span></div>
+  <div class="subtitle">block program editor</div>
   <div id="msg-status" class="ok">Ready</div>
 </header>
+<p class="hmi-banner">Operator HMI is in Home Assistant Lovelace — this App is the Soft-PLC program editor.</p>
 
-<!-- ═══════════════ Operator Dashboard (default) ═══════════════ -->
-<section id="view-dashboard" class="view active" aria-label="Operator dashboard">
-  <div class="dash-hero">
-    <div class="dash-intro">
-      <h1 class="brand">PLCAssistant</h1>
-      <p class="headline" id="status-headline">Offline</p>
-      <p class="support" id="status-support">Connect to the Soft-PLC runtime to watch tank level, flow, and speed — then start or stop the scan from here.</p>
-      <div class="op-controls">
-        <button type="button" class="op-btn" onclick="sendCmd('start')">Start</button>
-        <button type="button" class="op-btn stop" onclick="sendCmd('stop')">Stop</button>
-        <button type="button" class="op-btn reset" onclick="sendCmd('reset')">Reset</button>
-      </div>
-    </div>
-
-    <div class="process-stage" aria-label="Process visualisation">
-      <svg id="process-svg" viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="process-title">
-        <title id="process-title">Tank level, reservoir, inlet flow, and command speed</title>
-        <defs>
-          <linearGradient id="waterGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#5aa8a0"/>
-            <stop offset="100%" stop-color="#1a7a6d"/>
-          </linearGradient>
-          <linearGradient id="resGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#8aa4bc"/>
-            <stop offset="100%" stop-color="#4a657d"/>
-          </linearGradient>
-        </defs>
-
-        <!-- Process pipe -->
-        <path d="M118 210 H210 M430 210 H500" stroke="#8a96a8" stroke-width="6" fill="none" stroke-linecap="round"/>
-        <path d="M210 210 H430" stroke="#8a96a8" stroke-width="4" fill="none" opacity="0.55"/>
-
-        <!-- Reservoir (LT_RES) -->
-        <text x="48" y="78" fill="#6b7789" font-size="11" font-family="Sora,sans-serif" letter-spacing="0.08em">RESERVOIR</text>
-        <rect x="40" y="88" width="78" height="140" rx="4" fill="#fffcf7" stroke="#a8b4c4" stroke-width="2"/>
-        <clipPath id="resClip"><rect x="42" y="90" width="74" height="136" rx="2"/></clipPath>
-        <g clip-path="url(#resClip)">
-          <rect id="res-fill" class="res-fill" x="42" y="226" width="74" height="0" fill="url(#resGrad)"/>
-        </g>
-        <text id="res-label" x="79" y="248" text-anchor="middle" fill="#1a2332" font-size="12" font-family="Sora,sans-serif" font-weight="600">—</text>
-
-        <!-- Main tank (LT_TANK) -->
-        <text x="248" y="48" fill="#6b7789" font-size="11" font-family="Sora,sans-serif" letter-spacing="0.08em">PROCESS TANK</text>
-        <rect x="230" y="58" width="180" height="190" rx="6" fill="#fffcf7" stroke="#a8b4c4" stroke-width="2.5"/>
-        <clipPath id="tankClip"><rect x="233" y="61" width="174" height="184" rx="4"/></clipPath>
-        <g clip-path="url(#tankClip)">
-          <rect id="tank-fill" class="tank-fill" x="233" y="245" width="174" height="0" fill="url(#waterGrad)"/>
-        </g>
-        <!-- Level marks -->
-        <line x1="410" y1="80" x2="418" y2="80" stroke="#8a96a8" stroke-width="1.5"/>
-        <line x1="410" y1="152" x2="418" y2="152" stroke="#8a96a8" stroke-width="1.5"/>
-        <line x1="410" y1="224" x2="418" y2="224" stroke="#8a96a8" stroke-width="1.5"/>
-        <text id="tank-label" x="320" y="268" text-anchor="middle" fill="#1a2332" font-size="14" font-family="Sora,sans-serif" font-weight="600">—</text>
-
-        <!-- Flow gauge (FT_INLET) -->
-        <text x="500" y="78" fill="#6b7789" font-size="11" font-family="Sora,sans-serif" letter-spacing="0.08em">INLET FLOW</text>
-        <circle cx="545" cy="150" r="48" fill="#fffcf7" stroke="#a8b4c4" stroke-width="2"/>
-        <circle cx="545" cy="150" r="40" fill="none" stroke="#d5dde8" stroke-width="6"/>
-        <path d="M510 168 A40 40 0 1 1 580 168" fill="none" stroke="#1a7a6d" stroke-width="6" stroke-linecap="round" opacity="0.35"/>
-        <g id="flow-needle" class="flow-needle" style="transform: rotate(-90deg)">
-          <line x1="545" y1="150" x2="545" y2="118" stroke="#1a2332" stroke-width="2.5" stroke-linecap="round"/>
-          <circle cx="545" cy="150" r="4" fill="#1a2332"/>
-        </g>
-        <text id="flow-label" x="545" y="218" text-anchor="middle" fill="#1a2332" font-size="12" font-family="Sora,sans-serif" font-weight="600">—</text>
-
-        <!-- Speed bar (CMD_SPEED) -->
-        <text x="230" y="292" fill="#6b7789" font-size="10" font-family="Sora,sans-serif" letter-spacing="0.06em">CMD SPEED</text>
-        <rect x="310" y="282" width="200" height="10" rx="2" fill="#e8eef4" stroke="#c5ced9"/>
-        <rect id="speed-fill" class="speed-fill" x="310" y="282" width="0" height="10" rx="2" fill="#1a7a6d"/>
-        <text id="speed-label" x="520" y="291" fill="#1a2332" font-size="11" font-family="Sora,sans-serif" font-weight="600">—</text>
-      </svg>
-    </div>
-
-    <div class="setpoint-row" id="setpoint-row" aria-label="Setpoints">
-      <div class="sp-item"><span class="sp-name">SP Level</span><span class="sp-val" id="sp-level-val">—</span><span class="q" id="sp-level-q"></span></div>
-      <div class="sp-item"><span class="sp-name">SP Flow</span><span class="sp-val" id="sp-flow-val">—</span><span class="q" id="sp-flow-q"></span></div>
-    </div>
-
-    <div class="signal-strip" id="signal-strip" aria-label="Live signals"></div>
-  </div>
-</section>
-
-<!-- ═══════════════ Program editor ═══════════════ -->
-<section id="view-program" class="view" aria-label="Program editor">
+<div id="editor-root" aria-label="Program editor">
   <div id="editor-bar">
     <button class="btn" onclick="applyRestart()">Apply (restart)</button>
     <button class="btn" onclick="applyHot()">Hot Apply</button>
@@ -684,7 +385,7 @@ _HTML = r"""<!DOCTYPE html>
       </div>
     </div>
   </div>
-</section>
+</div>
 
 <div id="backdrop" onclick="closeOverlay()"></div>
 <div id="overlay">
@@ -702,22 +403,16 @@ _HTML = r"""<!DOCTYPE html>
 let program = { version: "1.0", instances: {}, wires: [], execution_order: [] };
 let library = [];
 let selectedId = null;
-let dragging = null;       // {id, ox, oy}
-let wiring = null;         // {srcInst, srcPin, x1, y1}
-let overlayInst = null;    // instance_id being edited in overlay
+let dragging = null;
+let wiring = null;
+let overlayInst = null;
 let ueVisible = true;
-let currentView = 'dashboard';
-let runtimePollTimer = null;
 
 const BLOCK_W = 140, BLOCK_H_BASE = 30, PIN_ROW = 16, PIN_R = 5;
-const SIGNAL_KEYS = ['LT_TANK', 'LT_RES', 'FT_INLET', 'CMD_SPEED', 'SP_LEVEL', 'SP_LEVEL_REQ', 'SP_FLOW'];
 
-// ── Init ───────────────────────────────────────────────────────────────────
 window.onload = () => {
-  fetchLibrary();
-  fetchProgram();
-  pollRuntime();
-  runtimePollTimer = setInterval(pollRuntime, 500);
+  loadLibrary();
+  loadProgram();
 };
 
 function setStatus(msg, ok = true) {
@@ -726,36 +421,15 @@ function setStatus(msg, ok = true) {
   el.className = ok ? 'ok' : 'err';
 }
 
-function showView(name) {
-  currentView = name;
-  const dash = document.getElementById('view-dashboard');
-  const prog = document.getElementById('view-program');
-  const tabD = document.getElementById('tab-dashboard');
-  const tabP = document.getElementById('tab-program');
-  dash.classList.toggle('active', name === 'dashboard');
-  prog.classList.toggle('active', name === 'program');
-  tabD.classList.toggle('active', name === 'dashboard');
-  tabP.classList.toggle('active', name === 'program');
-  if (name === 'program') {
-    renderCanvas();
-  }
-}
-
 function togglePanel(id) {
   const el = document.getElementById(id);
   if (el) el.classList.toggle('collapsed');
 }
 
-// ── API calls ──────────────────────────────────────────────────────────────
-// HA Ingress serves this page under /api/hassio_ingress/<token>/. Absolute
-// fetch('/api/...') hits Home Assistant Core (404) instead of the Soft-PLC App.
-// Resolve every API path relative to the current document directory.
+// ── API (Ingress-safe relative paths) ──────────────────────────────────────
 function apiUrl(path) {
   const rel = String(path || '').replace(/^\//, '');
   let dir = window.location.pathname || '/';
-  // Ingress may omit the trailing slash. Treat the whole pathname as a
-  // directory (append '/') — do NOT strip the last segment (that drops the
-  // ingress token and yields /api/hassio_ingress/api/...).
   if (!dir.endsWith('/')) {
     dir = dir + '/';
   }
@@ -773,15 +447,15 @@ async function apiFetch(path, opts = {}) {
   } catch (e) { setStatus('Error: ' + e.message, false); throw e; }
 }
 
-async function fetchLibrary() {
+async function loadLibrary() {
   library = await apiFetch('api/library');
   renderLibrary();
 }
 
-async function fetchProgram() {
+async function loadProgram() {
   program = await apiFetch('api/program');
   syncYamlPane();
-  renderCanvas();
+  render();
   setStatus('Loaded', true);
 }
 
@@ -792,7 +466,7 @@ async function putProgram(prog) {
     body: JSON.stringify(prog)
   });
   syncYamlPane();
-  renderCanvas();
+  render();
   setStatus('Saved', true);
 }
 
@@ -806,9 +480,6 @@ async function applyRestart() {
 }
 
 async function applyHot() {
-  // Hot-apply authority is controlled by the server-side env var
-  // PLCASSISTANT_SUPERUSER_HOT_APPLY=1. The server ignores any
-  // superuser field from the client.
   await apiFetch('api/apply', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
@@ -816,139 +487,6 @@ async function applyHot() {
   });
   setStatus('Applied (hot)', true);
 }
-
-// ── Runtime dashboard ──────────────────────────────────────────────────────
-async function pollRuntime() {
-  try {
-    const r = await fetch(apiUrl('api/runtime'));
-    if (!r.ok) return;
-    const data = await r.json();
-    updateDashboard(data);
-  } catch (_) { /* quiet poll */ }
-}
-
-async function sendCmd(name) {
-  try {
-    const data = await apiFetch('api/cmd', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({name})
-    });
-    updateDashboard(data);
-    setStatus('Command: ' + name, true);
-  } catch (_) { /* status already set */ }
-}
-
-function tagOf(tags, name) {
-  if (!tags) return null;
-  return tags[name] || null;
-}
-
-function fmtVal(tag, digits) {
-  if (!tag || tag.value === null || tag.value === undefined) return '—';
-  const n = Number(tag.value);
-  if (!Number.isFinite(n)) return String(tag.value);
-  const d = digits === undefined ? 2 : digits;
-  const unit = tag.unit ? ' ' + tag.unit : '';
-  return n.toFixed(d) + unit;
-}
-
-function qualityClass(tag) {
-  const s = (tag && tag.status) ? String(tag.status).toUpperCase() : '';
-  return s || '';
-}
-
-function updateDashboard(data) {
-  const status = String((data && data.status) || 'offline').toLowerCase();
-  const chip = document.getElementById('status-chip');
-  chip.className = status;
-  document.getElementById('chip-label').textContent = status;
-
-  const headline = document.getElementById('status-headline');
-  const support = document.getElementById('status-support');
-  if (status === 'running') {
-    headline.textContent = 'Running';
-    support.textContent = 'Scan loop is active. Watch levels and flow update live, or stop the Soft-PLC when the process should idle.';
-  } else if (status === 'stopped') {
-    headline.textContent = 'Stopped';
-    support.textContent = 'Runtime is reachable but not scanning. Start to resume control, or open Program to edit the block graph.';
-  } else {
-    headline.textContent = 'Offline';
-    support.textContent = 'No live MQTT scan yet — local fallback image is shown. Start attempts a scan; signals update when the runtime connects.';
-  }
-
-  const tags = (data && data.tags) || {};
-  const tank = tagOf(tags, 'LT_TANK');
-  const res = tagOf(tags, 'LT_RES');
-  const flow = tagOf(tags, 'FT_INLET');
-  const speed = tagOf(tags, 'CMD_SPEED');
-  const spLevel = tagOf(tags, 'SP_LEVEL') || tagOf(tags, 'SP_LEVEL_REQ');
-  const spFlow = tagOf(tags, 'SP_FLOW');
-
-  // Tank fill: assume ~0–1 m typical; clamp visually 0–100% of tank height
-  const tankH = 184, tankBottom = 61 + tankH;
-  const tankFrac = clamp01(numOr(tank, 0) / Math.max(numOr(spLevel, 1), 0.01));
-  const tankFillH = tankFrac * tankH;
-  const tankEl = document.getElementById('tank-fill');
-  tankEl.setAttribute('height', tankFillH);
-  tankEl.setAttribute('y', tankBottom - tankFillH);
-  document.getElementById('tank-label').textContent = fmtVal(tank, 2);
-
-  const resH = 136, resBottom = 90 + resH;
-  const resFrac = clamp01(numOr(res, 0) / 1.0);
-  const resFillH = resFrac * resH;
-  const resEl = document.getElementById('res-fill');
-  resEl.setAttribute('height', resFillH);
-  resEl.setAttribute('y', resBottom - resFillH);
-  document.getElementById('res-label').textContent = fmtVal(res, 2);
-
-  // Flow needle: map 0–100 L/min-ish to -90..+90 deg
-  const flowN = numOr(flow, 0);
-  const flowAngle = -90 + clamp01(flowN / 100) * 180;
-  const needle = document.getElementById('flow-needle');
-  needle.style.transform = 'rotate(' + flowAngle + 'deg)';
-  document.getElementById('flow-label').textContent = fmtVal(flow, 1);
-
-  const spd = clamp01(numOr(speed, 0) / 100);
-  document.getElementById('speed-fill').setAttribute('width', spd * 200);
-  document.getElementById('speed-label').textContent = fmtVal(speed, 1);
-
-  document.getElementById('sp-level-val').textContent = fmtVal(spLevel, 2);
-  const spLQ = document.getElementById('sp-level-q');
-  spLQ.textContent = qualityClass(spLevel);
-  spLQ.className = 'q ' + qualityClass(spLevel);
-
-  document.getElementById('sp-flow-val').textContent = fmtVal(spFlow, 1);
-  const spFQ = document.getElementById('sp-flow-q');
-  spFQ.textContent = qualityClass(spFlow);
-  spFQ.className = 'q ' + qualityClass(spFlow);
-
-  const strip = document.getElementById('signal-strip');
-  const seen = new Set();
-  const order = [];
-  for (const k of SIGNAL_KEYS) {
-    if (tags[k] && !seen.has(k)) { order.push(k); seen.add(k); }
-  }
-  // Prefer SP_LEVEL over SP_LEVEL_REQ in strip if both present
-  if (seen.has('SP_LEVEL') && seen.has('SP_LEVEL_REQ')) {
-    const i = order.indexOf('SP_LEVEL_REQ');
-    if (i >= 0) order.splice(i, 1);
-  }
-  strip.innerHTML = order.map(k => {
-    const t = tags[k];
-    const q = qualityClass(t);
-    return `<div class="sig"><span class="sig-name">${esc(k)}</span>` +
-      `<span class="sig-val">${esc(fmtVal(t, 2))}</span>` +
-      `<span class="q ${esc(q)}">${esc(q)}</span></div>`;
-  }).join('');
-}
-
-function numOr(tag, fallback) {
-  if (!tag || tag.value === null || tag.value === undefined) return fallback;
-  const n = Number(tag.value);
-  return Number.isFinite(n) ? n : fallback;
-}
-function clamp01(x) { return Math.max(0, Math.min(1, x)); }
 
 // ── Library panel ──────────────────────────────────────────────────────────
 function renderLibrary() {
@@ -987,16 +525,19 @@ canvasSvg.addEventListener('drop', async e => {
   const x = e.clientX - rect.left;
   const y = e.clientY - rect.top;
   const iid = tid + '_' + Date.now();
-  const resp = await apiFetch('api/place', {
+  await place(tid, tlib, iid, x, y);
+});
+
+async function place(tid, tlib, iid, x, y) {
+  program = await apiFetch('api/place', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({template_id: tid, library: tlib, instance_id: iid, x, y})
   });
-  program = resp;
   syncYamlPane();
-  renderCanvas();
+  render();
   setStatus('Placed ' + tid, true);
-});
+}
 
 // ── Canvas render ──────────────────────────────────────────────────────────
 function blockHeight(tmpl) {
@@ -1017,13 +558,12 @@ function pinY(bh, idx, count) {
   return BLOCK_H_BASE + (idx + 0.5) * (usable / Math.max(count, 1));
 }
 
-function renderCanvas() {
+function render() {
   const wl = document.getElementById('wires-layer');
   const bl = document.getElementById('blocks-layer');
   if (!wl || !bl) return;
   wl.innerHTML = ''; bl.innerHTML = '';
 
-  // Draw wires
   for (const w of (program.wires || [])) {
     const srcInst = program.instances[w.src_instance];
     const dstInst = program.instances[w.dst_instance];
@@ -1049,12 +589,11 @@ function renderCanvas() {
     wl.appendChild(path);
   }
 
-  // Draw blocks in execution order (then any not in order)
   const order = [...(program.execution_order||[])];
   for (const iid of Object.keys(program.instances||{})) {
     if (!order.includes(iid)) order.push(iid);
   }
-  order.forEach((iid, idx) => {
+  order.forEach((iid) => {
     const inst = program.instances[iid];
     if (!inst) return;
     const tmpl = templateFor(inst);
@@ -1064,7 +603,6 @@ function renderCanvas() {
     g.setAttribute('class', 'block-g');
     g.dataset.iid = iid;
 
-    // Background rect
     const rect = svgEl('rect');
     rect.setAttribute('x', bx); rect.setAttribute('y', by);
     rect.setAttribute('width', BLOCK_W); rect.setAttribute('height', bh);
@@ -1072,7 +610,6 @@ function renderCanvas() {
     rect.setAttribute('rx', 4); rect.setAttribute('ry', 4);
     g.appendChild(rect);
 
-    // Execution order badge
     const badge = svgEl('rect');
     badge.setAttribute('x', bx+BLOCK_W-22); badge.setAttribute('y', by+2);
     badge.setAttribute('width', 20); badge.setAttribute('height', 13);
@@ -1084,7 +621,6 @@ function renderCanvas() {
     badgeTxt.textContent = (program.execution_order||[]).indexOf(iid)+1 || '?';
     g.appendChild(badgeTxt);
 
-    // Title
     const title = svgEl('text');
     title.setAttribute('x', bx+6); title.setAttribute('y', by+14);
     title.setAttribute('class', 'block-title');
@@ -1096,7 +632,6 @@ function renderCanvas() {
     idTxt.textContent = iid;
     g.appendChild(idTxt);
 
-    // Pins
     const inPins = (tmpl?.pins||[]).filter(p=>p.direction==='IN');
     const outPins = (tmpl?.pins||[]).filter(p=>p.direction==='OUT');
     inPins.forEach((pin, pi) => {
@@ -1127,10 +662,9 @@ function renderCanvas() {
       g.appendChild(lbl);
     });
 
-    // Drag + select
     g.addEventListener('mousedown', e => {
       if (e.target.classList.contains('pin-circle')) return;
-      selectedId = iid; renderCanvas();
+      selectedId = iid; render();
       dragging = {id: iid, ox: e.clientX - (inst.x||0), oy: e.clientY - (inst.y||0)};
       e.stopPropagation();
     });
@@ -1143,14 +677,13 @@ function renderCanvas() {
   });
 }
 
-// ── Drag to move blocks ────────────────────────────────────────────────────
 canvasSvg.addEventListener('mousemove', e => {
   if (dragging) {
     const inst = program.instances[dragging.id];
     if (inst) {
       inst.x = e.clientX - dragging.ox;
       inst.y = e.clientY - dragging.oy;
-      renderCanvas();
+      render();
     }
   }
   if (wiring) {
@@ -1170,9 +703,8 @@ canvasSvg.addEventListener('mouseup', async () => {
     document.getElementById('draft-wire').style.display = 'none';
   }
 });
-canvasSvg.addEventListener('click', () => { selectedId = null; renderCanvas(); });
+canvasSvg.addEventListener('click', () => { selectedId = null; render(); });
 
-// ── Pin wiring ─────────────────────────────────────────────────────────────
 function onPinMouseDown(e) {
   const circ = e.currentTarget;
   if (circ.dataset.dir !== 'OUT') return;
@@ -1212,7 +744,6 @@ async function removeWire(wire) {
   await putProgram(program);
 }
 
-// ── Remove selected block ──────────────────────────────────────────────────
 async function removeSelected() {
   if (!selectedId) { setStatus('Select a block first', false); return; }
   delete program.instances[selectedId];
@@ -1224,7 +755,6 @@ async function removeSelected() {
   await putProgram(program);
 }
 
-// ── YAML textarea sync ─────────────────────────────────────────────────────
 function syncYamlPane() {
   document.getElementById('yaml-area').value = JSON.stringify(program, null, 2);
 }
@@ -1232,13 +762,11 @@ function syncYamlPane() {
 async function onYamlEdit() {
   try {
     const txt = document.getElementById('yaml-area').value;
-    const parsed = JSON.parse(txt);
-    program = parsed;
+    program = JSON.parse(txt);
     await putProgram(program);
   } catch (_) { /* JSON parse error; user is still typing */ }
 }
 
-// ── Block properties overlay ───────────────────────────────────────────────
 function openOverlay(iid) {
   overlayInst = iid;
   const inst = program.instances[iid];
@@ -1274,18 +802,16 @@ async function applyOverlay() {
 
 async function resetInstanceOverlay() {
   if (!overlayInst) return;
-  const resp = await apiFetch('api/reset_instance', {
+  program = await apiFetch('api/reset_instance', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({instance_id: overlayInst})
   });
-  program = resp;
-  syncYamlPane(); renderCanvas();
+  syncYamlPane(); render();
   closeOverlay();
   setStatus('Reset ' + overlayInst, true);
 }
 
-// ── User block editor ──────────────────────────────────────────────────────
 function toggleUserEditor() {
   ueVisible = !ueVisible;
   document.getElementById('user-form').style.display = ueVisible ? '' : 'none';
@@ -1301,7 +827,6 @@ function openUserEditor(tmpl) {
   document.getElementById('ue-params').value = JSON.stringify(tmpl?.params||{}, null, 2);
   document.getElementById('ue-body').value = tmpl?.body || '';
   if (!ueVisible) toggleUserEditor();
-  if (currentView !== 'program') showView('program');
 }
 
 async function saveUserBlock() {
@@ -1319,8 +844,8 @@ async function saveUserBlock() {
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({template_id: tid, description: desc, pins, params, body})
   });
-  await fetchLibrary();
-  await fetchProgram();
+  await loadLibrary();
+  await loadProgram();
   setStatus('Saved user block ' + tid, true);
 }
 
@@ -1329,12 +854,11 @@ async function deleteUserBlock() {
   if (!tid) { setStatus('Template ID required', false); return; }
   if (!confirm('Delete user block ' + tid + '?')) return;
   await apiFetch('api/library/user/' + encodeURIComponent(tid), {method: 'DELETE'});
-  await fetchLibrary();
-  await fetchProgram();
+  await loadLibrary();
+  await loadProgram();
   setStatus('Deleted ' + tid, true);
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────
 function svgEl(tag) { return document.createElementNS('http://www.w3.org/2000/svg', tag); }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
 </script>

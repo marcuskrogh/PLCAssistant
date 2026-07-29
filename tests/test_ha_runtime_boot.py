@@ -225,21 +225,21 @@ def test_app_cmd_enqueues_for_scan_thread():
     bridge = MqttIoBridge(bus, instance_id="default")
     loop = MqttScanLoop(bridge, image, period_s=0.1)
     bridge.start()
-    assert loop.scanning is True
-
-    loop.issue_command("stop")
-    # Still True until the scan thread drains the bridge queue.
-    assert loop.scanning is True
-    assert bridge.pending_commands == ("stop",)
-
-    loop.scan_once()
     assert loop.scanning is False
-    assert bridge.pending_commands == ()
 
     loop.issue_command("start")
+    # Still False until the scan thread drains the bridge queue.
     assert loop.scanning is False
+    assert bridge.pending_commands == ("start",)
+
     loop.scan_once()
     assert loop.scanning is True
+    assert bridge.pending_commands == ()
+
+    loop.issue_command("stop")
+    assert loop.scanning is True
+    loop.scan_once()
+    assert loop.scanning is False
 
 
 def test_memory_bus_runtime_cmd_via_http(tmp_path: Path):
@@ -257,6 +257,7 @@ def test_memory_bus_runtime_cmd_via_http(tmp_path: Path):
     thread.start()
     try:
         assert life.loop is not None
+        assert life.loop.scanning is False
 
         def post_cmd(name: str) -> dict:
             req = urllib.request.Request(
@@ -268,24 +269,24 @@ def test_memory_bus_runtime_cmd_via_http(tmp_path: Path):
             with urllib.request.urlopen(req, timeout=2.0) as resp:
                 return json.loads(resp.read())
 
-        post_cmd("stop")
+        post_cmd("start")
         deadline = time.monotonic() + 2.0
-        while life.loop.scanning and time.monotonic() < deadline:
+        while (not life.loop.scanning) and time.monotonic() < deadline:
             time.sleep(0.05)
-        assert life.loop.scanning is False
+        assert life.loop.scanning is True
 
         with urllib.request.urlopen(
             f"http://127.0.0.1:{port}/api/runtime", timeout=2.0
         ) as resp:
             snap = json.loads(resp.read())
         assert snap["mqtt"] is True
-        assert snap["status"] == "stopped"
+        assert snap["status"] == "running"
 
-        post_cmd("start")
+        post_cmd("stop")
         deadline = time.monotonic() + 2.0
-        while (not life.loop.scanning) and time.monotonic() < deadline:
+        while life.loop.scanning and time.monotonic() < deadline:
             time.sleep(0.05)
-        assert life.loop.scanning is True
+        assert life.loop.scanning is False
     finally:
         life.stop()
         server.shutdown()

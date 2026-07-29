@@ -49,9 +49,14 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-130 | Bug | [Iterate] Store Latest stuck at 0.1.6 while GitHub has newer App version | Done | Relates SWD-129 | docs/ITERATE.md | Done — shipped PR #42 |
 | SWD-131 | Bug | [Iterate] App Block Editor 404 under Ingress + thin integration too thin / version lock | Done | Relates SWD-130 | docs/ITERATE.md | Done — shipped PR #43 |
 | SWD-132 | Bug | [Iterate] Operator dashboard default + major App UI refresh (mobile) | Done | Relates SWD-131 | docs/ITERATE.md | Done — shipped PR #44 |
+| SWD-133 | Bug | [Iterate] Lovelace HMI default + writable SP + Soft-PLC plant on Start (not App SCADA) | Done | Relates SWD-132 | docs/ITERATE.md | Done — shipped PR #46 |
 
 ## Log
 
+- 2026-07-29 — Shipped SWD-133 via PR #46; App 0.1.11 Lovelace HMI + Skid plant + writable SP_LEVEL_REQ. Bug Done.
+- 2026-07-29 — review-fix SWD-133 CLEAN after 2 iterations (iter1: reset semantics + entity_ids/migration; iter2: 0); Next `/ship SWD-133`.
+- 2026-07-29 — Iterate SWD-133: PR #46 opened (App 0.1.11); Lovelace HMI + Skid plant + writable SP_LEVEL_REQ; Task → In Review.
+- 2026-07-29 — Iterate SWD-133: Lovelace HMI (not App SCADA), writable SP_LEVEL_REQ, Skid plant on Start; App 0.1.11.
 - 2026-07-29 — Shipped SWD-132 via PR #44; App 0.1.10 operator dashboard + UI refresh; cmd enqueue + offline intent. Bug Done.
 - 2026-07-29 — review-fix SWD-132 CLEAN after 3 iterations (iter1: cmd race/offline/tests/arch/spec; iter2: stop-vs-late-connect + OperatorRuntime; iter3: 0); Next `/ship SWD-132`.
 - 2026-07-28 — Iterate SWD-132: PR #44 opened (App 0.1.10); operator dashboard + UI refresh; Task → In Review.

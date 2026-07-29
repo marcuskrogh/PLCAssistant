@@ -5,21 +5,23 @@ from __future__ import annotations
 from plcassistant.io import (
     BindingTable,
     InMemoryMqttBus,
-    IoImage,
     MqttEntityBridge,
     MqttIoBridge,
     MockEntityStore,
     QualityStatus,
     default_wedge_binding_config,
 )
-from plcassistant.app.runtime import MqttScanLoop, declare_default_image, default_scan_logic
+from plcassistant.app.runtime import MqttScanLoop, declare_default_image
+from plcassistant.app.skid_scan import SkidImageLogic
+from plcassistant.io.mqtt_topics import MqttTagPayload, cmd_topic, tag_in_topic
+from plcassistant.io.quality import ReasonCode
 
 
-def test_entity_bridge_roundtrip_with_app_bridge():
+def test_entity_bridge_roundtrip_with_skid_logic():
     bus = InMemoryMqttBus()
     table = BindingTable.from_config(default_wedge_binding_config())
     entities = MockEntityStore()
-    entities.set("number.plcassistant_lt_tank_in", 0.25)
+    entities.set("number.plcassistant_sp_level_req", 0.20)
 
     app_image = declare_default_image()
     app = MqttIoBridge(bus, instance_id="default")
@@ -29,13 +31,18 @@ def test_entity_bridge_roundtrip_with_app_bridge():
 
     integ.publish_inputs()
     app.apply_inputs(app_image)
-    default_scan_logic(app_image)
+    logic = SkidImageLogic(period_s=0.1)
+    logic.enqueue_operator("start")
+    logic(app_image)
+    for _ in range(5):
+        logic(app_image)
     app.publish_outputs(app_image)
     applied = integ.apply_outputs()
 
     assert "CMD_SPEED" in applied
-    assert entities.get("number.plcassistant_cmd_speed_out").value == 25.0
-    assert entities.get("number.plcassistant_cmd_speed_out").status is QualityStatus.GOOD
+    assert "LT_TANK" in applied
+    assert entities.get("sensor.plcassistant_cmd_speed").value > 0.0
+    assert entities.get("sensor.plcassistant_cmd_speed").status is QualityStatus.GOOD
 
 
 def test_ha_default_bindings_match_app_wedge_config():
@@ -50,7 +57,6 @@ def test_ha_default_bindings_match_app_wedge_config():
         for n in tree.body
         if isinstance(n, ast.FunctionDef) and n.name == "_default_bindings"
     )
-    # Expect: return [ {...}, ... ]
     ret = next(s for s in fn.body if isinstance(s, ast.Return))
     ha_bindings = ast.literal_eval(ret.value)
 
@@ -65,6 +71,10 @@ def test_ha_default_bindings_match_app_wedge_config():
         "SP_LEVEL",
         "SP_FLOW",
     }
+    by_tag = {b["tag"]: b for b in ha_bindings}
+    assert by_tag["SP_LEVEL_REQ"]["direction"] == "IN"
+    assert by_tag["LT_TANK"]["direction"] == "OUT"
+    assert by_tag["SP_FLOW"]["direction"] == "OUT"
 
 
 def test_scan_loop_once_and_commands():
@@ -73,12 +83,19 @@ def test_scan_loop_once_and_commands():
     bridge = MqttIoBridge(bus, instance_id="default")
     loop = MqttScanLoop(bridge, image, period_s=0.01)
     bridge.start()
-    from plcassistant.io.mqtt_topics import MqttTagPayload, cmd_topic, tag_in_topic
+    assert loop.scanning is False
 
-    bus.publish(tag_in_topic("default", "LT_TANK"), MqttTagPayload.now(0.1).encode())
+    bus.publish(
+        tag_in_topic("default", "SP_LEVEL_REQ"),
+        MqttTagPayload.now(0.2).encode(),
+    )
+    bus.publish(cmd_topic("default", "start"), b"1")
     loop.scan_once()
-    assert image.get_value("LT_TANK") == 0.1
-    assert image.get_value("CMD_SPEED") == 10.0
+    assert loop.scanning is True
+    # First RUNNING scan may still show 0 CVs; plant moves on subsequent scans.
+    loop.scan_once()
+    assert image.get_value("CMD_SPEED") > 0.0
+    assert image.get_value("SP_FLOW") > 0.0
 
     bus.publish(cmd_topic("default", "stop"), b"1")
     loop.scan_once()
@@ -107,4 +124,3 @@ def test_topic_parity_with_custom_component():
     )
     assert re.search(r'TOPIC_ROOT\s*=\s*"plcassistant"', const)
     assert core.TOPIC_ROOT == "plcassistant"
-    assert core.tag_in_topic("default", "LT_TANK") == "plcassistant/default/tag/LT_TANK/in"
