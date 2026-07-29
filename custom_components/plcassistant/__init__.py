@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 from pathlib import Path
 
 from homeassistant.components.mqtt import async_subscribe
@@ -38,6 +39,8 @@ _LOGGER = logging.getLogger(__name__)
 PLATFORMS: list[Platform] = [Platform.NUMBER, Platform.SENSOR, Platform.BUTTON]
 # Poll shared App runtime file when MQTT stays silent (SWD-139).
 _FILE_BRIDGE_POLL_S = 1.0
+_FILE_BRIDGE_FRESH_S = 3.0
+_MQTT_SILENT_S = 3.0
 _HMI_TAGS = ("MODE", "PERM_OK", "TRIP_ACTIVE", "LT_TANK", "FT_INLET", "CMD_SPEED")
 
 
@@ -270,6 +273,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         store = hass.data[DOMAIN].get(entry.entry_id)
         if store is not None:
             store["status_payload"] = text
+            store["last_mqtt_status_mono"] = time.monotonic()
         hass.bus.async_fire(
             f"{DOMAIN}_status",
             {"payload": text, "entry_id": entry.entry_id},
@@ -284,11 +288,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry_id = entry.entry_id
         while True:
             try:
+                store = hass.data.get(DOMAIN, {}).get(entry_id) or {}
+                last_mqtt = store.get("last_mqtt_status_mono")
+                # MQTT remains primary — only use the file when status is silent.
+                if last_mqtt is not None and (
+                    time.monotonic() - float(last_mqtt)
+                ) < _MQTT_SILENT_S:
+                    await asyncio.sleep(_FILE_BRIDGE_POLL_S)
+                    continue
                 snap = await hass.async_add_executor_job(
                     read_runtime_snapshot, config_root
                 )
                 if snap:
-                    _apply_file_runtime(hass, entry_id, snap)
+                    try:
+                        age = time.time() - float(snap.get("ts") or 0.0)
+                    except (TypeError, ValueError):
+                        age = _FILE_BRIDGE_FRESH_S + 1.0
+                    if age <= _FILE_BRIDGE_FRESH_S:
+                        _apply_file_runtime(hass, entry_id, snap)
             except asyncio.CancelledError:
                 raise
             except Exception:  # noqa: BLE001 — never crash the poll loop
