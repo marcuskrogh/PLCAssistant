@@ -1,7 +1,7 @@
 # Iterate: Soft-PLC attached but HMI still offline — Core never restarts
 
 ## Status
-**In Review** — App **0.1.16**; PR [#53](https://github.com/marcuskrogh/PLCAssistant/pull/53)
+**Done** — App **0.1.16**; shipped PR [#53](https://github.com/marcuskrogh/PLCAssistant/pull/53)
 
 ## Prior work
 - Task: SWD-137 (PR #52, App 0.1.15 — empty options MQTT attach)
@@ -31,4 +31,4 @@ Root cause: Soft-PLC publish path is healthy. App Start copies `custom_component
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/53
 
 ## Next
-`/review-fix SWD-138` — Review and auto-fix until clean
+Done — phase closed.
