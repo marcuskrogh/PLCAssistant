@@ -1,0 +1,51 @@
+title: PLCAssistant
+views:
+  - title: Skid
+    path: skid
+    icon: mdi:cup-water
+    cards:
+      - type: markdown
+        content: |
+          **PLCAssistant** — Soft-PLC skid HMI. Change the **Level setpoint**, press **Start**, then watch tank level, flow, and speed. Extend this board or add new Lovelace dashboards for your own SCADA views.
+      - type: entities
+        title: Operate
+        show_header_toggle: false
+        entities:
+          - entity: button.plcassistant_start
+            name: Start
+          - entity: button.plcassistant_stop
+            name: Stop
+          - entity: button.plcassistant_reset
+            name: Reset
+          - entity: number.plcassistant_sp_level_req
+            name: Level setpoint (request)
+      - type: entities
+        title: Process
+        show_header_toggle: false
+        entities:
+          - entity: sensor.plcassistant_lt_tank
+            name: Tank level
+          - entity: sensor.plcassistant_lt_res
+            name: Reservoir level
+          - entity: sensor.plcassistant_ft_inlet
+            name: Inlet flow
+          - entity: sensor.plcassistant_cmd_speed
+            name: Pump speed command
+      - type: entities
+        title: Active setpoints (Soft-PLC)
+        show_header_toggle: false
+        entities:
+          - entity: sensor.plcassistant_sp_level
+            name: Active level SP
+          - entity: sensor.plcassistant_sp_flow
+            name: Active flow SP
+      - type: history-graph
+        title: Tank & flow
+        hours_to_show: 1
+        entities:
+          - entity: sensor.plcassistant_lt_tank
+            name: Tank
+          - entity: sensor.plcassistant_ft_inlet
+            name: Flow
+          - entity: sensor.plcassistant_cmd_speed
+            name: Speed

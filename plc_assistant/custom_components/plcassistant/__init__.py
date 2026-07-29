@@ -27,7 +27,7 @@ from .const import (
 )
 from .mqtt_topics import cmd_topic, tag_in_topic, tag_out_topic
 
-PLATFORMS: list[Platform] = [Platform.NUMBER, Platform.BUTTON]
+PLATFORMS: list[Platform] = [Platform.NUMBER, Platform.SENSOR, Platform.BUTTON]
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -39,50 +39,50 @@ def _default_bindings() -> list[dict]:
     """Default mock bindings — keep in sync with ``default_wedge_binding_config``."""
     return [
         {
-            "tag": "LT_TANK",
-            "entity": "number.plcassistant_lt_tank_in",
+            "tag": "SP_LEVEL_REQ",
+            "entity": "number.plcassistant_sp_level_req",
             "direction": "IN",
+            "scale": 1.0,
+            "offset": 0.0,
+        },
+        {
+            "tag": "LT_TANK",
+            "entity": "sensor.plcassistant_lt_tank",
+            "direction": "OUT",
             "scale": 1.0,
             "offset": 0.0,
         },
         {
             "tag": "LT_RES",
-            "entity": "number.plcassistant_lt_res_in",
-            "direction": "IN",
+            "entity": "sensor.plcassistant_lt_res",
+            "direction": "OUT",
             "scale": 1.0,
             "offset": 0.0,
         },
         {
             "tag": "FT_INLET",
-            "entity": "number.plcassistant_ft_inlet_in",
-            "direction": "IN",
-            "scale": 1.0,
-            "offset": 0.0,
-        },
-        {
-            "tag": "SP_LEVEL_REQ",
-            "entity": "number.plcassistant_sp_level_req_in",
-            "direction": "IN",
+            "entity": "sensor.plcassistant_ft_inlet",
+            "direction": "OUT",
             "scale": 1.0,
             "offset": 0.0,
         },
         {
             "tag": "CMD_SPEED",
-            "entity": "number.plcassistant_cmd_speed_out",
+            "entity": "sensor.plcassistant_cmd_speed",
             "direction": "OUT",
             "scale": 1.0,
             "offset": 0.0,
         },
         {
             "tag": "SP_LEVEL",
-            "entity": "number.plcassistant_sp_level_out",
+            "entity": "sensor.plcassistant_sp_level",
             "direction": "OUT",
             "scale": 1.0,
             "offset": 0.0,
         },
         {
             "tag": "SP_FLOW",
-            "entity": "number.plcassistant_sp_flow_out",
+            "entity": "sensor.plcassistant_sp_flow",
             "direction": "OUT",
             "scale": 1.0,
             "offset": 0.0,

@@ -91,21 +91,24 @@ def test_get_root_returns_html(app_server):
     status, body, ct = _get(base_url + "/")
     assert status == 200
     assert b"PLCAssistant" in body or b"PLC Assistant" in body
-    assert b"Dashboard" in body or b"dashboard" in body
+    assert b"program" in body.lower() or b"Program" in body
+    assert b"Lovelace" in body
     assert "text/html" in ct
 
 
-def test_canvas_dashboard_default_and_runtime_hooks(app_server):
-    """SWD-132: default surface is operator dashboard with runtime/cmd APIs."""
+def test_canvas_program_editor_not_operator_scada(app_server):
+    """SWD-133: App is program editor; HMI is Lovelace — no Start/Stop SCADA."""
     _, base_url, _ = app_server
     status, body, _ = _get(base_url + "/")
     assert status == 200
     html = body.decode("utf-8")
-    assert "api/runtime" in html
-    assert "api/cmd" in html
-    assert "Start" in html and "Stop" in html and "Reset" in html
-    for tag in ("LT_TANK", "FT_INLET", "CMD_SPEED"):
-        assert tag in html
+    assert "api/program" in html
+    assert "api/library" in html
+    assert "Lovelace" in html
+    # Operator Start/Stop belong in HA, not the App canvas.
+    assert "sendCmd" not in html
+    assert "api/runtime" not in html or "pollRuntime" not in html
+    assert "view-dashboard" not in html
 
 
 def test_get_runtime_returns_tags(app_server):

@@ -10,6 +10,7 @@ from typing import Any, Callable
 
 from plcassistant.app.default_image import declare_default_image
 from plcassistant.app.server import AppState, run_app
+from plcassistant.app.skid_scan import SkidImageLogic
 from plcassistant.io.image import IoImage
 from plcassistant.io.mqtt_bridge import InMemoryMqttBus, MqttBus, MqttIoBridge
 from plcassistant.io.mqtt_topics import DEFAULT_INSTANCE_ID
@@ -28,7 +29,7 @@ def load_options(path: str | None) -> dict[str, Any]:
 
 
 def default_scan_logic(image: IoImage) -> None:
-    """Demo logic: mirror SP request; CMD_SPEED from level; SP_FLOW from FT_INLET."""
+    """Legacy demo mirror (tests). Prefer ``SkidImageLogic`` for HA runtime."""
     names = image.names()
     if "SP_LEVEL_REQ" in names and "SP_LEVEL" in names:
         try:
@@ -160,14 +161,17 @@ class MqttScanLoop:
         bridge: MqttIoBridge,
         image: IoImage,
         *,
-        logic: Callable[[IoImage], None] = default_scan_logic,
+        logic: Callable[[IoImage], None] | None = None,
         period_s: float = 0.1,
     ) -> None:
         self.bridge = bridge
         self.image = image
-        self.logic = logic
         self.period_s = period_s
-        self.scanning = True
+        self.logic: Callable[[IoImage], None] = (
+            logic if logic is not None else SkidImageLogic(period_s=period_s)
+        )
+        # Boot stopped — operator Start (HMI / MQTT cmd) begins control.
+        self.scanning = False
         self.commands: list[str] = []
         self._thread: threading.Thread | None = None
         self._lock = threading.Lock()
@@ -178,9 +182,12 @@ class MqttScanLoop:
         self.bridge.on_command("reset", lambda: None)
 
     def _apply_commands(self, cmds: tuple[str, ...]) -> None:
+        enqueue = getattr(self.logic, "enqueue_operator", None)
         for name in cmds:
             with self._lock:
                 self.commands.append(name)
+            if callable(enqueue):
+                enqueue(name)
             if name == "start":
                 self.scanning = True
                 self.bridge.publish_status("running")
@@ -188,17 +195,15 @@ class MqttScanLoop:
                 self.scanning = False
                 self.bridge.publish_status("stopped")
             elif name == "reset":
-                for tag_name in self.image.names():
-                    snap = self.image.snapshot()[tag_name]
-                    self.image.set_output(tag_name, snap.default)
+                self.scanning = False
                 self.bridge.publish_status("reset")
 
     def start(self) -> None:
         if self._thread is not None:
             return
-        self.scanning = True
+        self.scanning = False
         self.bridge.start()
-        self.bridge.publish_status("running")
+        self.bridge.publish_status("stopped")
         self._thread = threading.Thread(target=self._run, name="mqtt-scan", daemon=True)
         self._thread.start()
 
@@ -215,9 +220,9 @@ class MqttScanLoop:
         drained = self.bridge.drain_commands()
         if drained:
             self._apply_commands(drained)
-        if self.scanning:
-            self.logic(self.image)
-            self.bridge.publish_outputs(self.image)
+        # Always run logic so Skid observes Start/Stop/Reset pulses.
+        self.logic(self.image)
+        self.bridge.publish_outputs(self.image)
 
     def issue_command(self, name: str) -> None:
         """Enqueue an operator command for the scan thread (same as MQTT cmds)."""
@@ -254,7 +259,12 @@ def _mqtt_supervisor(
             return None
         image = declare_default_image()
         bridge = MqttIoBridge(bus_obj, instance_id=instance_id)
-        loop = MqttScanLoop(bridge, image, period_s=period_s)
+        loop = MqttScanLoop(
+            bridge,
+            image,
+            logic=SkidImageLogic(period_s=period_s),
+            period_s=period_s,
+        )
         # Attach before start so deferred cmds flush into the bridge queue first.
         life.attach(loop)
         if life.stopped() or life.loop is not loop:

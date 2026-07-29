@@ -1,43 +1,34 @@
-# Iterate: Operator dashboard default + major App UI refresh
+# Iterate: Lovelace HMI + Soft-PLC plant on Start
 
 ## Status
-**Done** — App **0.1.10** shipped via [PR #44](https://github.com/marcuskrogh/PLCAssistant/pull/44)
+**In Progress** — App **0.1.11** (branch `cursor/swd-133-lovelace-hmi-plant-1bbe`)
 
 ## Prior work
-- Task: SWD-131 (PR #43, App 0.1.9 Ingress + thin-integration tags)
-- Spec context: `docs/wedge/02-io-hmi-contract.md`, `docs/surface/05-app-editor.md`, `plcassistant/app/`
+- Task: SWD-132 (PR #44, App 0.1.10 App operator dashboard — wrong HMI home)
+- Spec: `docs/wedge/02-io-hmi-contract.md`, `docs/packaging/01-shape.md`
 
 ## Problem
-After SWD-131 the Soft-PLC runs, but the App UI is still a crude Block Editor-only surface:
+After 0.1.10:
 
-1. No default **operator dashboard** with live process signals.
-2. Start / Stop / Reset and run-state are unclear.
-3. Visual design is poor on desktop and especially **mobile**.
+1. Start looks idle — App demo scan is not wedge cascade + plant; `SP_FLOW`/`CMD_SPEED` stay 0.
+2. Setpoints appear uneditable — HA Numbers for Soft-PLC **OUT** tags; writable request is `SP_LEVEL_REQ`.
+3. Operator wanted **Lovelace** as HMI/SCADA, not an App-owned dashboard; App should be the program editor.
 
 ## Acceptance criteria
-1. Default App view is an **operator dashboard** showing live wedge signals (LT_TANK, LT_RES, FT_INLET, CMD_SPEED, SP_LEVEL / SP_FLOW at minimum) with quality/run indication.
-2. Prominent **Start / Stop / Reset** and clear **running / stopped / offline** status
-   (offline = no MQTT scan attached — never claim an active scan when `mqtt: false`;
-   scan faults publish on the MQTT status topic separately from the dashboard chip).
-3. Block / program editor remains a secondary view.
-4. Large visual refresh: modern layout, expressive typography, atmospheric background, mobile-usable nav + visualisations; Ingress-relative API paths preserved.
-5. App + integration version **0.1.10** (locked equal).
+1. App Ingress default is the **Program / block editor** (no Soft-PLC operator SCADA as primary).
+2. Thin integration ships a **default Lovelace dashboard** YAML under `lovelace/`; App copies it to HA `dashboards/plcassistant.yaml` with a short README.
+3. Writable setpoint is `number.plcassistant_sp_level_req`; Soft-PLC-owned tags are **sensors**.
+4. Mock Soft-PLC plant + Start moves process (`SP_FLOW` / `CMD_SPEED` / tank) via `SkidImageLogic`.
+5. App + integration version **0.1.11**.
 
 ## Out of scope
-- Lovelace packaging
-- Binding reconfigure UI
-- Full Soft-PLC ladder redesign beyond operator surface
-
-## Work packages
-1. `/api/runtime` + `/api/cmd` wired to scan loop / fallback image
-2. Dashboard-default UI + secondary Program editor; mobile layout
-3. Version bump 0.1.10 + tests
+- Full auto-registration of Lovelace into HA storage UI (paste/import documented)
+- Field (non-mock) sensor binding UI
 
 ## Tracker
-- Task: [SWD-132](https://marcusknielsen.atlassian.net/browse/SWD-132)
-- Relates: SWD-131
-- Branch: `cursor/swd-132-operator-dashboard-ui-1bbe`
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/44
+- Task: [SWD-133](https://marcusknielsen.atlassian.net/browse/SWD-133)
+- Relates: SWD-132
+- Branch: `cursor/swd-133-lovelace-hmi-plant-1bbe`
 
 ## Next
-`/iterate` — next operator feedback
+Implement → PR → `/review-fix SWD-133`

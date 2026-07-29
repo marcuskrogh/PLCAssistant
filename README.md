@@ -42,7 +42,7 @@ Home Assistant OS
 
 Catalog metadata lives in root [`repository.yaml`](repository.yaml). The Supervisor App folder is [`plc_assistant/`](plc_assistant/) (slug `plcassistant`).
 
-### 3. Open the operator dashboard
+### 3. Open the Soft-PLC program editor
 
 After the App is running:
 
@@ -51,7 +51,7 @@ After the App is running:
 | **Ingress (recommended)** | Apps → PLCAssistant → **Open UI** (uses your HA session) |
 | **Host port** | `http://<ha-host>:8099` |
 
-The App opens on an **operator dashboard** (live signals + Start/Stop/Reset). Switch to **Program** for the block editor.
+The App is the **block / program editor**. Operator HMI (Start/Stop/Reset, setpoints, live PVs) is in **Home Assistant Lovelace** — not inside the Soft-PLC App.
 
 #### Auth note (exposed port)
 
@@ -81,19 +81,21 @@ Then:
 2. Go to **Settings → Devices & services → Add integration**.
 3. Search for **PLCAssistant** and add it.
 4. Use the **same `instance_id`** as the App (default `default`).
-5. Leave **mock mode** on for a first smoke test (creates writable Number IN entities — tank/reservoir/flow/setpoint — Number OUT sinks, and Start/Stop/Reset **buttons** over MQTT).
+5. Leave **mock mode** on for a first smoke test (creates a writable **Level setpoint** Number, read-only **sensors** for tank/flow/speed/active SPs, and Start/Stop/Reset **buttons** over MQTT).
 
 The App and thin integration **share one version** (`plc_assistant/config.yaml` ≡ `custom_components/plcassistant/manifest.json`). After an App Update, restart Core so HA reloads the matching integration.
+
+On Start the App also copies a Lovelace template to `/config/dashboards/plcassistant.yaml` (see `dashboards/plcassistant_README.md`). Add it under **Settings → Dashboards** (paste YAML or YAML-mode include) and extend it as your SCADA board.
 
 Manual copy is no longer required on HA OS. Fallback if the config mount is unavailable: copy [`custom_components/plcassistant`](custom_components/plcassistant) into `/config/custom_components/` yourself (Samba / SSH / Studio Code Server).
 
 ### 6. Verify the install
 
-1. Open the App UI (Ingress or port 8099) — the block editor should load with a populated **Block Library** (if Ingress shows `Error: 404`, Update the App and hard-refresh).
-2. In HA, confirm mock Number entities appear under the PLCAssistant integration (including **FT_INLET** / flow) plus Start/Stop/Reset buttons.
-3. Change a mock IN value; the Soft-PLC should see it on the corresponding tag (and OUT entities update when the program writes).
-4. Press the **Start** / **Stop** / **Reset** buttons (or call services `plcassistant.start` / `stop` / `reset`) — these publish command pulses to the App.
-5. Place or edit a program in the editor, restart the App, and confirm it reloads from persistent storage (`/data/program.json` inside the App).
+1. Open the App UI (Ingress or port 8099) — the **program editor** should load with a populated **Block Library** (if Ingress shows `Error: 404`, Update the App and hard-refresh).
+2. In HA, confirm **Level setpoint** (`number.plcassistant_sp_level_req`), process **sensors**, and Start/Stop/Reset buttons under the PLCAssistant integration.
+3. Open / paste the Lovelace board from `dashboards/plcassistant.yaml`. Set the level setpoint, press **Start** — tank level, flow SP, and pump speed should move.
+4. Press **Stop** / **Reset** (or call services `plcassistant.start` / `stop` / `reset`) — these publish command pulses to the App.
+5. Place or edit a program in the App editor, restart the App, and confirm it reloads from persistent storage (`/data/program.json` inside the App).
 
 ---
 
