@@ -53,10 +53,11 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-134 | Bug | [Iterate] Auto-register default Lovelace dashboard in HA sidebar (no copy/paste) | Done | Relates SWD-133 | docs/ITERATE.md | Done — shipped PR #47 |
 | SWD-135 | Bug | [Iterate] Lovelace status indicator + Start wiring (no visible process state) | Done | Relates SWD-134 | docs/ITERATE.md | Done — shipped PR #49 |
 | SWD-136 | Bug | [Iterate] Soft-PLC HMI stuck offline — Start does nothing (status race) | Done | Relates SWD-135 | docs/ITERATE.md | Done — shipped PR #51 |
-| SWD-137 | Bug | [Iterate] Soft-PLC still offline after 0.1.14 — MQTT never attaches without options | In Progress | Relates SWD-136 | docs/ITERATE.md | Next `/review-fix SWD-137` |
+| SWD-137 | Bug | [Iterate] Soft-PLC still offline after 0.1.14 — MQTT never attaches without options | In Review | Relates SWD-136 | docs/ITERATE.md | PR #52; Next `/review-fix SWD-137` |
 
 ## Log
 
+- 2026-07-29 — Iterate SWD-137: PR #52 opened (App 0.1.15); empty options MQTT attach; Task → In Review.
 - 2026-07-29 — Iterate SWD-137: Soft-PLC still offline after 0.1.14; empty options skipped MQTT; App 0.1.15.
 - 2026-07-29 — Shipped SWD-136 via PR #51; App 0.1.14 status cache/hydrate + heartbeat/LWT. Bug Done.
 - 2026-07-29 — review-fix SWD-136 CLEAN after 2 iterations (iter1: 0B+3SF status churn/heartbeat test/LWT coverage; iter2: 0); Next `/ship SWD-136`.
