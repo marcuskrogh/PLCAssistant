@@ -1,29 +1,35 @@
-# Iterate: Lovelace status indicator + Start wiring
+# Iterate: Soft-PLC HMI stuck offline — Start does nothing
 
 ## Status
-**Done** — shipped PR [#49](https://github.com/marcuskrogh/PLCAssistant/pull/49); App **0.1.13**
+**In Progress** — App **0.1.14**
 
 ## Prior work
-- Task: SWD-134 (PR #47, App 0.1.12 — sidebar Lovelace, no status / MODE on board)
+- Task: SWD-135 (PR #49, App 0.1.13 — Lovelace status + Start/MODE wiring)
+- Spec context: prior ITERATE.md (SWD-135)
 
 ## Problem
-Operator feedback after 0.1.12:
+Operator feedback after 0.1.13:
 
-1. **No status on the Lovelace dashboard** — cannot see if the Soft-PLC process is running, stopped/idle, tripped, or offline. Status must appear at the **top** of the board.
-2. **Start appears to do nothing** — pressing Start gives no visible feedback. HMI contract tags (`MODE`, `PERM_OK`) were never published on the packaging MQTT image; status topic was never mirrored into HA; setpoint request was not published until the Number was changed.
+1. **Soft-PLC status stuck at `offline`** — Mode STOP, Start permissive Off, Trip Off (entity defaults). Status never becomes `stopped` / `running`.
+2. **Start does nothing** — pressing Start leaves the board unchanged; with Soft-PLC looking offline and permissive Off, the skid cannot be started from the HMI.
+
+Root cause: thin integration subscribes to the retained App `status` topic **before** status sensors listen on the HA bus. The retained `stopped` payload is fired with no listener and never reapplied. Soft-PLC only republishes status on state change, so the chip stays `offline` indefinitely. OUT sensors also do not hydrate from the MQTT payload cache on add.
 
 ## Acceptance criteria
-1. Lovelace shows Soft-PLC / process status at the top (running, stopped/idle, tripped, offline/fault as applicable).
-2. Pressing Start moves status/MODE to running and process sensors respond when healthy.
-3. Soft-PLC publishes MODE (+ PERM_OK) on tag OUT; integration mirrors App `status` topic + those tags as sensors.
-4. Stock Lovelace YAML (missing status entities) is refreshed on App/integration update; true custom boards are preserved.
-5. App + integration version **0.1.13**.
+1. After Core restart / integration reload with Soft-PLC App Started + MQTT healthy, Soft-PLC status shows `stopped` (not stuck `offline`) without pressing Start/Stop.
+2. Start permissive shows On when healthy idle; pressing **Start** moves status → `running` and MODE → `RUNNING`; process sensors respond.
+3. Soft-PLC republishes status periodically (heartbeat) so a missed retained delivery self-heals; disconnect surfaces as `offline` (MQTT LWT).
+4. Integration caches status/OUT MQTT payloads and hydrates sensors on add (no subscribe-before-listen loss).
+5. App + integration version **0.1.14**.
+
+## Out of scope
+- Mosquitto / HA MQTT misconfiguration (ops) — status correctly stays `offline` when the App is not connected.
+- New HMI features beyond recovering live status / Start.
 
 ## Tracker
-- Task: [SWD-135](https://marcusknielsen.atlassian.net/browse/SWD-135)
-- Relates: SWD-134
-- Branch: `cursor/swd-135-lovelace-status-start-7273`
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/49 (merged)
+- Task: [SWD-136](https://marcusknielsen.atlassian.net/browse/SWD-136)
+- Relates: SWD-135
+- Branch: `cursor/swd-136-soft-plc-offline-start-33f4`
 
-## Ship
-Merged to `main` — App + integration **0.1.13** Lovelace status at top + Start/MODE MQTT wiring.
+## Next
+`/review-fix SWD-136` — Review and auto-fix until clean

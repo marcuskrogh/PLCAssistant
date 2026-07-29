@@ -49,7 +49,11 @@ def default_scan_logic(image: IoImage) -> None:
             pass
 
 
-def build_bus_from_options(options: dict[str, Any]) -> MqttBus | None:
+def build_bus_from_options(
+    options: dict[str, Any],
+    *,
+    instance_id: str | None = None,
+) -> MqttBus | None:
     """Return a live paho bus when MQTT is configured; None to skip."""
     if os.environ.get("PLCASSISTANT_MQTT", "1") in ("0", "false", "no"):
         return None
@@ -65,17 +69,28 @@ def build_bus_from_options(options: dict[str, Any]) -> MqttBus | None:
     port = int(options.get("mqtt_port") or os.environ.get("PLCASSISTANT_MQTT_PORT") or 1883)
     username = options.get("mqtt_username") or os.environ.get("PLCASSISTANT_MQTT_USERNAME") or ""
     password = options.get("mqtt_password") or os.environ.get("PLCASSISTANT_MQTT_PASSWORD") or ""
+    iid = str(
+        instance_id
+        or options.get("instance_id")
+        or os.environ.get("PLCASSISTANT_INSTANCE_ID")
+        or DEFAULT_INSTANCE_ID
+    )
     try:
         from plcassistant.io.mqtt_paho import PahoMqttBus
+        from plcassistant.io.mqtt_topics import status_topic
     except ImportError:
         print("PLCAssistant: paho-mqtt not installed; MQTT scan disabled", flush=True)
         return None
+    will_topic = status_topic(iid)
+    will_payload = json.dumps({"state": "offline"}).encode("utf-8")
     try:
         return PahoMqttBus(
             host,
             port,
             username=str(username) or None,
             password=str(password) or None,
+            will_topic=will_topic,
+            will_payload=will_payload,
         )
     except Exception as exc:  # noqa: BLE001 — keep editor up; retry in background
         print(
@@ -156,6 +171,10 @@ class MqttLifecycle:
 class MqttScanLoop:
     """Background Soft-PLC scan driving ``MqttIoBridge``."""
 
+    # Republish retained status so HA sensors that missed the boot retain still
+    # recover without an operator Start/Stop (SWD-136).
+    STATUS_HEARTBEAT_S = 2.0
+
     def __init__(
         self,
         bridge: MqttIoBridge,
@@ -176,11 +195,11 @@ class MqttScanLoop:
         self._thread: threading.Thread | None = None
         self._lock = threading.Lock()
         self._alive = False
+        self._last_status_heartbeat = 0.0
         # Handlers optional; scan_once applies drained cmds on the scan thread.
         self.bridge.on_command("start", lambda: None)
         self.bridge.on_command("stop", lambda: None)
         self.bridge.on_command("reset", lambda: None)
-
     def _status_extras(self) -> dict[str, Any]:
         """MODE / permissive extras for the retained status topic (HMI)."""
         extra: dict[str, Any] = {}
@@ -216,6 +235,7 @@ class MqttScanLoop:
         self.scanning = False
         self.bridge.start()
         self._publish_scan_status("stopped")
+        self._last_status_heartbeat = time.monotonic()
         self._thread = threading.Thread(target=self._run, name="mqtt-scan", daemon=True)
         self._thread.start()
 
@@ -245,7 +265,13 @@ class MqttScanLoop:
         if running != self.scanning or drained:
             self.scanning = running
             self._publish_scan_status("running" if running else "stopped")
+            self._last_status_heartbeat = time.monotonic()
         self.bridge.publish_outputs(self.image)
+        # Heartbeat retained status so late HA listeners recover (SWD-136).
+        now = time.monotonic()
+        if now - self._last_status_heartbeat >= self.STATUS_HEARTBEAT_S:
+            self._publish_scan_status("running" if self.scanning else "stopped")
+            self._last_status_heartbeat = now
 
     def issue_command(self, name: str) -> None:
         """Enqueue an operator command for the scan thread (same as MQTT cmds)."""
@@ -259,6 +285,7 @@ class MqttScanLoop:
                 self.scan_once()
             except Exception as exc:  # noqa: BLE001 — keep editor reachable
                 self.bridge.publish_status("fault", error=str(exc)[:200])
+                self._last_status_heartbeat = time.monotonic()
             elapsed = time.monotonic() - t0
             time.sleep(max(0.0, self.period_s - elapsed))
 
@@ -312,7 +339,7 @@ def _mqtt_supervisor(
     def _retry() -> None:
         delay = 2.0
         while not life.stopped() and life.loop is None:
-            new_bus = build_bus_from_options(options)
+            new_bus = build_bus_from_options(options, instance_id=instance_id)
             # Re-check after a potentially blocking connect/build.
             if life.stopped():
                 return

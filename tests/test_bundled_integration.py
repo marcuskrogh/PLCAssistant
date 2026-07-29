@@ -110,6 +110,14 @@ def test_platforms_publish_and_subscribe_paths():
     assert "plcassistant_lt_tank" in sensor
     assert "PlcAssistantStatusSensor" in sensor
     assert "status_topic" in (CC / "__init__.py").read_text(encoding="utf-8")
+    # SWD-136: cache retained status + hydrate sensors on add.
+    init_text = (CC / "__init__.py").read_text(encoding="utf-8")
+    assert 'store["status_payload"]' in init_text or 'store["status_payload"] = text' in init_text
+    assert "status_payload" in init_text
+    assert "status_payload" in sensor
+    assert "_apply_status_payload" in sensor
+    assert 'store.get("out_values")' in sensor or "out_values" in sensor
+
 
 def test_services_yaml_has_operator_actions():
     text = (CC / "services.yaml").read_text(encoding="utf-8")

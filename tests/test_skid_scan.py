@@ -49,6 +49,55 @@ def test_scan_loop_start_publishes_status_with_mode():
     assert statuses[-1].get("mode") == "RUNNING"
 
 
+def test_scan_loop_status_heartbeat_republishes_when_idle():
+    """SWD-136: retained status must republish so late HA listeners recover."""
+    import json
+    import time
+
+    from plcassistant.app.runtime import MqttScanLoop
+    from plcassistant.io.mqtt_bridge import InMemoryMqttBus, MqttIoBridge
+    from plcassistant.io.mqtt_topics import status_topic
+
+    bus = InMemoryMqttBus()
+    image = declare_default_image()
+    bridge = MqttIoBridge(bus, instance_id="default")
+    loop = MqttScanLoop(bridge, image, period_s=0.01)
+    loop.STATUS_HEARTBEAT_S = 0.05
+    loop.start()  # publishes initial stopped
+    # Force heartbeat due immediately.
+    loop._last_status_heartbeat = time.monotonic() - 1.0
+    before = len(bus.published)
+    loop.scan_once()
+    statuses = [
+        json.loads(payload.decode("utf-8"))
+        for topic, payload, _qos, retain in bus.published[before:]
+        if topic == status_topic("default")
+    ]
+    assert statuses
+    assert statuses[-1]["state"] == "stopped"
+    assert all(
+        retain
+        for topic, _payload, _qos, retain in bus.published[before:]
+        if topic == status_topic("default")
+    )
+
+
+def test_build_bus_documents_offline_lwt():
+    """SWD-136: live paho bus must register retained offline LWT on status."""
+    import inspect
+
+    from plcassistant.app import runtime as runtime_mod
+    from plcassistant.io import mqtt_paho as paho_mod
+
+    src = inspect.getsource(runtime_mod.build_bus_from_options)
+    assert "will_topic" in src
+    assert '"offline"' in src or "'offline'" in src
+    sig = inspect.signature(paho_mod.PahoMqttBus.__init__)
+    assert "will_topic" in sig.parameters
+    assert "will_payload" in sig.parameters
+    assert "will_set" in inspect.getsource(paho_mod.PahoMqttBus.__init__)
+
+
 def test_skid_image_logic_stop_zeros_cmd():
     image = declare_default_image()
     image.apply_input("SP_LEVEL_REQ", 0.20, QualityStatus.GOOD)

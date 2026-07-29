@@ -29,7 +29,7 @@ def test_run_ha_runtime_serves_http_while_mqtt_connect_is_slow(tmp_path: Path, m
     started = threading.Event()
     release = threading.Event()
 
-    def slow_build(options):
+    def slow_build(options, **_kwargs):
         started.set()
         # Hold the retry worker; HTTP must still answer.
         release.wait(timeout=5.0)
@@ -74,7 +74,7 @@ def test_run_ha_runtime_stops_deferred_mqtt_loop(tmp_path: Path, monkeypatch):
     )
     release = threading.Event()
 
-    def delayed_bus(options):
+    def delayed_bus(options, **_kwargs):
         release.wait(timeout=2.0)
         return InMemoryMqttBus()
 
@@ -116,7 +116,7 @@ def test_stop_during_blocking_connect_does_not_start_loop(tmp_path: Path, monkey
     entered = threading.Event()
     release = threading.Event()
 
-    def blocking_bus(options):
+    def blocking_bus(options, **_kwargs):
         entered.set()
         release.wait(timeout=3.0)
         return InMemoryMqttBus()
@@ -155,7 +155,7 @@ def test_deferred_stop_during_connect_applies_on_attach(tmp_path: Path, monkeypa
     )
     release = threading.Event()
 
-    def delayed_bus(options):
+    def delayed_bus(options, **_kwargs):
         release.wait(timeout=2.0)
         return InMemoryMqttBus()
 

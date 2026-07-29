@@ -52,9 +52,11 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-133 | Bug | [Iterate] Lovelace HMI default + writable SP + Soft-PLC plant on Start (not App SCADA) | Done | Relates SWD-132 | docs/ITERATE.md | Done — shipped PR #46 |
 | SWD-134 | Bug | [Iterate] Auto-register default Lovelace dashboard in HA sidebar (no copy/paste) | Done | Relates SWD-133 | docs/ITERATE.md | Done — shipped PR #47 |
 | SWD-135 | Bug | [Iterate] Lovelace status indicator + Start wiring (no visible process state) | Done | Relates SWD-134 | docs/ITERATE.md | Done — shipped PR #49 |
+| SWD-136 | Bug | [Iterate] Soft-PLC HMI stuck offline — Start does nothing (status race) | In Progress | Relates SWD-135 | docs/ITERATE.md | PR pending; Next `/review-fix SWD-136` |
 
 ## Log
 
+- 2026-07-29 — Iterate SWD-136: Soft-PLC HMI stuck offline / Start noop after 0.1.13; status cache+hydrate, heartbeat, LWT; App 0.1.14.
 - 2026-07-29 — Shipped SWD-135 via PR #49; App 0.1.13 Lovelace status + Start/MODE wiring. Bug Done.
 - 2026-07-29 — Iterate SWD-135: PR #49 opened (App 0.1.13); Lovelace status + Start/MODE wiring; Task → In Review.
 - 2026-07-29 — Iterate SWD-135: Lovelace status at top + Start/MODE MQTT wiring; App 0.1.13.
