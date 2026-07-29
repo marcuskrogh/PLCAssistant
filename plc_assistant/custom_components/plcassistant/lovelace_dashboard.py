@@ -161,7 +161,8 @@ async def async_setup_sidebar_dashboard(hass: HomeAssistant) -> bool:
         update_panel = False
     else:
         # Refresh YAML config reference (filename/title/icon) without clobbering file.
-        existing.config = conf  # type: ignore[attr-defined]
+        # LovelaceConfig.url_path reads config["url_path"].
+        existing.config = {**conf, "url_path": URL_PATH}  # type: ignore[attr-defined]
         update_panel = panel_already
 
     try:
