@@ -51,10 +51,11 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-132 | Bug | [Iterate] Operator dashboard default + major App UI refresh (mobile) | Done | Relates SWD-131 | docs/ITERATE.md | Done — shipped PR #44 |
 | SWD-133 | Bug | [Iterate] Lovelace HMI default + writable SP + Soft-PLC plant on Start (not App SCADA) | Done | Relates SWD-132 | docs/ITERATE.md | Done — shipped PR #46 |
 | SWD-134 | Bug | [Iterate] Auto-register default Lovelace dashboard in HA sidebar (no copy/paste) | Done | Relates SWD-133 | docs/ITERATE.md | Done — shipped PR #47 |
-| SWD-135 | Bug | [Iterate] Lovelace status indicator + Start wiring (no visible process state) | In Progress | Relates SWD-134 | docs/ITERATE.md | Implement status + MODE; fix Start feedback |
+| SWD-135 | Bug | [Iterate] Lovelace status indicator + Start wiring (no visible process state) | In Review | Relates SWD-134 | docs/ITERATE.md | PR #49 — App 0.1.13 |
 
 ## Log
 
+- 2026-07-29 — Iterate SWD-135: PR #49 opened (App 0.1.13); Lovelace status + Start/MODE wiring; Task → In Review.
 - 2026-07-29 — Iterate SWD-135: Lovelace status at top + Start/MODE MQTT wiring; App 0.1.13.
 - 2026-07-29 — Shipped SWD-134 via PR #47; App 0.1.12 auto-registers Lovelace sidebar dashboard (no copy/paste). Bug Done.
 - 2026-07-29 — review-fix SWD-134 CLEAN after 2 iterations (iter1: HA import fragility + run.sh no-clobber test; iter2: 0); Next `/ship SWD-134`.
