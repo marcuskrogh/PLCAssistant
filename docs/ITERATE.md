@@ -1,7 +1,7 @@
 # Iterate: Soft-PLC HMI stuck offline — Start does nothing
 
 ## Status
-**In Progress** — App **0.1.14**
+**In Review** — App **0.1.14**; PR [#51](https://github.com/marcuskrogh/PLCAssistant/pull/51)
 
 ## Prior work
 - Task: SWD-135 (PR #49, App 0.1.13 — Lovelace status + Start/MODE wiring)

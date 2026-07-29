@@ -117,6 +117,8 @@ def test_platforms_publish_and_subscribe_paths():
     assert "status_payload" in sensor
     assert "_apply_status_payload" in sensor
     assert 'store.get("out_values")' in sensor or "out_values" in sensor
+    topics = (CC / "mqtt_topics.py").read_text(encoding="utf-8")
+    assert "parse_app_status_payload" in topics
 
 
 def test_services_yaml_has_operator_actions():

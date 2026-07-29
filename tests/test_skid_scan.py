@@ -63,8 +63,9 @@ def test_scan_loop_status_heartbeat_republishes_when_idle():
     bridge = MqttIoBridge(bus, instance_id="default")
     loop = MqttScanLoop(bridge, image, period_s=0.01)
     loop.STATUS_HEARTBEAT_S = 0.05
-    loop.start()  # publishes initial stopped
-    # Force heartbeat due immediately.
+    # Single-threaded: no background scan thread (avoids racing assertions).
+    bridge.start()
+    loop._publish_scan_status("stopped")
     loop._last_status_heartbeat = time.monotonic() - 1.0
     before = len(bus.published)
     loop.scan_once()
@@ -80,6 +81,61 @@ def test_scan_loop_status_heartbeat_republishes_when_idle():
         for topic, _payload, _qos, retain in bus.published[before:]
         if topic == status_topic("default")
     )
+
+
+def test_parse_app_status_payload_vocabulary():
+    """SWD-136: status chip vocabulary + legacy reset → stopped."""
+    from plcassistant.io.mqtt_topics import parse_app_status_payload
+
+    assert parse_app_status_payload('{"state":"stopped"}') == "stopped"
+    assert parse_app_status_payload(b'{"state":"running"}') == "running"
+    assert parse_app_status_payload('{"state":"reset"}') == "stopped"
+    assert parse_app_status_payload('{"state":"offline"}') == "offline"
+    assert parse_app_status_payload('{"state":"weird"}') == "fault"
+    assert parse_app_status_payload("{}") is None
+    assert parse_app_status_payload(None) is None
+
+
+def test_paho_bus_sets_retained_offline_lwt_before_connect(monkeypatch):
+    """SWD-136: will_set(status, offline, retain) must run before connect."""
+    from plcassistant.io import mqtt_paho as paho_mod
+    from plcassistant.io.mqtt_topics import MQTT_QOS, status_topic
+
+    calls: list[tuple] = []
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def username_pw_set(self, *args, **kwargs):
+            calls.append(("username_pw_set", args, kwargs))
+
+        def will_set(self, topic, payload, qos=0, retain=False):
+            calls.append(("will_set", topic, payload, qos, retain))
+
+        def connect(self, host, port, keepalive=60):
+            calls.append(("connect", host, port, keepalive))
+
+        def loop_start(self):
+            calls.append(("loop_start",))
+
+    assert paho_mod.mqtt is not None
+    monkeypatch.setattr(paho_mod.mqtt, "Client", FakeClient)
+    will_topic = status_topic("default")
+    will_payload = b'{"state":"offline"}'
+    paho_mod.PahoMqttBus(
+        "core-mosquitto",
+        1883,
+        will_topic=will_topic,
+        will_payload=will_payload,
+    )
+    names = [c[0] for c in calls]
+    assert names.index("will_set") < names.index("connect")
+    will = next(c for c in calls if c[0] == "will_set")
+    assert will[1] == will_topic
+    assert will[2] == will_payload
+    assert will[3] == MQTT_QOS
+    assert will[4] is True
 
 
 def test_build_bus_documents_offline_lwt():

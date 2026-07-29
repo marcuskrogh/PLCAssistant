@@ -11,6 +11,7 @@ from homeassistant.core import Event, HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import CONF_BINDINGS, CONF_INSTANCE_ID, CONF_MOCK_MODE, DOMAIN
+from .mqtt_topics import parse_app_status_payload
 
 _TAG_META: dict[str, dict] = {
     "LT_TANK": {
@@ -148,27 +149,21 @@ class PlcAssistantStatusSensor(SensorEntity):
         self._attr_icon = "mdi:lan-pending"
 
     def _apply_status_payload(self, payload: str) -> bool:
-        """Parse status JSON and update attributes. True when state changed."""
-        try:
-            body = json.loads(payload or "{}")
-        except (TypeError, ValueError, UnicodeDecodeError):
+        """Parse status JSON and update attributes. True only when state changed."""
+        state = parse_app_status_payload(payload)
+        if state is None:
             return False
-        state = str(body.get("state") or "").strip().lower()
-        if not state:
-            return False
-        # Map legacy sticky "reset" pulses to idle/stopped for the chip.
-        if state == "reset":
-            state = "stopped"
-        if state not in ("running", "stopped", "fault", "offline"):
-            state = "fault" if state else "offline"
-        self._attr_native_value = state
         icons = {
             "running": "mdi:play-circle",
             "stopped": "mdi:stop-circle",
             "fault": "mdi:alert-circle",
             "offline": "mdi:lan-disconnect",
         }
-        self._attr_icon = icons.get(state, "mdi:lan-pending")
+        icon = icons.get(state, "mdi:lan-pending")
+        if state == self._attr_native_value and icon == self._attr_icon:
+            return False
+        self._attr_native_value = state
+        self._attr_icon = icon
         return True
 
     async def async_added_to_hass(self) -> None:

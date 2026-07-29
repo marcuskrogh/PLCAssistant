@@ -246,6 +246,7 @@ class MqttScanLoop:
             self._thread.join(timeout=2.0)
             self._thread = None
         self._publish_scan_status("stopped")
+        self._last_status_heartbeat = time.monotonic()
 
     def scan_once(self) -> None:
         self.bridge.apply_inputs(self.image, clear=True)
