@@ -1,7 +1,7 @@
 # Iterate: Auto-register Lovelace dashboard in HA sidebar
 
 ## Status
-**In Review (review-fix CLEAN)** — App **0.1.12** (PR [#47](https://github.com/marcuskrogh/PLCAssistant/pull/47))
+**Done** — shipped PR [#47](https://github.com/marcuskrogh/PLCAssistant/pull/47); App **0.1.12**
 
 ## Prior work
 - Task: SWD-133 (PR #46, App 0.1.11 — Lovelace template still required copy/paste)
@@ -19,11 +19,11 @@ Default Lovelace board required manual paste from `/config/dashboards/plcassista
 - Task: [SWD-134](https://marcusknielsen.atlassian.net/browse/SWD-134)
 - Relates: SWD-133
 - Branch: `cursor/swd-134-sidebar-lovelace-dashboard-1bbe`
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/47
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/47 (merged)
 
 ## review-test
 - Iter 1: HA import fragility (`async_panel_exists` / `LOVELACE_DATA` hard-fail skipped sidebar); module logger; `run.sh` no-clobber regression test
 - Iter 2: 0 blockers / 0 should-fix
 
-## Next
-`/ship SWD-134`
+## Ship
+Merged to `main` — App + integration **0.1.12** auto-registers Lovelace sidebar dashboard.
