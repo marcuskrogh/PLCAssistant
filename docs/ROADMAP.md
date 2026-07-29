@@ -1,35 +1,36 @@
-# Roadmap: PLCAssistant — Virtual PLC for Home Assistant
+# Roadmap: Configurable mock dynamics
 
 ## Direction
-- Build a **virtual / soft-PLC** experience for **lab, hobby, and small-scale process equipment**, using Home Assistant as a **low-friction I/O platform** (easy device connect, control, and logging), with HMI and historian leaning on HA strengths (Lovelace / dashboards, InfluxDB + Grafana).
-- Ambition spans **approachable industrial control patterns** (loops, feedback, safety) **and** a path toward a **credible soft-PLC substitute**, with programming that is **very high-level and easy** but still **deeply customizable**.
-- **Home-as-process** is treated as a **future expansion or implicit byproduct**, not a current initiative direction.
+- Move beyond a **hard-wired example skid mock** toward a **broad, configurable mock** of tags and underlying dynamics.
+- Operators should configure mocks primarily from the **thin Home Assistant integration** (UI or equivalent), using **basic unit operations**, **custom differential equations**, and a **collected ODE** stepped on the Soft-PLC **sampling interval**.
+- The current tank/reservoir skid remains available as a **selectable preset**, not the only plant model.
 
 ## Themes to investigate
 | Phase | Theme | Why it matters | Deferred to | Issue |
 |-------|-------|----------------|--------------|-------|
-| 1 | Lab / hobby / small-process wedge | Sharpen who this is for and what “success” looks like in that world | **Done** — [PR #11](https://github.com/marcuskrogh/PLCAssistant/pull/11) | [SWD-83](https://marcusknielsen.atlassian.net/browse/SWD-83) |
-| 2 | HA entities as PLC I/O | Core inversion: devices live in HA, then participate in PLC-style control | **Done** — [PR #14](https://github.com/marcuskrogh/PLCAssistant/pull/14) merge `b64a0cd` | [SWD-86](https://marcusknielsen.atlassian.net/browse/SWD-86) |
-| 3 | Control semantics | What “PLC-like” means here: loops, feedback, safety, timing — without locking runtime design yet | **Done** — [PR #18](https://github.com/marcuskrogh/PLCAssistant/pull/18) merge `a51cdbe` | [SWD-85](https://marcusknielsen.atlassian.net/browse/SWD-85) |
-| 4 | Programming surface | Easy high-level entry with a deep customization path | **Done** — [PR #26](https://github.com/marcuskrogh/PLCAssistant/pull/26) | [SWD-82](https://marcusknielsen.atlassian.net/browse/SWD-82) · [`docs/PLAN.md`](PLAN.md) · [`docs/surface/`](surface/01-block-model.md) |
-| 5 | Packaging shape | Hybrid HA App + thin integration (MQTT); HA OS; custom GitHub App | **Done** — [PR #30](https://github.com/marcuskrogh/PLCAssistant/pull/30) merge `3b64b33` | [SWD-84](https://marcusknielsen.atlassian.net/browse/SWD-84) · [`docs/PLAN.md`](PLAN.md) · [`docs/packaging/`](packaging/) |
+| 1 | Soft-PLC ↔ integration mock ownership | Docs put plant under the integration; runtime hard-wires `Skid`/`MockProcess` in the App — this choice shapes everything else | define | [SWD-145](https://marcusknielsen.atlassian.net/browse/SWD-145) |
+| 2 | Configurable dynamics core + skid preset | States/tags + collected ODE at scan period; skid as first preset | define (model if math-blocked) | [SWD-146](https://marcusknielsen.atlassian.net/browse/SWD-146) |
+| 3 | Unit-op library + custom equation authoring | Easy mocks vs expressive custom DEs | define | [SWD-144](https://marcusknielsen.atlassian.net/browse/SWD-144) |
+| 4 | Integration mock UI + preset selection | Configure and select presets in HA, not only in code | define | [SWD-143](https://marcusknielsen.atlassian.net/browse/SWD-143) |
 
 ## Open questions
-- Where the PLC runtime should live relative to HA (inside vs beside), and what “integration” vs “app” should mean (preliminary: Add-on + thin integration; mock/sim owned by thin integration per SWD-86)
-- How far “credible soft-PLC” must go for the lab wedge vs later
-- How much of historian/HMI is pure reuse of HA vs needs PLC-aware conventions
-- How progressive the easy→customizable programming path should feel
-- What, if anything, should be kept open so home-as-process can emerge later without driving current scope
+- Where the **ODE solver** should run (Soft-PLC App, thin integration, or shared library) vs where the **UI** configures it
+- How Soft-PLC stays **mock-agnostic** (image/bindings) while plant dynamics become selectable
+- What “unit operation” means for v1 and how custom equations are expressed safely
+- How presets relate to today’s wedge HMI/tag contract and acceptance tests
+- How far mock-off / field I/O must remain a first-class path
 
 ## Explicitly deferred
-- research / model — as needed per remaining themes
-- home-as-process as an explicit product direction (may remain an implicit expansion later)
-- physical rig (follow-on after mock; required for overall success)
+- define — scope, behaviour, acceptance, work packages per theme
+- research / model — as needed (especially ODE / solver formalism)
+- replacing Soft-PLC control programming with plant math (mock ≠ PLC program)
+- physical plant / field commissioning (still follow-on)
 
 ## Tracker
 - Provider: jira
-- Story: [SWD-81](https://marcusknielsen.atlassian.net/browse/SWD-81) **Done** — initiative complete
-- Tasks: [SWD-83](https://marcusknielsen.atlassian.net/browse/SWD-83) **Done**, [SWD-86](https://marcusknielsen.atlassian.net/browse/SWD-86) **Done**, [SWD-85](https://marcusknielsen.atlassian.net/browse/SWD-85) **Done**, [SWD-82](https://marcusknielsen.atlassian.net/browse/SWD-82) **Done**, [SWD-84](https://marcusknielsen.atlassian.net/browse/SWD-84) **Done**
+- Story: [SWD-142](https://marcusknielsen.atlassian.net/browse/SWD-142)
+- Tasks: [SWD-145](https://marcusknielsen.atlassian.net/browse/SWD-145), [SWD-146](https://marcusknielsen.atlassian.net/browse/SWD-146), [SWD-144](https://marcusknielsen.atlassian.net/browse/SWD-144), [SWD-143](https://marcusknielsen.atlassian.net/browse/SWD-143)
+- Prior initiative: [SWD-81](https://marcusknielsen.atlassian.net/browse/SWD-81) (Done)
 
 ## Next
-Done — initiative complete (Story SWD-81). Optional follow-up: `/iterate <description>` for post-ship fixes.
+`/define SWD-145` — Define theme: Soft-PLC ↔ integration mock ownership boundary
