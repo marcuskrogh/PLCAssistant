@@ -181,6 +181,19 @@ class MqttScanLoop:
         self.bridge.on_command("stop", lambda: None)
         self.bridge.on_command("reset", lambda: None)
 
+    def _status_extras(self) -> dict[str, Any]:
+        """MODE / permissive extras for the retained status topic (HMI)."""
+        extra: dict[str, Any] = {}
+        mode = getattr(self.logic, "mode", None)
+        if mode is not None:
+            value = getattr(mode, "value", mode)
+            if value is not None:
+                extra["mode"] = str(value)
+        return extra
+
+    def _publish_scan_status(self, state: str) -> None:
+        self.bridge.publish_status(state, **self._status_extras())
+
     def _apply_commands(self, cmds: tuple[str, ...]) -> None:
         enqueue = getattr(self.logic, "enqueue_operator", None)
         for name in cmds:
@@ -190,22 +203,19 @@ class MqttScanLoop:
                 enqueue(name)
             if name == "start":
                 self.scanning = True
-                self.bridge.publish_status("running")
+                self._publish_scan_status("running")
             elif name == "stop":
                 self.scanning = False
-                self.bridge.publish_status("stopped")
-            elif name == "reset":
-                # Latch-clear only (wedge HMI_RESET). Do not force scanning=False —
-                # a healthy RUNNING skid stays running; after trip clear Skid is STOP
-                # and ``scan_once`` resyncs ``scanning`` from Skid mode.
-                self.bridge.publish_status("reset")
+                self._publish_scan_status("stopped")
+            # reset: latch-clear only — do not publish a sticky "reset" state;
+            # ``scan_once`` republishes running/stopped from Skid MODE after logic.
 
     def start(self) -> None:
         if self._thread is not None:
             return
         self.scanning = False
         self.bridge.start()
-        self.bridge.publish_status("stopped")
+        self._publish_scan_status("stopped")
         self._thread = threading.Thread(target=self._run, name="mqtt-scan", daemon=True)
         self._thread.start()
 
@@ -215,7 +225,7 @@ class MqttScanLoop:
         if self._thread is not None:
             self._thread.join(timeout=2.0)
             self._thread = None
-        self.bridge.publish_status("stopped")
+        self._publish_scan_status("stopped")
 
     def scan_once(self) -> None:
         self.bridge.apply_inputs(self.image, clear=True)
@@ -232,9 +242,9 @@ class MqttScanLoop:
             running = is_running
         else:
             running = self.scanning
-        if running != self.scanning:
+        if running != self.scanning or drained:
             self.scanning = running
-            self.bridge.publish_status("running" if running else "stopped")
+            self._publish_scan_status("running" if running else "stopped")
         self.bridge.publish_outputs(self.image)
 
     def issue_command(self, name: str) -> None:

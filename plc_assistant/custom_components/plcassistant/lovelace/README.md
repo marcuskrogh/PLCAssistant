@@ -7,6 +7,7 @@ Bundled template (`plcassistant.yaml`) is the default Soft-PLC HMI.
 When the PLCAssistant integration loads, it:
 
 1. Installs this YAML under `/config/dashboards/plcassistant.yaml` if missing
+   (or refreshes a **stock** board that still lacks the status card)
 2. Registers a Lovelace panel **PLCAssistant** at `/plcassistant-skid` with
    **Show in sidebar** enabled
 
@@ -14,9 +15,20 @@ After **App Update → restart Home Assistant Core → add/reload PLCAssistant**
 open **PLCAssistant** in the sidebar. No copy/paste step.
 
 You can still create additional Lovelace dashboards in HA and reuse these
-entities for your own SCADA boards. Editing the YAML file under
-`dashboards/plcassistant.yaml` customises the default board (the integration
-does not overwrite an existing file).
+entities for your own SCADA boards. Fully custom YAML under
+`dashboards/plcassistant.yaml` is left alone; stock boards missing
+`sensor.plcassistant_status` are refreshed on update so the status card appears.
+
+## Status (top of board)
+
+| Entity | Values |
+|--------|--------|
+| `sensor.plcassistant_status` | `running` / `stopped` / `fault` / `offline` (App scan) |
+| `sensor.plcassistant_mode` | `STOP` / `RUNNING` / `TRIPPED` (skid MODE) |
+| `sensor.plcassistant_perm_ok` | `on` / `off` (Start permissive when idle) |
+| `sensor.plcassistant_trip_active` | `on` / `off` |
+
+Press **Start** → Soft-PLC status `running`, MODE `RUNNING`, and process sensors move.
 
 ## Writable vs read-only
 
@@ -24,7 +36,7 @@ does not overwrite an existing file).
 |--------|------|
 | `number.plcassistant_sp_level_req` | Operator **level setpoint request** (writable) |
 | `button.plcassistant_start` / `_stop` / `_reset` | Operator commands |
-| `sensor.plcassistant_*` | Soft-PLC-owned PVs and active SPs (read-only) |
+| `sensor.plcassistant_*` | Soft-PLC-owned PVs, active SPs, and status (read-only) |
 
 ## Upgrading from App 0.1.10
 

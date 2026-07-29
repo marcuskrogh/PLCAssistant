@@ -132,6 +132,9 @@ def default_wedge_binding_config() -> dict[str, Any]:
             "SP_LEVEL": {"default": 0.20, "unit": "m"},
             "SP_FLOW": {"default": 0.0, "unit": "L/min"},
             "CMD_SPEED": {"default": 0.0, "unit": "pct"},
+            "MODE": {"default": "STOP", "unit": None},
+            "PERM_OK": {"default": False, "unit": None},
+            "TRIP_ACTIVE": {"default": False, "unit": None},
         },
         "bindings": [
             {
@@ -179,6 +182,27 @@ def default_wedge_binding_config() -> dict[str, Any]:
             {
                 "tag": "SP_FLOW",
                 "entity": "sensor.plcassistant_sp_flow",
+                "direction": "OUT",
+                "scale": 1.0,
+                "offset": 0.0,
+            },
+            {
+                "tag": "MODE",
+                "entity": "sensor.plcassistant_mode",
+                "direction": "OUT",
+                "scale": 1.0,
+                "offset": 0.0,
+            },
+            {
+                "tag": "PERM_OK",
+                "entity": "sensor.plcassistant_perm_ok",
+                "direction": "OUT",
+                "scale": 1.0,
+                "offset": 0.0,
+            },
+            {
+                "tag": "TRIP_ACTIVE",
+                "entity": "sensor.plcassistant_trip_active",
                 "direction": "OUT",
                 "scale": 1.0,
                 "offset": 0.0,

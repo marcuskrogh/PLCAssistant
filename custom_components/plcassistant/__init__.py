@@ -27,7 +27,7 @@ from .const import (
     SERVICE_START,
     SERVICE_STOP,
 )
-from .mqtt_topics import cmd_topic, tag_in_topic, tag_out_topic
+from .mqtt_topics import cmd_topic, status_topic, tag_in_topic, tag_out_topic
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -87,6 +87,27 @@ def _default_bindings() -> list[dict]:
         {
             "tag": "SP_FLOW",
             "entity": "sensor.plcassistant_sp_flow",
+            "direction": "OUT",
+            "scale": 1.0,
+            "offset": 0.0,
+        },
+        {
+            "tag": "MODE",
+            "entity": "sensor.plcassistant_mode",
+            "direction": "OUT",
+            "scale": 1.0,
+            "offset": 0.0,
+        },
+        {
+            "tag": "PERM_OK",
+            "entity": "sensor.plcassistant_perm_ok",
+            "direction": "OUT",
+            "scale": 1.0,
+            "offset": 0.0,
+        },
+        {
+            "tag": "TRIP_ACTIVE",
+            "entity": "sensor.plcassistant_trip_active",
             "direction": "OUT",
             "scale": 1.0,
             "offset": 0.0,
@@ -180,6 +201,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             hass, topic, _make_out_handler(tag, entry.entry_id), qos=1
         )
         hass.data[DOMAIN][entry.entry_id]["unsubs"].append(unsub)
+
+    # App scan status (retained) — powers sensor.plcassistant_status on the HMI.
+    async def _on_status(msg) -> None:
+        try:
+            payload = msg.payload
+            if isinstance(payload, bytes):
+                text = payload.decode("utf-8")
+            else:
+                text = str(payload)
+        except UnicodeDecodeError:
+            return
+        hass.bus.async_fire(
+            f"{DOMAIN}_status",
+            {"payload": text, "entry_id": entry.entry_id},
+        )
+
+    status_unsub = await async_subscribe(
+        hass, status_topic(instance_id), _on_status, qos=1
+    )
+    hass.data[DOMAIN][entry.entry_id]["unsubs"].append(status_unsub)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 

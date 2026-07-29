@@ -69,6 +69,13 @@ class SkidImageLogic:
             _set("LT_RES", float(snap.lt_res))
         if "FT_INLET" in names and snap.ft_inlet is not None:
             _set("FT_INLET", float(snap.ft_inlet))
+        # HMI status tags (docs/wedge/02-io-hmi-contract.md) — string / bool OUT.
+        if "MODE" in names:
+            _set("MODE", snap.mode.value if snap.mode is not None else Mode.STOP.value)
+        if "PERM_OK" in names:
+            _set("PERM_OK", bool(snap.perm_ok))
+        if "TRIP_ACTIVE" in names:
+            _set("TRIP_ACTIVE", bool(snap.trip_active))
 
 
 __all__ = ["SkidImageLogic"]

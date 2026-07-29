@@ -32,8 +32,28 @@ def bundled_dashboard_yaml() -> Path:
     return Path(__file__).resolve().parent / "lovelace" / "plcassistant.yaml"
 
 
+def _is_stock_board_needing_status_upgrade(text: str) -> bool:
+    """True when YAML looks like a prior stock board missing the status card.
+
+    Preserves true operator customizations (no Start button, or already has
+    ``sensor.plcassistant_status``). Stock 0.1.11/0.1.12 boards are refreshed
+    so SWD-135 status entities appear after App update.
+    """
+    if "sensor.plcassistant_status" in text:
+        return False
+    if "button.plcassistant_start" not in text:
+        return False
+    if "title: PLCAssistant" not in text and "PLCAssistant" not in text:
+        return False
+    return True
+
+
 def ensure_dashboard_yaml(hass: HomeAssistant) -> Path:
-    """Copy bundled YAML into HA config when missing (never clobber user edits)."""
+    """Copy bundled YAML into HA config when missing or stock upgrade needed.
+
+    Never clobber boards that look operator-customized (no Start entity, or
+    already include the status sensor).
+    """
     dest = Path(hass.config.path(REL_FILENAME))
     dest.parent.mkdir(parents=True, exist_ok=True)
     src = bundled_dashboard_yaml()
@@ -42,6 +62,18 @@ def ensure_dashboard_yaml(hass: HomeAssistant) -> Path:
     if not dest.is_file():
         shutil.copy2(src, dest)
         _LOGGER.info("PLCAssistant: installed default Lovelace YAML at %s", dest)
+        return dest
+    try:
+        existing = dest.read_text(encoding="utf-8")
+    except OSError as err:
+        _LOGGER.warning("PLCAssistant: could not read %s (%s); leaving in place", dest, err)
+        return dest
+    if _is_stock_board_needing_status_upgrade(existing):
+        shutil.copy2(src, dest)
+        _LOGGER.info(
+            "PLCAssistant: refreshed stock Lovelace YAML at %s (status card)",
+            dest,
+        )
     return dest
 
 

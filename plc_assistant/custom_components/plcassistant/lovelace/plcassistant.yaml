@@ -1,12 +1,25 @@
+# plcassistant_dashboard_version: 2
 title: PLCAssistant
 views:
   - title: Skid
     path: skid
     icon: mdi:cup-water
     cards:
+      - type: entities
+        title: Status
+        show_header_toggle: false
+        entities:
+          - entity: sensor.plcassistant_status
+            name: Soft-PLC
+          - entity: sensor.plcassistant_mode
+            name: Mode
+          - entity: sensor.plcassistant_perm_ok
+            name: Start permissive
+          - entity: sensor.plcassistant_trip_active
+            name: Trip active
       - type: markdown
         content: |
-          **PLCAssistant** — Soft-PLC skid HMI. Change the **Level setpoint**, press **Start**, then watch tank level, flow, and speed. Extend this board or add new Lovelace dashboards for your own SCADA views.
+          **PLCAssistant** — Soft-PLC skid HMI. Status above shows running / stopped / fault / offline and skid MODE. Change the **Level setpoint**, press **Start**, then watch tank level, flow, and speed.
       - type: entities
         title: Operate
         show_header_toggle: false

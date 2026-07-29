@@ -70,11 +70,15 @@ def test_ha_default_bindings_match_app_wedge_config():
         "SP_LEVEL_REQ",
         "SP_LEVEL",
         "SP_FLOW",
+        "MODE",
+        "PERM_OK",
+        "TRIP_ACTIVE",
     }
     by_tag = {b["tag"]: b for b in ha_bindings}
     assert by_tag["SP_LEVEL_REQ"]["direction"] == "IN"
     assert by_tag["LT_TANK"]["direction"] == "OUT"
     assert by_tag["SP_FLOW"]["direction"] == "OUT"
+    assert by_tag["MODE"]["direction"] == "OUT"
 
 
 def test_scan_loop_once_and_commands():

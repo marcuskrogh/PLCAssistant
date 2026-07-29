@@ -1,8 +1,9 @@
-"""Read-only Soft-PLC OUT tags as sensors (PVs, active SPs, CMD_SPEED)."""
+"""Read-only Soft-PLC OUT tags + App status as sensors."""
 
 from __future__ import annotations
 
 import json
+import math
 
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
@@ -16,31 +17,52 @@ _TAG_META: dict[str, dict] = {
         "name": "PLCAssistant Tank level",
         "unit": "m",
         "object_id": "plcassistant_lt_tank",
+        "kind": "number",
     },
     "LT_RES": {
         "name": "PLCAssistant Reservoir level",
         "unit": "m",
         "object_id": "plcassistant_lt_res",
+        "kind": "number",
     },
     "FT_INLET": {
         "name": "PLCAssistant Inlet flow",
         "unit": "L/min",
         "object_id": "plcassistant_ft_inlet",
+        "kind": "number",
     },
     "CMD_SPEED": {
         "name": "PLCAssistant Pump speed command",
         "unit": "%",
         "object_id": "plcassistant_cmd_speed",
+        "kind": "number",
     },
     "SP_LEVEL": {
         "name": "PLCAssistant Active level setpoint",
         "unit": "m",
         "object_id": "plcassistant_sp_level",
+        "kind": "number",
     },
     "SP_FLOW": {
         "name": "PLCAssistant Active flow setpoint",
         "unit": "L/min",
         "object_id": "plcassistant_sp_flow",
+        "kind": "number",
+    },
+    "MODE": {
+        "name": "PLCAssistant Mode",
+        "object_id": "plcassistant_mode",
+        "kind": "text",
+    },
+    "PERM_OK": {
+        "name": "PLCAssistant Start permissive",
+        "object_id": "plcassistant_perm_ok",
+        "kind": "bool",
+    },
+    "TRIP_ACTIVE": {
+        "name": "PLCAssistant Trip active",
+        "object_id": "plcassistant_trip_active",
+        "kind": "bool",
     },
 }
 
@@ -52,15 +74,22 @@ def _object_id_from_entity(entity: str, fallback: str) -> str:
     return text or fallback
 
 
+def _payload_value(body: dict):
+    return body.get("value")
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     data = hass.data[DOMAIN][entry.entry_id]
+    entities: list[SensorEntity] = [
+        PlcAssistantStatusSensor(entry.entry_id, data[CONF_INSTANCE_ID])
+    ]
     if not data.get(CONF_MOCK_MODE, True):
+        async_add_entities(entities)
         return
-    entities: list[SensorEntity] = []
     for binding in data.get(CONF_BINDINGS) or []:
         direction = str(binding.get("direction", "")).upper()
         if direction not in ("OUT", "INOUT"):
@@ -68,21 +97,91 @@ async def async_setup_entry(
         scale = float(binding.get("scale", 1.0))
         offset = float(binding.get("offset", 0.0))
         tag = binding["tag"]
-        entities.append(
-            PlcAssistantOutSensor(
-                entry.entry_id,
-                data[CONF_INSTANCE_ID],
-                tag,
-                scale,
-                offset,
-                entity_id=str(binding.get("entity") or ""),
+        meta = _TAG_META.get(tag, {})
+        kind = meta.get("kind", "number")
+        entity_id = str(binding.get("entity") or "")
+        if kind == "text":
+            entities.append(
+                PlcAssistantTextOutSensor(
+                    entry.entry_id,
+                    data[CONF_INSTANCE_ID],
+                    tag,
+                    entity_id=entity_id,
+                )
             )
-        )
+        elif kind == "bool":
+            entities.append(
+                PlcAssistantBoolOutSensor(
+                    entry.entry_id,
+                    data[CONF_INSTANCE_ID],
+                    tag,
+                    entity_id=entity_id,
+                )
+            )
+        else:
+            entities.append(
+                PlcAssistantOutSensor(
+                    entry.entry_id,
+                    data[CONF_INSTANCE_ID],
+                    tag,
+                    scale,
+                    offset,
+                    entity_id=entity_id,
+                )
+            )
     async_add_entities(entities)
 
 
+class PlcAssistantStatusSensor(SensorEntity):
+    """App scan status from ``plcassistant/{id}/status`` (running/stopped/fault)."""
+
+    _attr_should_poll = False
+
+    def __init__(self, entry_id: str, instance_id: str) -> None:
+        self._entry_id = entry_id
+        self._instance_id = instance_id
+        self._attr_name = "PLCAssistant Status"
+        self._attr_unique_id = f"{entry_id}_status"
+        self._attr_suggested_object_id = "plcassistant_status"
+        self.entity_id = "sensor.plcassistant_status"
+        self._attr_native_value = "offline"
+        self._attr_icon = "mdi:lan-pending"
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+
+        async def _on_status(event: Event) -> None:
+            if event.data.get("entry_id") != self._entry_id:
+                return
+            try:
+                body = json.loads(event.data.get("payload") or "{}")
+            except (TypeError, ValueError, UnicodeDecodeError):
+                return
+            state = str(body.get("state") or "").strip().lower()
+            if not state:
+                return
+            # Map legacy sticky "reset" pulses to idle/stopped for the chip.
+            if state == "reset":
+                state = "stopped"
+            if state not in ("running", "stopped", "fault", "offline"):
+                state = "fault" if state else "offline"
+            self._attr_native_value = state
+            icons = {
+                "running": "mdi:play-circle",
+                "stopped": "mdi:stop-circle",
+                "fault": "mdi:alert-circle",
+                "offline": "mdi:lan-disconnect",
+            }
+            self._attr_icon = icons.get(state, "mdi:lan-pending")
+            self.async_write_ha_state()
+
+        self.async_on_remove(
+            self.hass.bus.async_listen(f"{DOMAIN}_status", _on_status)
+        )
+
+
 class PlcAssistantOutSensor(SensorEntity):
-    """Soft-PLC OUT sink — updated from MQTT tag OUT (not operator-writable)."""
+    """Soft-PLC OUT sink — numeric PVs / active SPs / CMD_SPEED."""
 
     _attr_should_poll = False
 
@@ -109,7 +208,7 @@ class PlcAssistantOutSensor(SensorEntity):
         )
         self._attr_suggested_object_id = object_id
         self.entity_id = f"sensor.{object_id}"
-        if "unit" in meta:
+        if "unit" in meta and meta["unit"]:
             self._attr_native_unit_of_measurement = meta["unit"]
         self._attr_native_value = 0.0
 
@@ -123,11 +222,130 @@ class PlcAssistantOutSensor(SensorEntity):
                 return
             try:
                 body = json.loads(event.data.get("payload") or "{}")
-                eng = float(body.get("value", 0.0))
+                eng = float(_payload_value(body) or 0.0)
+                if not math.isfinite(eng):
+                    return
                 raw = (eng - self._offset) / self._scale
             except (TypeError, ValueError, ZeroDivisionError, UnicodeDecodeError):
                 return
             self._attr_native_value = raw
+            self.async_write_ha_state()
+
+        self.async_on_remove(
+            self.hass.bus.async_listen(f"{DOMAIN}_tag_out", _on_out)
+        )
+
+
+class PlcAssistantTextOutSensor(SensorEntity):
+    """Soft-PLC OUT string tag (e.g. MODE)."""
+
+    _attr_should_poll = False
+
+    def __init__(
+        self,
+        entry_id: str,
+        instance_id: str,
+        tag: str,
+        *,
+        entity_id: str = "",
+    ) -> None:
+        self._entry_id = entry_id
+        self._instance_id = instance_id
+        self._tag = tag
+        meta = _TAG_META.get(tag, {})
+        self._attr_name = meta.get("name", f"PLCAssistant {tag}")
+        self._attr_unique_id = f"{entry_id}_{tag}_out"
+        object_id = meta.get("object_id") or _object_id_from_entity(
+            entity_id, f"plcassistant_{tag.lower()}"
+        )
+        self._attr_suggested_object_id = object_id
+        self.entity_id = f"sensor.{object_id}"
+        self._attr_native_value = "STOP" if tag == "MODE" else "unknown"
+        self._attr_icon = "mdi:state-machine"
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+
+        async def _on_out(event: Event) -> None:
+            if event.data.get("entry_id") != self._entry_id:
+                return
+            if event.data.get("tag") != self._tag:
+                return
+            try:
+                body = json.loads(event.data.get("payload") or "{}")
+                value = _payload_value(body)
+            except (TypeError, ValueError, UnicodeDecodeError):
+                return
+            if value is None:
+                return
+            text = str(value).strip().upper()
+            if not text:
+                return
+            self._attr_native_value = text
+            if self._tag == "MODE":
+                icons = {
+                    "STOP": "mdi:stop-circle-outline",
+                    "RUNNING": "mdi:play-circle-outline",
+                    "TRIPPED": "mdi:alert-octagon",
+                }
+                self._attr_icon = icons.get(text, "mdi:state-machine")
+            self.async_write_ha_state()
+
+        self.async_on_remove(
+            self.hass.bus.async_listen(f"{DOMAIN}_tag_out", _on_out)
+        )
+
+
+class PlcAssistantBoolOutSensor(SensorEntity):
+    """Soft-PLC OUT bool tag as on/off text (PERM_OK, TRIP_ACTIVE)."""
+
+    _attr_should_poll = False
+
+    def __init__(
+        self,
+        entry_id: str,
+        instance_id: str,
+        tag: str,
+        *,
+        entity_id: str = "",
+    ) -> None:
+        self._entry_id = entry_id
+        self._instance_id = instance_id
+        self._tag = tag
+        meta = _TAG_META.get(tag, {})
+        self._attr_name = meta.get("name", f"PLCAssistant {tag}")
+        self._attr_unique_id = f"{entry_id}_{tag}_out"
+        object_id = meta.get("object_id") or _object_id_from_entity(
+            entity_id, f"plcassistant_{tag.lower()}"
+        )
+        self._attr_suggested_object_id = object_id
+        self.entity_id = f"sensor.{object_id}"
+        self._attr_native_value = "off"
+        self._attr_icon = "mdi:checkbox-blank-circle-outline"
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+
+        async def _on_out(event: Event) -> None:
+            if event.data.get("entry_id") != self._entry_id:
+                return
+            if event.data.get("tag") != self._tag:
+                return
+            try:
+                body = json.loads(event.data.get("payload") or "{}")
+                value = _payload_value(body)
+            except (TypeError, ValueError, UnicodeDecodeError):
+                return
+            truthy = value in (True, 1, 1.0, "1", "true", "True", "on", "ON")
+            self._attr_native_value = "on" if truthy else "off"
+            if self._tag == "PERM_OK":
+                self._attr_icon = (
+                    "mdi:check-circle" if truthy else "mdi:close-circle"
+                )
+            elif self._tag == "TRIP_ACTIVE":
+                self._attr_icon = (
+                    "mdi:alert-circle" if truthy else "mdi:shield-check"
+                )
             self.async_write_ha_state()
 
         self.async_on_remove(
