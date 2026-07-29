@@ -54,6 +54,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
+- 2026-07-29 — Shipped SWD-134 via PR #47; App 0.1.12 auto-registers Lovelace sidebar dashboard (no copy/paste). Bug Done.
 - 2026-07-29 — review-fix SWD-134 CLEAN after 2 iterations (iter1: HA import fragility + run.sh no-clobber test; iter2: 0); Next `/ship SWD-134`.
 - 2026-07-29 — Iterate SWD-134: auto-register PLCAssistant Lovelace dashboard in HA sidebar; App 0.1.12.
 - 2026-07-29 — Shipped SWD-133 via PR #46; App 0.1.11 Lovelace HMI + Skid plant + writable SP_LEVEL_REQ. Bug Done.
