@@ -89,6 +89,16 @@ def test_cmd_topics_are_queued_for_scan_thread():
     assert bridge.pending_commands == ()
 
 
+def test_enqueue_command_matches_mqtt_cmd_path():
+    bus = InMemoryMqttBus()
+    bridge = MqttIoBridge(bus)
+    bridge.enqueue_command("stop")
+    bridge.enqueue_command("start")
+    assert bridge.pending_commands == ("stop", "start")
+    assert bridge.drain_commands() == ("stop", "start")
+    assert bridge.pending_commands == ()
+
+
 def test_bad_payload_becomes_fault_quality():
     bus = InMemoryMqttBus()
     bridge = MqttIoBridge(bus)

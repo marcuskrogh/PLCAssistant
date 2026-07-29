@@ -1,8 +1,8 @@
-"""Stdlib http.server-based App for the block program editor (SWD-120).
+"""Stdlib http.server-based App for the operator dashboard + block editor.
 
 Endpoints
 ---------
-GET  /                      Visual canvas (HTML/JS)
+GET  /                      Operator dashboard + program editor (HTML/JS)
 GET  /api/program           Current program as JSON dict
 PUT  /api/program           Replace program; body = JSON dict; returns new program dict
 GET  /api/library           All templates (builtin + user) as JSON list
@@ -13,6 +13,8 @@ POST /api/reset_instance    Reset instance params to library defaults; body = {i
 POST /api/apply             Apply program; body = {mode: "restart"|"hot"}
                             (hot requires PLCASSISTANT_SUPERUSER_HOT_APPLY=1;
                              client "superuser" field is ignored)
+GET  /api/runtime           Live Soft-PLC status + tag snapshot
+POST /api/cmd               Operator command; body = {name: "start"|"stop"|"reset"}
 
 The server holds an in-memory program and a ProgramLoader.  No file persistence
 by default; callers may pass an initial program dict.
@@ -27,6 +29,8 @@ from typing import Any
 from urllib.parse import urlparse
 
 from plcassistant.app._canvas import get_canvas_html
+from plcassistant.app.operator_runtime import OperatorRuntime
+from plcassistant.io.mqtt_topics import DEFAULT_INSTANCE_ID
 from plcassistant.surface.apply import ProgramLoader
 from plcassistant.surface.builtin import register_builtins
 from plcassistant.surface.model import TemplateLibrary
@@ -39,7 +43,6 @@ from plcassistant.surface.schema import (
 )
 from plcassistant.surface.user_library import (
     add_user_template,
-    list_user_templates,
     make_user_template,
     remove_user_template,
 )
@@ -66,11 +69,9 @@ class AppState:
         program_path: str | None = None,
     ) -> None:
         self.loader, self.library, self.runtime = _make_loader()
-        # Server-side hot-apply authority: read env var once at startup.
-        self.superuser_hot_apply: bool = (
-            os.environ.get(_ENV_HOT_APPLY, "") == "1"
-        )
+        self.superuser_hot_apply: bool = os.environ.get(_ENV_HOT_APPLY, "") == "1"
         self.program_path = program_path
+        self.operator = OperatorRuntime()
         loaded: dict[str, Any] | None = initial_program
         if loaded is None and program_path and os.path.isfile(program_path):
             try:
@@ -79,47 +80,55 @@ class AppState:
                 if not isinstance(loaded, dict):
                     loaded = None
             except (OSError, json.JSONDecodeError, UnicodeDecodeError):
-                # Corrupt program-of-record must not prevent App restart (H6 recovery).
                 loaded = None
+        empty = {
+            "version": "1.0",
+            "instances": {},
+            "wires": [],
+            "execution_order": [],
+        }
         if loaded is not None:
             try:
                 self.loader.load(program_from_dict(loaded))
             except (ValueError, KeyError, TypeError):
-                self.loader.load(
-                    program_from_dict(
-                        {
-                            "version": "1.0",
-                            "instances": {},
-                            "wires": [],
-                            "execution_order": [],
-                        }
-                    )
-                )
+                self.loader.load(program_from_dict(empty))
         else:
-            self.loader.load(
-                program_from_dict(
-                    {
-                        "version": "1.0",
-                        "instances": {},
-                        "wires": [],
-                        "execution_order": [],
-                    }
-                )
-            )
+            self.loader.load(program_from_dict(empty))
+
+    @property
+    def instance_id(self) -> str:
+        return self.operator.instance_id
+
+    @instance_id.setter
+    def instance_id(self, value: str) -> None:
+        self.operator.instance_id = str(value) if value else DEFAULT_INSTANCE_ID
+
+    def attach_runtime(self, lifecycle: Any) -> None:
+        """Attach MQTT scan lifecycle so the UI can read tags and issue cmds."""
+        self.operator.attach(lifecycle)
+
+    def runtime_snapshot(self) -> dict[str, Any]:
+        """JSON-serialisable Soft-PLC status for the operator dashboard."""
+        return self.operator.snapshot()
+
+    def issue_cmd(self, name: str) -> dict[str, Any]:
+        """Start / stop / reset via scan loop (enqueued), or defer while offline."""
+        return self.operator.issue_cmd(name)
 
     @property
     def program_dict(self) -> dict[str, Any]:
         prog = self.loader.program
         if prog is None:
-            return {"version": "1.0", "instances": {}, "wires": [], "execution_order": []}
+            return {
+                "version": "1.0",
+                "instances": {},
+                "wires": [],
+                "execution_order": [],
+            }
         return program_to_dict(prog)
 
     def persist_program(self) -> None:
-        """Write program-of-record to ``program_path`` when configured (App /data).
-
-        Uses temp file + ``os.replace`` so a crash mid-write cannot truncate the
-        live program file.
-        """
+        """Write program-of-record to ``program_path`` when configured."""
         if not self.program_path:
             return
         parent = os.path.dirname(self.program_path)
@@ -136,7 +145,7 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
     """Return a handler class closed over *state*."""
 
     class Handler(BaseHTTPRequestHandler):
-        log_message = lambda self, fmt, *args: None  # silence access logs
+        log_message = lambda self, fmt, *args: None  # noqa: E731
 
         def _read_json(self) -> Any:
             length = int(self.headers.get("Content-Length", 0))
@@ -162,8 +171,6 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
             self.end_headers()
             self.wfile.write(body)
 
-        # ── GET routing ──────────────────────────────────────────────────
-
         def do_GET(self) -> None:
             path = urlparse(self.path).path.rstrip("/") or "/"
             try:
@@ -173,32 +180,38 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
                     self._send_json(state.program_dict)
                 elif path == "/api/library":
                     templates = state.library.all_templates()
-                    self._send_json([
-                        {
-                            "template_id": t.template_id,
-                            "library": t.library,
-                            "description": t.description,
-                            "pins": [
-                                {
-                                    "name": p.name,
-                                    "direction": p.direction.value,
-                                    "data_type": p.data_type,
-                                    **({"default": p.default} if p.default is not None else {}),
-                                }
-                                for p in t.pins
-                            ],
-                            "params": t.params,
-                            "body": t.body,
-                            "is_builtin": t.is_builtin,
-                        }
-                        for t in templates
-                    ])
+                    self._send_json(
+                        [
+                            {
+                                "template_id": t.template_id,
+                                "library": t.library,
+                                "description": t.description,
+                                "pins": [
+                                    {
+                                        "name": p.name,
+                                        "direction": p.direction.value,
+                                        "data_type": p.data_type,
+                                        **(
+                                            {"default": p.default}
+                                            if p.default is not None
+                                            else {}
+                                        ),
+                                    }
+                                    for p in t.pins
+                                ],
+                                "params": t.params,
+                                "body": t.body,
+                                "is_builtin": t.is_builtin,
+                            }
+                            for t in templates
+                        ]
+                    )
+                elif path == "/api/runtime":
+                    self._send_json(state.runtime_snapshot())
                 else:
                     self._send_error_json("Not found", 404)
             except Exception as exc:
                 self._send_error_json(str(exc), 500)
-
-        # ── PUT routing ──────────────────────────────────────────────────
 
         def do_PUT(self) -> None:
             path = urlparse(self.path).path.rstrip("/")
@@ -216,14 +229,12 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
             except Exception as exc:
                 self._send_error_json(str(exc), 500)
 
-        # ── DELETE routing ───────────────────────────────────────────────
-
         def do_DELETE(self) -> None:
             path = urlparse(self.path).path
             try:
                 prefix = "/api/library/user/"
                 if path.startswith(prefix):
-                    tid = path[len(prefix):]
+                    tid = path[len(prefix) :]
                     prog = state.loader.program
                     if prog is None:
                         self._send_error_json("No program loaded", 400)
@@ -239,8 +250,6 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
             except Exception as exc:
                 self._send_error_json(str(exc), 500)
 
-        # ── POST routing ─────────────────────────────────────────────────
-
         def do_POST(self) -> None:
             path = urlparse(self.path).path.rstrip("/")
             try:
@@ -252,6 +261,8 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
                     self._handle_post_reset_instance()
                 elif path == "/api/apply":
                     self._handle_post_apply()
+                elif path == "/api/cmd":
+                    self._handle_post_cmd()
                 else:
                     self._send_error_json("Not found", 404)
             except PermissionError as exc:
@@ -260,6 +271,11 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
                 self._send_error_json(str(exc))
             except Exception as exc:
                 self._send_error_json(str(exc), 500)
+
+        def _handle_post_cmd(self) -> None:
+            data = self._read_json()
+            name = str(data.get("name", ""))
+            self._send_json(state.issue_cmd(name))
 
         def _handle_post_user_template(self) -> None:
             data = self._read_json()
@@ -282,16 +298,18 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
             add_user_template(prog, tmpl)
             state.library.register(tmpl)
             state.persist_program()
-            self._send_json({
-                "template_id": tmpl.template_id,
-                "library": tmpl.library,
-            })
+            self._send_json(
+                {"template_id": tmpl.template_id, "library": tmpl.library}
+            )
 
         def _handle_post_place(self) -> None:
             data = self._read_json()
             tid = str(data.get("template_id", ""))
             tlib = str(data.get("library", "builtin"))
-            iid = str(data.get("instance_id") or f"{tid}_{len(state.program_dict.get('instances',{}))}")
+            iid = str(
+                data.get("instance_id")
+                or f"{tid}_{len(state.program_dict.get('instances', {}))}"
+            )
             x = float(data.get("x", 0.0))
             y = float(data.get("y", 0.0))
             tmpl = state.library.get(tlib, tid)
@@ -338,8 +356,6 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
         def _handle_post_apply(self) -> None:
             data = self._read_json()
             mode = str(data.get("mode", "restart")).lower()
-            # Client-supplied "superuser" field is intentionally ignored.
-            # Authority comes solely from the server-side flag set at startup.
             prog = state.loader.program
             if prog is None:
                 self._send_error_json("No program loaded", 400)
@@ -366,17 +382,11 @@ def run_app(
     state: AppState | None = None,
     program_path: str | None = None,
 ) -> HTTPServer:
-    """Create and start the App HTTP server.
-
-    Returns the ``HTTPServer`` instance (already started via ``serve_forever``
-    in a thread when called from ``__main__``).
-    For testing call ``server.handle_request()`` directly.
-    """
+    """Create the App HTTP server (caller runs ``serve_forever``)."""
     if state is None:
         state = AppState(initial_program, program_path=program_path)
     handler = make_handler(state)
-    server = HTTPServer((host, port), handler)
-    return server
+    return HTTPServer((host, port), handler)
 
 
 __all__ = [

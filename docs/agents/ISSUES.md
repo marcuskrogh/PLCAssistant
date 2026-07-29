@@ -48,9 +48,14 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-129 | Bug | [Iterate] App Update stale image + hass.components integration after reinstall | Done | Relates SWD-128 | docs/ITERATE.md | Done — shipped PR #41 |
 | SWD-130 | Bug | [Iterate] Store Latest stuck at 0.1.6 while GitHub has newer App version | Done | Relates SWD-129 | docs/ITERATE.md | Done — shipped PR #42 |
 | SWD-131 | Bug | [Iterate] App Block Editor 404 under Ingress + thin integration too thin / version lock | Done | Relates SWD-130 | docs/ITERATE.md | Done — shipped PR #43 |
+| SWD-132 | Bug | [Iterate] Operator dashboard default + major App UI refresh (mobile) | Done | Relates SWD-131 | docs/ITERATE.md | Done — shipped PR #44 |
 
 ## Log
 
+- 2026-07-29 — Shipped SWD-132 via PR #44; App 0.1.10 operator dashboard + UI refresh; cmd enqueue + offline intent. Bug Done.
+- 2026-07-29 — review-fix SWD-132 CLEAN after 3 iterations (iter1: cmd race/offline/tests/arch/spec; iter2: stop-vs-late-connect + OperatorRuntime; iter3: 0); Next `/ship SWD-132`.
+- 2026-07-28 — Iterate SWD-132: PR #44 opened (App 0.1.10); operator dashboard + UI refresh; Task → In Review.
+- 2026-07-28 — Iterate SWD-132: operator dashboard default + major App UI refresh; App 0.1.10; `/api/runtime` + `/api/cmd`.
 - 2026-07-28 — Shipped SWD-131 via PR #43; App 0.1.9 Ingress relative API + version lock + FT_INLET/buttons. Bug Done.
 - 2026-07-28 — review-fix SWD-131 CLEAN after 2 iterations (iter1: 0B+3SF apiUrl/tests/bindings; iter2: 0); Next `/ship SWD-131`.
 - 2026-07-28 — Iterate SWD-131: PR #43 opened (App 0.1.9); Ingress relative API, version lock, FT_INLET + buttons; Task → In Review.
