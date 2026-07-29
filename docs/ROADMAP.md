@@ -33,4 +33,4 @@
 - Prior initiative: [SWD-81](https://marcusknielsen.atlassian.net/browse/SWD-81) (Done)
 
 ## Next
-`/ship SWD-145` — review-fix follow-up (App 0.1.21); then `/define SWD-146`
+`/define SWD-146` — Configurable dynamics core + skid preset

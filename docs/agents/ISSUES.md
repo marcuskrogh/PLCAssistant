@@ -59,7 +59,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-140 | Bug | [Iterate] HMI zeros on SP_LEVEL/SP_FLOW/LT_RES + clarify PERM_OK while RUNNING | Done | Relates SWD-139 | docs/ITERATE.md | Done — shipped PR #56 |
 | SWD-141 | Bug | [Iterate] Level setpoint request does not update Active level SP (stuck 0.2 m) | Done | Relates SWD-140 | docs/ITERATE.md | Done — shipped PR #57 |
 | SWD-142 | Story | Configurable mock dynamics — tags, unit ops, ODEs, selectable presets | To Do | — | docs/ROADMAP.md | `/define SWD-146` |
-| SWD-145 | Task | Soft-PLC ↔ integration mock ownership boundary | In Progress | Relates SWD-142 | docs/PLAN.md | review-fix → `/ship` 0.1.21 |
+| SWD-145 | Task | Soft-PLC ↔ integration mock ownership boundary | Done | Relates SWD-142 | docs/PLAN.md | Done — shipped PR #59+#60 |
 | SWD-149 | Subtask | SWD-145: Ownership docs (packaging / wedge / I/O) | Done | SWD-145 | docs/PLAN.md | — |
 | SWD-150 | Subtask | SWD-145: Expose scan_period_s on Soft-PLC MQTT status | Done | SWD-145 | docs/PLAN.md | — |
 | SWD-147 | Subtask | SWD-145: Remove App plant from live scan; plant tags as IN | Done | SWD-145 | docs/PLAN.md | — |
@@ -71,6 +71,8 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
+- 2026-07-29 — Shipped SWD-145 via PR #59 (0.1.20) + PR #60 (0.1.21 review-fix CLEAN 2 iter); Task Done; Next `/define SWD-146`.
+- 2026-07-29 — review-fix SWD-145 CLEAN after 2 iterations (iter1: 1B+4SF LOS/LWT/file/docs/tests; iter2: 0); Next `/ship SWD-145`.
 - 2026-07-29 — review-fix SWD-145 NEEDS FIXES (1B LOS forced GOOD + 4SF); App 0.1.21 follow-up; premature ship of #59 noted.
 - 2026-07-29 — Premature ship attempt of SWD-145 via PR #59 (0.1.20); user requested review-fix first — reopened.
 - 2026-07-29 — Implement SWD-145: App 0.1.20; HeldProcess + plant IN; scan_period_s; PR #59 → In Review. Next `/review-fix SWD-145`.

@@ -1,13 +1,15 @@
 # Iterate notes: Soft-PLC ↔ integration mock ownership (SWD-145)
 
-**In Review** — App **0.1.21** review-fix follow-up (PR #59 shipped 0.1.20 prematurely)
+**Done** — App **0.1.21**; shipped PR [#59](https://github.com/marcuskrogh/PLCAssistant/pull/59) (0.1.20) + review-fix PR [#60](https://github.com/marcuskrogh/PLCAssistant/pull/60) (`53bdeda`)
 
-## review-fix iter1 findings → fixed
-1. **BLOCKING:** Real plant LOS (`BAD`/`unavailable` after a GOOD sample) was forced GOOD — now only suppress never-sampled declare defaults; LOS trips after sample.
-2. **SHOULD-FIX:** Offline LWT now includes `scan_period_s`.
-3. **SHOULD-FIX:** Plant Numbers no longer write `inputs.json` (SP_LEVEL_REQ only).
-4. **SHOULD-FIX:** Lovelace README updated for plant IN / static until SWD-146.
-5. **SHOULD-FIX:** Test comment no longer claims plant motion.
+## Shipped
+1. Soft-PLC mock-unaware live path (`HeldProcess`); plant PVs MQTT IN
+2. MQTT status / LWT include `scan_period_s`
+3. Bindings / HMI / file-bridge cleaned; plant motion dark until SWD-146
+4. review-fix: real plant LOS after sample trips; plant Numbers do not write `inputs.json`
+
+## Operator note
+Update App to **0.1.21+**, wait for Core reload. Expect static plant Numbers until SWD-146; Start still drives CVs/status.
 
 ## Next
-Re-verify CLEAN → `/ship SWD-145` (0.1.21 follow-up PR)
+`/define SWD-146` — Configurable dynamics core + skid preset
