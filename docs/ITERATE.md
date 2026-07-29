@@ -1,7 +1,7 @@
 # Iterate: Soft-PLC attached but HMI still offline — MQTT never reaches HA
 
 ## Status
-**In Progress** — App **0.1.17**; Task [SWD-139](https://marcusknielsen.atlassian.net/browse/SWD-139)
+**Done** — App **0.1.17**; shipped PR [#55](https://github.com/marcuskrogh/PLCAssistant/pull/55)
 
 ## Prior work
 - Task: SWD-138 (PR #53, App 0.1.16 — auto Core restart after sync)
@@ -27,6 +27,7 @@ Soft-PLC→Mosquitto publish works. HA entities never leave defaults — the MQT
 - Task: [SWD-139](https://marcusknielsen.atlassian.net/browse/SWD-139)
 - Relates: SWD-138
 - Branch: `cursor/swd-139-ha-config-bridge-33f4`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/55
 
 ## Next
-`/review-fix SWD-139` — Review and auto-fix until clean
+Done — phase closed.
