@@ -11,6 +11,7 @@ Mirrors how Core registers YAML dashboards from ``configuration.yaml``
 from __future__ import annotations
 
 import logging
+import re
 import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
@@ -33,19 +34,23 @@ def bundled_dashboard_yaml() -> Path:
 
 
 def _is_stock_board_needing_status_upgrade(text: str) -> bool:
-    """True when YAML looks like a prior stock board missing the status card.
+    """True when YAML looks like a prior stock board that should be refreshed.
 
-    Preserves true operator customizations (no Start button, or already has
-    ``sensor.plcassistant_status``). Stock 0.1.11/0.1.12 boards are refreshed
-    so SWD-135 status entities appear after App update.
+    Preserves true operator customizations (no Start button). Stock boards are
+    refreshed when missing the status card (SWD-135) or explicitly on an older
+    ``plcassistant_dashboard_version`` of 1 or 2 (SWD-137 offline help). Boards
+    that already have status but no version marker are left alone.
     """
-    if "sensor.plcassistant_status" in text:
-        return False
     if "button.plcassistant_start" not in text:
         return False
     if "title: PLCAssistant" not in text and "PLCAssistant" not in text:
         return False
-    return True
+    if "sensor.plcassistant_status" not in text:
+        return True
+    # Only refresh when an explicit older stock version is present (not 10+).
+    if re.search(r"plcassistant_dashboard_version:\s*[12]\b", text):
+        return True
+    return False
 
 
 def ensure_dashboard_yaml(hass: HomeAssistant) -> Path:

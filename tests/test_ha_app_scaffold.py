@@ -114,6 +114,8 @@ def test_run_sh_wires_ha_runtime():
     assert "0.0.0.0" in text
     assert "--ha-runtime" in text or "PLCASSISTANT_HA_RUNTIME" in text
     assert "options.json" in text
+    assert "seeded default" in text
+    assert "mqtt_broker=core-mosquitto" in text
     assert "install_thin_integration" in text
     assert "continuing App start" in text
     assert "migrate_legacy_mqtt_subscribe" in text

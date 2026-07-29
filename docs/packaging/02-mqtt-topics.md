@@ -63,7 +63,7 @@ Soft-PLC republishes retained status on mode changes and on a ~2 s heartbeat so 
 | `reason` | string / null | `ReasonCode` name when not GOOD (e.g. `unavailable`, `fault`) |
 | `ts` | number / null | Optional Unix time (seconds); informational |
 
-QoS: **1** (at least once). Retain: **false** for scan tags (image is refreshed each scan). Retain **true** on `status` (boot + heartbeat + LWT).
+QoS: **1** (at least once). Retain: **false** for most scan tags (image is refreshed each scan). Retain **true** on `status` (boot + heartbeat + LWT). Retain **true** on HMI state OUT tags `MODE`, `PERM_OK`, and `TRIP_ACTIVE` so the thin integration hydrates after subscribe (SWD-137).
 
 ## Code
 

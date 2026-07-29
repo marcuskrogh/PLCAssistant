@@ -32,14 +32,14 @@ def test_manifest_depends_on_frontend_and_lovelace() -> None:
     assert "frontend" in deps
     assert "lovelace" in deps
     assert "mqtt" in deps
-    assert manifest["version"] == "0.1.14"
+    assert manifest["version"] == "0.1.15"
 
 
 def test_app_version_locked_to_integration() -> None:
     text = (ROOT / "plc_assistant" / "config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.14"' in text
+    assert 'version: "0.1.15"' in text
     docker = (ROOT / "plc_assistant" / "Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.14" in docker
+    assert "BUILD_VERSION=0.1.15" in docker
 
 
 def test_url_path_contains_hyphen() -> None:
@@ -144,6 +144,63 @@ def test_ensure_refreshes_stock_board_missing_status(tmp_path) -> None:
     text = out.read_text(encoding="utf-8")
     assert "sensor.plcassistant_status" in text
     assert "sensor.plcassistant_mode" in text
+    assert "plcassistant_dashboard_version: 3" in text
+
+
+def test_ensure_refreshes_stock_board_old_dashboard_version(tmp_path) -> None:
+    """SWD-137: stock boards on version 2 get offline-help refresh."""
+    mod = _load("plcassistant_lovelace_dashboard3c", CC / "lovelace_dashboard.py")
+
+    class FakeConfig:
+        def path(self, *parts: str) -> str:
+            return str(tmp_path.joinpath(*parts))
+
+    class FakeHass:
+        config = FakeConfig()
+
+    dest = tmp_path / "dashboards" / "plcassistant.yaml"
+    dest.parent.mkdir(parents=True)
+    dest.write_text(
+        "# plcassistant_dashboard_version: 2\n"
+        "title: PLCAssistant\nviews:\n"
+        "  - cards:\n"
+        "      - type: entities\n"
+        "        entities:\n"
+        "          - entity: sensor.plcassistant_status\n"
+        "          - entity: button.plcassistant_start\n",
+        encoding="utf-8",
+    )
+    out = mod.ensure_dashboard_yaml(FakeHass())  # type: ignore[arg-type]
+    text = out.read_text(encoding="utf-8")
+    assert "plcassistant_dashboard_version: 3" in text
+    assert "stuck offline" in text or "Mosquitto" in text
+
+
+def test_ensure_preserves_status_board_without_version_marker(tmp_path) -> None:
+    """SWD-137: status present + no version marker must not be clobbered."""
+    mod = _load("plcassistant_lovelace_dashboard3d", CC / "lovelace_dashboard.py")
+
+    class FakeConfig:
+        def path(self, *parts: str) -> str:
+            return str(tmp_path.joinpath(*parts))
+
+    class FakeHass:
+        config = FakeConfig()
+
+    dest = tmp_path / "dashboards" / "plcassistant.yaml"
+    dest.parent.mkdir(parents=True)
+    original = (
+        "title: PLCAssistant\nviews:\n"
+        "  - cards:\n"
+        "      - type: entities\n"
+        "        entities:\n"
+        "          - entity: sensor.plcassistant_status\n"
+        "          - entity: button.plcassistant_start\n"
+        "          - entity: button.plcassistant_operator_note\n"
+    )
+    dest.write_text(original, encoding="utf-8")
+    out = mod.ensure_dashboard_yaml(FakeHass())  # type: ignore[arg-type]
+    assert out.read_text(encoding="utf-8") == original
 
 
 def test_ensure_writes_when_missing(tmp_path) -> None:
@@ -169,6 +226,10 @@ def test_run_sh_refreshes_stock_missing_status_not_custom() -> None:
     assert "install_lovelace_dashboard()" in text
     assert "sensor.plcassistant_status" in text
     assert "button.plcassistant_start" in text
+    assert "seeded default" in text or "mqtt_broker=core-mosquitto" in text
+    # Explicit old versions only — do not refresh merely missing version 3.
+    assert "plcassistant_dashboard_version:[[:space:]]*[12]" in text
+    assert "! grep -q 'plcassistant_dashboard_version: 3'" not in text
     # Regression: never refresh-on-newer (would clobber operator edits).
     assert 'src_dash}" -nt' not in text
     assert "[ \"${src_dash}\" -nt" not in text

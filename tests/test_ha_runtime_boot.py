@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import threading
 import time
 import urllib.request
@@ -290,3 +291,135 @@ def test_memory_bus_runtime_cmd_via_http(tmp_path: Path):
     finally:
         life.stop()
         server.shutdown()
+
+
+def test_ha_runtime_empty_options_defaults_mosquitto_and_retries(monkeypatch):
+    """SWD-137: missing/empty options must not skip Mosquitto forever."""
+    from plcassistant.app.runtime import _mqtt_supervisor, build_bus_from_options
+
+    monkeypatch.delenv("PLCASSISTANT_HA_RUNTIME", raising=False)
+    monkeypatch.delenv("PLCASSISTANT_MQTT_BUS", raising=False)
+
+    seen: dict[str, object] = {}
+
+    class FakeBus:
+        def __init__(self, host, port, **kwargs):
+            seen["host"] = host
+            seen["port"] = port
+
+        def publish(self, *args, **kwargs):
+            return None
+
+        def subscribe(self, *args, **kwargs):
+            return None
+
+    monkeypatch.setattr("plcassistant.io.mqtt_paho.PahoMqttBus", FakeBus)
+    # Explicit ha_runtime — do not rely on env (run_ha_runtime path).
+    bus = build_bus_from_options({}, ha_runtime=True)
+    assert bus is not None
+    assert seen["host"] == "core-mosquitto"
+    assert seen["port"] == 1883
+    assert build_bus_from_options({}) is None
+
+    attached = threading.Event()
+
+    def capture(options, **_kwargs):
+        attached.set()
+        return InMemoryMqttBus()
+
+    monkeypatch.setattr(
+        "plcassistant.app.runtime.build_bus_from_options",
+        capture,
+    )
+    life = _mqtt_supervisor({}, "default", bus=None, ha_runtime=True)
+    try:
+        assert attached.wait(timeout=2.0), "MQTT retry never started for empty options"
+        deadline = time.monotonic() + 2.0
+        while life.loop is None and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert life.loop is not None
+    finally:
+        life.stop()
+
+
+def test_run_ha_runtime_empty_options_attaches_without_env(tmp_path: Path, monkeypatch):
+    """SWD-137: run_ha_runtime itself must attach MQTT even if HA env unset."""
+    monkeypatch.delenv("PLCASSISTANT_HA_RUNTIME", raising=False)
+    monkeypatch.delenv("PLCASSISTANT_MQTT_BUS", raising=False)
+    options_path = tmp_path / "options.json"
+    # Missing options file → load_options returns {}.
+    assert not options_path.is_file()
+
+    attached = threading.Event()
+
+    def capture(options, **kwargs):
+        assert kwargs.get("ha_runtime") is True or os.environ.get("PLCASSISTANT_HA_RUNTIME") == "1"
+        attached.set()
+        return InMemoryMqttBus()
+
+    monkeypatch.setattr("plcassistant.app.runtime.build_bus_from_options", capture)
+    _server, life = run_ha_runtime(
+        host="127.0.0.1",
+        port=0,
+        options_path=str(options_path),
+        serve_forever=False,
+    )
+    try:
+        assert os.environ.get("PLCASSISTANT_HA_RUNTIME") == "1"
+        assert attached.wait(timeout=2.0), "run_ha_runtime did not retry MQTT"
+        deadline = time.monotonic() + 2.0
+        while life.loop is None and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert life.loop is not None
+    finally:
+        life.stop()
+
+def test_mqtt_scan_loop_start_stop_race_safe():
+    """SWD-137: stop() between Thread assign and .start() must not AttributeError."""
+    from plcassistant.app.runtime import MqttScanLoop, declare_default_image
+    from plcassistant.io.mqtt_bridge import InMemoryMqttBus, MqttIoBridge
+
+    bus = InMemoryMqttBus()
+    image = declare_default_image()
+    bridge = MqttIoBridge(bus, instance_id="default")
+    loop = MqttScanLoop(bridge, image, period_s=0.05)
+
+    errors: list[BaseException] = []
+
+    def starter() -> None:
+        try:
+            for _ in range(20):
+                if loop._thread is None:
+                    loop.start()
+                time.sleep(0.001)
+        except BaseException as exc:  # noqa: BLE001 — collect for assert
+            errors.append(exc)
+
+    def stopper() -> None:
+        try:
+            for _ in range(40):
+                loop.stop()
+                time.sleep(0.001)
+        except BaseException as exc:  # noqa: BLE001 — collect for assert
+            errors.append(exc)
+
+    t1 = threading.Thread(target=starter)
+    t2 = threading.Thread(target=stopper)
+    t1.start()
+    t2.start()
+    t1.join(timeout=5.0)
+    t2.join(timeout=5.0)
+    loop.stop()
+    assert not errors, errors
+    assert loop._thread is None
+    assert loop._alive is False
+
+
+def test_mqtt_docs_note_hmi_state_retain():
+    """SWD-137: packaging + README must document retained MODE/PERM/TRIP OUT."""
+    root = Path(__file__).resolve().parents[1]
+    topics = (root / "docs" / "packaging" / "02-mqtt-topics.md").read_text(encoding="utf-8")
+    assert "MODE" in topics and "PERM_OK" in topics and "TRIP_ACTIVE" in topics
+    assert "retain **true**" in topics.lower()
+    readme = (root / "README.md").read_text(encoding="utf-8")
+    assert "MODE" in readme and "PERM_OK" in readme and "TRIP_ACTIVE" in readme

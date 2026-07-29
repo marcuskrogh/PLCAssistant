@@ -18,6 +18,19 @@ INTEGRATION_STAMP="${DATA_DIR}/bundled_integration_from_app"
 mkdir -p "${DATA_DIR}"
 
 # Supervisor writes App options here; runtime parses mqtt_* / instance_id.
+# Seed defaults when missing so Soft-PLC always attempts Mosquitto (SWD-137).
+if [ ! -f "${OPTIONS_PATH}" ]; then
+  cat > "${OPTIONS_PATH}" <<'EOF'
+{
+  "instance_id": "default",
+  "mqtt_broker": "core-mosquitto",
+  "mqtt_port": 1883,
+  "mqtt_username": "",
+  "mqtt_password": ""
+}
+EOF
+  echo "PLCAssistant: seeded default ${OPTIONS_PATH} (mqtt_broker=core-mosquitto)"
+fi
 if [ -f "${OPTIONS_PATH}" ]; then
   export PLCASSISTANT_OPTIONS_PATH="${OPTIONS_PATH}"
 fi
@@ -104,15 +117,17 @@ install_lovelace_dashboard() {
   mkdir -p "${HA_CONFIG}/dashboards" || return 0
   dst_dash="${HA_CONFIG}/dashboards/plcassistant.yaml"
   # Install when missing. Refresh prior stock boards that lack the status card
-  # (SWD-135). Never clobber boards that already have status or look customized
-  # (no Start button).
+  # (SWD-135) or explicitly on dashboard_version 1/2 (SWD-137 offline help).
+  # Never clobber boards that look customized (no Start button) or that already
+  # have status without an old version marker.
   if [ ! -f "${dst_dash}" ]; then
     cp -a "${src_dash}" "${dst_dash}" || true
     echo "PLCAssistant: Lovelace dashboard template at ${dst_dash}"
   elif grep -q 'button.plcassistant_start' "${dst_dash}" 2>/dev/null \
-    && ! grep -q 'sensor.plcassistant_status' "${dst_dash}" 2>/dev/null; then
+    && { ! grep -q 'sensor.plcassistant_status' "${dst_dash}" 2>/dev/null \
+      || grep -qE 'plcassistant_dashboard_version:[[:space:]]*[12]([^0-9]|$)' "${dst_dash}" 2>/dev/null; }; then
     cp -a "${src_dash}" "${dst_dash}" || true
-    echo "PLCAssistant: refreshed stock Lovelace dashboard (status) at ${dst_dash}"
+    echo "PLCAssistant: refreshed stock Lovelace dashboard at ${dst_dash}"
   fi
   if [ -f "${src_readme}" ]; then
     cp -a "${src_readme}" "${HA_CONFIG}/dashboards/plcassistant_README.md" || true
