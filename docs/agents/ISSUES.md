@@ -57,10 +57,11 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-138 | Bug | [Iterate] Soft-PLC attached but HMI still offline — Core never restarts after integration sync | Done | Relates SWD-137 | docs/ITERATE.md | Done — shipped PR #53 |
 | SWD-139 | Bug | [Iterate] Soft-PLC attached (stopped) but HMI still offline — MQTT never reaches HA entities | Done | Relates SWD-138 | docs/ITERATE.md | Done — shipped PR #55 |
 | SWD-140 | Bug | [Iterate] HMI zeros on SP_LEVEL/SP_FLOW/LT_RES + clarify PERM_OK while RUNNING | Done | Relates SWD-139 | docs/ITERATE.md | Done — shipped PR #56 |
-| SWD-141 | Bug | [Iterate] Level setpoint request does not update Active level SP (stuck 0.2 m) | In Review | Relates SWD-140 | docs/ITERATE.md | `/ship SWD-141` |
+| SWD-141 | Bug | [Iterate] Level setpoint request does not update Active level SP (stuck 0.2 m) | Done | Relates SWD-140 | docs/ITERATE.md | Done — shipped PR #57 |
 
 ## Log
 
+- 2026-07-29 — Shipped SWD-141 via PR #57; App 0.1.19 file-bridge SP_LEVEL_REQ → Active level SP. Bug Done.
 - 2026-07-29 — review-fix SWD-141 CLEAN after 2 iterations (iter1: 3B write_input_tag kwonly; iter2: 0); Next `/ship SWD-141`.
 - 2026-07-29 — Iterate SWD-141: PR #57 opened (App 0.1.19); file-bridge SP_LEVEL_REQ inputs.json; Task → In Review.
 - 2026-07-29 — Iterate SWD-141: Level setpoint (SP_LEVEL_REQ) stuck vs Active SP; file-bridge inputs.json; App 0.1.19.

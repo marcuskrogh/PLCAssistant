@@ -1,7 +1,7 @@
 # Iterate: Level setpoint request does not update Active level SP
 
 ## Status
-**In Review** — App **0.1.19**; PR [#57](https://github.com/marcuskrogh/PLCAssistant/pull/57)
+**Done** — App **0.1.19**; shipped PR [#57](https://github.com/marcuskrogh/PLCAssistant/pull/57)
 
 ## Prior work
 - Task: SWD-140 (PR #56, App 0.1.18 — OUT file-bridge tags + Start ready)
@@ -30,4 +30,4 @@ MQTT-silent file bridge carries Start/Stop/Reset and OUT tags, but not operator 
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/57
 
 ## Next
-`/ship SWD-141`
+Done — phase closed.
