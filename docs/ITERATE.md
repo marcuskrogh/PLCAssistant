@@ -30,6 +30,7 @@ Root cause: thin integration subscribes to the retained App `status` topic **bef
 - Task: [SWD-136](https://marcusknielsen.atlassian.net/browse/SWD-136)
 - Relates: SWD-135
 - Branch: `cursor/swd-136-soft-plc-offline-start-33f4`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/51
 
 ## Next
 `/review-fix SWD-136` — Review and auto-fix until clean
