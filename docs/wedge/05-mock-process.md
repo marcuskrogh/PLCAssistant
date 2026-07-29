@@ -16,7 +16,7 @@ Require a **first-class mock / simulated process** for the gravity-drained tank 
 
 Packaging ownership: [`docs/packaging/01-shape.md`](../packaging/01-shape.md) (SWD-145). Image / binding contracts: [`docs/io/01-image-quality.md`](../io/01-image-quality.md), [`docs/io/02-binding-model.md`](../io/02-binding-model.md).
 
-**Live process gap:** Until SWD-146 ships the integration simulator, live plant PVs stay static (defaults / manual Number entities). Offline wedge acceptance still uses `MockProcess`.
+**Live path (SWD-146):** the thin integration runs the skid plant simulator and publishes plant PVs as Soft-PLC MQTT IN. Soft-PLC stays mock-unaware (`HeldProcess`). Offline wedge acceptance still uses `MockProcess`.
 
 ## First-class capability
 

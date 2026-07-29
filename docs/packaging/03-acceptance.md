@@ -22,7 +22,7 @@ Automated tests live under `tests/` and must pass without a live Home Assistant 
 | H2 | App starts; Ingress opens the programming surface |
 | H3 | Exposed port reaches the same editor when Ingress is unavailable |
 | H4 | With Mosquitto installed and configured, a bound tag updates an HA entity via the thin integration |
-| H5 | Process/mock path uses MQTT bindings like field (Soft-PLC mock-unaware); live plant dynamics until SWD-146 stay static (SWD-145) |
+| H5 | Process/mock path uses MQTT bindings like field (Soft-PLC mock-unaware); integration skid simulator publishes plant IN (SWD-146) |
 | H6 | Program-of-record survives App restart (persistent `/data`) |
 
 ## Out of scope for this acceptance set

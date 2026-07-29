@@ -15,7 +15,7 @@
 - Plant Number ownership: simulator is authoritative publisher; Numbers display/nudge state (no competing MQTT writers)
 - Programmatic nudge / quality hooks for automated acceptance
 - Docs + tests: end-to-end plant motion; Soft-PLC still uses `HeldProcess`
-- App + integration version bump
+- App + integration version bump (**0.1.22**)
 
 **Out**
 - Unit-op library / custom equation authoring / expression sandbox → [SWD-144](https://marcusknielsen.atlassian.net/browse/SWD-144)
@@ -69,8 +69,8 @@
 5. **Acceptance + packaging** — closed-loop tests, docs, version bump, dual-tree sync
 
 ## Open items
-- Exact oracle tolerance bands (implement choice; document in tests)
-- Whether Number entities become read-only while simulator runs vs stay writable nudges (prefer writable nudges)
+- Exact oracle tolerance bands → **1e-9** vs `MockProcess` in `tests/test_dynamics.py`
+- Number entities → writable nudges (absolute set into simulator; no competing MQTT)
 - `SC_PUMP` / quality HMI surfaces — not required for SWD-146 dashboard
 - Full unit-op composition / custom DE DSL → SWD-144
 - Preset chooser + parameter editor UI → SWD-143
@@ -82,7 +82,7 @@
 - Sub-tasks: [SWD-156](https://marcusknielsen.atlassian.net/browse/SWD-156) engine, [SWD-154](https://marcusknielsen.atlassian.net/browse/SWD-154) skid preset, [SWD-152](https://marcusknielsen.atlassian.net/browse/SWD-152) HA lifecycle, [SWD-155](https://marcusknielsen.atlassian.net/browse/SWD-155) Number/HMI, [SWD-153](https://marcusknielsen.atlassian.net/browse/SWD-153) acceptance
 - Prior: [SWD-145](https://marcusknielsen.atlassian.net/browse/SWD-145) Done
 - Branch: `cursor/swd-146-dynamics-core-define-33f4`
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/62
+- Implement: App **0.1.22** — PR https://github.com/marcuskrogh/PLCAssistant/pull/63
 
 ## Next
-`/implement SWD-146` — Build per this plan (same branch/PR after define approval)
+`/define SWD-144` — after SWD-146 Done

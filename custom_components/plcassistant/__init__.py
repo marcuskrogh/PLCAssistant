@@ -139,13 +139,18 @@ def _apply_file_runtime(hass: HomeAssistant, entry_id: str, snap: dict) -> None:
     store = hass.data.get(DOMAIN, {}).get(entry_id)
     if store is None:
         return
+    sim = store.get("plant_simulator")
     status = str(snap.get("status") or "").strip().lower()
     if status in ("running", "stopped", "fault", "offline"):
         extras = {}
         if snap.get("mode") is not None:
             extras["mode"] = snap.get("mode")
+        if snap.get("scan_period_s") is not None:
+            extras["scan_period_s"] = snap.get("scan_period_s")
         payload = json.dumps({"state": status, **extras})
         store["status_payload"] = payload
+        if sim is not None:
+            sim.apply_status(payload)
         hass.bus.async_fire(
             f"{DOMAIN}_status",
             {"payload": payload, "entry_id": entry_id},
@@ -165,6 +170,8 @@ def _apply_file_runtime(hass: HomeAssistant, entry_id: str, snap: dict) -> None:
             }
         )
         out_values[tag] = text
+        if tag == "CMD_SPEED" and sim is not None:
+            sim.apply_cmd_from_payload(text)
         hass.bus.async_fire(
             f"{DOMAIN}_tag_out",
             {"tag": tag, "payload": text, "entry_id": entry_id},
@@ -255,6 +262,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 if store is None:
                     return
                 store["out_values"][tag_name] = text
+                sim = store.get("plant_simulator")
+                if tag_name == "CMD_SPEED" and sim is not None:
+                    sim.apply_cmd_from_payload(text)
                 hass.bus.async_fire(
                     f"{DOMAIN}_tag_out",
                     {"tag": tag_name, "payload": text, "entry_id": entry_id},
@@ -283,6 +293,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if store is not None:
             store["status_payload"] = text
             store["last_mqtt_status_mono"] = time.monotonic()
+            sim = store.get("plant_simulator")
+            if sim is not None:
+                sim.apply_status(text)
         hass.bus.async_fire(
             f"{DOMAIN}_status",
             {"payload": text, "entry_id": entry.entry_id},
@@ -292,6 +305,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass, status_topic(instance_id), _on_status, qos=1
     )
     hass.data[DOMAIN][entry.entry_id]["unsubs"].append(status_unsub)
+
+    # SWD-146: integration-owned skid plant simulator (mock_mode only).
+    if mock_mode:
+        from .dynamics.simulator import HassPlantSimulator
+
+        plant_sim = HassPlantSimulator(hass, instance_id)
+        store = hass.data[DOMAIN][entry.entry_id]
+        store["plant_simulator"] = plant_sim
+        # Retained status/CMD may have arrived on subscribe before the simulator
+        # existed — hydrate so we do not wait for the next Soft-PLC heartbeat.
+        cached_status = store.get("status_payload")
+        if cached_status is not None:
+            plant_sim.apply_status(cached_status)
+        cached_cmd = (store.get("out_values") or {}).get("CMD_SPEED")
+        if cached_cmd is not None:
+            plant_sim.apply_cmd_from_payload(cached_cmd)
+        await plant_sim.async_start()
 
     async def _poll_file_bridge() -> None:
         entry_id = entry.entry_id
@@ -345,6 +375,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     data = hass.data.get(DOMAIN, {}).get(entry.entry_id) or {}
+    plant_sim = data.get("plant_simulator")
+    if plant_sim is not None:
+        await plant_sim.async_stop()
     poll_task = data.get("poll_task")
     if poll_task is not None:
         poll_task.cancel()
