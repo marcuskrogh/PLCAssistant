@@ -181,6 +181,10 @@ def test_run_sh_auto_installs_integration(tmp_path: pathlib.Path):
     assert "0.1.3" in dst.read_text(encoding="utf-8")
     assert (data_dir / "integration_needs_core_restart").is_file()
     assert "thin integration installed/updated" in result.stdout
+    # No SUPERVISOR_TOKEN in fixture → log manual-restart guidance (SWD-138).
+    assert "cannot auto-restart Core" in result.stdout or "SUPERVISOR_TOKEN missing" in (
+        result.stdout + result.stderr
+    )
 
     # Second run should report up to date and clear the restart stamp.
     result2 = subprocess.run(

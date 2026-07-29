@@ -138,6 +138,41 @@ def test_paho_bus_sets_retained_offline_lwt_before_connect(monkeypatch):
     assert will[4] is True
 
 
+def test_paho_bus_uses_unique_client_id_by_default(monkeypatch):
+    """SWD-138: default client_id must not be a fixed plcassistant-app."""
+    from plcassistant.io import mqtt_paho as paho_mod
+
+    seen: list[str] = []
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            cid = kwargs.get("client_id")
+            if cid is None and args:
+                cid = args[0]
+            seen.append(str(cid))
+
+        def username_pw_set(self, *args, **kwargs):
+            return None
+
+        def will_set(self, *args, **kwargs):
+            return None
+
+        def connect(self, *args, **kwargs):
+            return None
+
+        def loop_start(self):
+            return None
+
+    assert paho_mod.mqtt is not None
+    monkeypatch.setattr(paho_mod.mqtt, "Client", FakeClient)
+    paho_mod.PahoMqttBus("core-mosquitto", 1883)
+    paho_mod.PahoMqttBus("core-mosquitto", 1883)
+    assert len(seen) == 2
+    assert seen[0] != seen[1]
+    assert seen[0].startswith("plcassistant-app-")
+    assert seen[0] != "plcassistant-app"
+
+
 def test_build_bus_documents_offline_lwt():
     """SWD-136: live paho bus must register retained offline LWT on status."""
     import inspect
