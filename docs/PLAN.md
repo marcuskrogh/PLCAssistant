@@ -82,7 +82,7 @@
 - Sub-tasks: [SWD-156](https://marcusknielsen.atlassian.net/browse/SWD-156) engine, [SWD-154](https://marcusknielsen.atlassian.net/browse/SWD-154) skid preset, [SWD-152](https://marcusknielsen.atlassian.net/browse/SWD-152) HA lifecycle, [SWD-155](https://marcusknielsen.atlassian.net/browse/SWD-155) Number/HMI, [SWD-153](https://marcusknielsen.atlassian.net/browse/SWD-153) acceptance
 - Prior: [SWD-145](https://marcusknielsen.atlassian.net/browse/SWD-145) Done
 - Branch: `cursor/swd-146-dynamics-core-define-33f4`
-- PR: (filled after open)
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/62
 
 ## Next
 `/implement SWD-146` — Build per this plan (same branch/PR after define approval)
