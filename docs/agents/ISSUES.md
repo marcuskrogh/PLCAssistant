@@ -58,14 +58,20 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-139 | Bug | [Iterate] Soft-PLC attached (stopped) but HMI still offline — MQTT never reaches HA entities | Done | Relates SWD-138 | docs/ITERATE.md | Done — shipped PR #55 |
 | SWD-140 | Bug | [Iterate] HMI zeros on SP_LEVEL/SP_FLOW/LT_RES + clarify PERM_OK while RUNNING | Done | Relates SWD-139 | docs/ITERATE.md | Done — shipped PR #56 |
 | SWD-141 | Bug | [Iterate] Level setpoint request does not update Active level SP (stuck 0.2 m) | Done | Relates SWD-140 | docs/ITERATE.md | Done — shipped PR #57 |
-| SWD-142 | Story | Configurable mock dynamics — tags, unit ops, ODEs, selectable presets | To Do | — | docs/ROADMAP.md | `/define SWD-145` |
-| SWD-145 | Task | Explore theme: Soft-PLC ↔ integration mock ownership boundary | To Do | Relates SWD-142 | docs/ROADMAP.md | `/define SWD-145` (in progress) |
+| SWD-142 | Story | Configurable mock dynamics — tags, unit ops, ODEs, selectable presets | To Do | — | docs/ROADMAP.md | `/implement SWD-145` |
+| SWD-145 | Task | Soft-PLC ↔ integration mock ownership boundary | To Do | Relates SWD-142 | docs/PLAN.md | `/implement SWD-145` |
+| SWD-149 | Subtask | SWD-145: Ownership docs (packaging / wedge / I/O) | To Do | SWD-145 | docs/PLAN.md | — |
+| SWD-150 | Subtask | SWD-145: Expose scan_period_s on Soft-PLC MQTT status | To Do | SWD-145 | docs/PLAN.md | — |
+| SWD-147 | Subtask | SWD-145: Remove App plant from live scan; plant tags as IN | To Do | SWD-145 | docs/PLAN.md | — |
+| SWD-148 | Subtask | SWD-145: Bindings / HMI / file-bridge cleanup for plant OUT removal | To Do | SWD-145 | docs/PLAN.md | — |
+| SWD-151 | Subtask | SWD-145: Tests + acceptance for ownership gap | To Do | SWD-145 | docs/PLAN.md | — |
 | SWD-146 | Task | Explore theme: Configurable dynamics core + skid preset | To Do | Relates SWD-142 | docs/ROADMAP.md | After SWD-145 |
 | SWD-144 | Task | Explore theme: Unit-op library + custom equation authoring | To Do | Relates SWD-142 | docs/ROADMAP.md | After SWD-146 |
 | SWD-143 | Task | Explore theme: Integration mock UI + preset selection | To Do | Relates SWD-142 | docs/ROADMAP.md | After SWD-146 |
 
 ## Log
 
+- 2026-07-29 — Define SWD-145 approved: PLAN.md + Sub-tasks SWD-149/150/147/148/151; PR #59; Next `/implement SWD-145`.
 - 2026-07-29 — Define SWD-145 started: Soft-PLC ↔ integration mock ownership; awaiting first divergence (where ODE runs).
 - 2026-07-29 — Explore SWD-142: configurable mock dynamics (unit ops, custom ODEs, presets, integration UI); themes SWD-145/146/144/143; Next `/define SWD-145`.
 - 2026-07-29 — Shipped SWD-141 via PR #57; App 0.1.19 file-bridge SP_LEVEL_REQ → Active level SP. Bug Done.

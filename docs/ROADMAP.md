@@ -33,4 +33,4 @@
 - Prior initiative: [SWD-81](https://marcusknielsen.atlassian.net/browse/SWD-81) (Done)
 
 ## Next
-`/define SWD-145` — Define theme: Soft-PLC ↔ integration mock ownership boundary
+`/implement SWD-145` — Build ownership boundary per [`docs/PLAN.md`](PLAN.md)
