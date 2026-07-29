@@ -110,7 +110,7 @@ All topics use prefix `plcassistant/{instance_id}/…` (default instance `defaul
 | Operator commands | `plcassistant/{id}/cmd/{start\|stop\|reset}` | Thin integration |
 | App status (optional) | `plcassistant/{id}/status` | App |
 
-Payload (JSON), QoS **1**, retain **false** for scan tags:
+Payload (JSON), QoS **1**, retain **false** for most scan tags (retain **true** for HMI state OUT: `MODE`, `PERM_OK`, `TRIP_ACTIVE`):
 
 ```json
 {

@@ -239,8 +239,16 @@ class MqttScanLoop:
         self.bridge.start()
         self._publish_scan_status("stopped")
         self._last_status_heartbeat = time.monotonic()
-        self._thread = threading.Thread(target=self._run, name="mqtt-scan", daemon=True)
-        self._thread.start()
+        thread = threading.Thread(target=self._run, name="mqtt-scan", daemon=True)
+        self._thread = thread
+        # stop() may clear self._thread between assign and .start() (SWD-137).
+        if self._thread is not thread:
+            return
+        thread.start()
+        if self._thread is not thread:
+            self._alive = False
+            if thread.ident is not None:
+                thread.join(timeout=2.0)
 
     def stop(self) -> None:
         self.scanning = False
@@ -284,6 +292,9 @@ class MqttScanLoop:
         self.bridge.enqueue_command(str(name).lower())
 
     def _run(self) -> None:
+        # Do not resurrect a scan that stop() already cleared (SWD-137 race).
+        if self._thread is not threading.current_thread():
+            return
         self._alive = True
         while self._alive:
             t0 = time.monotonic()

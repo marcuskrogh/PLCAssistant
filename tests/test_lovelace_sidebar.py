@@ -176,6 +176,33 @@ def test_ensure_refreshes_stock_board_old_dashboard_version(tmp_path) -> None:
     assert "stuck offline" in text or "Mosquitto" in text
 
 
+def test_ensure_preserves_status_board_without_version_marker(tmp_path) -> None:
+    """SWD-137: status present + no version marker must not be clobbered."""
+    mod = _load("plcassistant_lovelace_dashboard3d", CC / "lovelace_dashboard.py")
+
+    class FakeConfig:
+        def path(self, *parts: str) -> str:
+            return str(tmp_path.joinpath(*parts))
+
+    class FakeHass:
+        config = FakeConfig()
+
+    dest = tmp_path / "dashboards" / "plcassistant.yaml"
+    dest.parent.mkdir(parents=True)
+    original = (
+        "title: PLCAssistant\nviews:\n"
+        "  - cards:\n"
+        "      - type: entities\n"
+        "        entities:\n"
+        "          - entity: sensor.plcassistant_status\n"
+        "          - entity: button.plcassistant_start\n"
+        "          - entity: button.plcassistant_operator_note\n"
+    )
+    dest.write_text(original, encoding="utf-8")
+    out = mod.ensure_dashboard_yaml(FakeHass())  # type: ignore[arg-type]
+    assert out.read_text(encoding="utf-8") == original
+
+
 def test_ensure_writes_when_missing(tmp_path) -> None:
     mod = _load("plcassistant_lovelace_dashboard4", CC / "lovelace_dashboard.py")
 
@@ -199,8 +226,10 @@ def test_run_sh_refreshes_stock_missing_status_not_custom() -> None:
     assert "install_lovelace_dashboard()" in text
     assert "sensor.plcassistant_status" in text
     assert "button.plcassistant_start" in text
-    assert "plcassistant_dashboard_version: 3" in text
     assert "seeded default" in text or "mqtt_broker=core-mosquitto" in text
+    # Explicit old versions only — do not refresh merely missing version 3.
+    assert "plcassistant_dashboard_version: [12]" in text
+    assert "! grep -q 'plcassistant_dashboard_version: 3'" not in text
     # Regression: never refresh-on-newer (would clobber operator edits).
     assert 'src_dash}" -nt' not in text
     assert "[ \"${src_dash}\" -nt" not in text

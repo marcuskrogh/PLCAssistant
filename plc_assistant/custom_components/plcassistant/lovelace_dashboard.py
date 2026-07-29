@@ -36,8 +36,9 @@ def _is_stock_board_needing_status_upgrade(text: str) -> bool:
     """True when YAML looks like a prior stock board that should be refreshed.
 
     Preserves true operator customizations (no Start button). Stock boards are
-    refreshed when missing the status card (SWD-135) or still on an older
-    ``plcassistant_dashboard_version`` (SWD-137 offline help).
+    refreshed when missing the status card (SWD-135) or explicitly on an older
+    ``plcassistant_dashboard_version`` of 1 or 2 (SWD-137 offline help). Boards
+    that already have status but no version marker are left alone.
     """
     if "button.plcassistant_start" not in text:
         return False
@@ -45,8 +46,8 @@ def _is_stock_board_needing_status_upgrade(text: str) -> bool:
         return False
     if "sensor.plcassistant_status" not in text:
         return True
-    # Refresh stock boards that predate the offline troubleshooting copy.
-    if "plcassistant_dashboard_version: 3" not in text:
+    # Only refresh when an explicit older stock version is present.
+    if "plcassistant_dashboard_version: 1" in text or "plcassistant_dashboard_version: 2" in text:
         return True
     return False
 

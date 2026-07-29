@@ -337,3 +337,54 @@ def test_ha_runtime_empty_options_defaults_mosquitto_and_retries(monkeypatch):
         assert life.loop is not None
     finally:
         life.stop()
+
+
+def test_mqtt_scan_loop_start_stop_race_safe():
+    """SWD-137: stop() between Thread assign and .start() must not AttributeError."""
+    from plcassistant.app.runtime import MqttScanLoop, declare_default_image
+    from plcassistant.io.mqtt_bridge import InMemoryMqttBus, MqttIoBridge
+
+    bus = InMemoryMqttBus()
+    image = declare_default_image()
+    bridge = MqttIoBridge(bus, instance_id="default")
+    loop = MqttScanLoop(bridge, image, period_s=0.05)
+
+    errors: list[BaseException] = []
+
+    def starter() -> None:
+        try:
+            for _ in range(20):
+                if loop._thread is None:
+                    loop.start()
+                time.sleep(0.001)
+        except BaseException as exc:  # noqa: BLE001 — collect for assert
+            errors.append(exc)
+
+    def stopper() -> None:
+        try:
+            for _ in range(40):
+                loop.stop()
+                time.sleep(0.001)
+        except BaseException as exc:  # noqa: BLE001 — collect for assert
+            errors.append(exc)
+
+    t1 = threading.Thread(target=starter)
+    t2 = threading.Thread(target=stopper)
+    t1.start()
+    t2.start()
+    t1.join(timeout=5.0)
+    t2.join(timeout=5.0)
+    loop.stop()
+    assert not errors, errors
+    assert loop._thread is None
+    assert loop._alive is False
+
+
+def test_mqtt_docs_note_hmi_state_retain():
+    """SWD-137: packaging + README must document retained MODE/PERM/TRIP OUT."""
+    root = Path(__file__).resolve().parents[1]
+    topics = (root / "docs" / "packaging" / "02-mqtt-topics.md").read_text(encoding="utf-8")
+    assert "MODE" in topics and "PERM_OK" in topics and "TRIP_ACTIVE" in topics
+    assert "retain **true**" in topics.lower()
+    readme = (root / "README.md").read_text(encoding="utf-8")
+    assert "MODE" in readme and "PERM_OK" in readme and "TRIP_ACTIVE" in readme
