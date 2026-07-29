@@ -36,6 +36,7 @@ if [ -f "${OPTIONS_PATH}" ]; then
 fi
 export PLCASSISTANT_PROGRAM_PATH="${PROGRAM_PATH}"
 export PLCASSISTANT_HA_RUNTIME=1
+export PLCASSISTANT_HA_CONFIG="${HA_CONFIG}"
 
 app_version() {
   if [ -f "${APP_VERSION_FILE}" ]; then
@@ -157,7 +158,7 @@ install_lovelace_dashboard() {
   mkdir -p "${HA_CONFIG}/dashboards" || return 0
   dst_dash="${HA_CONFIG}/dashboards/plcassistant.yaml"
   # Install when missing. Refresh prior stock boards that lack the status card
-  # (SWD-135) or explicitly on dashboard_version 1–3 (SWD-137/138 offline help).
+  # (SWD-135) or explicitly on dashboard_version 1–4 (SWD-137/138/139 offline help).
   # Never clobber boards that look customized (no Start button) or that already
   # have status without an old version marker.
   if [ ! -f "${dst_dash}" ]; then
@@ -165,7 +166,7 @@ install_lovelace_dashboard() {
     echo "PLCAssistant: Lovelace dashboard template at ${dst_dash}"
   elif grep -q 'button.plcassistant_start' "${dst_dash}" 2>/dev/null \
     && { ! grep -q 'sensor.plcassistant_status' "${dst_dash}" 2>/dev/null \
-      || grep -qE 'plcassistant_dashboard_version:[[:space:]]*[123]([^0-9]|$)' "${dst_dash}" 2>/dev/null; }; then
+      || grep -qE 'plcassistant_dashboard_version:[[:space:]]*[1234]([^0-9]|$)' "${dst_dash}" 2>/dev/null; }; then
     cp -a "${src_dash}" "${dst_dash}" || true
     echo "PLCAssistant: refreshed stock Lovelace dashboard at ${dst_dash}"
   fi

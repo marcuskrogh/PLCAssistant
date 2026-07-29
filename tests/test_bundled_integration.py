@@ -15,6 +15,7 @@ def test_integration_required_files():
         "__init__.py",
         "const.py",
         "mqtt_topics.py",
+        "ha_config_bridge.py",
         "config_flow.py",
         "services.yaml",
         "strings.json",

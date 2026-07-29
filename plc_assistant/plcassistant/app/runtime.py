@@ -11,6 +11,7 @@ from typing import Any, Callable
 from plcassistant.app.default_image import declare_default_image
 from plcassistant.app.server import AppState, run_app
 from plcassistant.app.skid_scan import SkidImageLogic
+from plcassistant.io.ha_config_bridge import drain_cmd, write_runtime_snapshot
 from plcassistant.io.image import IoImage
 from plcassistant.io.mqtt_bridge import InMemoryMqttBus, MqttBus, MqttIoBridge
 from plcassistant.io.mqtt_topics import DEFAULT_INSTANCE_ID
@@ -179,6 +180,7 @@ class MqttScanLoop:
     # Republish retained status so HA sensors that missed the boot retain still
     # recover without an operator Start/Stop (SWD-136).
     STATUS_HEARTBEAT_S = 2.0
+    FILE_BRIDGE_PERIOD_S = 1.0
 
     def __init__(
         self,
@@ -201,6 +203,7 @@ class MqttScanLoop:
         self._lock = threading.Lock()
         self._alive = False
         self._last_status_heartbeat = 0.0
+        self._last_file_bridge = 0.0
         # Handlers optional; scan_once applies drained cmds on the scan thread.
         self.bridge.on_command("start", lambda: None)
         self.bridge.on_command("stop", lambda: None)
@@ -217,6 +220,32 @@ class MqttScanLoop:
 
     def _publish_scan_status(self, state: str) -> None:
         self.bridge.publish_status(state, **self._status_extras())
+        self._write_ha_config_runtime(state)
+
+    def _write_ha_config_runtime(self, state: str | None = None) -> None:
+        """Mirror Soft-PLC status/tags into HA config for MQTT-silent HMI (SWD-139)."""
+        status = state
+        if status is None:
+            status = "running" if self.scanning else "stopped"
+        tags: dict[str, Any] = {}
+        for name in ("MODE", "PERM_OK", "TRIP_ACTIVE", "LT_TANK", "FT_INLET", "CMD_SPEED"):
+            if name not in self.image.names():
+                continue
+            try:
+                tags[name] = {"value": self.image.get_value(name)}
+            except Exception:  # noqa: BLE001 — best-effort snapshot
+                continue
+        if write_runtime_snapshot(
+            {
+                "instance_id": getattr(self.bridge, "instance_id", DEFAULT_INSTANCE_ID),
+                "status": status,
+                "scanning": bool(self.scanning),
+                "mqtt": True,
+                "tags": tags,
+                **self._status_extras(),
+            }
+        ):
+            self._last_file_bridge = time.monotonic()
 
     def _apply_commands(self, cmds: tuple[str, ...]) -> None:
         enqueue = getattr(self.logic, "enqueue_operator", None)
@@ -266,6 +295,10 @@ class MqttScanLoop:
         self._last_status_heartbeat = time.monotonic()
 
     def scan_once(self) -> None:
+        # Shared HA-config cmd file (Start when MQTT cmds never arrive) — SWD-139.
+        file_cmd = drain_cmd()
+        if file_cmd:
+            self.bridge.enqueue_command(file_cmd)
         self.bridge.apply_inputs(self.image, clear=True)
         drained = self.bridge.drain_commands()
         if drained:
@@ -290,6 +323,10 @@ class MqttScanLoop:
         if now - self._last_status_heartbeat >= self.STATUS_HEARTBEAT_S:
             self._publish_scan_status("running" if self.scanning else "stopped")
             self._last_status_heartbeat = now
+        elif now - self._last_file_bridge >= self.FILE_BRIDGE_PERIOD_S:
+            # Keep file snapshot fresh for HMI even between MQTT status heartbeats.
+            self._write_ha_config_runtime()
+            self._last_file_bridge = now
 
     def issue_command(self, name: str) -> None:
         """Enqueue an operator command for the scan thread (same as MQTT cmds)."""

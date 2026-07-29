@@ -9,7 +9,11 @@ Testable MQTT mapping lives in ``plcassistant.io.mqtt_entity_bridge``.
 
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
+import time
+from pathlib import Path
 
 from homeassistant.components.mqtt import async_subscribe
 from homeassistant.config_entries import ConfigEntry
@@ -27,11 +31,17 @@ from .const import (
     SERVICE_START,
     SERVICE_STOP,
 )
+from .ha_config_bridge import read_runtime_snapshot, write_cmd
 from .mqtt_topics import cmd_topic, status_topic, tag_in_topic, tag_out_topic
 
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.NUMBER, Platform.SENSOR, Platform.BUTTON]
+# Poll shared App runtime file when MQTT stays silent (SWD-139).
+_FILE_BRIDGE_POLL_S = 1.0
+_FILE_BRIDGE_FRESH_S = 3.0
+_MQTT_SILENT_S = 3.0
+_HMI_TAGS = ("MODE", "PERM_OK", "TRIP_ACTIVE", "LT_TANK", "FT_INLET", "CMD_SPEED")
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -115,11 +125,49 @@ def _default_bindings() -> list[dict]:
     ]
 
 
+def _apply_file_runtime(hass: HomeAssistant, entry_id: str, snap: dict) -> None:
+    """Hydrate MQTT caches + fire bus events from a shared runtime snapshot."""
+    store = hass.data.get(DOMAIN, {}).get(entry_id)
+    if store is None:
+        return
+    status = str(snap.get("status") or "").strip().lower()
+    if status in ("running", "stopped", "fault", "offline"):
+        extras = {}
+        if snap.get("mode") is not None:
+            extras["mode"] = snap.get("mode")
+        payload = json.dumps({"state": status, **extras})
+        store["status_payload"] = payload
+        hass.bus.async_fire(
+            f"{DOMAIN}_status",
+            {"payload": payload, "entry_id": entry_id},
+        )
+    tags = snap.get("tags") if isinstance(snap.get("tags"), dict) else {}
+    out_values = store.setdefault("out_values", {})
+    for tag in _HMI_TAGS:
+        tag_body = tags.get(tag)
+        if not isinstance(tag_body, dict) or "value" not in tag_body:
+            continue
+        text = json.dumps(
+            {
+                "value": tag_body.get("value"),
+                "status": tag_body.get("status") or "GOOD",
+                "reason": tag_body.get("reason"),
+                "ts": snap.get("ts"),
+            }
+        )
+        out_values[tag] = text
+        hass.bus.async_fire(
+            f"{DOMAIN}_tag_out",
+            {"tag": tag, "payload": text, "entry_id": entry_id},
+        )
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
     instance_id = entry.data.get(CONF_INSTANCE_ID, DEFAULT_INSTANCE_ID)
     bindings = entry.data.get(CONF_BINDINGS) or _default_bindings()
     mock_mode = entry.data.get(CONF_MOCK_MODE, True)
+    config_root = Path(hass.config.path())
 
     hass.data[DOMAIN][entry.entry_id] = {
         CONF_INSTANCE_ID: instance_id,
@@ -130,6 +178,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "out_values": {},
         "status_payload": None,
         "unsubs": [],
+        "config_root": config_root,
     }
 
     async def _publish_cmd(name: str, call: ServiceCall) -> None:
@@ -157,6 +206,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             },
             blocking=False,
         )
+        # Shared-config fallback when MQTT never reaches Soft-PLC (SWD-139).
+        root = data.get("config_root")
+        if isinstance(root, Path):
+            await hass.async_add_executor_job(write_cmd, name, root)
 
     async def handle_start(call: ServiceCall) -> None:
         await _publish_cmd(SERVICE_START, call)
@@ -220,6 +273,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         store = hass.data[DOMAIN].get(entry.entry_id)
         if store is not None:
             store["status_payload"] = text
+            store["last_mqtt_status_mono"] = time.monotonic()
         hass.bus.async_fire(
             f"{DOMAIN}_status",
             {"payload": text, "entry_id": entry.entry_id},
@@ -229,6 +283,43 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass, status_topic(instance_id), _on_status, qos=1
     )
     hass.data[DOMAIN][entry.entry_id]["unsubs"].append(status_unsub)
+
+    async def _poll_file_bridge() -> None:
+        entry_id = entry.entry_id
+        while True:
+            try:
+                store = hass.data.get(DOMAIN, {}).get(entry_id) or {}
+                last_mqtt = store.get("last_mqtt_status_mono")
+                # MQTT remains primary — only use the file when status is silent.
+                if last_mqtt is not None and (
+                    time.monotonic() - float(last_mqtt)
+                ) < _MQTT_SILENT_S:
+                    await asyncio.sleep(_FILE_BRIDGE_POLL_S)
+                    continue
+                snap = await hass.async_add_executor_job(
+                    read_runtime_snapshot, config_root
+                )
+                if snap:
+                    try:
+                        age = time.time() - float(snap.get("ts") or 0.0)
+                    except (TypeError, ValueError):
+                        age = _FILE_BRIDGE_FRESH_S + 1.0
+                    if age <= _FILE_BRIDGE_FRESH_S:
+                        _apply_file_runtime(hass, entry_id, snap)
+            except asyncio.CancelledError:
+                raise
+            except Exception:  # noqa: BLE001 — never crash the poll loop
+                _LOGGER.debug("PLCAssistant: file-bridge poll failed", exc_info=True)
+            await asyncio.sleep(_FILE_BRIDGE_POLL_S)
+
+    # Prefer create_task; background helper may be unavailable on older Core.
+    try:
+        poll_task = hass.async_create_background_task(
+            _poll_file_bridge(), name=f"{DOMAIN}_file_bridge_{entry.entry_id}"
+        )
+    except AttributeError:
+        poll_task = hass.async_create_task(_poll_file_bridge())
+    hass.data[DOMAIN][entry.entry_id]["poll_task"] = poll_task
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
@@ -245,6 +336,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     data = hass.data.get(DOMAIN, {}).get(entry.entry_id) or {}
+    poll_task = data.get("poll_task")
+    if poll_task is not None:
+        poll_task.cancel()
     for unsub in data.get("unsubs") or []:
         unsub()
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
