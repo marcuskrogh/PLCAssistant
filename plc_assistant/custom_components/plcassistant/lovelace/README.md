@@ -30,24 +30,28 @@ refreshed on update so the status card and help appear.
 | `sensor.plcassistant_perm_ok` | `on` / `off` (Start ready when idle; Off while RUNNING is expected) |
 | `sensor.plcassistant_trip_active` | `on` / `off` |
 
-Press **Start** → Soft-PLC status `running`, MODE `RUNNING`, and process sensors move.
+Press **Start** → Soft-PLC status `running`, MODE `RUNNING`, and Soft-PLC CVs
+(`CMD_SPEED`, active SPs) update. Plant level/flow Numbers are Soft-PLC **IN**
+and stay static until the integration simulator (SWD-146).
 
 ## Writable vs read-only
 
 | Entity | Role |
 |--------|------|
 | `number.plcassistant_sp_level_req` | Operator **level setpoint request** (writable) |
+| `number.plcassistant_lt_tank_in` / `_lt_res_in` / `_ft_inlet_in` | Plant PVs as Soft-PLC **IN** (static until SWD-146) |
 | `button.plcassistant_start` / `_stop` / `_reset` | Operator commands |
-| `sensor.plcassistant_*` | Soft-PLC-owned PVs, active SPs, and status (read-only) |
+| `sensor.plcassistant_*` | Soft-PLC OUT (CVs, active SPs, MODE / status) — read-only |
 
-## Upgrading from App 0.1.10
+## Upgrading from App 0.1.10 / 0.1.19
 
-Entity IDs changed in **0.1.11** (OUT tags became sensors; setpoint request renamed):
+Entity IDs changed in **0.1.11** (OUT tags became sensors; setpoint request renamed)
+and again in **0.1.20** (plant PVs flipped back to Soft-PLC IN Numbers):
 
-| 0.1.10 | 0.1.11+ |
-|--------|---------|
-| `number.plcassistant_sp_level_req_in` | `number.plcassistant_sp_level_req` |
-| `number.plcassistant_lt_tank_in` (mock plant IN) | `sensor.plcassistant_lt_tank` (Soft-PLC plant OUT) |
-| `number.plcassistant_*_out` | `sensor.plcassistant_*` |
+| Era | Plant tags |
+|-----|------------|
+| 0.1.10 | `number.plcassistant_lt_tank_in` (early mock IN) |
+| 0.1.11–0.1.19 | `sensor.plcassistant_lt_tank` (Soft-PLC plant OUT) |
+| **0.1.20+** | `number.plcassistant_lt_tank_in` (Soft-PLC plant IN; static until SWD-146) |
 
-After App Update + Core restart: remove the old PLCAssistant integration entry (or delete stale unavailable entities in the entity registry), then add the integration again so entity IDs match. Update any personal dashboards/automations that referenced the old `*_in` / `*_out` Numbers.
+After App Update + Core restart: remove the old PLCAssistant integration entry (or delete stale unavailable entities in the entity registry), then add the integration again so entity IDs match. Update any personal dashboards/automations that referenced the old plant sensors.

@@ -46,7 +46,7 @@ JSON object, QoS **1**, **retain true**:
 | `scan_period_s` | Soft-PLC scan period in seconds (numeric). Integration may observe; Soft-PLC gets no mock identity back. |
 | extras | Optional (e.g. `mode`, `error`) — informational for the HMI chip |
 
-Soft-PLC republishes retained status on mode changes and on a ~2 s heartbeat so late HA listeners recover. Live App MQTT clients register a last-will of `{"state":"offline"}` (retain) on this topic so disconnect surfaces as offline.
+Soft-PLC republishes retained status on mode changes and on a ~2 s heartbeat so late HA listeners recover. Live App MQTT clients register a last-will of `{"state":"offline","scan_period_s":0.1}` (retain) on this topic so disconnect surfaces as offline while still exposing the scan period for observe.
 
 ## Payload (JSON)
 

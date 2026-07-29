@@ -73,4 +73,4 @@
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/59
 
 ## Next
-`/review-fix SWD-145` — Verify acceptance criteria; then `/ship SWD-145`
+`/ship SWD-145` — review-fix follow-up App **0.1.21**; then `/define SWD-146`

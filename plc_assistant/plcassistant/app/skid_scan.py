@@ -52,15 +52,20 @@ class SkidImageLogic:
     def _feed_plant_from_image(self, image: IoImage) -> None:
         """Drive Skid measurements from Soft-PLC plant IN (MQTT ≡ field)."""
         names = image.names()
+        snaps = image.snapshot()
         kwargs: dict[str, object] = {}
         for tag, key in _PLANT_TAGS:
             if tag not in names:
                 continue
             value, quality = image.get(tag)
-            # Declared-but-never-sampled tags are BAD/unavailable — keep
-            # HeldProcess healthy hold so Start works before plant MQTT arrives.
+            slot = snaps[tag]
+            # Declared-but-never-sampled tags are BAD/unavailable with no
+            # last_good — keep HeldProcess healthy hold so Start works before
+            # plant MQTT arrives. After any sample, propagate quality so real
+            # LOS (BAD/unavailable) trips correctly.
             if (
-                quality.status is QualityStatus.BAD
+                slot.last_good is None
+                and quality.status is QualityStatus.BAD
                 and quality.reason is ReasonCode.UNAVAILABLE
             ):
                 self.skid.force_quality(tag, QualityStatus.GOOD)

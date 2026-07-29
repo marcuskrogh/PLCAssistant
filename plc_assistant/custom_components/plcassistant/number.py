@@ -149,17 +149,19 @@ class PlcAssistantRequestNumber(NumberEntity):
             blocking=False,
         )
         # Shared-config fallback when MQTT never reaches Soft-PLC (SWD-141).
-        store = self.hass.data.get(DOMAIN, {}).get(self._entry_id) or {}
-        root = store.get("config_root")
-        if isinstance(root, Path):
-            await self.hass.async_add_executor_job(
-                write_input_tag,
-                self._tag,
-                eng,
-                "GOOD",
-                None,
-                root,
-            )
+        # Operator request tags only — plant process↔PLC stays MQTT (SWD-145).
+        if self._tag == "SP_LEVEL_REQ":
+            store = self.hass.data.get(DOMAIN, {}).get(self._entry_id) or {}
+            root = store.get("config_root")
+            if isinstance(root, Path):
+                await self.hass.async_add_executor_job(
+                    write_input_tag,
+                    self._tag,
+                    eng,
+                    "GOOD",
+                    None,
+                    root,
+                )
         self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:

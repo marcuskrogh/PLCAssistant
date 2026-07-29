@@ -101,10 +101,13 @@ def test_scan_loop_once_and_commands():
     bus.publish(cmd_topic("default", "start"), b"1")
     loop.scan_once()
     assert loop.scanning is True
-    # First RUNNING scan may still show 0 CVs; plant moves on subsequent scans.
+    # First RUNNING scan may still show 0 CVs; CVs move on subsequent scans.
+    # Plant PVs stay static until SWD-146 (Soft-PLC is mock-unaware / HeldProcess).
+    tank0 = float(image.get_value("LT_TANK"))
     loop.scan_once()
     assert image.get_value("CMD_SPEED") > 0.0
     assert image.get_value("SP_FLOW") > 0.0
+    assert float(image.get_value("LT_TANK")) == tank0
 
     bus.publish(cmd_topic("default", "stop"), b"1")
     loop.scan_once()
