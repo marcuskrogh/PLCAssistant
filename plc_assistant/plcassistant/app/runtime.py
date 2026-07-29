@@ -109,6 +109,9 @@ class MqttLifecycle:
 
     def attach(self, loop: MqttScanLoop) -> None:
         with self._lock:
+            if self._stop.is_set():
+                # Shutdown already requested — do not publish a live loop.
+                return
             pending = tuple(self._pending_cmds)
             self._pending_cmds.clear()
             # Flush under the lock before publishing ``loop`` so a concurrent
@@ -246,13 +249,22 @@ def _mqtt_supervisor(
     """
     life = MqttLifecycle()
 
-    def _start_with(bus_obj: MqttBus) -> MqttScanLoop:
+    def _start_with(bus_obj: MqttBus) -> MqttScanLoop | None:
+        if life.stopped():
+            return None
         image = declare_default_image()
         bridge = MqttIoBridge(bus_obj, instance_id=instance_id)
         loop = MqttScanLoop(bridge, image, period_s=period_s)
         # Attach before start so deferred cmds flush into the bridge queue first.
         life.attach(loop)
+        if life.stopped() or life.loop is not loop:
+            # stop() raced attach — tear down without leaving a live scan.
+            loop.stop()
+            return None
         loop.start()
+        if life.stopped() or life.loop is not loop:
+            loop.stop()
+            return None
         return loop
 
     if bus is not None:
@@ -268,6 +280,9 @@ def _mqtt_supervisor(
         delay = 2.0
         while not life.stopped() and life.loop is None:
             new_bus = build_bus_from_options(options)
+            # Re-check after a potentially blocking connect/build.
+            if life.stopped():
+                return
             if new_bus is not None:
                 _start_with(new_bus)
                 return

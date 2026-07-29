@@ -106,6 +106,46 @@ def test_run_ha_runtime_stops_deferred_mqtt_loop(tmp_path: Path, monkeypatch):
         life.stop()
 
 
+def test_stop_during_blocking_connect_does_not_start_loop(tmp_path: Path, monkeypatch):
+    """If stop() wins during a slow bus build, never leave a live scan loop."""
+    options_path = tmp_path / "options.json"
+    options_path.write_text(
+        json.dumps({"instance_id": "default", "mqtt_broker": "core-mosquitto"}),
+        encoding="utf-8",
+    )
+    entered = threading.Event()
+    release = threading.Event()
+
+    def blocking_bus(options):
+        entered.set()
+        release.wait(timeout=3.0)
+        return InMemoryMqttBus()
+
+    monkeypatch.setattr(
+        "plcassistant.app.runtime.build_bus_from_options",
+        blocking_bus,
+    )
+
+    _server, life = run_ha_runtime(
+        host="127.0.0.1",
+        port=0,
+        program_path=str(tmp_path / "program.json"),
+        options_path=str(options_path),
+        serve_forever=False,
+    )
+    try:
+        assert entered.wait(timeout=2.0)
+        life.stop()
+        release.set()
+        # Give the retry worker a moment to attempt _start_with after build.
+        time.sleep(0.3)
+        assert life.stopped()
+        assert life.loop is None
+    finally:
+        release.set()
+        life.stop()
+
+
 def test_deferred_stop_during_connect_applies_on_attach(tmp_path: Path, monkeypatch):
     """Start+Stop while loop is None must survive and leave the scan stopped."""
     options_path = tmp_path / "options.json"
