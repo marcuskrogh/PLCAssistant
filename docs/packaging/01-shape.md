@@ -31,11 +31,14 @@
 | Scan / control / safety | **Owns** | No | No |
 | Live I/O image (SoT) | **Owns** | Feeds/sinks via MQTT | Transport |
 | Bindings / units / mock entities | Consumes MQTT samples | **Owns** | No |
+| Stand-alone process simulator | No (mock-unaware) | **Owns** (SWD-146; plant dark until then) | Transport |
 | Operator services | Implements on tags | Exposes HA services | No |
 | Program-of-record | **App persistent data** | No | No |
 | Block editor UI | Ingress + exposed port | No | No |
 
 **Invariant:** mock path ≡ field path. The Soft-PLC does not branch on “mock mode.”
+
+**Ownership (SWD-145):** The thin integration owns the stand-alone process simulator. Soft-PLC treats plant PVs (`LT_TANK`, `LT_RES`, `FT_INLET`, …) as MQTT **IN** like field signals. The integration may **observe** Soft-PLC MQTT status (including `scan_period_s`) so the future simulator can step with the Soft-PLC sample interval; Soft-PLC receives no mock/plant identity back. Until SWD-146, live process values stay static (intentional gap).
 
 ## Install target (v1)
 

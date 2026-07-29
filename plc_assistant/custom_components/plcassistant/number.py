@@ -14,7 +14,7 @@ from .const import CONF_BINDINGS, CONF_INSTANCE_ID, CONF_MOCK_MODE, DOMAIN
 from .ha_config_bridge import write_input_tag
 from .mqtt_topics import tag_in_topic
 
-# Friendly operator ranges for known request tags (SWD-133).
+# Friendly operator ranges for known IN tags (request SP + plant until SWD-146).
 _TAG_META: dict[str, dict] = {
     "SP_LEVEL_REQ": {
         "name": "PLCAssistant Level setpoint",
@@ -23,6 +23,34 @@ _TAG_META: dict[str, dict] = {
         "step": 0.01,
         "unit": "m",
         "object_id": "plcassistant_sp_level_req",
+        "default": 0.20,
+    },
+    "LT_TANK": {
+        "name": "PLCAssistant Tank level (IN)",
+        "min": 0.0,
+        "max": 0.40,
+        "step": 0.01,
+        "unit": "m",
+        "object_id": "plcassistant_lt_tank_in",
+        "default": 0.15,
+    },
+    "LT_RES": {
+        "name": "PLCAssistant Reservoir level (IN)",
+        "min": 0.0,
+        "max": 0.30,
+        "step": 0.01,
+        "unit": "m",
+        "object_id": "plcassistant_lt_res_in",
+        "default": 0.20,
+    },
+    "FT_INLET": {
+        "name": "PLCAssistant Inlet flow (IN)",
+        "min": 0.0,
+        "max": 20.0,
+        "step": 0.1,
+        "unit": "L/min",
+        "object_id": "plcassistant_ft_inlet_in",
+        "default": 0.0,
     },
 }
 
@@ -98,7 +126,10 @@ class PlcAssistantRequestNumber(NumberEntity):
         self._attr_native_step = float(meta.get("step", 0.001))
         if "unit" in meta:
             self._attr_native_unit_of_measurement = meta["unit"]
-        self._attr_native_value = 0.20 if tag == "SP_LEVEL_REQ" else 0.0
+        if "default" in meta:
+            self._attr_native_value = float(meta["default"])
+        else:
+            self._attr_native_value = 0.0
 
     async def async_set_native_value(self, value: float) -> None:
         self._attr_native_value = value

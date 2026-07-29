@@ -1,4 +1,4 @@
-# plcassistant_dashboard_version: 7
+# plcassistant_dashboard_version: 8
 title: PLCAssistant
 views:
   - title: Skid
@@ -19,7 +19,7 @@ views:
             name: Trip active
       - type: markdown
         content: |
-          **PLCAssistant** — Soft-PLC skid HMI. Soft-PLC must show **stopped** (not offline) before Start works. **Start ready** is On only while idle and healthy; it correctly shows Off while Mode is RUNNING (Start already succeeded). After App Update **0.1.19+**, Level setpoint requests and process tags also sync via a shared config file when MQTT is quiet — change the setpoint, wait a moment, then Active level SP should match. Update App, wait for Core reload, then reopen this board. Confirm Mosquitto + matching `instance_id` if still offline. Change the **Level setpoint**, press **Start**, then watch tank level, flow, speed, and active setpoints.
+          **PLCAssistant** — Soft-PLC skid HMI. Soft-PLC must show **stopped** (not offline) before Start works. **Start ready** is On only while idle and healthy; it correctly shows Off while Mode is RUNNING (Start already succeeded). From App **0.1.20**, plant levels/flow are Soft-PLC **IN** (integration-owned; static until the stand-alone simulator in SWD-146). Soft-PLC no longer synthesizes process motion. Update App, wait for Core reload, then reopen this board. Confirm Mosquitto + matching `instance_id` if still offline. Change the **Level setpoint**, press **Start**, then watch pump speed and active setpoints.
       - type: entities
         title: Operate
         show_header_toggle: false
@@ -33,14 +33,14 @@ views:
           - entity: number.plcassistant_sp_level_req
             name: Level setpoint (request)
       - type: entities
-        title: Process
+        title: Process (IN — static until simulator)
         show_header_toggle: false
         entities:
-          - entity: sensor.plcassistant_lt_tank
+          - entity: number.plcassistant_lt_tank_in
             name: Tank level
-          - entity: sensor.plcassistant_lt_res
+          - entity: number.plcassistant_lt_res_in
             name: Reservoir level
-          - entity: sensor.plcassistant_ft_inlet
+          - entity: number.plcassistant_ft_inlet_in
             name: Inlet flow
           - entity: sensor.plcassistant_cmd_speed
             name: Pump speed command
@@ -53,12 +53,12 @@ views:
           - entity: sensor.plcassistant_sp_flow
             name: Active flow SP
       - type: history-graph
-        title: Tank & flow
+        title: Speed & setpoints
         hours_to_show: 1
         entities:
-          - entity: sensor.plcassistant_lt_tank
+          - entity: number.plcassistant_lt_tank_in
             name: Tank
-          - entity: sensor.plcassistant_ft_inlet
-            name: Flow
           - entity: sensor.plcassistant_cmd_speed
             name: Speed
+          - entity: sensor.plcassistant_sp_flow
+            name: Flow SP

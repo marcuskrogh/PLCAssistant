@@ -1,89 +1,76 @@
-# Implementation plan: Packaging shape (SWD-84)
+# Implementation plan: Soft-PLC ↔ integration mock ownership (SWD-145)
 
 ## Summary
-- **Hybrid packaging:** Soft-PLC runtime + block editor live in a **Home Assistant App** (formerly add-on); a **thin integration** owns tag declarations, entity↔tag bindings, mock/sim entities, and operator services.
-- **HA OS only** for v1 — Supervisor Apps path; HA Container installs are out of scope for now.
-- **MQTT** is the App ↔ HA bridge; users **must install Mosquitto** (or equivalent MQTT App).
-- Program-of-record (JSON-shaped block program) lives in **App persistent data**.
-- Deliver a **store-ready custom App from GitHub** (third-party App repository URL), not the official HA Apps store yet.
-- Editor reachable via **Supervisor Ingress** and an **optional exposed port**.
-- Thin integration is **bundled with the App** (shipped/registered alongside the App install path).
+- Stand-alone **process simulator** lives in the **thin Home Assistant integration**. Soft-PLC remains **mock-unaware** and treats all I/O as real field signals.
+- Process ↔ Soft-PLC communication is **MQTT** (mock path ≡ field path).
+- The integration may **observe** Soft-PLC essentials (e.g. `scan_period_s` on MQTT status) so the future simulator can step with the Soft-PLC sample interval; Soft-PLC does **not** receive mock/plant identity back.
+- **Remove** App-owned plant (`MockProcess` / skid physics) from the **live** Soft-PLC App scan path **in this Task**. Process dynamics stay dark until the integration simulator ([SWD-146](https://marcusknielsen.atlassian.net/browse/SWD-146)).
+- Soft-PLC keeps **control / safety / image I/O**; plant PVs become Soft-PLC **IN** via MQTT.
 
 ## Scope
 **In**
-- Packaging contract docs: freeze the hybrid shape; rename Add-on → App in packaging docs; Mosquitto dependency + MQTT topic / payload map
-- HA App scaffold: `config.yaml`, Dockerfile, Ingress, optional port, data volume for programs
-- MQTT I/O bridge on the App side (live `IoImage` ↔ MQTT); keep in-process stub for non-HA unit tests
-- Bundled thin integration: bindings, mock entities, Start/Stop/Reset services; MQTT client toward the App
-- GitHub App repository layout + install documentation (add repo URL → install App)
-- Acceptance: install path, MQTT mock round-trip, program persistence, Ingress + port reachability
+- Ownership contract docs (packaging, wedge mock process, I/O notes)
+- Soft-PLC exposes `scan_period_s` on retained MQTT `status` (for integration observe)
+- Remove live App plant from scan path; Soft-PLC no longer synthesizes plant PVs as OUT
+- Flip plant process tags (`LT_TANK`, `LT_RES`, `FT_INLET`, …) to Soft-PLC **IN** bindings
+- Soft-PLC continues control/safety OUT (`CMD_SPEED`, `MODE`, `PERM_OK`, `TRIP_ACTIVE`, active SPs as applicable)
+- Bindings / HMI / file-bridge cleanup so plant OUT is not assumed from Soft-PLC
+- Tests updated for intentional process-motion gap
 
 **Out**
-- Official Home Assistant Apps store submission / upstream review
-- HA Container / Core / Supervised as first-class install targets
-- Embedded MQTT broker inside the Soft-PLC App
-- Expanding Soft-PLC language / authoring surface (already SWD-82)
-- Physical plant / field commissioning
-- Real-time OS / `SCHED_FIFO` hardening beyond demo-grade Python scan
+- Integration stand-alone simulator / unit ops / custom ODEs → [SWD-146](https://marcusknielsen.atlassian.net/browse/SWD-146)
+- Integration mock UI + preset selection → [SWD-143](https://marcusknielsen.atlassian.net/browse/SWD-143)
+- Unit-op library / equation authoring details → [SWD-144](https://marcusknielsen.atlassian.net/browse/SWD-144)
+- Soft-PLC programming surface changes (blocks/editor)
+- Physical field commissioning
 
 ## Decisions
-- Primary shape = **hybrid** (App + thin integration) — matches wedge sketch and research ecosystem patterns
-- v1 install target = **HA OS only**
-- Bridge = **MQTT**; hard dependency on **Mosquitto** App (user-installed)
-- Program-of-record = **App persistent data** (survives App restart)
-- Publication = **custom App from GitHub** (community / third-party repo)
-- Thin integration = **bundled with the App**
-- Editor access = **Ingress + exposed port**
-- In-process `ThinIntegrationStub` remains the path for pytest / non-HA CI
+1. **Integration owns** the stand-alone process simulator; Soft-PLC never branches on “mock mode.”
+2. **One-way observe:** integration may read Soft-PLC MQTT status (including `scan_period_s`); Soft-PLC gets no mock identity back.
+3. **Process ↔ PLC I/O = MQTT** for this path (mock ≡ field).
+4. **Remove App plant now**; accept dark process until SWD-146 (operator-approved gap).
+5. **`MockProcess` may remain as a library for unit tests**, not in the live HA App scan path.
+6. Integration UI for entity↔tag wiring and dynamics authoring is **owned conceptually here** but **implemented** in SWD-143 / SWD-146.
 
 ## Constraints
-- Preserve SWD-85 scan order and SWD-86 image/quality/bindings contracts
-- Soft-PLC must not branch on “mock mode”; mock ≡ field via bindings into the same image
-- Integration stays connections-oriented (no program authoring surface in Core)
-- App must work with Supervisor lifecycle on HA OS
-- Do not claim SIL / certified safety packaging
+- Preserve Soft-PLC scan order (IN → SAFETY → CONTROL → OUT) without plant synthesis in OUT
+- Do not add Soft-PLC APIs that mean “mock mode”
+- MQTT topic/payload contracts remain the bridge; file bridge may still hydrate HMI when MQTT is silent but is not the process↔PLC plant path
+- App + integration version lock remains
+- Dual trees under `plc_assistant/` stay synced
 
 ## Inputs (supportive — not substitutes for decisions above)
-- Research: [`docs/RESEARCH.md`](RESEARCH.md) (SWD-84 packaging brief)
-- Prior sketch: [`docs/wedge/08-packaging-sketch.md`](wedge/08-packaging-sketch.md)
-- I/O stub: [`docs/io/03-thin-integration-stub.md`](io/03-thin-integration-stub.md)
-- Surface App (local): `plcassistant/app/`
+- Roadmap: [`docs/ROADMAP.md`](ROADMAP.md) (SWD-142)
+- Prior packaging: [`docs/packaging/01-shape.md`](packaging/01-shape.md)
+- Prior mock layers: [`docs/wedge/05-mock-process.md`](wedge/05-mock-process.md)
 
 ## Acceptance criteria
-- App installs on HA OS from a **GitHub App repository** URL
-- With Mosquitto + bundled thin integration configured, mock skid tags flow **App ↔ HA over MQTT**
-- Block editor opens via **Ingress** and via the documented **host port**
-- Program files in App data **persist across App restart**
-- Packaging docs describe the locked hybrid shape (App naming, Mosquitto, MQTT map, bundle path)
-- Non-HA unit tests still pass via in-process stub (no live Mosquitto required in CI)
+1. Docs state: integration-owned stand-alone simulator; Soft-PLC mock-unaware; MQTT process↔PLC; one-way status observe including `scan_period_s`.
+2. Soft-PLC retained MQTT `status` includes `scan_period_s` (numeric seconds).
+3. Live HA App scan does **not** run plant physics and does **not** publish plant PVs (`LT_TANK`, `LT_RES`, `FT_INLET`) as Soft-PLC OUT.
+4. Soft-PLC still runs control/safety with MQTT IN/OUT for operator cmds and CVs/status.
+5. Automated tests updated; process-motion acceptance deferred or explicitly marked expected-dark until SWD-146.
+6. No Soft-PLC code path that enables “mock mode” for plant.
 
 ## Work packages
-1. **Packaging contract docs** — freeze shape; Add-on→App rename in packaging docs; Mosquitto + MQTT topic map → `docs/packaging/` (or evolve `docs/wedge/08-packaging-sketch.md`)
-2. **HA App scaffold** — Dockerfile, `config.yaml`, Ingress, port, data volume
-3. **MQTT I/O bridge (App)** — image ↔ MQTT; HA path replaces in-process calls
-4. **Bundled thin integration** — bindings, mock entities, services; MQTT toward App
-5. **GitHub App repository + install docs** — repo layout, README install steps
-6. **Acceptance** — checklist + automated tests where feasible (MQTT round-trip, persistence, docs)
+1. **Ownership docs** — packaging / wedge / I/O contract updates for integration-owned simulator + MQTT + one-way observe
+2. **Expose `scan_period_s`** — Soft-PLC MQTT status (+ tests)
+3. **Remove App plant from live scan** — drop `MockProcess`/`Skid` plant from App `SkidImageLogic` path; plant tags as IN
+4. **Bindings / HMI / file-bridge cleanup** — stop assuming Soft-PLC plant OUT; adjust defaults and HMI copy for gap
+5. **Tests + acceptance** — update suites; document intentional process gap until SWD-146
 
 ## Open items
-- Whether Ingress auth reuses HA session only or needs App-side auth for the exposed port
-- Versioning / update channel for the GitHub App repo (see `ha_app/INSTALL.md`)
-
-## Locked during implement
-- MQTT topic namespace + payload schema → `docs/packaging/02-mqtt-topics.md` + `plcassistant.io.mqtt_topics`
-- Bundle mechanism → App auto-syncs `custom_components/plcassistant/` into HA config on start (`homeassistant_config` map); Core restart still required once
+- Full simulator stepping from observed `scan_period_s` → SWD-146
+- Entity↔tag wiring UI + presets → SWD-143
+- Whether offline CI keeps a local `MockProcess` helper vs a thinner IN fixture (implement choice; library retention allowed)
 
 ## Tracker
 - Provider: jira
-- Story: [SWD-81](https://marcusknielsen.atlassian.net/browse/SWD-81)
-- Task: [SWD-84](https://marcusknielsen.atlassian.net/browse/SWD-84)
-- Sub-tasks:
-  - [SWD-122](https://marcusknielsen.atlassian.net/browse/SWD-122) — Packaging contract docs
-  - [SWD-123](https://marcusknielsen.atlassian.net/browse/SWD-123) — HA App scaffold
-  - [SWD-125](https://marcusknielsen.atlassian.net/browse/SWD-125) — MQTT I/O bridge (App)
-  - [SWD-126](https://marcusknielsen.atlassian.net/browse/SWD-126) — Bundled thin integration
-  - [SWD-127](https://marcusknielsen.atlassian.net/browse/SWD-127) — GitHub App repository + install docs
-  - [SWD-124](https://marcusknielsen.atlassian.net/browse/SWD-124) — Acceptance tests + checklist
+- Story: [SWD-142](https://marcusknielsen.atlassian.net/browse/SWD-142)
+- Task: [SWD-145](https://marcusknielsen.atlassian.net/browse/SWD-145)
+- Sub-tasks: [SWD-149](https://marcusknielsen.atlassian.net/browse/SWD-149) docs, [SWD-150](https://marcusknielsen.atlassian.net/browse/SWD-150) scan_period_s, [SWD-147](https://marcusknielsen.atlassian.net/browse/SWD-147) remove App plant, [SWD-148](https://marcusknielsen.atlassian.net/browse/SWD-148) bindings/HMI/file-bridge, [SWD-151](https://marcusknielsen.atlassian.net/browse/SWD-151) tests
+- Branch: `cursor/swd-145-mock-ownership-33f4`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/59
 
 ## Next
-Done — phase closed (shipped PR #30 merge `3b64b33`)
+`/review-fix SWD-145` — Verify acceptance criteria; then `/ship SWD-145`

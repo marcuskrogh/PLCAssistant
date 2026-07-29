@@ -11,22 +11,24 @@ Require a **first-class mock / simulated process** for the gravity-drained tank 
 
 | Layer | Owner | Role |
 |-------|--------|------|
-| **Entity mock (SWD-86)** | Thin HA integration | Synthesizes HA entity values/quality; bindings feed the Add-on I/O image like field devices. Mock path ≡ field path into the image. |
-| **Plant model (SWD-83)** | `plcassistant.wedge` `MockProcess` (optional) | Skid physics for generating those mock entity values and for pure offline / unit tests. **Not** a special Add-on I/O path or “mock process engine” mode inside the Soft-PLC. |
+| **Entity mock + stand-alone simulator (SWD-145 / SWD-146)** | Thin HA integration | Synthesizes HA entity values/quality and (from SWD-146) runs configurable plant dynamics; bindings feed Soft-PLC via MQTT like field devices. Mock path ≡ field path into the image. |
+| **Plant model library (SWD-83)** | `plcassistant.wedge` `MockProcess` | Offline / unit-test physics helper. **Not** used on the live HA App scan path (SWD-145: Soft-PLC is mock-unaware; live App uses `HeldProcess` + plant IN). |
 
-Packaging ownership: [`08-packaging-sketch.md`](08-packaging-sketch.md). Image / binding contracts: [`docs/io/01-image-quality.md`](../io/01-image-quality.md), [`docs/io/02-binding-model.md`](../io/02-binding-model.md).
+Packaging ownership: [`docs/packaging/01-shape.md`](../packaging/01-shape.md) (SWD-145). Image / binding contracts: [`docs/io/01-image-quality.md`](../io/01-image-quality.md), [`docs/io/02-binding-model.md`](../io/02-binding-model.md).
+
+**Live process gap:** Until SWD-146 ships the integration simulator, live plant PVs stay static (defaults / manual Number entities). Offline wedge acceptance still uses `MockProcess`.
 
 ## First-class capability
 
 | Requirement | Detail |
 |-------------|--------|
-| Selectable field vs mock entities | Thin integration can expose mock entities or bind real field entities; Add-on control/safety logic is unchanged (binding-agnostic image) |
+| Selectable field vs mock entities | Thin integration can expose mock entities or bind real field entities; Soft-PLC control/safety logic is unchanged (binding-agnostic image) |
 | Same tag contract | Mock publishes/consumes the tags in [`02-io-hmi-contract.md`](02-io-hmi-contract.md) (per-tag quality; no `*_BAD` tags) |
 | Injectable faults | Operator or test harness can force bad quality / LOS, raise/lower levels, and adjust drain/pump curves for scenarios |
 | Deterministic enough | Same scenario steps yield the same qualitative outcomes (trips, direction of cascade) |
 | HA-visible | Mock PVs/commands appear as HA entities on the same HMI/binding path used for field acceptance |
 
-Mocking is a **system requirement** for PLCAssistant: future multi-tank examples should reuse the same **integration-owned entity mock** approach (plant model optional behind it).
+Mocking is a **system requirement** for PLCAssistant: future multi-tank examples should reuse the same **integration-owned** simulator approach (`MockProcess` remains an offline library).
 
 ## Physics sketch (lumped)
 

@@ -3,7 +3,7 @@
 Home Assistant custom component that owns:
 
 - Entity ↔ Soft-PLC tag **bindings**
-- **Mock / sim** entities (writable Number for request SPs; read-only Sensors for Soft-PLC OUT)
+- **Mock / plant IN** entities (writable Number for request SPs and plant PVs until the stand-alone simulator — SWD-146) and read-only Sensors for Soft-PLC OUT
 - Operator **button** entities and services for **start / stop / reset** (MQTT cmd topics)
 - Default **Lovelace** dashboard registered in the **HA sidebar** (`lovelace_dashboard.py`)
 
@@ -12,18 +12,20 @@ Default mock bindings (wedge process I/O):
 | Tag | Direction | HA entity | Role |
 |-----|-----------|-----------|------|
 | `SP_LEVEL_REQ` | IN | `number.plcassistant_sp_level_req` | Level setpoint **request** (writable) |
-| `LT_TANK` | OUT | `sensor.plcassistant_lt_tank` | Tank level (Soft-PLC plant) |
-| `LT_RES` | OUT | `sensor.plcassistant_lt_res` | Reservoir level |
-| `FT_INLET` | OUT | `sensor.plcassistant_ft_inlet` | Inlet flow |
+| `LT_TANK` | IN | `number.plcassistant_lt_tank_in` | Tank level (plant → Soft-PLC; static until SWD-146) |
+| `LT_RES` | IN | `number.plcassistant_lt_res_in` | Reservoir level (plant → Soft-PLC) |
+| `FT_INLET` | IN | `number.plcassistant_ft_inlet_in` | Inlet flow (plant → Soft-PLC) |
 | `CMD_SPEED` | OUT | `sensor.plcassistant_cmd_speed` | Pump speed command |
 | `SP_LEVEL` | OUT | `sensor.plcassistant_sp_level` | Active level setpoint |
 | `SP_FLOW` | OUT | `sensor.plcassistant_sp_flow` | Active flow setpoint |
 | `MODE` | OUT | `sensor.plcassistant_mode` | `STOP` / `RUNNING` / `TRIPPED` |
 | `PERM_OK` | OUT | `sensor.plcassistant_perm_ok` | Start ready when idle (`on`/`off`; Off while RUNNING expected) |
 | `TRIP_ACTIVE` | OUT | `sensor.plcassistant_trip_active` | Latched trip (`on`/`off`) |
-| *(App status)* | — | `sensor.plcassistant_status` | Soft-PLC scan: `running` / `stopped` / `fault` / `offline` |
+| *(App status)* | — | `sensor.plcassistant_status` | Soft-PLC scan: `running` / `stopped` / `fault` / `offline` (+ `scan_period_s` on MQTT) |
 
 Talks to the Soft-PLC **App** over MQTT (`dependencies: ["mqtt", "frontend", "lovelace"]`). Full install steps: [`README.md`](../../README.md). Packaging contract: [`docs/packaging/`](../../docs/packaging/README.md).
+
+**Ownership (SWD-145):** Soft-PLC is mock-unaware. Process ↔ Soft-PLC I/O is MQTT. The stand-alone process simulator lives in this integration (SWD-146); until then plant IN values stay at defaults / manual numbers.
 
 **Version:** always matches the PLCAssistant App (`plc_assistant/config.yaml` ↔ this `manifest.json`).
 

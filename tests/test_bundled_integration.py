@@ -103,12 +103,12 @@ def test_platforms_publish_and_subscribe_paths():
     lovelace = (CC / "lovelace" / "plcassistant.yaml").read_text(encoding="utf-8")
     assert "number.plcassistant_sp_level_req" in lovelace
     assert "button.plcassistant_start" in lovelace
-    assert "sensor.plcassistant_lt_tank" in lovelace
+    assert "number.plcassistant_lt_tank_in" in lovelace
     assert "sensor.plcassistant_status" in lovelace
     assert "sensor.plcassistant_mode" in lovelace
     assert 'entity_id = f"number.' in number or "suggested_object_id" in number
     assert "plcassistant_sp_level_req" in number
-    assert "plcassistant_lt_tank" in sensor
+    assert "plcassistant_lt_tank_in" in number
     assert "PlcAssistantStatusSensor" in sensor
     assert "status_topic" in (CC / "__init__.py").read_text(encoding="utf-8")
     # SWD-136: cache retained status + hydrate sensors on add.

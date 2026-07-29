@@ -5,7 +5,13 @@ See docs/wedge/ for the tag contract, control, safety, and acceptance specs.
 """
 
 from plcassistant.wedge.control import CascadeConfig, CascadeController, CascadeOutputs
-from plcassistant.wedge.process import MockProcess, ProcessConfig, ProcessPort, ProcessState
+from plcassistant.wedge.process import (
+    HeldProcess,
+    MockProcess,
+    ProcessConfig,
+    ProcessPort,
+    ProcessState,
+)
 from plcassistant.wedge.safety import Mode, SafetyConfig, SafetyLayer, SafetyState, TripCode
 from plcassistant.wedge.skid import (
     LimitConfig,
@@ -23,6 +29,7 @@ __all__ = [
     "CascadeConfig",
     "CascadeController",
     "CascadeOutputs",
+    "HeldProcess",
     "MockProcess",
     "ProcessConfig",
     "ProcessPort",

@@ -14,24 +14,6 @@ from .const import CONF_BINDINGS, CONF_INSTANCE_ID, CONF_MOCK_MODE, DOMAIN
 from .mqtt_topics import parse_app_status_payload
 
 _TAG_META: dict[str, dict] = {
-    "LT_TANK": {
-        "name": "PLCAssistant Tank level",
-        "unit": "m",
-        "object_id": "plcassistant_lt_tank",
-        "kind": "number",
-    },
-    "LT_RES": {
-        "name": "PLCAssistant Reservoir level",
-        "unit": "m",
-        "object_id": "plcassistant_lt_res",
-        "kind": "number",
-    },
-    "FT_INLET": {
-        "name": "PLCAssistant Inlet flow",
-        "unit": "L/min",
-        "object_id": "plcassistant_ft_inlet",
-        "kind": "number",
-    },
     "CMD_SPEED": {
         "name": "PLCAssistant Pump speed command",
         "unit": "%",
