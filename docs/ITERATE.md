@@ -1,7 +1,7 @@
 # Iterate: Soft-PLC still offline after 0.1.14 — MQTT never attaches
 
 ## Status
-**In Review** — App **0.1.15**; PR [#52](https://github.com/marcuskrogh/PLCAssistant/pull/52)
+**Done** — App **0.1.15**; shipped PR [#52](https://github.com/marcuskrogh/PLCAssistant/pull/52)
 
 ## Prior work
 - Task: SWD-136 (PR #51, App 0.1.14 — status cache/hydrate + heartbeat/LWT)
@@ -33,4 +33,4 @@ Root cause: HA App runtime can boot with missing/empty `/data/options.json`. Emp
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/52
 
 ## Next
-`/review-fix SWD-137` — Review and auto-fix until clean
+Done — phase closed.
