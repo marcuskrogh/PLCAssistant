@@ -9,6 +9,8 @@ Testable MQTT mapping lives in ``plcassistant.io.mqtt_entity_bridge``.
 
 from __future__ import annotations
 
+import logging
+
 from homeassistant.components.mqtt import async_subscribe
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -26,6 +28,8 @@ from .const import (
     SERVICE_STOP,
 )
 from .mqtt_topics import cmd_topic, tag_in_topic, tag_out_topic
+
+_LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.NUMBER, Platform.SENSOR, Platform.BUTTON]
 
@@ -185,11 +189,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         await async_setup_sidebar_dashboard(hass)
     except Exception:  # noqa: BLE001 — never block entity setup on dashboard
-        import logging
-
-        logging.getLogger(__name__).exception(
-            "PLCAssistant: sidebar Lovelace dashboard setup failed"
-        )
+        _LOGGER.exception("PLCAssistant: sidebar Lovelace dashboard setup failed")
 
     return True
 

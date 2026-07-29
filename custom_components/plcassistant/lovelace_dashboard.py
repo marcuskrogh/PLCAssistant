@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 import shutil
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 if TYPE_CHECKING:
     from homeassistant.core import HomeAssistant
@@ -57,41 +57,74 @@ def default_dashboard_config() -> dict[str, Any]:
     }
 
 
+def _panel_exists(hass: HomeAssistant, url_path: str) -> bool:
+    """Return True if a frontend panel is already registered for url_path."""
+    try:
+        from homeassistant.components.frontend import async_panel_exists
+
+        return bool(async_panel_exists(hass, url_path))
+    except (ImportError, AttributeError, TypeError):
+        return url_path in hass.data.get("frontend_panels", {})
+
+
+def _lovelace_data_key() -> Any:
+    """Resolve hass.data key for Lovelace (LOVELACE_DATA or domain string)."""
+    try:
+        from homeassistant.components.lovelace.const import LOVELACE_DATA
+
+        return LOVELACE_DATA
+    except ImportError:
+        try:
+            from homeassistant.components.lovelace.const import DOMAIN as LL_DOMAIN
+
+            return LL_DOMAIN
+        except ImportError:
+            return "lovelace"
+
+
+def _mode_yaml() -> str:
+    try:
+        from homeassistant.components.lovelace.const import MODE_YAML
+
+        return MODE_YAML
+    except ImportError:
+        return "yaml"
+
+
 def _register_lovelace_panel(hass: HomeAssistant, conf: dict[str, Any], *, update: bool) -> None:
     """Register (or refresh) the frontend Lovelace panel — Core-compatible kwargs."""
     from homeassistant.components.frontend import async_register_built_in_panel
 
     mode = conf.get("mode", "yaml")
-    kwargs: dict[str, Any] = {
-        "frontend_url_path": URL_PATH,
-        "require_admin": bool(conf.get("require_admin", False)),
+    base_kwargs: dict[str, Any] = {
         "sidebar_title": conf.get("title", TITLE),
         "sidebar_icon": conf.get("icon", ICON),
+        "frontend_url_path": URL_PATH,
         "config": {"mode": mode},
-        "update": update,
+        "require_admin": bool(conf.get("require_admin", False)),
     }
-    # Newer Core accepts show_in_sidebar; older builds omit it (title ⇒ sidebar).
-    try:
-        async_register_built_in_panel(
-            hass,
-            "lovelace",
-            show_in_sidebar=bool(conf.get("show_in_sidebar", True)),
-            **kwargs,
-        )
-    except TypeError:
-        kwargs.pop("update", None)
+    show = bool(conf.get("show_in_sidebar", True))
+
+    # Try newest signature first (show_in_sidebar + update), then degrade.
+    attempts: list[Callable[[], None]] = [
+        lambda: async_register_built_in_panel(
+            hass, "lovelace", show_in_sidebar=show, update=update, **base_kwargs
+        ),
+        lambda: async_register_built_in_panel(
+            hass, "lovelace", update=update, **base_kwargs
+        ),
+        lambda: async_register_built_in_panel(hass, "lovelace", **base_kwargs),
+    ]
+    last_type_error: TypeError | None = None
+    for attempt in attempts:
         try:
-            async_register_built_in_panel(hass, "lovelace", **kwargs, update=update)
-        except TypeError:
-            async_register_built_in_panel(
-                hass,
-                "lovelace",
-                sidebar_title=kwargs["sidebar_title"],
-                sidebar_icon=kwargs["sidebar_icon"],
-                frontend_url_path=URL_PATH,
-                config={"mode": mode},
-                require_admin=bool(conf.get("require_admin", False)),
-            )
+            attempt()
+            return
+        except TypeError as err:
+            last_type_error = err
+            continue
+    if last_type_error is not None:
+        raise last_type_error
 
 
 async def async_setup_sidebar_dashboard(hass: HomeAssistant) -> bool:
@@ -100,8 +133,6 @@ async def async_setup_sidebar_dashboard(hass: HomeAssistant) -> bool:
     Returns True when the dashboard is available in the sidebar (or already was).
     """
     try:
-        from homeassistant.components.frontend import async_panel_exists
-        from homeassistant.components.lovelace.const import LOVELACE_DATA, MODE_YAML
         from homeassistant.components.lovelace.dashboard import LovelaceYAML
     except ImportError as err:
         _LOGGER.warning(
@@ -110,9 +141,9 @@ async def async_setup_sidebar_dashboard(hass: HomeAssistant) -> bool:
         )
         return False
 
-    ll_data = hass.data.get(LOVELACE_DATA)
-    if ll_data is None:
-        # Older Core keyed Lovelace under the domain string only.
+    ll_key = _lovelace_data_key()
+    ll_data = hass.data.get(ll_key)
+    if ll_data is None and ll_key != "lovelace":
         ll_data = hass.data.get("lovelace")
     if ll_data is None:
         _LOGGER.warning(
@@ -128,7 +159,7 @@ async def async_setup_sidebar_dashboard(hass: HomeAssistant) -> bool:
         return False
 
     conf = default_dashboard_config()
-    conf["mode"] = MODE_YAML
+    conf["mode"] = _mode_yaml()
 
     dashboards = getattr(ll_data, "dashboards", None)
     if not isinstance(dashboards, dict):
@@ -140,11 +171,8 @@ async def async_setup_sidebar_dashboard(hass: HomeAssistant) -> bool:
         yaml_dashboards[URL_PATH] = conf
 
     existing = dashboards.get(URL_PATH)
+    panel_already = _panel_exists(hass, URL_PATH)
     update_panel = False
-    try:
-        panel_already = async_panel_exists(hass, URL_PATH)
-    except (AttributeError, TypeError):
-        panel_already = URL_PATH in hass.data.get("frontend_panels", {})
 
     if existing is None:
         dashboards[URL_PATH] = LovelaceYAML(hass, URL_PATH, conf)

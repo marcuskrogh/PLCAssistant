@@ -50,10 +50,11 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-131 | Bug | [Iterate] App Block Editor 404 under Ingress + thin integration too thin / version lock | Done | Relates SWD-130 | docs/ITERATE.md | Done — shipped PR #43 |
 | SWD-132 | Bug | [Iterate] Operator dashboard default + major App UI refresh (mobile) | Done | Relates SWD-131 | docs/ITERATE.md | Done — shipped PR #44 |
 | SWD-133 | Bug | [Iterate] Lovelace HMI default + writable SP + Soft-PLC plant on Start (not App SCADA) | Done | Relates SWD-132 | docs/ITERATE.md | Done — shipped PR #46 |
-| SWD-134 | Bug | [Iterate] Auto-register default Lovelace dashboard in HA sidebar (no copy/paste) | In Review | Relates SWD-133 | docs/ITERATE.md | PR #47 → `/review-test` |
+| SWD-134 | Bug | [Iterate] Auto-register default Lovelace dashboard in HA sidebar (no copy/paste) | In Review | Relates SWD-133 | docs/ITERATE.md | review-fix CLEAN → `/ship` |
 
 ## Log
 
+- 2026-07-29 — review-fix SWD-134 CLEAN after 2 iterations (iter1: HA import fragility + run.sh no-clobber test; iter2: 0); Next `/ship SWD-134`.
 - 2026-07-29 — Iterate SWD-134: auto-register PLCAssistant Lovelace dashboard in HA sidebar; App 0.1.12.
 - 2026-07-29 — Shipped SWD-133 via PR #46; App 0.1.11 Lovelace HMI + Skid plant + writable SP_LEVEL_REQ. Bug Done.
 - 2026-07-29 — review-fix SWD-133 CLEAN after 2 iterations (iter1: reset semantics + entity_ids/migration; iter2: 0); Next `/ship SWD-133`.

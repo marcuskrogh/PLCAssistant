@@ -131,3 +131,23 @@ def test_ensure_writes_when_missing(tmp_path) -> None:
     text = out.read_text(encoding="utf-8")
     assert "title: PLCAssistant" in text
     assert "button.plcassistant_start" in text
+
+
+def test_run_sh_does_not_clobber_existing_dashboard_yaml() -> None:
+    """App Start must install Lovelace YAML only when missing (SWD-134)."""
+    text = (ROOT / "plc_assistant" / "run.sh").read_text(encoding="utf-8")
+    assert "install_lovelace_dashboard()" in text
+    assert '[ ! -f "${dst_dash}" ]' in text
+    # Regression: never refresh-on-newer (would clobber operator edits).
+    assert 'src_dash}" -nt' not in text
+    assert "[ \"${src_dash}\" -nt" not in text
+
+
+def test_panel_exists_helper_degrades_without_ha() -> None:
+    mod = _load("plcassistant_lovelace_dashboard5", CC / "lovelace_dashboard.py")
+
+    class FakeHass:
+        data = {"frontend_panels": {"plcassistant-skid": object()}}
+
+    assert mod._panel_exists(FakeHass(), "plcassistant-skid") is True  # type: ignore[arg-type]
+    assert mod._panel_exists(FakeHass(), "other-panel") is False  # type: ignore[arg-type]
