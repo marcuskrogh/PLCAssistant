@@ -8,29 +8,29 @@
 ## Themes to investigate
 | Phase | Theme | Why it matters | Deferred to | Issue |
 |-------|-------|----------------|--------------|-------|
-| 1 | Soft-PLC ↔ integration mock ownership | Docs put plant under the integration; runtime hard-wires `Skid`/`MockProcess` in the App — this choice shapes everything else | define | [SWD-145](https://marcusknielsen.atlassian.net/browse/SWD-145) |
-| 2 | Configurable dynamics core + skid preset | States/tags + collected ODE at scan period; skid as first preset | define (model if math-blocked) | [SWD-146](https://marcusknielsen.atlassian.net/browse/SWD-146) |
+| 1 | Soft-PLC ↔ integration mock ownership | Docs put plant under the integration; runtime hard-wires `Skid`/`MockProcess` in the App — this choice shapes everything else | **Done** (App 0.1.21) | [SWD-145](https://marcusknielsen.atlassian.net/browse/SWD-145) |
+| 2 | Configurable dynamics core + skid preset | States/tags + collected ODE at scan period; skid as first preset | define → implement | [SWD-146](https://marcusknielsen.atlassian.net/browse/SWD-146) |
 | 3 | Unit-op library + custom equation authoring | Easy mocks vs expressive custom DEs | define | [SWD-144](https://marcusknielsen.atlassian.net/browse/SWD-144) |
 | 4 | Integration mock UI + preset selection | Configure and select presets in HA, not only in code | define | [SWD-143](https://marcusknielsen.atlassian.net/browse/SWD-143) |
 
 ## Open questions
-- Where the **ODE solver** should run (Soft-PLC App, thin integration, or shared library) vs where the **UI** configures it
-- How Soft-PLC stays **mock-agnostic** (image/bindings) while plant dynamics become selectable
-- What “unit operation” means for v1 and how custom equations are expressed safely
-- How presets relate to today’s wedge HMI/tag contract and acceptance tests
+- ~~Where the ODE solver should run~~ → **locked (SWD-145/146):** integration-owned simulator; Soft-PLC mock-unaware
+- ~~How Soft-PLC stays mock-agnostic~~ → **locked:** MQTT plant IN; `HeldProcess` on Soft-PLC
+- What “unit operation” means for v1 and how custom equations are expressed safely → SWD-144
+- How presets are selected/edited in HA UI → SWD-143
 - How far mock-off / field I/O must remain a first-class path
 
 ## Explicitly deferred
-- define — scope, behaviour, acceptance, work packages per theme
-- research / model — as needed (especially ODE / solver formalism)
+- Unit-op library / custom DE authoring → SWD-144
+- Integration mock UI + preset selection → SWD-143
 - replacing Soft-PLC control programming with plant math (mock ≠ PLC program)
 - physical plant / field commissioning (still follow-on)
 
 ## Tracker
 - Provider: jira
 - Story: [SWD-142](https://marcusknielsen.atlassian.net/browse/SWD-142)
-- Tasks: [SWD-145](https://marcusknielsen.atlassian.net/browse/SWD-145), [SWD-146](https://marcusknielsen.atlassian.net/browse/SWD-146), [SWD-144](https://marcusknielsen.atlassian.net/browse/SWD-144), [SWD-143](https://marcusknielsen.atlassian.net/browse/SWD-143)
+- Tasks: [SWD-145](https://marcusknielsen.atlassian.net/browse/SWD-145) (Done), [SWD-146](https://marcusknielsen.atlassian.net/browse/SWD-146), [SWD-144](https://marcusknielsen.atlassian.net/browse/SWD-144), [SWD-143](https://marcusknielsen.atlassian.net/browse/SWD-143)
 - Prior initiative: [SWD-81](https://marcusknielsen.atlassian.net/browse/SWD-81) (Done)
 
 ## Next
-`/define SWD-146` — Configurable dynamics core + skid preset
+`/implement SWD-146` — after define approval of [`docs/PLAN.md`](PLAN.md)

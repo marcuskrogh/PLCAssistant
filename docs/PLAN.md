@@ -1,76 +1,88 @@
-# Implementation plan: Soft-PLC ↔ integration mock ownership (SWD-145)
+# Implementation plan: Configurable dynamics core + skid preset (SWD-146)
 
 ## Summary
-- Stand-alone **process simulator** lives in the **thin Home Assistant integration**. Soft-PLC remains **mock-unaware** and treats all I/O as real field signals.
-- Process ↔ Soft-PLC communication is **MQTT** (mock path ≡ field path).
-- The integration may **observe** Soft-PLC essentials (e.g. `scan_period_s` on MQTT status) so the future simulator can step with the Soft-PLC sample interval; Soft-PLC does **not** receive mock/plant identity back.
-- **Remove** App-owned plant (`MockProcess` / skid physics) from the **live** Soft-PLC App scan path **in this Task**. Process dynamics stay dark until the integration simulator ([SWD-146](https://marcusknielsen.atlassian.net/browse/SWD-146)).
-- Soft-PLC keeps **control / safety / image I/O**; plant PVs become Soft-PLC **IN** via MQTT.
+- Build the **integration-owned stand-alone process simulator** that restores live plant motion after SWD-145 made Soft-PLC mock-unaware.
+- Deliver a **dynamics core** (states + parameters + inputs + outputs + RHS + post-step projection) with a **deterministic fixed-step** stepper driven by observed Soft-PLC `scan_period_s`.
+- Ship the existing tank/reservoir skid as the **first selectable preset** (`skid`), reproducing today’s `MockProcess` physics qualitatively and via oracle comparison.
+- Soft-PLC stays **mock-unaware**; process ↔ Soft-PLC remains **MQTT** (mock ≡ field).
 
 ## Scope
 **In**
-- Ownership contract docs (packaging, wedge mock process, I/O notes)
-- Soft-PLC exposes `scan_period_s` on retained MQTT `status` (for integration observe)
-- Remove live App plant from scan path; Soft-PLC no longer synthesizes plant PVs as OUT
-- Flip plant process tags (`LT_TANK`, `LT_RES`, `FT_INLET`, …) to Soft-PLC **IN** bindings
-- Soft-PLC continues control/safety OUT (`CMD_SPEED`, `MODE`, `PERM_OK`, `TRIP_ACTIVE`, active SPs as applicable)
-- Bindings / HMI / file-bridge cleanup so plant OUT is not assumed from Soft-PLC
-- Tests updated for intentional process-motion gap
+- HA-independent dynamics engine under the thin integration (`custom_components/plcassistant/dynamics/`)
+- Preset registry with programmatic `skid` default when `mock_mode=true`
+- Skid preset: migrate live physics from wedge `MockProcess` (levels, pump, drain, lags, inventory projection)
+- HA simulator lifecycle: observe MQTT status (`scan_period_s`, state), consume Soft-PLC `CMD_SPEED` OUT, publish plant PVs IN
+- Plant Number ownership: simulator is authoritative publisher; Numbers display/nudge state (no competing MQTT writers)
+- Programmatic nudge / quality hooks for automated acceptance
+- Docs + tests: end-to-end plant motion; Soft-PLC still uses `HeldProcess`
+- App + integration version bump
 
 **Out**
-- Integration stand-alone simulator / unit ops / custom ODEs → [SWD-146](https://marcusknielsen.atlassian.net/browse/SWD-146)
-- Integration mock UI + preset selection → [SWD-143](https://marcusknielsen.atlassian.net/browse/SWD-143)
-- Unit-op library / equation authoring details → [SWD-144](https://marcusknielsen.atlassian.net/browse/SWD-144)
-- Soft-PLC programming surface changes (blocks/editor)
+- Unit-op library / custom equation authoring / expression sandbox → [SWD-144](https://marcusknielsen.atlassian.net/browse/SWD-144)
+- Integration mock UI (preset chooser, parameter editor, fault-injection services) → [SWD-143](https://marcusknielsen.atlassian.net/browse/SWD-143)
+- Soft-PLC programming / control / safety changes
+- Scan-edge lockstep protocol (new tick topic)
 - Physical field commissioning
+- Persisted plant state across Core restart (v1 resets to preset initials)
 
 ## Decisions
-1. **Integration owns** the stand-alone process simulator; Soft-PLC never branches on “mock mode.”
-2. **One-way observe:** integration may read Soft-PLC MQTT status (including `scan_period_s`); Soft-PLC gets no mock identity back.
-3. **Process ↔ PLC I/O = MQTT** for this path (mock ≡ field).
-4. **Remove App plant now**; accept dark process until SWD-146 (operator-approved gap).
-5. **`MockProcess` may remain as a library for unit tests**, not in the live HA App scan path.
-6. Integration UI for entity↔tag wiring and dynamics authoring is **owned conceptually here** but **implemented** in SWD-143 / SWD-146.
+1. **Integration-local core:** pure stdlib dynamics under `custom_components/plcassistant/dynamics/` (no Home Assistant imports in the engine). HA wrapper (`simulator.py`) owns lifecycle/MQTT/entities.
+2. **Model contract:** `ModelSpec = states + parameters + inputs + tag outputs + rhs(dt, state, inputs, params) + projection(state, params, dt)`.
+3. **Solver:** deterministic fixed-step integration at the **observed nominal** Soft-PLC period; substeps ≤ 100 ms; monotonic accumulator with capped catch-up. Not scan-edge lockstep.
+4. **Coupling:** async / nominal — Soft-PLC OUT `CMD_SPEED` → simulator input; simulator → plant MQTT IN. Expect ≤ ~1 scan of latency.
+5. **Default preset:** when `mock_mode=true`, run `skid` programmatically. No user-facing selector yet (SWD-143).
+6. **Plant publisher ownership:** simulator owns `LT_TANK` / `LT_RES` / `FT_INLET` MQTT IN. Writable Numbers update simulator state (nudge) and reflect simulator values; they must not independently republish while the preset runs.
+7. **Status behaviour:** start stepping after a valid status with finite positive `scan_period_s`; continue gravity drain while Soft-PLC is `stopped`; freeze timing on `offline`/`fault` (and zero `CMD_SPEED` after a watchdog timeout).
+8. **Transport:** MQTT only for plant ↔ Soft-PLC (file bridge unchanged — `SP_LEVEL_REQ` only).
+9. **`MockProcess` remains** the offline / unit-test oracle in `plcassistant.wedge`; live Soft-PLC path stays `HeldProcess`. Do not import App package from the HA component.
+10. **Skid fidelity:** reproduce inventory conservation, clamps, pump derate, flow lag, and qualitative Start/Stop / cascade / HH / LL / LOS acceptance from wedge docs; exact byte-identical step matching is not required if oracle comparison stays within agreed tolerances.
 
 ## Constraints
-- Preserve Soft-PLC scan order (IN → SAFETY → CONTROL → OUT) without plant synthesis in OUT
-- Do not add Soft-PLC APIs that mean “mock mode”
-- MQTT topic/payload contracts remain the bridge; file bridge may still hydrate HMI when MQTT is silent but is not the process↔PLC plant path
-- App + integration version lock remains
-- Dual trees under `plc_assistant/` stay synced
+- Soft-PLC remains mock-unaware (no plant synthesis OUT; no mock-mode API)
+- Preserve MQTT topic/payload contracts (`docs/packaging/02-mqtt-topics.md`)
+- App + integration version lock; dual trees under `plc_assistant/` stay synced
+- One simulator task per config entry; cancel on unload/reload
+- Cap MQTT plant publish cadence (coalesce to latest state) so 100 ms Soft-PLC period does not flood QoS-1
 
-## Inputs (supportive — not substitutes for decisions above)
-- Roadmap: [`docs/ROADMAP.md`](ROADMAP.md) (SWD-142)
-- Prior packaging: [`docs/packaging/01-shape.md`](packaging/01-shape.md)
-- Prior mock layers: [`docs/wedge/05-mock-process.md`](wedge/05-mock-process.md)
+## Inputs (supportive)
+- Ownership: [`docs/PLAN.md` history / SWD-145](https://marcusknielsen.atlassian.net/browse/SWD-145), [`docs/packaging/01-shape.md`](packaging/01-shape.md)
+- Physics + acceptance: [`docs/wedge/05-mock-process.md`](wedge/05-mock-process.md), [`docs/wedge/06-mock-acceptance.md`](wedge/06-mock-acceptance.md)
+- Library oracle: `plcassistant/wedge/process.py` (`MockProcess`)
+- Live seams: `custom_components/plcassistant/{__init__,number,sensor}.py`
 
 ## Acceptance criteria
-1. Docs state: integration-owned stand-alone simulator; Soft-PLC mock-unaware; MQTT process↔PLC; one-way status observe including `scan_period_s`.
-2. Soft-PLC retained MQTT `status` includes `scan_period_s` (numeric seconds).
-3. Live HA App scan does **not** run plant physics and does **not** publish plant PVs (`LT_TANK`, `LT_RES`, `FT_INLET`) as Soft-PLC OUT.
-4. Soft-PLC still runs control/safety with MQTT IN/OUT for operator cmds and CVs/status.
-5. Automated tests updated; process-motion acceptance deferred or explicitly marked expected-dark until SWD-146.
-6. No Soft-PLC code path that enables “mock mode” for plant.
+1. With `mock_mode=true`, skid preset starts at defaults (tank 0.15 m, res 0.20 m, flow 0 L/min) and publishes plant PVs as Soft-PLC MQTT IN.
+2. Soft-PLC Start with healthy plant raises `CMD_SPEED` / flow response; zero command drains tank (qualitative).
+3. Inventory conserved within stated tolerance; levels remain within vessel bounds.
+4. Observed valid `scan_period_s` sets nominal step period; malformed/missing values fall back safely (default 0.1 s) without crashing the task.
+5. Soft-PLC App still constructs `HeldProcess` and does **not** publish plant PVs as OUT.
+6. No competing plant Number MQTT publisher while simulator owns the skid.
+7. Automated tests cover: dynamics unit oracle vs `MockProcess` (tolerance), HA/in-memory MQTT closed-loop plant motion, unload/reload single-task lifecycle, file-bridge plant tags still ignored.
+8. Docs state: integration simulator + skid preset; Soft-PLC mock-unaware; UI/unit-ops deferred to SWD-143/144.
+9. App + integration versions bumped and dual trees synced.
 
 ## Work packages
-1. **Ownership docs** — packaging / wedge / I/O contract updates for integration-owned simulator + MQTT + one-way observe
-2. **Expose `scan_period_s`** — Soft-PLC MQTT status (+ tests)
-3. **Remove App plant from live scan** — drop `MockProcess`/`Skid` plant from App `SkidImageLogic` path; plant tags as IN
-4. **Bindings / HMI / file-bridge cleanup** — stop assuming Soft-PLC plant OUT; adjust defaults and HMI copy for gap
-5. **Tests + acceptance** — update suites; document intentional process gap until SWD-146
+1. **Dynamics engine** — `ModelSpec`, fixed-step stepper, validation, projection seam, timing accumulator
+2. **Skid preset** — migrate live physics from `MockProcess`; registry + `skid` default; oracle-comparison tests
+3. **HA simulator lifecycle** — parse/store `scan_period_s` + status; subscribe Soft-PLC `CMD_SPEED`; step + publish plant IN; watchdog / offline freeze
+4. **Plant Number ownership** — stop competing publishes; hydrate/nudge from simulator; Lovelace copy for live motion
+5. **Acceptance + packaging** — closed-loop tests, docs, version bump, dual-tree sync
 
 ## Open items
-- Full simulator stepping from observed `scan_period_s` → SWD-146
-- Entity↔tag wiring UI + presets → SWD-143
-- Whether offline CI keeps a local `MockProcess` helper vs a thinner IN fixture (implement choice; library retention allowed)
+- Exact oracle tolerance bands (implement choice; document in tests)
+- Whether Number entities become read-only while simulator runs vs stay writable nudges (prefer writable nudges)
+- `SC_PUMP` / quality HMI surfaces — not required for SWD-146 dashboard
+- Full unit-op composition / custom DE DSL → SWD-144
+- Preset chooser + parameter editor UI → SWD-143
 
 ## Tracker
 - Provider: jira
 - Story: [SWD-142](https://marcusknielsen.atlassian.net/browse/SWD-142)
-- Task: [SWD-145](https://marcusknielsen.atlassian.net/browse/SWD-145)
-- Sub-tasks: [SWD-149](https://marcusknielsen.atlassian.net/browse/SWD-149) docs, [SWD-150](https://marcusknielsen.atlassian.net/browse/SWD-150) scan_period_s, [SWD-147](https://marcusknielsen.atlassian.net/browse/SWD-147) remove App plant, [SWD-148](https://marcusknielsen.atlassian.net/browse/SWD-148) bindings/HMI/file-bridge, [SWD-151](https://marcusknielsen.atlassian.net/browse/SWD-151) tests
-- Branch: `cursor/swd-145-mock-ownership-33f4`
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/59
+- Task: [SWD-146](https://marcusknielsen.atlassian.net/browse/SWD-146)
+- Sub-tasks: [SWD-156](https://marcusknielsen.atlassian.net/browse/SWD-156) engine, [SWD-154](https://marcusknielsen.atlassian.net/browse/SWD-154) skid preset, [SWD-152](https://marcusknielsen.atlassian.net/browse/SWD-152) HA lifecycle, [SWD-155](https://marcusknielsen.atlassian.net/browse/SWD-155) Number/HMI, [SWD-153](https://marcusknielsen.atlassian.net/browse/SWD-153) acceptance
+- Prior: [SWD-145](https://marcusknielsen.atlassian.net/browse/SWD-145) Done
+- Branch: `cursor/swd-146-dynamics-core-define-33f4`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/62
 
 ## Next
-Shipped (PR #59 + #60). Next: `/define SWD-146`
+`/implement SWD-146` — Build per this plan (same branch/PR after define approval)
