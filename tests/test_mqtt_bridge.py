@@ -109,3 +109,27 @@ def test_bad_payload_becomes_fault_quality():
     q = image.get_quality("LT_TANK")
     assert q.status is QualityStatus.BAD
     assert q.reason is ReasonCode.FAULT
+
+
+def test_hmi_state_tags_are_published_retained():
+    """SWD-137: MODE / PERM_OK / TRIP_ACTIVE retain so HA hydrates on subscribe."""
+    from plcassistant.io.mqtt_topics import tag_out_topic
+
+    bus = InMemoryMqttBus()
+    bridge = MqttIoBridge(bus)
+    image = _image()
+    for name in ("MODE", "PERM_OK", "TRIP_ACTIVE"):
+        image.declare(name, default="STOP" if name == "MODE" else False)
+    image.set_output("MODE", "STOP")
+    image.set_output("PERM_OK", True)
+    image.set_output("TRIP_ACTIVE", False)
+    image.set_output("CMD_SPEED", 0.0)
+    bridge.publish_outputs(image)
+    by_topic = {
+        topic: (payload, retain)
+        for topic, payload, _qos, retain in bus.published
+    }
+    assert by_topic[tag_out_topic("default", "MODE")][1] is True
+    assert by_topic[tag_out_topic("default", "PERM_OK")][1] is True
+    assert by_topic[tag_out_topic("default", "TRIP_ACTIVE")][1] is True
+    assert by_topic[tag_out_topic("default", "CMD_SPEED")][1] is False

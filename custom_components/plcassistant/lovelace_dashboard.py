@@ -33,19 +33,22 @@ def bundled_dashboard_yaml() -> Path:
 
 
 def _is_stock_board_needing_status_upgrade(text: str) -> bool:
-    """True when YAML looks like a prior stock board missing the status card.
+    """True when YAML looks like a prior stock board that should be refreshed.
 
-    Preserves true operator customizations (no Start button, or already has
-    ``sensor.plcassistant_status``). Stock 0.1.11/0.1.12 boards are refreshed
-    so SWD-135 status entities appear after App update.
+    Preserves true operator customizations (no Start button). Stock boards are
+    refreshed when missing the status card (SWD-135) or still on an older
+    ``plcassistant_dashboard_version`` (SWD-137 offline help).
     """
-    if "sensor.plcassistant_status" in text:
-        return False
     if "button.plcassistant_start" not in text:
         return False
     if "title: PLCAssistant" not in text and "PLCAssistant" not in text:
         return False
-    return True
+    if "sensor.plcassistant_status" not in text:
+        return True
+    # Refresh stock boards that predate the offline troubleshooting copy.
+    if "plcassistant_dashboard_version: 3" not in text:
+        return True
+    return False
 
 
 def ensure_dashboard_yaml(hass: HomeAssistant) -> Path:

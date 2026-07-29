@@ -1,4 +1,4 @@
-# plcassistant_dashboard_version: 2
+# plcassistant_dashboard_version: 3
 title: PLCAssistant
 views:
   - title: Skid
@@ -19,7 +19,7 @@ views:
             name: Trip active
       - type: markdown
         content: |
-          **PLCAssistant** — Soft-PLC skid HMI. Status above shows running / stopped / fault / offline and skid MODE. Change the **Level setpoint**, press **Start**, then watch tank level, flow, and speed.
+          **PLCAssistant** — Soft-PLC skid HMI. Soft-PLC must show **stopped** (not offline) before Start works — if stuck offline, confirm Mosquitto + PLCAssistant App are Started and matching `instance_id`, then Update App / Restart Core. Change the **Level setpoint**, press **Start**, then watch tank level, flow, and speed.
       - type: entities
         title: Operate
         show_header_toggle: false

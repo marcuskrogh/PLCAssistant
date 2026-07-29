@@ -221,6 +221,8 @@ class MqttIoBridge:
         else:
             names = tuple(image.snapshot_outputs())
 
+        # HMI state tags are retained so HA hydrates after subscribe (SWD-137).
+        retain_tags = frozenset({"MODE", "PERM_OK", "TRIP_ACTIVE"})
         published: list[str] = []
         for tag in names:
             if tag not in image.names():
@@ -231,7 +233,7 @@ class MqttIoBridge:
                 tag_out_topic(self.instance_id, tag),
                 payload.encode(),
                 qos=MQTT_QOS,
-                retain=False,
+                retain=tag in retain_tags,
             )
             published.append(tag)
         return tuple(published)

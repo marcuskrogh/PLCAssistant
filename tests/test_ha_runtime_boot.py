@@ -290,3 +290,50 @@ def test_memory_bus_runtime_cmd_via_http(tmp_path: Path):
     finally:
         life.stop()
         server.shutdown()
+
+
+def test_ha_runtime_empty_options_defaults_mosquitto_and_retries(monkeypatch):
+    """SWD-137: missing/empty options must not skip Mosquitto forever."""
+    from plcassistant.app.runtime import _mqtt_supervisor, build_bus_from_options
+
+    monkeypatch.setenv("PLCASSISTANT_HA_RUNTIME", "1")
+    monkeypatch.delenv("PLCASSISTANT_MQTT_BUS", raising=False)
+
+    seen: dict[str, object] = {}
+
+    class FakeBus:
+        def __init__(self, host, port, **kwargs):
+            seen["host"] = host
+            seen["port"] = port
+
+        def publish(self, *args, **kwargs):
+            return None
+
+        def subscribe(self, *args, **kwargs):
+            return None
+
+    monkeypatch.setattr("plcassistant.io.mqtt_paho.PahoMqttBus", FakeBus)
+    bus = build_bus_from_options({})
+    assert bus is not None
+    assert seen["host"] == "core-mosquitto"
+    assert seen["port"] == 1883
+
+    attached = threading.Event()
+
+    def capture(options, **_kwargs):
+        attached.set()
+        return InMemoryMqttBus()
+
+    monkeypatch.setattr(
+        "plcassistant.app.runtime.build_bus_from_options",
+        capture,
+    )
+    life = _mqtt_supervisor({}, "default", bus=None)
+    try:
+        assert attached.wait(timeout=2.0), "MQTT retry never started for empty options"
+        deadline = time.monotonic() + 2.0
+        while life.loop is None and time.monotonic() < deadline:
+            time.sleep(0.05)
+        assert life.loop is not None
+    finally:
+        life.stop()

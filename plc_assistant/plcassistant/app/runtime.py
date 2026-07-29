@@ -63,7 +63,10 @@ def build_bus_from_options(
         options.get("mqtt_broker") or os.environ.get("PLCASSISTANT_MQTT_BROKER") or ""
     )
     if not host:
-        host = "core-mosquitto" if options else ""
+        # HA App runtime must always try Supervisor Mosquitto — empty options.json
+        # is falsy in Python and previously skipped MQTT forever (SWD-137).
+        ha_runtime = os.environ.get("PLCASSISTANT_HA_RUNTIME", "") == "1"
+        host = "core-mosquitto" if (options or ha_runtime) else ""
     if not host:
         return None
     port = int(options.get("mqtt_port") or os.environ.get("PLCASSISTANT_MQTT_PORT") or 1883)
@@ -242,9 +245,11 @@ class MqttScanLoop:
     def stop(self) -> None:
         self.scanning = False
         self._alive = False
-        if self._thread is not None:
-            self._thread.join(timeout=2.0)
-            self._thread = None
+        thread = self._thread
+        self._thread = None
+        # Join only if start() completed — life.stop() can race attach (SWD-137).
+        if thread is not None and thread.ident is not None:
+            thread.join(timeout=2.0)
         self._publish_scan_status("stopped")
         self._last_status_heartbeat = time.monotonic()
 
@@ -332,20 +337,35 @@ def _mqtt_supervisor(
         _start_with(bus)
         return life
 
-    # Want MQTT (options present) but connect not ready — retry until broker is up.
+    # Want MQTT — retry until broker is up. HA App runtime always retries even
+    # when options.json is missing/empty (defaults to core-mosquitto, SWD-137).
     host = str(options.get("mqtt_broker") or "")
-    if not host and not options:
+    ha_runtime = os.environ.get("PLCASSISTANT_HA_RUNTIME", "") == "1"
+    if not host and not options and not ha_runtime:
         return life
 
     def _retry() -> None:
         delay = 2.0
+        broker = str(options.get("mqtt_broker") or "") or "core-mosquitto"
+        port = int(options.get("mqtt_port") or 1883)
+        print(
+            f"PLCAssistant: Soft-PLC MQTT connecting to {broker}:{port} "
+            f"(instance_id={instance_id})",
+            flush=True,
+        )
         while not life.stopped() and life.loop is None:
             new_bus = build_bus_from_options(options, instance_id=instance_id)
             # Re-check after a potentially blocking connect/build.
             if life.stopped():
                 return
             if new_bus is not None:
-                _start_with(new_bus)
+                loop = _start_with(new_bus)
+                if loop is not None:
+                    print(
+                        "PLCAssistant: Soft-PLC MQTT scan attached "
+                        f"(status=stopped, instance_id={instance_id})",
+                        flush=True,
+                    )
                 return
             if life.wait(delay):
                 return
