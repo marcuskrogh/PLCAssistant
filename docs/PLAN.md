@@ -68,7 +68,7 @@
 - Provider: jira
 - Story: [SWD-142](https://marcusknielsen.atlassian.net/browse/SWD-142)
 - Task: [SWD-145](https://marcusknielsen.atlassian.net/browse/SWD-145)
-- Sub-tasks: (created with this plan)
+- Sub-tasks: [SWD-149](https://marcusknielsen.atlassian.net/browse/SWD-149) docs, [SWD-150](https://marcusknielsen.atlassian.net/browse/SWD-150) scan_period_s, [SWD-147](https://marcusknielsen.atlassian.net/browse/SWD-147) remove App plant, [SWD-148](https://marcusknielsen.atlassian.net/browse/SWD-148) bindings/HMI/file-bridge, [SWD-151](https://marcusknielsen.atlassian.net/browse/SWD-151) tests
 - Branch: `cursor/swd-145-mock-ownership-33f4`
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/59
 
