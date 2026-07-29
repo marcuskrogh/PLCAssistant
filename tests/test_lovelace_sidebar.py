@@ -32,14 +32,14 @@ def test_manifest_depends_on_frontend_and_lovelace() -> None:
     assert "frontend" in deps
     assert "lovelace" in deps
     assert "mqtt" in deps
-    assert manifest["version"] == "0.1.16"
+    assert manifest["version"] == "0.1.17"
 
 
 def test_app_version_locked_to_integration() -> None:
     text = (ROOT / "plc_assistant" / "config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.16"' in text
+    assert 'version: "0.1.17"' in text
     docker = (ROOT / "plc_assistant" / "Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.16" in docker
+    assert "BUILD_VERSION=0.1.17" in docker
 
 
 def test_url_path_contains_hyphen() -> None:
@@ -144,11 +144,11 @@ def test_ensure_refreshes_stock_board_missing_status(tmp_path) -> None:
     text = out.read_text(encoding="utf-8")
     assert "sensor.plcassistant_status" in text
     assert "sensor.plcassistant_mode" in text
-    assert "plcassistant_dashboard_version: 4" in text
+    assert "plcassistant_dashboard_version: 5" in text
 
 
 def test_ensure_refreshes_stock_board_old_dashboard_version(tmp_path) -> None:
-    """SWD-138: stock boards on version 3 get Core-restart help refresh."""
+    """SWD-139: stock boards on version 4 get file-bridge help refresh."""
     mod = _load("plcassistant_lovelace_dashboard3c", CC / "lovelace_dashboard.py")
 
     class FakeConfig:
@@ -161,7 +161,7 @@ def test_ensure_refreshes_stock_board_old_dashboard_version(tmp_path) -> None:
     dest = tmp_path / "dashboards" / "plcassistant.yaml"
     dest.parent.mkdir(parents=True)
     dest.write_text(
-        "# plcassistant_dashboard_version: 3\n"
+        "# plcassistant_dashboard_version: 4\n"
         "title: PLCAssistant\nviews:\n"
         "  - cards:\n"
         "      - type: entities\n"
@@ -172,9 +172,8 @@ def test_ensure_refreshes_stock_board_old_dashboard_version(tmp_path) -> None:
     )
     out = mod.ensure_dashboard_yaml(FakeHass())  # type: ignore[arg-type]
     text = out.read_text(encoding="utf-8")
-    assert "plcassistant_dashboard_version: 4" in text
-    assert "Restart Home Assistant Core" in text
-    assert "MQTT scan attached" in text
+    assert "plcassistant_dashboard_version: 5" in text
+    assert "0.1.17" in text or "shared config file" in text
 
 
 def test_ensure_preserves_status_board_without_version_marker(tmp_path) -> None:
@@ -228,12 +227,13 @@ def test_run_sh_refreshes_stock_missing_status_not_custom() -> None:
     assert "sensor.plcassistant_status" in text
     assert "button.plcassistant_start" in text
     assert "seeded default" in text or "mqtt_broker=core-mosquitto" in text
-    # Explicit old versions only — do not refresh merely missing version 4.
-    assert "plcassistant_dashboard_version:[[:space:]]*[123]" in text
+    # Explicit old versions only — do not refresh merely missing version 5.
+    assert "plcassistant_dashboard_version:[[:space:]]*[1234]" in text
     assert "request_core_restart_after_sync" in text
     assert "supervisor/core/restart" in text
     assert "PLCASSISTANT_AUTO_CORE_RESTART" in text
-    assert "! grep -q 'plcassistant_dashboard_version: 4'" not in text
+    assert "PLCASSISTANT_HA_CONFIG" in text
+    assert "! grep -q 'plcassistant_dashboard_version: 5'" not in text
     # Regression: never refresh-on-newer (would clobber operator edits).
     assert 'src_dash}" -nt' not in text
     assert "[ \"${src_dash}\" -nt" not in text

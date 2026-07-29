@@ -1,4 +1,4 @@
-# plcassistant_dashboard_version: 4
+# plcassistant_dashboard_version: 5
 title: PLCAssistant
 views:
   - title: Skid
@@ -19,7 +19,7 @@ views:
             name: Trip active
       - type: markdown
         content: |
-          **PLCAssistant** — Soft-PLC skid HMI. Soft-PLC must show **stopped** (not offline) before Start works. If the App log already shows `Soft-PLC MQTT scan attached` but this board is still offline, **Restart Home Assistant Core** (thin integration needs a Core reload). Also confirm Mosquitto + matching `instance_id`. Change the **Level setpoint**, press **Start**, then watch tank level, flow, and speed.
+          **PLCAssistant** — Soft-PLC skid HMI. Soft-PLC must show **stopped** (not offline) before Start works. After App Update **0.1.17+**, status also syncs via a shared config file when MQTT is quiet — Update App, wait for Core reload, then reopen this board. Confirm Mosquitto + matching `instance_id` if still offline. Change the **Level setpoint**, press **Start**, then watch tank level, flow, and speed.
       - type: entities
         title: Operate
         show_header_toggle: false

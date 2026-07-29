@@ -1,34 +1,32 @@
-# Iterate: Soft-PLC attached but HMI still offline — Core never restarts
+# Iterate: Soft-PLC attached but HMI still offline — MQTT never reaches HA
 
 ## Status
-**Done** — App **0.1.16**; shipped PR [#53](https://github.com/marcuskrogh/PLCAssistant/pull/53)
+**In Progress** — App **0.1.17**; Task [SWD-139](https://marcusknielsen.atlassian.net/browse/SWD-139)
 
 ## Prior work
-- Task: SWD-137 (PR #52, App 0.1.15 — empty options MQTT attach)
-- Spec context: prior ITERATE.md (SWD-137)
+- Task: SWD-138 (PR #53, App 0.1.16 — auto Core restart after sync)
+- Spec context: prior ITERATE.md (SWD-138)
 
 ## Problem
-Operator App log after 0.1.15 shows Soft-PLC MQTT **attached** (`status=stopped`, `instance_id=default`) and thin integration installed/updated, but Lovelace HMI still shows Soft-PLC **offline**, Mode STOP, Start permissive Off; Start does nothing.
+Operator confirms App log `Soft-PLC MQTT scan attached (status=stopped)` and thin integration up to date, but Lovelace still shows Soft-PLC **offline**, Mode STOP, Start permissive Off.
 
-Root cause: Soft-PLC publish path is healthy. App Start copies `custom_components/plcassistant` into HA config and stamps `integration_needs_core_restart`, but **never restarts Home Assistant Core**. Core keeps stale/unloaded integration code and never hydrates retained status/OUT over MQTT. The log line “Restart Home Assistant Core” is easy to miss on mobile.
+Soft-PLC→Mosquitto publish works. HA entities never leave defaults — the MQTT path into the thin integration is not delivering (HA MQTT disconnected / different broker / subscribe never hydrates).
 
 ## Acceptance criteria
-1. After App Start that syncs the thin integration, Core restart is requested via Supervisor API (`SUPERVISOR_TOKEN`). If restart cannot be requested, create a HA persistent notification telling the operator to restart Core.
-2. Soft-PLC MQTT uses a unique `client_id` (not fixed `plcassistant-app`) to avoid LWT thrash on App restart.
-3. Lovelace offline help states: if App log shows `Soft-PLC MQTT scan attached` but HMI is offline → Restart Home Assistant Core.
-4. App + integration version **0.1.16**.
-5. Opt-out: `PLCASSISTANT_AUTO_CORE_RESTART=0` skips the Supervisor restart request (still logs + notification when possible).
+1. Soft-PLC writes shared runtime snapshot under HA config (`plcassistant/runtime.json`) on status/scan heartbeat.
+2. Soft-PLC drains operator cmds from `plcassistant/cmd.json` (start/stop/reset).
+3. Thin integration polls the runtime file and hydrates status + MODE / PERM_OK / TRIP_ACTIVE when MQTT is silent; Start/Stop/Reset also write the cmd file.
+4. MQTT remains primary when it works (file is secondary fallback).
+5. App + integration version **0.1.17**.
 
 ## Out of scope
-- Forcing host reboot.
-- Changing Soft-PLC MODE boot behaviour.
-- Fixing Mosquitto/HA MQTT credential mismatches (ops).
+- Replacing MQTT entirely.
+- Fixing Mosquitto credential/ACL ops issues beyond this fallback.
 
 ## Tracker
-- Task: [SWD-138](https://marcusknielsen.atlassian.net/browse/SWD-138)
-- Relates: SWD-137
-- Branch: `cursor/swd-138-core-restart-after-sync-33f4`
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/53
+- Task: [SWD-139](https://marcusknielsen.atlassian.net/browse/SWD-139)
+- Relates: SWD-138
+- Branch: `cursor/swd-139-ha-config-bridge-33f4`
 
 ## Next
-Done — phase closed.
+`/review-fix SWD-139` — Review and auto-fix until clean
