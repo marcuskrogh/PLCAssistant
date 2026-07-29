@@ -9,6 +9,8 @@ Testable MQTT mapping lives in ``plcassistant.io.mqtt_entity_bridge``.
 
 from __future__ import annotations
 
+import logging
+
 from homeassistant.components.mqtt import async_subscribe
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -26,6 +28,8 @@ from .const import (
     SERVICE_STOP,
 )
 from .mqtt_topics import cmd_topic, tag_in_topic, tag_out_topic
+
+_LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [Platform.NUMBER, Platform.SENSOR, Platform.BUTTON]
 
@@ -178,6 +182,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[DOMAIN][entry.entry_id]["unsubs"].append(unsub)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    # Default Lovelace board in the HA sidebar (SWD-134) — no copy/paste.
+    try:
+        from .lovelace_dashboard import async_setup_sidebar_dashboard
+
+        await async_setup_sidebar_dashboard(hass)
+    except Exception:  # noqa: BLE001 — never block entity setup on dashboard
+        _LOGGER.exception("PLCAssistant: sidebar Lovelace dashboard setup failed")
+
     return True
 
 
