@@ -1,7 +1,7 @@
 # Iterate: Lovelace status indicator + Start wiring
 
 ## Status
-**In progress** — SWD-135; App **0.1.13**
+**In Review** — PR [#49](https://github.com/marcuskrogh/PLCAssistant/pull/49); App **0.1.13**
 
 ## Prior work
 - Task: SWD-134 (PR #47, App 0.1.12 — sidebar Lovelace, no status / MODE on board)
@@ -23,3 +23,4 @@ Operator feedback after 0.1.12:
 - Task: [SWD-135](https://marcusknielsen.atlassian.net/browse/SWD-135)
 - Relates: SWD-134
 - Branch: `cursor/swd-135-lovelace-status-start-7273`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/49
