@@ -25,10 +25,11 @@ After 0.1.10:
 - Full auto-registration of Lovelace into HA storage UI (paste/import documented)
 - Field (non-mock) sensor binding UI
 
+## Next
+`/review-fix SWD-133` — Review and auto-fix until clean
+
 ## Tracker
 - Task: [SWD-133](https://marcusknielsen.atlassian.net/browse/SWD-133)
 - Relates: SWD-132
 - Branch: `cursor/swd-133-lovelace-hmi-plant-1bbe`
-
-## Next
-Implement → PR → `/review-fix SWD-133`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/46
