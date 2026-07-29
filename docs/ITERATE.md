@@ -1,33 +1,37 @@
-# Iterate: Soft-PLC attached but HMI still offline — MQTT never reaches HA
+# Iterate: HMI zeros on SP_LEVEL/SP_FLOW/LT_RES + clarify PERM_OK while RUNNING
 
 ## Status
-**Done** — App **0.1.17**; shipped PR [#55](https://github.com/marcuskrogh/PLCAssistant/pull/55)
+**In Progress** — App **0.1.18**; branch `cursor/swd-140-hmi-sp-tags-perm-33f4`
 
 ## Prior work
-- Task: SWD-138 (PR #53, App 0.1.16 — auto Core restart after sync)
-- Spec context: prior ITERATE.md (SWD-138)
+- Task: SWD-139 (PR #55, App 0.1.17 — HA-config file bridge)
+- Spec context: prior ITERATE.md (SWD-139)
 
 ## Problem
-Operator confirms App log `Soft-PLC MQTT scan attached (status=stopped)` and thin integration up to date, but Lovelace still shows Soft-PLC **offline**, Mode STOP, Start permissive Off.
+After SWD-139 / App **0.1.17**, Soft-PLC runs and tank/flow/speed move, but:
 
-Soft-PLC→Mosquitto publish works. HA entities never leave defaults — the MQTT path into the thin integration is not delivering (HA MQTT disconnected / different broker / subscribe never hydrates).
+1. **Start permissive** stays **Off** while Soft-PLC is `running` (operator unsure if correct; Start still worked).
+2. **Active level SP**, **Active flow SP**, and **Reservoir level** stay **0.0** while tank/flow/speed show live values.
+
+## Root cause
+1. `PERM_OK` is intentionally false whenever MODE is RUNNING (safety story) — only meaningful as Start-ready when STOP. HMI label/help does not explain this.
+2. SWD-139 file bridge only mirrors `MODE`/`PERM_OK`/`TRIP_ACTIVE`/`LT_TANK`/`FT_INLET`/`CMD_SPEED`. When MQTT is silent, `SP_LEVEL`/`SP_FLOW`/`LT_RES` never hydrate and stay at entity default 0.0.
 
 ## Acceptance criteria
-1. Soft-PLC writes shared runtime snapshot under HA config (`plcassistant/runtime.json`) on status/scan heartbeat.
-2. Soft-PLC drains operator cmds from `plcassistant/cmd.json` (start/stop/reset).
-3. Thin integration polls the runtime file and hydrates status + MODE / PERM_OK / TRIP_ACTIVE when MQTT is silent; Start/Stop/Reset also write the cmd file.
-4. MQTT remains primary when it works (file is secondary fallback).
-5. App + integration version **0.1.17**.
+1. File bridge (App write + integration poll) includes `SP_LEVEL`, `SP_FLOW`, `LT_RES` (and other Soft-PLC OUT HMI tags).
+2. Lovelace clarifies Start permissive = Start-ready when idle; Off while RUNNING is expected.
+3. After Update **0.1.18** + Core reload: while running near SP 0.2 m, Active level SP ≈ request, Active flow SP and Reservoir are non-zero (healthy mock).
+4. App + integration version **0.1.18**.
 
 ## Out of scope
-- Replacing MQTT entirely.
-- Fixing Mosquitto credential/ACL ops issues beyond this fallback.
+- Changing PERM_OK semantics (stays Off while RUNNING by design).
+- Replacing MQTT; file bridge remains secondary fallback.
 
 ## Tracker
-- Task: [SWD-139](https://marcusknielsen.atlassian.net/browse/SWD-139)
-- Relates: SWD-138
-- Branch: `cursor/swd-139-ha-config-bridge-33f4`
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/55
+- Task: [SWD-140](https://marcusknielsen.atlassian.net/browse/SWD-140)
+- Relates: SWD-139
+- Branch: `cursor/swd-140-hmi-sp-tags-perm-33f4`
+- PR: (pending)
 
 ## Next
-Done — phase closed.
+Implement → `/review-fix SWD-140`

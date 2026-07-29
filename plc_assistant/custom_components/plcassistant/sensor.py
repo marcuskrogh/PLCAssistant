@@ -56,7 +56,7 @@ _TAG_META: dict[str, dict] = {
         "kind": "text",
     },
     "PERM_OK": {
-        "name": "PLCAssistant Start permissive",
+        "name": "PLCAssistant Start ready",
         "object_id": "plcassistant_perm_ok",
         "kind": "bool",
     },

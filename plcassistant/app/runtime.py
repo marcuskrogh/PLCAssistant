@@ -228,7 +228,18 @@ class MqttScanLoop:
         if status is None:
             status = "running" if self.scanning else "stopped"
         tags: dict[str, Any] = {}
-        for name in ("MODE", "PERM_OK", "TRIP_ACTIVE", "LT_TANK", "FT_INLET", "CMD_SPEED"):
+        # Full Soft-PLC OUT HMI set (SWD-140: include SP_LEVEL/SP_FLOW/LT_RES).
+        for name in (
+            "MODE",
+            "PERM_OK",
+            "TRIP_ACTIVE",
+            "LT_TANK",
+            "LT_RES",
+            "FT_INLET",
+            "CMD_SPEED",
+            "SP_LEVEL",
+            "SP_FLOW",
+        ):
             if name not in self.image.names():
                 continue
             try:

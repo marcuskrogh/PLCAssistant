@@ -1,8 +1,10 @@
-"""Shared HA-config Soft-PLC bridge (SWD-139)."""
+"""Shared HA-config Soft-PLC bridge (SWD-139 / SWD-140)."""
 
 from __future__ import annotations
 
 from pathlib import Path
+
+import pytest
 
 from plcassistant.io.ha_config_bridge import (
     drain_cmd,
@@ -40,6 +42,7 @@ def test_scan_loop_drains_file_cmd_and_writes_runtime(tmp_path: Path, monkeypatc
     from plcassistant.io.mqtt_bridge import InMemoryMqttBus, MqttIoBridge
 
     monkeypatch.setenv("PLCASSISTANT_HA_CONFIG", str(tmp_path))
+    monkeypatch.setattr(MqttScanLoop, "FILE_BRIDGE_PERIOD_S", 0.0)
     bus = InMemoryMqttBus()
     image = declare_default_image()
     bridge = MqttIoBridge(bus, instance_id="default")
@@ -48,6 +51,39 @@ def test_scan_loop_drains_file_cmd_and_writes_runtime(tmp_path: Path, monkeypatc
     assert write_cmd("start", root=tmp_path)
     loop.scan_once()
     assert loop.scanning is True
+    # Allow cascade a few scans; period=0 keeps runtime.json fresh each scan.
+    for _ in range(5):
+        loop.scan_once()
     snap = read_runtime_snapshot(root=tmp_path)
     assert snap is not None
     assert snap["status"] == "running"
+    tags = snap["tags"]
+    for name in (
+        "MODE",
+        "PERM_OK",
+        "TRIP_ACTIVE",
+        "LT_TANK",
+        "LT_RES",
+        "FT_INLET",
+        "CMD_SPEED",
+        "SP_LEVEL",
+        "SP_FLOW",
+    ):
+        assert name in tags
+        assert "value" in tags[name]
+    # After Start, active level SP mirrors request; flow/reservoir should be live.
+    assert float(tags["SP_LEVEL"]["value"]) == pytest.approx(0.20, abs=0.05)
+    assert float(tags["SP_FLOW"]["value"]) > 0.0
+    assert float(tags["LT_RES"]["value"]) > 0.0
+
+
+def test_hmi_tags_list_includes_active_setpoints_and_reservoir() -> None:
+    """SWD-140: integration poll list matches App runtime write set."""
+    src = (
+        Path(__file__).resolve().parents[1]
+        / "custom_components"
+        / "plcassistant"
+        / "__init__.py"
+    ).read_text(encoding="utf-8")
+    assert '"SP_LEVEL"' in src and '"SP_FLOW"' in src and '"LT_RES"' in src
+    assert "_HMI_TAGS" in src

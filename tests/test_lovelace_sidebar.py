@@ -32,14 +32,14 @@ def test_manifest_depends_on_frontend_and_lovelace() -> None:
     assert "frontend" in deps
     assert "lovelace" in deps
     assert "mqtt" in deps
-    assert manifest["version"] == "0.1.17"
+    assert manifest["version"] == "0.1.18"
 
 
 def test_app_version_locked_to_integration() -> None:
     text = (ROOT / "plc_assistant" / "config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.17"' in text
+    assert 'version: "0.1.18"' in text
     docker = (ROOT / "plc_assistant" / "Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.17" in docker
+    assert "BUILD_VERSION=0.1.18" in docker
 
 
 def test_url_path_contains_hyphen() -> None:
@@ -144,11 +144,11 @@ def test_ensure_refreshes_stock_board_missing_status(tmp_path) -> None:
     text = out.read_text(encoding="utf-8")
     assert "sensor.plcassistant_status" in text
     assert "sensor.plcassistant_mode" in text
-    assert "plcassistant_dashboard_version: 5" in text
+    assert "plcassistant_dashboard_version: 6" in text
 
 
 def test_ensure_refreshes_stock_board_old_dashboard_version(tmp_path) -> None:
-    """SWD-139: stock boards on version 4 get file-bridge help refresh."""
+    """SWD-140: stock boards on version 5 get SP/LT_RES bridge + Start-ready help."""
     mod = _load("plcassistant_lovelace_dashboard3c", CC / "lovelace_dashboard.py")
 
     class FakeConfig:
@@ -161,7 +161,7 @@ def test_ensure_refreshes_stock_board_old_dashboard_version(tmp_path) -> None:
     dest = tmp_path / "dashboards" / "plcassistant.yaml"
     dest.parent.mkdir(parents=True)
     dest.write_text(
-        "# plcassistant_dashboard_version: 4\n"
+        "# plcassistant_dashboard_version: 5\n"
         "title: PLCAssistant\nviews:\n"
         "  - cards:\n"
         "      - type: entities\n"
@@ -172,8 +172,9 @@ def test_ensure_refreshes_stock_board_old_dashboard_version(tmp_path) -> None:
     )
     out = mod.ensure_dashboard_yaml(FakeHass())  # type: ignore[arg-type]
     text = out.read_text(encoding="utf-8")
-    assert "plcassistant_dashboard_version: 5" in text
-    assert "0.1.17" in text or "shared config file" in text
+    assert "plcassistant_dashboard_version: 6" in text
+    assert "0.1.18" in text or "Start ready" in text
+    assert "active setpoints" in text.lower() or "Active setpoints" in text
 
 
 def test_ensure_preserves_status_board_without_version_marker(tmp_path) -> None:

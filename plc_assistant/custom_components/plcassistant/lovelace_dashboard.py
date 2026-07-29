@@ -38,7 +38,7 @@ def _is_stock_board_needing_status_upgrade(text: str) -> bool:
 
     Preserves true operator customizations (no Start button). Stock boards are
     refreshed when missing the status card (SWD-135) or explicitly on an older
-    ``plcassistant_dashboard_version`` of 1–4 (SWD-137/138/139 offline help). Boards
+    ``plcassistant_dashboard_version`` of 1–5 (SWD-137…140 HMI help). Boards
     that already have status but no version marker are left alone.
     """
     if "button.plcassistant_start" not in text:
@@ -48,7 +48,7 @@ def _is_stock_board_needing_status_upgrade(text: str) -> bool:
     if "sensor.plcassistant_status" not in text:
         return True
     # Only refresh when an explicit older stock version is present (not 10+).
-    if re.search(r"plcassistant_dashboard_version:\s*[1234]\b", text):
+    if re.search(r"plcassistant_dashboard_version:\s*[12345]\b", text):
         return True
     return False
 
