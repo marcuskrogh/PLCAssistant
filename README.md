@@ -174,10 +174,10 @@ If the Lovelace board shows Soft-PLC **offline**, Mode **STOP**, Start permissiv
 1. Confirm **Mosquitto** is running and HA’s **MQTT** integration is connected to that broker.
 2. Confirm **PLCAssistant** App is **Started**. Soft-PLC and the thin integration must share the same `instance_id` (default `default`).
 3. Open the App log and look for `Soft-PLC MQTT connecting` / `Soft-PLC MQTT scan attached`. Connect failures usually mean Mosquitto is down or App MQTT username/password do not match the broker.
-4. **Update** the App to **0.1.15+**, then **Restart Home Assistant Core**.
+4. **Update** the App to **0.1.16+**. From **0.1.16**, App Start that syncs the thin integration **requests a Core restart** automatically (opt out with `PLCASSISTANT_AUTO_CORE_RESTART=0`). If the App log already shows `Soft-PLC MQTT scan attached` but the HMI is still offline, **Restart Home Assistant Core** so Core reloads `custom_components`.
 5. Re-open the **PLCAssistant** sidebar — Soft-PLC should show `stopped` and Start permissive **On** when healthy; then press **Start**.
 
-From **0.1.14**, the App heartbeats retained status and publishes an MQTT last-will `offline`; the integration caches MQTT payloads and hydrates sensors on add. From **0.1.15**, HA runtime always attempts Mosquitto even when `/data/options.json` is missing/empty (seeds defaults on App Start) and retains MODE / PERM_OK / TRIP_ACTIVE for hydrate.
+From **0.1.14**, the App heartbeats retained status and publishes an MQTT last-will `offline`; the integration caches MQTT payloads and hydrates sensors on add. From **0.1.15**, HA runtime always attempts Mosquitto even when `/data/options.json` is missing/empty (seeds defaults on App Start) and retains MODE / PERM_OK / TRIP_ACTIVE for hydrate. From **0.1.16**, thin-integration sync requests Core restart so the HMI picks up Soft-PLC status without a missed manual step.
 
 ### Update button shows but installed version stays old
 

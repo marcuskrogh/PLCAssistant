@@ -49,7 +49,7 @@ A second file with the same `slug` makes update detection unreliable (store can 
    CI enforces App ↔ integration version equality.
 4. Run `pytest` (includes the single-App-config guard + version lock).
 5. Merge to `main`.
-6. On HA: **Check for updates** → hard-refresh → **Update** PLCAssistant → restart Core
+6. On HA: **Check for updates** → hard-refresh → **Update** PLCAssistant → App Start requests Core restart (**0.1.16+**; restart manually only if opt-out / `SUPERVISOR_TOKEN` missing / request failed)
    so the synced thin integration reloads.
 
 ## Version lock (App ≡ integration)
@@ -74,7 +74,7 @@ Mitigations in-repo (0.1.7+):
 - Dockerfile uses Supervisor `BUILD_VERSION` before `COPY` to invalidate layers on each `version` bump.
 - App start force-syncs the thin integration when the App version stamp changes, and migrates any remaining `hass.components` subscribe path on disk.
 
-Operator fallback: hard-refresh after **Check for updates**, restart Core after App Update, or `docker builder prune` then uninstall/reinstall.
+Operator fallback: hard-refresh after **Check for updates**; from **0.1.16** App Start auto-requests Core restart after thin-integration sync (else restart Core manually), or `docker builder prune` then uninstall/reinstall.
 
 ### If Latest is stuck behind GitHub
 

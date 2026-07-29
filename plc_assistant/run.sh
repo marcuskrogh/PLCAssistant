@@ -45,6 +45,46 @@ app_version() {
   fi
 }
 
+# After thin-integration sync, Core must reload custom_components or the HMI
+# stays at entity defaults even when Soft-PLC MQTT is already attached (SWD-138).
+notify_core_restart_needed() {
+  if [ -z "${SUPERVISOR_TOKEN:-}" ]; then
+    return 1
+  fi
+  curl -fsS -X POST \
+    -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d '{"notification_id":"plcassistant_core_restart","title":"PLCAssistant needs Core restart","message":"Thin integration updated. Restart Home Assistant Core so Soft-PLC status appears on the HMI (App log may already show Soft-PLC MQTT scan attached)."}' \
+    http://supervisor/core/api/services/persistent_notification/create
+}
+
+request_core_restart_after_sync() {
+  auto="${PLCASSISTANT_AUTO_CORE_RESTART:-1}"
+  case "${auto}" in
+    0|false|no|NO|False)
+      echo "PLCAssistant: auto Core restart disabled (PLCASSISTANT_AUTO_CORE_RESTART=${auto}); restart Core manually so the HMI loads the thin integration."
+      notify_core_restart_needed || true
+      return 0
+      ;;
+  esac
+  if [ -z "${SUPERVISOR_TOKEN:-}" ]; then
+    echo "PLCAssistant: SUPERVISOR_TOKEN missing; cannot auto-restart Core. Restart Home Assistant Core manually so Soft-PLC status appears on the HMI." >&2
+    return 0
+  fi
+  echo "PLCAssistant: requesting Home Assistant Core restart so the thin integration loads…"
+  if curl -fsS -X POST \
+    -H "Authorization: Bearer ${SUPERVISOR_TOKEN}" \
+    -H "Content-Type: application/json" \
+    http://supervisor/core/restart; then
+    echo "PLCAssistant: Core restart requested."
+  else
+    echo "PLCAssistant: Core restart request failed; creating HA notification." >&2
+    notify_core_restart_needed || \
+      echo "PLCAssistant: could not create persistent notification either — restart Core manually." >&2
+  fi
+  return 0
+}
+
 integration_up_to_date() {
   [ -d "${INTEGRATION_DST}" ] || return 1
   python3 - "${INTEGRATION_SRC}" "${INTEGRATION_DST}" <<'PY'
@@ -117,7 +157,7 @@ install_lovelace_dashboard() {
   mkdir -p "${HA_CONFIG}/dashboards" || return 0
   dst_dash="${HA_CONFIG}/dashboards/plcassistant.yaml"
   # Install when missing. Refresh prior stock boards that lack the status card
-  # (SWD-135) or explicitly on dashboard_version 1/2 (SWD-137 offline help).
+  # (SWD-135) or explicitly on dashboard_version 1–3 (SWD-137/138 offline help).
   # Never clobber boards that look customized (no Start button) or that already
   # have status without an old version marker.
   if [ ! -f "${dst_dash}" ]; then
@@ -125,7 +165,7 @@ install_lovelace_dashboard() {
     echo "PLCAssistant: Lovelace dashboard template at ${dst_dash}"
   elif grep -q 'button.plcassistant_start' "${dst_dash}" 2>/dev/null \
     && { ! grep -q 'sensor.plcassistant_status' "${dst_dash}" 2>/dev/null \
-      || grep -qE 'plcassistant_dashboard_version:[[:space:]]*[12]([^0-9]|$)' "${dst_dash}" 2>/dev/null; }; then
+      || grep -qE 'plcassistant_dashboard_version:[[:space:]]*[123]([^0-9]|$)' "${dst_dash}" 2>/dev/null; }; then
     cp -a "${src_dash}" "${dst_dash}" || true
     echo "PLCAssistant: refreshed stock Lovelace dashboard at ${dst_dash}"
   fi
@@ -146,6 +186,7 @@ install_thin_integration() {
     if dst_has_legacy_hass_components; then
       migrate_legacy_mqtt_subscribe || return 1
       date -u +"%Y-%m-%dT%H:%M:%SZ" > "${DATA_DIR}/integration_needs_core_restart" || true
+      request_core_restart_after_sync || true
     fi
     return 0
   fi
@@ -216,6 +257,7 @@ install_thin_integration() {
     echo "PLCAssistant: warning: could not write ${INTEGRATION_STAMP}" >&2
   date -u +"%Y-%m-%dT%H:%M:%SZ" > "${DATA_DIR}/integration_needs_core_restart" || \
     echo "PLCAssistant: warning: could not write integration_needs_core_restart" >&2
+  request_core_restart_after_sync || true
   return 0
 }
 

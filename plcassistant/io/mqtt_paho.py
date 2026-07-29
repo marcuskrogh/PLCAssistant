@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import Callable
 from typing import Any
 
@@ -23,7 +24,7 @@ class PahoMqttBus:
         *,
         username: str | None = None,
         password: str | None = None,
-        client_id: str = "plcassistant-app",
+        client_id: str | None = None,
         will_topic: str | None = None,
         will_payload: bytes | None = None,
     ) -> None:
@@ -32,7 +33,10 @@ class PahoMqttBus:
                 "paho-mqtt is required for the live App MQTT bus; "
                 "pip install paho-mqtt (App image already does)"
             )
-        self._client = mqtt.Client(client_id=client_id, protocol=mqtt.MQTTv311)
+        # Unique per process so App restart does not kick the prior session and
+        # fire a retained LWT offline that races the new attach (SWD-138).
+        cid = client_id or f"plcassistant-app-{uuid.uuid4().hex[:8]}"
+        self._client = mqtt.Client(client_id=cid, protocol=mqtt.MQTTv311)
         if username:
             self._client.username_pw_set(username, password or None)
         # Soft-PLC disconnect → retained offline on the HMI status topic (SWD-136).

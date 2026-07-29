@@ -8,7 +8,7 @@ When the PLCAssistant integration loads, it:
 
 1. Installs this YAML under `/config/dashboards/plcassistant.yaml` if missing
    (or refreshes a **stock** board that still lacks the status card, or is
-   explicitly on `plcassistant_dashboard_version` 1/2)
+   explicitly on `plcassistant_dashboard_version` 1–3)
 2. Registers a Lovelace panel **PLCAssistant** at `/plcassistant-skid` with
    **Show in sidebar** enabled
 
@@ -18,7 +18,7 @@ open **PLCAssistant** in the sidebar. No copy/paste step.
 You can still create additional Lovelace dashboards in HA and reuse these
 entities for your own SCADA boards. Fully custom YAML under
 `dashboards/plcassistant.yaml` is left alone; stock boards missing
-`sensor.plcassistant_status`, or still marked version 1/2, are refreshed on
+`sensor.plcassistant_status`, or still marked version 1–3, are refreshed on
 update so the status card and offline help appear.
 
 ## Status (top of board)
