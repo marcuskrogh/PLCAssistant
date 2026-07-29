@@ -181,6 +181,7 @@ def test_integration_wires_plant_simulator_lifecycle() -> None:
     unload_src = ast.unparse(unload)
     assert "HassPlantSimulator" in setup_src
     assert "async_start" in setup_src
+    assert "status_payload" in setup_src
     assert "plant_simulator" in unload_src
     assert "async_stop" in unload_src
 

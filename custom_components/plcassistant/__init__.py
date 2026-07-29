@@ -311,7 +311,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         from .dynamics.simulator import HassPlantSimulator
 
         plant_sim = HassPlantSimulator(hass, instance_id)
-        hass.data[DOMAIN][entry.entry_id]["plant_simulator"] = plant_sim
+        store = hass.data[DOMAIN][entry.entry_id]
+        store["plant_simulator"] = plant_sim
+        # Retained status/CMD may have arrived on subscribe before the simulator
+        # existed — hydrate so we do not wait for the next Soft-PLC heartbeat.
+        cached_status = store.get("status_payload")
+        if cached_status is not None:
+            plant_sim.apply_status(cached_status)
+        cached_cmd = (store.get("out_values") or {}).get("CMD_SPEED")
+        if cached_cmd is not None:
+            plant_sim.apply_cmd_from_payload(cached_cmd)
         await plant_sim.async_start()
 
     async def _poll_file_bridge() -> None:
