@@ -54,10 +54,12 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-135 | Bug | [Iterate] Lovelace status indicator + Start wiring (no visible process state) | Done | Relates SWD-134 | docs/ITERATE.md | Done — shipped PR #49 |
 | SWD-136 | Bug | [Iterate] Soft-PLC HMI stuck offline — Start does nothing (status race) | Done | Relates SWD-135 | docs/ITERATE.md | Done — shipped PR #51 |
 | SWD-137 | Bug | [Iterate] Soft-PLC still offline after 0.1.14 — MQTT never attaches without options | Done | Relates SWD-136 | docs/ITERATE.md | Done — shipped PR #52 |
-| SWD-138 | Bug | [Iterate] Soft-PLC attached but HMI still offline — Core never restarts after integration sync | In Review | Relates SWD-137 | docs/ITERATE.md | PR #53; Next `/review-fix SWD-138` |
+| SWD-138 | Bug | [Iterate] Soft-PLC attached but HMI still offline — Core never restarts after integration sync | Done | Relates SWD-137 | docs/ITERATE.md | Done — shipped PR #53 |
 
 ## Log
 
+- 2026-07-29 — Shipped SWD-138 via PR #53; App 0.1.16 auto Core restart after thin-integration sync. Bug Done.
+- 2026-07-29 — review-fix SWD-138 CLEAN after 1 iteration (0B+0SF+1N packaging wording fixed); Next `/ship SWD-138`.
 - 2026-07-29 — Iterate SWD-138: PR #53 opened (App 0.1.16); auto Core restart after thin-integration sync; Task → In Review.
 - 2026-07-29 — Iterate SWD-138: Soft-PLC attached (0.1.15 log) but HMI offline; auto Core restart after thin-integration sync; App 0.1.16.
 - 2026-07-29 — Shipped SWD-137 via PR #52; App 0.1.15 empty-options MQTT attach + retain HMI OUT. Bug Done.
