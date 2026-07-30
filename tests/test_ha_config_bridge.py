@@ -277,16 +277,17 @@ def test_file_plant_malformed_value_demotes_bad(
     assert image.get_quality("LT_TANK").reason is ReasonCode.FAULT
 
 
-def test_file_plant_stale_demotes_unavailable(
+def test_file_plant_stale_holds_last_good_no_los(
     tmp_path: Path, monkeypatch
 ) -> None:
-    """SWD-171 review: stale plant file PVs demote; SP_LEVEL_REQ stays retained."""
+    """SWD-173: stale plant file skips apply (hold last good) — no LOS latch."""
     import time
 
     from plcassistant.app.runtime import MqttScanLoop, declare_default_image
-    from plcassistant.io.ha_config_bridge import PLANT_FILE_STALE_S, write_input_tags
+    from plcassistant.io.ha_config_bridge import PLANT_FILE_STALE_S, write_cmd, write_input_tags
     from plcassistant.io.mqtt_bridge import InMemoryMqttBus, MqttIoBridge
-    from plcassistant.io.quality import QualityStatus, ReasonCode
+    from plcassistant.io.quality import QualityStatus
+    from plcassistant.wedge.safety import Mode
 
     monkeypatch.setenv("PLCASSISTANT_HA_CONFIG", str(tmp_path))
     monkeypatch.setattr(MqttScanLoop, "FILE_BRIDGE_PERIOD_S", 0.0)
@@ -295,18 +296,155 @@ def test_file_plant_stale_demotes_unavailable(
     bridge = MqttIoBridge(bus, instance_id="default")
     loop = MqttScanLoop(bridge, image, period_s=0.05)
     bridge.start()
-    stale_ts = time.time() - (PLANT_FILE_STALE_S + 1.0)
     assert write_input_tags(
         {
-            "LT_TANK": {"value": 0.33, "status": "GOOD", "ts": stale_ts},
+            "LT_TANK": 0.22,
+            "LT_RES": 0.18,
+            "FT_INLET": 1.0,
+            "SP_LEVEL_REQ": 0.25,
+        },
+        root=tmp_path,
+    )
+    assert write_cmd("start", root=tmp_path)
+    for _ in range(5):
+        loop.scan_once()
+    assert loop.logic.skid.last.mode is Mode.RUNNING
+    assert loop.logic.skid.last.trip_active is False
+
+    stale_ts = time.time() - (PLANT_FILE_STALE_S + 2.0)
+    assert write_input_tags(
+        {
+            "LT_TANK": {"value": 0.99, "status": "GOOD", "ts": stale_ts},
+            "LT_RES": {"value": 0.01, "status": "GOOD", "ts": stale_ts},
+            "FT_INLET": {"value": 9.0, "status": "GOOD", "ts": stale_ts},
             "SP_LEVEL_REQ": {"value": 0.30, "status": "GOOD", "ts": stale_ts},
         },
         root=tmp_path,
     )
-    loop._apply_file_inputs()
+    for _ in range(5):
+        loop.scan_once()
+    snap = loop.logic.skid.last
+    assert snap.trip_active is False
+    assert snap.mode is Mode.RUNNING
+    # Stale plant values were skipped — last good retained.
+    assert float(image.get_value("LT_TANK")) == pytest.approx(0.22)
+    assert image.get_quality("LT_TANK").status is QualityStatus.GOOD
+    # Operator SP still applies (not subject to plant stale skip).
+    assert float(image.get_value("SP_LEVEL_REQ")) == pytest.approx(0.30)
+
+
+def test_file_plant_aged_explicit_bad_still_applies(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """SWD-173 review: aged explicit BAD/FAULT still applies (real LOS)."""
+    import time
+
+    from plcassistant.app.runtime import MqttScanLoop, declare_default_image
+    from plcassistant.io.ha_config_bridge import PLANT_FILE_STALE_S, write_input_tags
+    from plcassistant.io.mqtt_bridge import InMemoryMqttBus, MqttIoBridge
+    from plcassistant.io.quality import QualityStatus, ReasonCode
+    from plcassistant.wedge.safety import Mode
+
+    monkeypatch.setenv("PLCASSISTANT_HA_CONFIG", str(tmp_path))
+    monkeypatch.setattr(MqttScanLoop, "FILE_BRIDGE_PERIOD_S", 0.0)
+    bus = InMemoryMqttBus()
+    image = declare_default_image()
+    bridge = MqttIoBridge(bus, instance_id="default")
+    loop = MqttScanLoop(bridge, image, period_s=0.05)
+    bridge.start()
+    assert write_input_tags(
+        {
+            "LT_TANK": 0.22,
+            "LT_RES": 0.18,
+            "FT_INLET": 1.0,
+            "SP_LEVEL_REQ": 0.25,
+        },
+        root=tmp_path,
+    )
+    from plcassistant.io.ha_config_bridge import write_cmd
+
+    assert write_cmd("start", root=tmp_path)
+    for _ in range(5):
+        loop.scan_once()
+    assert loop.logic.skid.last.mode is Mode.RUNNING
+    assert loop.logic.skid.last.trip_active is False
+
+    stale_ts = time.time() - (PLANT_FILE_STALE_S + 2.0)
+    assert write_input_tags(
+        {
+            "LT_TANK": {
+                "value": None,
+                "status": "BAD",
+                "reason": "unavailable",
+                "ts": stale_ts,
+            },
+            "LT_RES": {"value": 0.18, "status": "GOOD", "ts": time.time()},
+            "FT_INLET": {"value": 1.0, "status": "GOOD", "ts": time.time()},
+        },
+        root=tmp_path,
+    )
+    for _ in range(5):
+        loop.scan_once()
     assert image.get_quality("LT_TANK").status is QualityStatus.BAD
     assert image.get_quality("LT_TANK").reason is ReasonCode.UNAVAILABLE
-    assert float(image.get_value("SP_LEVEL_REQ")) == pytest.approx(0.30)
+    assert loop.logic.skid.last.trip_active is True
+
+
+def test_settled_plant_file_age_does_not_block_reset(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """SWD-173 regression: after settle + aged file, Reset/Start still work."""
+    import time
+
+    from plcassistant.app.runtime import MqttScanLoop, declare_default_image
+    from plcassistant.io.ha_config_bridge import PLANT_FILE_STALE_S, write_cmd, write_input_tags
+    from plcassistant.io.mqtt_bridge import InMemoryMqttBus, MqttIoBridge
+    from plcassistant.wedge.safety import Mode
+
+    monkeypatch.setenv("PLCASSISTANT_HA_CONFIG", str(tmp_path))
+    monkeypatch.setattr(MqttScanLoop, "FILE_BRIDGE_PERIOD_S", 0.0)
+    bus = InMemoryMqttBus()
+    image = declare_default_image()
+    bridge = MqttIoBridge(bus, instance_id="default")
+    loop = MqttScanLoop(bridge, image, period_s=0.05)
+    bridge.start()
+    assert write_input_tags(
+        {
+            "LT_TANK": 0.15,
+            "LT_RES": 0.20,
+            "FT_INLET": 0.0,
+            "SP_LEVEL_REQ": 0.25,
+        },
+        root=tmp_path,
+    )
+    assert write_cmd("start", root=tmp_path)
+    for _ in range(5):
+        loop.scan_once()
+    assert loop.logic.skid.last.mode is Mode.RUNNING
+
+    stale_ts = time.time() - (PLANT_FILE_STALE_S + 2.0)
+    assert write_input_tags(
+        {
+            "LT_TANK": {"value": 0.15, "status": "GOOD", "ts": stale_ts},
+            "LT_RES": {"value": 0.20, "status": "GOOD", "ts": stale_ts},
+            "FT_INLET": {"value": 0.0, "status": "GOOD", "ts": stale_ts},
+        },
+        root=tmp_path,
+    )
+    for _ in range(3):
+        loop.scan_once()
+    assert loop.logic.skid.last.trip_active is False
+
+    assert write_cmd("stop", root=tmp_path)
+    loop.scan_once()
+    assert write_cmd("reset", root=tmp_path)
+    loop.scan_once()
+    assert loop.logic.skid.last.mode is Mode.STOP
+    assert loop.logic.skid.last.trip_active is False
+    assert write_cmd("start", root=tmp_path)
+    loop.scan_once()
+    assert loop.logic.skid.last.mode is Mode.RUNNING
+
 
 
 def test_concurrent_input_tag_merges_preserve_both(tmp_path: Path) -> None:

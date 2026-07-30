@@ -88,9 +88,14 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-169 | Bug | [Iterate] Integration dashboard plant level/flow values unavailable | Done | Relates SWD-146 | docs/ITERATE.md | Done — shipped PR #71 (App 0.1.28) |
 | SWD-170 | Bug | [Iterate] Operate plant PVs still unavailable after 0.1.28 BOX hydrate | Done | Relates SWD-169 | docs/ITERATE.md | Done — shipped PR #72 (App 0.1.29) |
 | SWD-171 | Bug | [Iterate] Tank level settles away from setpoint (Soft-PLC plant IN silent) | Done | Relates SWD-170 | docs/ITERATE.md | Done — shipped PR #73 (App 0.1.30) |
+| SWD-173 | Bug | [Iterate] Soft-PLC stuck TRIPPED after settle — stale plant file LOS | Done | Relates SWD-171 | docs/ITERATE.md | Done — shipped PR #74 (App 0.1.31) |
 
 ## Log
 
+- 2026-07-30 — Shipped SWD-173 via PR #74 (App 0.1.31); review-fix CLEAN after 3 iters; Task Done.
+- 2026-07-30 — review-fix SWD-173 CLEAN after 3 iterations (iter1: 2SF heartbeat/PyYAML; iter2: 1B+2SF aged-BAD/status-flip/tests; iter3: 0); closeout.
+- 2026-07-30 — Implement SWD-173: App 0.1.31; hold last-good on stale plant file + plant heartbeat; PR [#74](https://github.com/marcuskrogh/PLCAssistant/pull/74) → In Review. Next `/review-fix SWD-173`.
+- 2026-07-30 — Iterate SWD-173: Soft-PLC stuck TRIPPED after settle (stale plant file LOS from SWD-171); Relates SWD-171.
 - 2026-07-30 — Shipped SWD-171 via PR #73 (App 0.1.30); review-fix CLEAN after 2 iters; Task Done.
 - 2026-07-30 — review-fix SWD-171 CLEAN after 2 iterations (iter1: 4SF lock/stale/coerce/file-before-mqtt; iter2: 0); closeout.
 - 2026-07-30 — Implement SWD-171: App 0.1.30; plant IN file-bridge + settle regression + GitHub Actions CI; PR [#73](https://github.com/marcuskrogh/PLCAssistant/pull/73) → In Review. Next `/review-fix SWD-171`.

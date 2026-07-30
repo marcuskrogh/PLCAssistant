@@ -267,6 +267,96 @@ def test_mqtt_silent_file_bridge_closed_loop_settles(
     assert image.get_quality("LT_TANK").status is QualityStatus.GOOD
 
 
+def test_plant_heartbeat_republishes_settled_values() -> None:
+    """SWD-173: unchanged GOOD plant tags still refresh on per-tag heartbeat."""
+    import time
+
+    from dynamics.plant import PlantSimulator
+
+    published: list[str] = []
+
+    def publish(tag: str, payload: str) -> None:
+        published.append(tag)
+
+    plant = PlantSimulator.for_preset(publish, period_s=0.1)
+    plant.file_heartbeat_s = 0.5
+    plant.apply_status_payload({"state": "stopped", "scan_period_s": 0.1})
+    outs = dict(plant.model.outputs())
+    plant._publish_outputs(outs, force=True)
+    for tag, value in outs.items():
+        plant._last_publish[tag] = float(value)
+        plant._last_publish_mono[tag] = time.monotonic()
+    before = len(published)
+    plant._publish_outputs(outs, force=False)  # coalesce inside heartbeat window
+    assert len(published) == before
+    aged = time.monotonic() - 1.0
+    for tag in outs:
+        plant._last_publish_mono[tag] = aged
+    plant._publish_outputs(outs, force=False)  # heartbeat forces refresh
+    assert len(published) >= before + 3
+    assert set(published[before:]) >= {"LT_TANK", "LT_RES", "FT_INLET"}
+
+
+def test_plant_heartbeat_does_not_starve_static_tags() -> None:
+    """SWD-173 review: a busy PV must not prevent settled-tag heartbeats."""
+    import time
+
+    from dynamics.plant import PlantSimulator
+
+    published: list[str] = []
+
+    def publish(tag: str, payload: str) -> None:
+        published.append(tag)
+
+    plant = PlantSimulator.for_preset(publish, period_s=0.1)
+    plant.file_heartbeat_s = 0.5
+    plant.apply_status_payload({"state": "stopped", "scan_period_s": 0.1})
+    outs = {"LT_TANK": 0.20, "LT_RES": 0.15, "FT_INLET": 1.0}
+    plant._publish_outputs(outs, force=True)
+    now = time.monotonic()
+    for tag, value in outs.items():
+        plant._last_publish[tag] = float(value)
+        plant._last_publish_mono[tag] = now
+    # Age only level tags; keep FT "fresh" but changing each call.
+    plant._last_publish_mono["LT_TANK"] = now - 1.0
+    plant._last_publish_mono["LT_RES"] = now - 1.0
+    before = len(published)
+    mixed = {"LT_TANK": 0.20, "LT_RES": 0.15, "FT_INLET": 1.5}
+    plant._publish_outputs(mixed, force=False)
+    batch = published[before:]
+    assert "FT_INLET" in batch
+    assert "LT_TANK" in batch
+    assert "LT_RES" in batch
+
+
+def test_plant_status_transition_republishes_immediately() -> None:
+    """SWD-173 review: BAD→GOOD with unchanged PV must not wait for heartbeat."""
+    import json
+    import time
+
+    from dynamics.plant import PlantSimulator
+
+    published: list[tuple[str, dict]] = []
+
+    def publish(tag: str, payload: str) -> None:
+        published.append((tag, json.loads(payload)))
+
+    plant = PlantSimulator.for_preset(publish, period_s=0.1)
+    plant.file_heartbeat_s = 5.0
+    plant.apply_status_payload({"state": "stopped", "scan_period_s": 0.1})
+    outs = {"LT_TANK": 0.20, "LT_RES": 0.15, "FT_INLET": 0.0}
+    plant.force_quality("LT_TANK", "BAD", "LOS")
+    plant._publish_outputs(outs, force=False)
+    assert any(
+        t == "LT_TANK" and p.get("status") == "BAD" for t, p in published
+    )
+    plant.force_quality("LT_TANK", "GOOD")
+    before = len(published)
+    plant._publish_outputs(outs, force=False)
+    batch = published[before:]
+    assert any(t == "LT_TANK" and p.get("status") == "GOOD" for t, p in batch)
+
+
 def test_integration_wires_plant_simulator_lifecycle() -> None:
     init_text = (CC / "__init__.py").read_text(encoding="utf-8")
     assert "HassPlantSimulator" in init_text
