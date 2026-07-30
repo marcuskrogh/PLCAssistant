@@ -81,11 +81,15 @@ def _first_entry(hass: HomeAssistant) -> ConfigEntry | None:
 
 
 class DynamicsEditorView(HomeAssistantView):
-    """Serve the block-like dynamics editor SPA."""
+    """Serve the block-like dynamics editor SPA.
+
+    ``requires_auth`` is False so a Lovelace iframe can load the shell.
+    Mutating/data APIs stay authenticated; the SPA prefers ``parent.hass.callApi``.
+    """
 
     url = "/api/plcassistant/dynamics/ui"
     name = "api:plcassistant:dynamics:ui"
-    requires_auth = True
+    requires_auth = False
 
     async def get(self, request: web.Request) -> web.Response:
         try:
@@ -183,6 +187,8 @@ class DynamicsSaveView(HomeAssistantView):
             return _json_error("object body required")
         name = body.get("name") or (body.get("document") or {}).get("name")
         doc = body.get("document")
+        if not name or not str(name).strip():
+            return _json_error("name required")
         if not isinstance(doc, dict):
             return _json_error("document object required")
         root = _config_root(hass)
@@ -197,7 +203,7 @@ class DynamicsSaveView(HomeAssistantView):
             return _json_error(str(exc))
         except OSError as exc:
             return _json_error(f"save failed: {exc}", 500)
-        return web.json_response({"ok": True, "path": path, "name": str(name).lower()})
+        return web.json_response({"ok": True, "path": path, "name": str(name).strip().lower()})
 
 
 class DynamicsApplyView(HomeAssistantView):
@@ -239,16 +245,24 @@ class DynamicsApplyView(HomeAssistantView):
         entry = _first_entry(hass)
         if entry is None:
             return _json_error("no PLCAssistant config entry", 404)
+        preset_key = name.lower()
         new_options = {
             **dict(entry.options),
-            CONF_DYNAMICS_PRESET: name.lower(),
+            CONF_DYNAMICS_PRESET: preset_key,
             CONF_DYNAMICS_PARAMS: dict(entry.options.get(CONF_DYNAMICS_PARAMS) or {}),
         }
+        options_unchanged = (
+            str(entry.options.get(CONF_DYNAMICS_PRESET) or "") == preset_key
+            and dict(entry.options.get(CONF_DYNAMICS_PARAMS) or {})
+            == new_options[CONF_DYNAMICS_PARAMS]
+        )
         hass.config_entries.async_update_entry(entry, options=new_options)
-        # Update listener reloads; call reload explicitly for reliability.
-        await hass.config_entries.async_reload(entry.entry_id)
+        # Listener reloads only when options change; re-apply same preset must
+        # still rebuild the plant from the updated model document on disk.
+        if options_unchanged:
+            await hass.config_entries.async_reload(entry.entry_id)
         return web.json_response(
-            {"ok": True, "path": path, "preset": name.lower(), "reloaded": True}
+            {"ok": True, "path": path, "preset": preset_key, "reloaded": True}
         )
 
 

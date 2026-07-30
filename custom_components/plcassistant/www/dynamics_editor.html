@@ -187,10 +187,28 @@ function status(msg, kind) {
   el.className = kind || "";
 }
 
-async function api(path, opts) {
+async function api(path, opts = {}) {
+  // Prefer parent HA frontend auth when embedded in the Lovelace iframe.
+  const method = (opts.method || "GET").toUpperCase();
+  const callPath = "plcassistant/dynamics" + path;
+  const hass = (() => {
+    try {
+      return window.parent?.document?.querySelector("home-assistant")?.hass || null;
+    } catch (_) {
+      return null;
+    }
+  })();
+  if (hass && typeof hass.callApi === "function") {
+    const body = opts.body ? JSON.parse(opts.body) : undefined;
+    const data = await hass.callApi(method.toLowerCase(), callPath, body);
+    if (data && data.ok === false) {
+      throw new Error(data.error || "request failed");
+    }
+    return data;
+  }
   const res = await fetch(API + path, {
     credentials: "same-origin",
-    headers: { "Content-Type": "application/json", ...(opts && opts.headers || {}) },
+    headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
     ...opts,
   });
   const data = await res.json().catch(() => ({}));

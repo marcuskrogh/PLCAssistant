@@ -126,7 +126,7 @@ This walkthrough gets the bundled tank/reservoir skid mock running end-to-end, t
 6. **Validate** → **Save** → **Apply & reload**. The plant simulator rebuilds from model initials and the Dynamics preset sensor updates.
 7. Return to **Operate**, press **Start** again, and confirm motion still matches the composed model.
 
-Soft-PLC’s App Ingress editor is for **control programs** only — plant math stays in the integration Dynamics editor. Soft-PLC remains mock-unaware (`HeldProcess` + MQTT plant IN).
+Soft-PLC’s App Ingress editor is for **control programs** only — plant math stays in the integration Dynamics editor. Soft-PLC remains mock-unaware (`HeldProcess` + MQTT plant IN). The Dynamics tab iframe loads the editor shell; API calls use the Home Assistant session via the parent frontend (`hass.callApi`).
 
 ### D. Optional: Options flow / service
 

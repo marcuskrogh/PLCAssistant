@@ -101,3 +101,28 @@ def test_editor_and_api_packaging() -> None:
     assert "Toy example setup" in readme
     assert "Dynamics" in readme
     assert "0.1.25" in readme
+    assert "callApi" in readme or "hass.callApi" in readme
+
+
+def test_apply_reloads_when_options_unchanged() -> None:
+    """Re-applying the same preset must still rebuild the plant (source contract)."""
+    api = (CC / "dynamics" / "http_api.py").read_text(encoding="utf-8")
+    assert "options_unchanged" in api
+    assert "async_reload" in api
+    assert "requires_auth = False" in api  # editor shell for Lovelace iframe
+    html = (CC / "www" / "dynamics_editor.html").read_text(encoding="utf-8")
+    assert "callApi" in html
+
+
+def test_dual_tree_dynamics_editor_synced() -> None:
+    bundled = ROOT / "plc_assistant" / "custom_components" / "plcassistant"
+    for rel in (
+        "dynamics/http_api.py",
+        "dynamics/store.py",
+        "dynamics/registry.py",
+        "www/dynamics_editor.html",
+        "lovelace/plcassistant.yaml",
+    ):
+        left = (CC / rel).read_text(encoding="utf-8")
+        right = (bundled / rel).read_text(encoding="utf-8")
+        assert left == right, rel
