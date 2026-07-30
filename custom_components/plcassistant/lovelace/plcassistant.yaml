@@ -1,7 +1,7 @@
-# plcassistant_dashboard_version: 12
+# plcassistant_dashboard_version: 13
 title: PLCAssistant
 views:
-  - title: Skid
+  - title: Operate
     path: skid
     icon: mdi:cup-water
     cards:
@@ -21,7 +21,7 @@ views:
             name: Trip active
       - type: markdown
         content: |
-          **PLCAssistant** — Soft-PLC skid HMI. Soft-PLC must show **stopped** (not offline) before Start works. **Start ready** is On only while idle and healthy; it correctly shows Off while Mode is RUNNING (Start already succeeded). From App **0.1.24**, choose the plant **dynamics preset** under **Settings → Devices → PLCAssistant → Configure** (or call `plcassistant.set_dynamics_preset`). Defaults to code `skid`; `skid_composed` is the unit-op rebuild. Soft-PLC stays mock-unaware (`HeldProcess`). Plant Numbers display live motion (nudges allowed). Update App, wait for Core reload, then reopen this board. Confirm Mosquitto + matching `instance_id` if still offline. Change the **Level setpoint**, press **Start**, then watch levels, inlet flow, and pump speed.
+          **PLCAssistant** — Soft-PLC skid HMI (**Operate**). Soft-PLC must show **stopped** (not offline) before Start works. Open the **Dynamics** tab to edit unit-op / ODE plant blocks and Soft-PLC tag maps (App **0.1.25+**). Soft-PLC stays mock-unaware (`HeldProcess`). Plant Numbers display live motion (nudges allowed). Update App, wait for Core reload, then reopen this board. Confirm Mosquitto + matching `instance_id` if still offline. Change the **Level setpoint**, press **Start**, then watch levels, inlet flow, and pump speed.
       - type: entities
         title: Operate
         show_header_toggle: false
@@ -68,3 +68,11 @@ views:
             name: Speed
           - entity: sensor.plcassistant_sp_flow
             name: Flow SP
+  - title: Dynamics
+    path: dynamics
+    icon: mdi:graph-outline
+    panel: true
+    cards:
+      - type: iframe
+        url: /api/plcassistant/dynamics/ui
+        aspect_ratio: 100%

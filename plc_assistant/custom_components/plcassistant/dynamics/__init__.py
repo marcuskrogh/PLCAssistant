@@ -12,12 +12,14 @@ from .options import (
     validate_preset,
 )
 from .plant import PlantSimulator
-from .registry import get_preset, list_presets
+from .registry import add_model_dir, clear_extra_model_dirs, get_preset, list_presets
 from .skid import PRESETS, SKID_SPEC, SkidModel
+from .store import OP_UI_META, catalog_payload, validate_document
 
 __all__ = [
     "DEFAULT_DYNAMICS_PRESET",
     "OP_CATALOG",
+    "OP_UI_META",
     "ExpressionError",
     "FixedStepRunner",
     "ModelSpec",
@@ -26,6 +28,9 @@ __all__ = [
     "SKID_SPEC",
     "SkidModel",
     "SpecModel",
+    "add_model_dir",
+    "catalog_payload",
+    "clear_extra_model_dirs",
     "compile_expr",
     "get_preset",
     "list_presets",
@@ -35,5 +40,6 @@ __all__ = [
     "parse_model_document",
     "parse_scan_period_s",
     "resolve_dynamics_options",
+    "validate_document",
     "validate_preset",
 ]
