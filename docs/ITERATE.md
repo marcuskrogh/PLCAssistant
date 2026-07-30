@@ -1,41 +1,26 @@
 # Iterate: Sidebar dynamics block editor + toy setup guide (SWD-166)
 
+**Done** — App **0.1.25**; shipped PR [#68](https://github.com/marcuskrogh/PLCAssistant/pull/68)
+
 ## Prior work
 - Task: [SWD-143](https://marcusknielsen.atlassian.net/browse/SWD-143)
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/66 (App 0.1.24)
-- Spec context: `docs/PLAN.md` (SWD-143) deferred full unit-op graph UI
 
-## Problem
-Options flow + `set_dynamics_preset` is not a usable configuration surface. Operators need a **proper HA sidebar UI** with a **block-like editor** to add unit-op / ODE blocks and associate Soft-PLC tags with block variables. The Lovelace Operate HMI can share the same sidebar product. README lacks a clear end-to-end **toy example setup guide**.
+## Shipped
+1. Lovelace v13 sidebar: **Operate** + **Dynamics** (`iframe` → `/api/plcassistant/dynamics/ui`)
+2. Block editor SPA: add/remove `tank` / `pump` / `orifice` / `lag` / `custom_ode`; bind tags ↔ variables; Soft-PLC output map
+3. HTTP API + model store under `config/plcassistant/models/`; Validate / Save / Apply → plant reload
+4. Registry extra model dirs; Soft-PLC stays mock-unaware
+5. README **Toy example setup** guide
+6. review-fix CLEAN after 1 iter (apply reload + iframe `callApi` auth + dual-tree sync)
 
-## Clarifications
-- Soft-PLC App Ingress remains the Soft-PLC **program** editor (not plant math).
-- Plant dynamics editor lives in the **thin integration** / HA sidebar.
-- Apply = validate + persist model document + select preset + reload plant (existing ownership).
-
-## Acceptance criteria
-1. PLCAssistant sidebar includes **Operate** (existing skid HMI) and **Dynamics** (block editor) views.
-2. Block editor supports add/remove of `tank` / `pump` / `orifice` / `lag` / `custom_ode`; edit bind maps (variables ↔ signals) and params/ODE expressions; edit Soft-PLC **output tag** map.
-3. Validate / Save / Apply persist under `config/plcassistant/models/` and reload the plant simulator; Soft-PLC stays mock-unaware.
-4. README has a dedicated **Toy example setup** guide (install → mock mode → Operate → Dynamics → Start).
-5. App + integration version bumped (**0.1.25**); dual trees synced; automated tests for store/API contracts + dashboard.
-
-## Out of scope
-- Soft-PLC program canvas changes
-- Mid-scan live graph rewiring without apply/reload
-- Full chem-eng catalog beyond existing unit ops
-- Field I/O / mock-off commissioning
-
-## Work packages
-1. Model store + HTTP API (catalog/get/validate/save/apply) + registry extra model dirs
-2. Dynamics block editor UI (static SPA) + Lovelace Dynamics view
-3. README toy guide + version/docs/tests
+## Operator note
+Update App to **0.1.25+**. Open **PLCAssistant → Dynamics** to edit/apply models. Options flow / `set_dynamics_preset` still work for preset selection.
 
 ## Tracker
 - Task: [SWD-166](https://marcusknielsen.atlassian.net/browse/SWD-166)
 - Relates: [SWD-143](https://marcusknielsen.atlassian.net/browse/SWD-143)
 - Branch: `cursor/swd-166-dynamics-sidebar-editor-33f4`
-- Implement: App **0.1.25**
 
 ## Next
-`/review-fix SWD-166`
+Done — phase closed.
