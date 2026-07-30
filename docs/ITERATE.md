@@ -1,22 +1,21 @@
 # Iterate: Operate plant PVs still unavailable after 0.1.28
 
+**Done** — App **0.1.29**; shipped PR [#72](https://github.com/marcuskrogh/PLCAssistant/pull/72)
+
 ## Prior work
 - Task: [SWD-169](https://marcusknielsen.atlassian.net/browse/SWD-169) — BOX mode + plant Number hydrate/bus
 - PR: [#71](https://github.com/marcuskrogh/PLCAssistant/pull/71) (merged, App **0.1.28**)
 - Spec context: prior `docs/ITERATE.md` (SWD-169), `docs/PLAN.md` (SWD-146), Lovelace Operate board
 
 ## Problem
-After App **0.1.28**, the Lovelace **Operate** board still shows blank / unavailable values for **Tank level**, **Inlet flow**, and related plant rows (Reservoir blank in the same card; operator report also flags **flow set point**). Soft-PLC OUT sensors (**Pump speed command**, **Active level SP**, **Active flow SP**) continue to render numeric values.
-
-SWD-169 assumed blank grey tracks were Number AUTO/slider rendering and fixed BOX mode + simulator hydrate. Post-ship evidence shows plant rows remain unavailable while the sensor-based Soft-PLC rows work — pointing at:
-1. Lovelace Process still bound to plant **Number** entity IDs that can be orphaned / unavailable after registry churn
-2. Numbers remaining a fragile HMI display surface vs the proven OUT **Sensor** pattern
+After App **0.1.28**, the Lovelace **Operate** board still showed blank / unavailable values for **Tank level**, **Inlet flow**, and related plant rows while Soft-PLC OUT sensors rendered correctly. SWD-169 assumed Number AUTO/slider rendering; post-ship evidence pointed at orphaned Number entity_ids and Numbers as a fragile HMI display surface vs Sensors.
 
 ## Clarifications
 - Soft-PLC stays mock-unaware; MQTT IN remains process↔PLC transport.
-- Process card should **display** plant PVs as Sensors (same hydrate/cache pattern as OUT).
-- Plant Numbers remain for operator nudges; they are not the primary Operate Process display.
-- Active flow SP (`sensor.plcassistant_sp_flow`) stays on the Soft-PLC OUT path (already readable when Soft-PLC is attached).
+- Process card **displays** plant PVs as Sensors (same hydrate/cache pattern as OUT).
+- Plant Numbers remain for operator nudges.
+- Active flow SP (`sensor.plcassistant_sp_flow`) stays on the Soft-PLC OUT path.
+- Request SP (`SP_LEVEL_REQ`) keeps `{entry_id}_{tag}_req` unique_ids so Level setpoint does not orphan.
 
 ## Acceptance criteria
 - [x] Operate **Process (IN — live simulator)** shows numeric Tank level, Reservoir level, and Inlet flow via plant IN **sensors**
@@ -33,11 +32,12 @@ SWD-169 assumed blank grey tracks were Number AUTO/slider rendering and fixed BO
 - Writable flow setpoint request (cascade still owns `SP_FLOW`)
 - Field (non-mock) I/O commissioning
 
-## Work packages
-1. Plant IN sensors + `in_values` cache / bus hydrate
-2. Lovelace Process + history → sensors; dashboard version bump
-3. Registry orphan cleanup + stable unique_ids
-4. Version **0.1.29**, dual-tree sync, regression tests
+## Shipped
+1. Plant IN Sensors + `in_values` cache / bus hydrate
+2. Lovelace Process + history → sensors; dashboard version **15**
+3. Registry orphan cleanup (unavailable-only) + stable plant unique_ids
+4. review-fix CLEAN after 2 iters (iter1: SP_LEVEL_REQ unique_id / purge / run.sh / tests; iter2: 0)
+5. App **0.1.29**
 
 ## Tracker
 - Task: [SWD-170](https://marcusknielsen.atlassian.net/browse/SWD-170)
@@ -46,4 +46,4 @@ SWD-169 assumed blank grey tracks were Number AUTO/slider rendering and fixed BO
 - PR: [#72](https://github.com/marcuskrogh/PLCAssistant/pull/72)
 
 ## Next
-`/review-fix SWD-170` — Review and auto-fix until clean
+Done — phase closed.
