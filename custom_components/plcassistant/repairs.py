@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from homeassistant import data_entry_flow
-from homeassistant.components.repairs import RepairsFlow
-from homeassistant.core import HomeAssistant
 import voluptuous as vol
 
+from homeassistant import data_entry_flow
+from homeassistant.components.repairs import ConfirmRepairFlow, RepairsFlow
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import issue_registry as ir
+
+from .const import DOMAIN
 from .version_sync import ISSUE_RESTART_REQUIRED
 
 
@@ -21,6 +24,7 @@ class RestartRequiredRepairFlow(RepairsFlow):
     async def async_step_confirm(
         self, user_input: dict[str, str] | None = None
     ) -> data_entry_flow.FlowResult:
+        placeholders = self._issue_placeholders()
         if user_input is not None:
             await self.hass.services.async_call("homeassistant", "restart")
             return self.async_create_entry(title="", data={})
@@ -28,7 +32,15 @@ class RestartRequiredRepairFlow(RepairsFlow):
         return self.async_show_form(
             step_id="confirm",
             data_schema=vol.Schema({}),
+            description_placeholders=placeholders,
         )
+
+    def _issue_placeholders(self) -> dict[str, str]:
+        """Copy translation placeholders from the issue registry when present."""
+        issue = ir.async_get(self.hass).async_get_issue(DOMAIN, self.issue_id)
+        if issue is None or not issue.translation_placeholders:
+            return {"loaded": "?", "disk": "?"}
+        return {k: str(v) for k, v in issue.translation_placeholders.items()}
 
 
 async def async_create_fix_flow(
@@ -40,4 +52,4 @@ async def async_create_fix_flow(
     del hass, data  # Required by HA repairs protocol; unused here.
     if issue_id == ISSUE_RESTART_REQUIRED:
         return RestartRequiredRepairFlow()
-    return RestartRequiredRepairFlow()
+    return ConfirmRepairFlow()

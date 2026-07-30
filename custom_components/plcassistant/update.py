@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import logging
 from datetime import timedelta
-from typing import Any
 
 from homeassistant.components.update import UpdateEntity
 from homeassistant.config_entries import ConfigEntry
@@ -79,12 +78,13 @@ class PlcAssistantRestartUpdateEntity(UpdateEntity):
     """Shows Restart required when synced files are newer than loaded code."""
 
     _attr_has_entity_name = True
-    _attr_name = "PLCAssistant"
+    _attr_name = None
     _attr_title = "PLCAssistant"
     _attr_icon = "mdi:memory"
     _attr_should_poll = True
     _attr_supported_features = 0
     _attr_auto_update = False
+    _attr_suggested_object_id = "plcassistant"
 
     def __init__(self, entry: ConfigEntry) -> None:
         self._entry = entry
@@ -92,16 +92,20 @@ class PlcAssistantRestartUpdateEntity(UpdateEntity):
         self._attr_installed_version = LOADED_VERSION
         self._attr_latest_version = LOADED_VERSION
         self._attr_release_summary = None
+        self._last_disk_ok = True
 
     async def async_update(self) -> None:
         """Refresh disk version and sync Updates + Repairs UX."""
         loaded = LOADED_VERSION
         try:
             on_disk = await self.hass.async_add_executor_job(disk_version)
-        except (OSError, ValueError, TypeError) as err:
+        except (OSError, ValueError, TypeError, AttributeError) as err:
             _LOGGER.debug("PLCAssistant: could not read disk version: %s", err)
-            on_disk = loaded
+            # Do not clear a pending restart alert on a transient/corrupt read.
+            self._last_disk_ok = False
+            return
 
+        self._last_disk_ok = True
         needs = on_disk != loaded
         self._attr_installed_version = loaded
         self._attr_latest_version = on_disk if needs else loaded
@@ -114,31 +118,6 @@ class PlcAssistantRestartUpdateEntity(UpdateEntity):
             on_disk=on_disk,
         )
 
-    async def async_added_to_hass(self) -> None:
-        await super().async_added_to_hass()
-        # Immediate sync so the alert appears without waiting for first poll.
-        await self.async_update()
-        self.async_write_ha_state()
-
-    @property
-    def entity_registry_enabled_default(self) -> bool:
-        return True
-
     def version_is_newer(self, latest_version: str, installed_version: str) -> bool:
         """Any disk≠loaded mismatch means a restart is pending."""
         return latest_version != installed_version
-
-
-# Re-export helpers used by tests / repairs without importing HA UpdateEntity.
-def restart_pending_snapshot() -> dict[str, Any]:
-    """Pure snapshot for tests (no Home Assistant)."""
-    from .version_sync import pending_core_restart, pending_versions
-
-    needs = pending_core_restart()
-    loaded, on_disk = pending_versions()
-    return {
-        "needs_restart": needs,
-        "loaded": loaded,
-        "disk": on_disk,
-        "release_summary": RESTART_REQUIRED_SUMMARY if needs else None,
-    }

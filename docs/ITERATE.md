@@ -11,6 +11,7 @@ App update detection works (Settings → check for updates shows PLCAssistant). 
 ## Clarifications
 - Keep existing auto Core restart (SWD-138); add visible pending-restart UX when Core has not yet picked up the synced files.
 - Signal = on-disk `manifest.json` version ≠ version loaded into memory at import time (HACS-equivalent pending restart).
+- The Update entity ships in the thin integration, so the first upgrade *to* 0.1.27 still relies on auto/manual Core restart; the card appears on later syncs once 0.1.27+ is already loaded.
 
 ## Acceptance criteria
 - [ ] Thin integration registers an `update` entity for PLCAssistant.

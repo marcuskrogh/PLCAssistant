@@ -29,6 +29,8 @@ def read_manifest_version(manifest_path: Path | None = None) -> str:
     """Return the ``version`` field from a manifest.json path."""
     path = manifest_path if manifest_path is not None else _MANIFEST_PATH
     data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError(f"manifest must be a JSON object: {path}")
     version = data.get("version")
     if not isinstance(version, str) or not version.strip():
         raise ValueError(f"manifest missing version: {path}")
@@ -49,7 +51,7 @@ def pending_core_restart(
     loaded = LOADED_VERSION if loaded_version is None else loaded_version
     try:
         on_disk = disk_version(manifest_path)
-    except (OSError, ValueError, json.JSONDecodeError, TypeError):
+    except (OSError, ValueError, json.JSONDecodeError, TypeError, AttributeError):
         return False
     return on_disk != loaded
 
@@ -67,7 +69,7 @@ def pending_versions(
 def _init_loaded_version() -> str:
     try:
         return read_manifest_version()
-    except (OSError, ValueError, json.JSONDecodeError, TypeError):
+    except (OSError, ValueError, json.JSONDecodeError, TypeError, AttributeError):
         return "0.0.0"
 
 

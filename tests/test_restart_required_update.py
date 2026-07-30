@@ -44,6 +44,26 @@ def test_pending_restart_when_disk_version_differs(tmp_path):
     assert on_disk == "9.9.9"
 
 
+def test_corrupt_manifest_shapes_raise_or_pending_false(tmp_path):
+    mod = _load_version_sync()
+    bad_list = tmp_path / "list.json"
+    bad_list.write_text("[]", encoding="utf-8")
+    try:
+        mod.read_manifest_version(bad_list)
+        raised = False
+    except ValueError:
+        raised = True
+    assert raised
+    assert mod.pending_core_restart(loaded_version="0.1.0", manifest_path=bad_list) is False
+
+    missing = tmp_path / "missing.json"
+    assert mod.pending_core_restart(loaded_version="0.1.0", manifest_path=missing) is False
+
+    blank = tmp_path / "blank.json"
+    blank.write_text(json.dumps({"version": "  "}), encoding="utf-8")
+    assert mod.pending_core_restart(loaded_version="0.1.0", manifest_path=blank) is False
+
+
 def test_restart_required_summary_is_hacs_style_alert():
     mod = _load_version_sync()
     assert "ha-alert" in mod.RESTART_REQUIRED_SUMMARY
@@ -60,9 +80,13 @@ def test_update_platform_wiring():
     assert "async_sync_restart_required_issue" in update_text
     assert "async_create_issue" in update_text
     assert "async_delete_issue" in update_text
+    assert "Do not clear a pending restart alert" in update_text
+    assert "restart_pending_snapshot" not in update_text
     repairs = (CC / "repairs.py").read_text(encoding="utf-8")
     assert "RestartRequiredRepairFlow" in repairs
     assert 'async_call("homeassistant", "restart")' in repairs
+    assert "description_placeholders" in repairs
+    assert "ConfirmRepairFlow" in repairs
     strings = json.loads((CC / "strings.json").read_text(encoding="utf-8"))
     assert "restart_required" in strings["issues"]
     assert "{loaded}" in strings["issues"]["restart_required"]["description"]
@@ -74,3 +98,4 @@ def test_updates_doc_mentions_restart_required_ui():
     assert "Restart of Home Assistant required" in text
     assert "0.1.27" in text
     assert "Settings → System → Updates" in text or "System → Updates" in text
+    assert "first upgrade" in text.lower() or "later App sync" in text
