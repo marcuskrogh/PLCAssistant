@@ -89,6 +89,7 @@
 - Prior: [SWD-146](https://marcusknielsen.atlassian.net/browse/SWD-146) Done (App 0.1.22)
 - Follow-on UI: [SWD-143](https://marcusknielsen.atlassian.net/browse/SWD-143)
 - Branch: `cursor/swd-144-unit-ops-define-33f4`
+- Define PR: https://github.com/marcuskrogh/PLCAssistant/pull/64
 
 ## Next
 `/implement SWD-144` — after define approval of this plan
