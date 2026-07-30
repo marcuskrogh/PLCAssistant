@@ -106,7 +106,7 @@ This walkthrough gets the bundled tank/reservoir skid mock running end-to-end, t
 ### A. Install (once)
 
 1. Install **Mosquitto**, configure HA **MQTT**, add the PLCAssistant App repo (`#main`), **Install** / **Start** the App (see [Installation](#installation-home-assistant-os) above).
-2. Wait for App **Started** and a Core restart after thin-integration sync (App **0.1.25+** auto-requests Core restart after sync).
+2. Wait for App **Started** and a Core restart after thin-integration sync (App **0.1.26+** auto-requests Core restart after sync).
 3. **Settings → Devices & services → Add integration → PLCAssistant** with matching `instance_id` and **mock mode** enabled.
 
 ### B. Operate the skid HMI
@@ -116,15 +116,16 @@ This walkthrough gets the bundled tank/reservoir skid mock running end-to-end, t
 3. Confirm **Dynamics preset** reads `skid` (code default) or the last applied model.
 4. Set **Level setpoint**, press **Start**. Tank / reservoir / inlet flow Numbers should move; Soft-PLC Mode becomes **RUNNING**.
 
-### C. Edit plant dynamics (unit-op / ODE blocks)
+### C. Edit plant dynamics (state & measurement equations)
 
 1. In the same sidebar board, open the **Dynamics** tab.
 2. The block editor loads the `skid_composed` toy document (seeded under `/config/plcassistant/models/`).
-3. Add blocks from the left palette (`tank`, `pump`, `orifice`, `lag`, `custom_ode`).
-4. Select a block to edit **binds** (port → signal/state name) and **params**. For `custom_ode`, edit the JSON map of `state → d(state)/dt` expressions.
-5. Under **Soft-PLC tags**, map plant IN tags (e.g. `LT_TANK` → `h_tank`) so the HMI Numbers stay wired.
-6. **Validate** → **Save** → **Apply & reload**. The plant simulator rebuilds from model initials and the Dynamics preset sensor updates.
-7. Return to **Operate**, press **Start** again, and confirm motion still matches the composed model.
+3. Add blocks from the left palette (`tank`, `pump`, `orifice`, `lag`, `custom_ode`). Predefined blocks show their underlying dynamical equations in the inspector.
+4. Select a **Custom ODE** block to enter **state equations one row at a time** (`state` + `d(state)/dt` expression). Optionally add **algebraic** rows for non-integrated signals.
+5. Under **Measurement equations**, map Soft-PLC IN tags one row at a time (`TAG = expression` over state / inputs / params) — distinct from the ODEs.
+6. Edit **Model I/O** (inputs, global params, initial state) as needed.
+7. **Validate** → **Save** → **Apply & reload**. The plant simulator rebuilds from model initials and the Dynamics preset sensor updates.
+8. Return to **Operate**, press **Start** again, and confirm motion still matches the composed model.
 
 Soft-PLC’s App Ingress editor is for **control programs** only — plant math stays in the integration Dynamics editor. Soft-PLC remains mock-unaware (`HeldProcess` + MQTT plant IN). The Dynamics tab iframe loads the editor shell; API calls use the Home Assistant session via the parent frontend (`hass.callApi`).
 
@@ -212,10 +213,10 @@ If the Lovelace board shows Soft-PLC **offline**, Mode **STOP**, Start ready **O
 1. Confirm **Mosquitto** is running and HA’s **MQTT** integration is connected to that broker.
 2. Confirm **PLCAssistant** App is **Started**. Soft-PLC and the thin integration must share the same `instance_id` (default `default`).
 3. Open the App log and look for `Soft-PLC MQTT connecting` / `Soft-PLC MQTT scan attached`. Connect failures usually mean Mosquitto is down or App MQTT username/password do not match the broker.
-4. **Update** the App to **0.1.25+**. From **0.1.16**, App Start that syncs the thin integration **requests a Core restart** automatically (opt out with `PLCASSISTANT_AUTO_CORE_RESTART=0`). From **0.1.17**, Soft-PLC also writes `config/plcassistant/runtime.json` and the HMI polls it when MQTT is silent. From **0.1.18**, that file bridge also mirrors active setpoints and reservoir level. From **0.1.19**, Level setpoint requests also write `config/plcassistant/inputs.json` so Active level SP tracks the HMI when MQTT is silent. From **0.1.21**, Soft-PLC no longer owns plant physics — plant tags are MQTT **IN**, and MQTT status includes `scan_period_s`. From **0.1.22**, the thin integration runs the **skid plant simulator** and publishes live tank/reservoir/flow IN. From **0.1.23**, the simulator also supports **unit-op / custom-ODE model documents**. From **0.1.24**, presets are selectable via Options / `set_dynamics_preset`. From **0.1.25**, use the sidebar **Dynamics** tab for the block editor.
+4. **Update** the App to **0.1.26+**. From **0.1.16**, App Start that syncs the thin integration **requests a Core restart** automatically (opt out with `PLCASSISTANT_AUTO_CORE_RESTART=0`). From **0.1.17**, Soft-PLC also writes `config/plcassistant/runtime.json` and the HMI polls it when MQTT is silent. From **0.1.18**, that file bridge also mirrors active setpoints and reservoir level. From **0.1.19**, Level setpoint requests also write `config/plcassistant/inputs.json` so Active level SP tracks the HMI when MQTT is silent. From **0.1.21**, Soft-PLC no longer owns plant physics — plant tags are MQTT **IN**, and MQTT status includes `scan_period_s`. From **0.1.22**, the thin integration runs the **skid plant simulator** and publishes live tank/reservoir/flow IN. From **0.1.23**, the simulator also supports **unit-op / custom-ODE model documents**. From **0.1.24**, presets are selectable via Options / `set_dynamics_preset`. From **0.1.25**, use the sidebar **Dynamics** tab for the block editor. From **0.1.26**, enter **state equations** and **measurement equations** one row at a time; predefined blocks expose their dynamics.
 5. Re-open the **PLCAssistant** sidebar — Soft-PLC should show `stopped` and Start ready **On** when healthy; then press **Start**.
 
-From **0.1.14**, the App heartbeats retained status and publishes an MQTT last-will `offline`; the integration caches MQTT payloads and hydrates sensors on add. From **0.1.15**, HA runtime always attempts Mosquitto even when `/data/options.json` is missing/empty (seeds defaults on App Start) and retains MODE / PERM_OK / TRIP_ACTIVE for hydrate. From **0.1.16**, thin-integration sync requests Core restart so the HMI picks up Soft-PLC status without a missed manual step. From **0.1.17**, a shared HA-config file bridge hydrates the HMI when MQTT never reaches Core. From **0.1.18**, the bridge includes `SP_LEVEL` / `SP_FLOW` / `LT_RES` so active setpoints and reservoir are not stuck at 0 when MQTT is silent. From **0.1.19**, the Level setpoint request (`SP_LEVEL_REQ`) also crosses the file bridge so Active level SP follows the HMI slider. From **0.1.21**, plant PVs flip to Soft-PLC IN and the live App drops `MockProcess`. From **0.1.22**, the integration skid simulator restores live plant motion over MQTT. From **0.1.23**, unit-op / custom-ODE model documents compile into the same dynamics core. From **0.1.24**, operators select presets from Options flow / `set_dynamics_preset`. From **0.1.25**, the sidebar **Dynamics** view hosts a unit-op / ODE block editor that saves under `config/plcassistant/models/` and applies via plant reload.
+From **0.1.14**, the App heartbeats retained status and publishes an MQTT last-will `offline`; the integration caches MQTT payloads and hydrates sensors on add. From **0.1.15**, HA runtime always attempts Mosquitto even when `/data/options.json` is missing/empty (seeds defaults on App Start) and retains MODE / PERM_OK / TRIP_ACTIVE for hydrate. From **0.1.16**, thin-integration sync requests Core restart so the HMI picks up Soft-PLC status without a missed manual step. From **0.1.17**, a shared HA-config file bridge hydrates the HMI when MQTT never reaches Core. From **0.1.18**, the bridge includes `SP_LEVEL` / `SP_FLOW` / `LT_RES` so active setpoints and reservoir are not stuck at 0 when MQTT is silent. From **0.1.19**, the Level setpoint request (`SP_LEVEL_REQ`) also crosses the file bridge so Active level SP follows the HMI slider. From **0.1.21**, plant PVs flip to Soft-PLC IN and the live App drops `MockProcess`. From **0.1.22**, the integration skid simulator restores live plant motion over MQTT. From **0.1.23**, unit-op / custom-ODE model documents compile into the same dynamics core. From **0.1.24**, operators select presets from Options flow / `set_dynamics_preset`. From **0.1.25**, the sidebar **Dynamics** view hosts a unit-op / ODE block editor that saves under `config/plcassistant/models/` and applies via plant reload. From **0.1.26**, Custom ODE uses per-row state/algebraic equations and Soft-PLC tags are authored as measurement equations (`y = g(x,u,θ)`).
 
 ### Update button shows but installed version stays old
 

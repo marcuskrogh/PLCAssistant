@@ -1,26 +1,25 @@
-# Iterate: Sidebar dynamics block editor + toy setup guide (SWD-166)
+# Iterate: Per-equation state/measurement authoring (SWD-167)
 
-**Done** — App **0.1.25**; shipped PR [#68](https://github.com/marcuskrogh/PLCAssistant/pull/68)
+**Done** — App **0.1.26**; shipped PR [#69](https://github.com/marcuskrogh/PLCAssistant/pull/69)
 
 ## Prior work
-- Task: [SWD-143](https://marcusknielsen.atlassian.net/browse/SWD-143)
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/66 (App 0.1.24)
+- Task: [SWD-166](https://marcusknielsen.atlassian.net/browse/SWD-166) — sidebar Dynamics block editor (App 0.1.25)
 
 ## Shipped
-1. Lovelace v13 sidebar: **Operate** + **Dynamics** (`iframe` → `/api/plcassistant/dynamics/ui`)
-2. Block editor SPA: add/remove `tank` / `pump` / `orifice` / `lag` / `custom_ode`; bind tags ↔ variables; Soft-PLC output map
-3. HTTP API + model store under `config/plcassistant/models/`; Validate / Save / Apply → plant reload
-4. Registry extra model dirs; Soft-PLC stays mock-unaware
-5. README **Toy example setup** guide
-6. review-fix CLEAN after 1 iter (apply reload + iframe `callApi` auth + dual-tree sync)
+1. Custom ODE: **state equations** one row at a time (`state` + `d(state)/dt`); optional **algebraic** rows
+2. Document-level **measurement equations** (`TAG = expr` over state/inputs/params) — distinct from ODEs
+3. Predefined blocks expose bind/param-substituted dynamics in the inspector
+4. Compiler evaluates measurement expressions for MQTT IN; legacy `outputs` still load
+5. Example-process tests: FO lag, tank+orifice, heated tank, MSD, RC, skid_composed oracle
+6. review-fix CLEAN after 1 iter (measurement refresh + inventory dt=0 + default ODE)
 
 ## Operator note
-Update App to **0.1.25+**. Open **PLCAssistant → Dynamics** to edit/apply models. Options flow / `set_dynamics_preset` still work for preset selection.
+Update App to **0.1.26+**. Open **PLCAssistant → Dynamics**: select a Custom ODE to edit equations; use **Measurement equations** for Soft-PLC tags; predefined blocks show their underlying forms.
 
 ## Tracker
-- Task: [SWD-166](https://marcusknielsen.atlassian.net/browse/SWD-166)
-- Relates: [SWD-143](https://marcusknielsen.atlassian.net/browse/SWD-143)
-- Branch: `cursor/swd-166-dynamics-sidebar-editor-33f4`
+- Task: [SWD-167](https://marcusknielsen.atlassian.net/browse/SWD-167)
+- Relates: [SWD-166](https://marcusknielsen.atlassian.net/browse/SWD-166)
+- Branch: `cursor/swd-167-ode-equations-ux-33f4`
 
 ## Next
 Done — phase closed.

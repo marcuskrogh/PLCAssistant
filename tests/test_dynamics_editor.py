@@ -75,10 +75,10 @@ def test_editor_and_api_packaging() -> None:
     www = CC / "www" / "dynamics_editor.html"
     assert www.is_file()
     html = www.read_text(encoding="utf-8")
-    assert "Dynamics block editor" in html
+    assert "state & measurement equations" in html.lower() or "State equations" in html
     assert "/api/plcassistant/dynamics" in html
     assert "Add block" in html
-    assert "Soft-PLC tags" in html
+    assert "Measurement equations" in html
 
     api = (CC / "dynamics" / "http_api.py").read_text(encoding="utf-8")
     assert "DynamicsEditorView" in api
@@ -92,7 +92,7 @@ def test_editor_and_api_packaging() -> None:
     assert "async_setup_dynamics_api" in init
 
     lovelace = (CC / "lovelace" / "plcassistant.yaml").read_text(encoding="utf-8")
-    assert "plcassistant_dashboard_version: 13" in lovelace
+    assert "plcassistant_dashboard_version: 14" in lovelace
     assert "path: dynamics" in lovelace
     assert "/api/plcassistant/dynamics/ui" in lovelace
     assert "title: Operate" in lovelace
@@ -100,8 +100,9 @@ def test_editor_and_api_packaging() -> None:
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert "Toy example setup" in readme
     assert "Dynamics" in readme
-    assert "0.1.25" in readme
+    assert "0.1.26" in readme
     assert "callApi" in readme or "hass.callApi" in readme
+    assert "measurement" in readme.lower()
 
 
 def test_apply_reloads_when_options_unchanged() -> None:
@@ -119,6 +120,7 @@ def test_dual_tree_dynamics_editor_synced() -> None:
     for rel in (
         "dynamics/http_api.py",
         "dynamics/store.py",
+        "dynamics/equations.py",
         "dynamics/registry.py",
         "www/dynamics_editor.html",
         "lovelace/plcassistant.yaml",
