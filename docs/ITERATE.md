@@ -43,7 +43,7 @@ SWD-169 assumed blank grey tracks were Number AUTO/slider rendering and fixed BO
 - Task: [SWD-170](https://marcusknielsen.atlassian.net/browse/SWD-170)
 - Relates: [SWD-169](https://marcusknielsen.atlassian.net/browse/SWD-169)
 - Branch: `cursor/swd-170-plant-in-sensors-b6e1`
-- PR: *(opening)*
+- PR: [#72](https://github.com/marcuskrogh/PLCAssistant/pull/72)
 
 ## Next
 `/review-fix SWD-170` — Review and auto-fix until clean
