@@ -58,7 +58,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-139 | Bug | [Iterate] Soft-PLC attached (stopped) but HMI still offline — MQTT never reaches HA entities | Done | Relates SWD-138 | docs/ITERATE.md | Done — shipped PR #55 |
 | SWD-140 | Bug | [Iterate] HMI zeros on SP_LEVEL/SP_FLOW/LT_RES + clarify PERM_OK while RUNNING | Done | Relates SWD-139 | docs/ITERATE.md | Done — shipped PR #56 |
 | SWD-141 | Bug | [Iterate] Level setpoint request does not update Active level SP (stuck 0.2 m) | Done | Relates SWD-140 | docs/ITERATE.md | Done — shipped PR #57 |
-| SWD-142 | Story | Configurable mock dynamics — tags, unit ops, ODEs, selectable presets | To Do | — | docs/ROADMAP.md | `/review-fix SWD-143` |
+| SWD-142 | Story | Configurable mock dynamics — tags, unit ops, ODEs, selectable presets | Done | — | docs/ROADMAP.md | Done — initiative complete |
 | SWD-145 | Task | Soft-PLC ↔ integration mock ownership boundary | Done | Relates SWD-142 | docs/PLAN.md | Done — shipped PR #59+#60 |
 | SWD-149 | Subtask | SWD-145: Ownership docs (packaging / wedge / I/O) | Done | SWD-145 | docs/PLAN.md | — |
 | SWD-150 | Subtask | SWD-145: Expose scan_period_s on Soft-PLC MQTT status | Done | SWD-145 | docs/PLAN.md | — |
@@ -77,7 +77,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-158 | Subtask | SWD-144: Compiler + YAML model documents | Done | SWD-144 | docs/PLAN.md | — |
 | SWD-160 | Subtask | SWD-144: DynamicsModel typing + preset registry wiring | Done | SWD-144 | docs/PLAN.md | — |
 | SWD-161 | Subtask | SWD-144: Acceptance tests + packaging/docs/version | Done | SWD-144 | docs/PLAN.md | — |
-| SWD-143 | Task | Integration mock UI + preset selection | In Review | Relates SWD-142 | docs/PLAN.md | `/review-fix SWD-143` (App 0.1.24) |
+| SWD-143 | Task | Integration mock UI + preset selection | Done | Relates SWD-142 | docs/PLAN.md | Done — shipped PR #66 (App 0.1.24) |
 | SWD-162 | Subtask | SWD-143: Options flow + preset persistence | Done | SWD-143 | docs/PLAN.md | — |
 | SWD-163 | Subtask | SWD-143: Wire HassPlantSimulator to selected preset | Done | SWD-143 | docs/PLAN.md | — |
 | SWD-164 | Subtask | SWD-143: Service + Lovelace operator surface | Done | SWD-143 | docs/PLAN.md | — |
@@ -85,6 +85,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
+- 2026-07-30 — Shipped SWD-143 via PR #66 (App 0.1.24); review-fix CLEAN after 1 iter; Task Done; Story SWD-142 → Done (initiative complete).
 - 2026-07-30 — Implement SWD-143: App 0.1.24; Options flow + set_dynamics_preset + preset sensor; Next `/review-fix SWD-143`.
 - 2026-07-30 — Define SWD-143: PLAN.md + Sub-tasks SWD-162/163/164/165; Options flow + options SoT + service; Next `/implement SWD-143` (ship requested).
 - 2026-07-30 — Shipped SWD-144 via PR #65 (App 0.1.23); review-fix CLEAN after 1 iter (README); Task Done; Next `/define SWD-143`.
