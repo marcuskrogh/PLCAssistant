@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import threading
 import time
@@ -11,7 +12,13 @@ from typing import Any, Callable
 from plcassistant.app.default_image import declare_default_image
 from plcassistant.app.server import AppState, run_app
 from plcassistant.app.skid_scan import SkidImageLogic
-from plcassistant.io.ha_config_bridge import drain_cmd, read_inputs, write_runtime_snapshot
+from plcassistant.io.ha_config_bridge import (
+    PLANT_FILE_INPUT_TAGS,
+    PLANT_FILE_STALE_S,
+    drain_cmd,
+    read_inputs,
+    write_runtime_snapshot,
+)
 from plcassistant.io.image import IoImage
 from plcassistant.io.mqtt_bridge import InMemoryMqttBus, MqttBus, MqttIoBridge
 from plcassistant.io.mqtt_topics import DEFAULT_INSTANCE_ID
@@ -273,6 +280,7 @@ class MqttScanLoop:
             return
         tags = snap.get("tags") if isinstance(snap.get("tags"), dict) else {}
         known = set(self.image.names())
+        now = time.time()
         for name, body in tags.items():
             if name not in self._FILE_INPUT_TAGS:
                 continue
@@ -293,8 +301,33 @@ class MqttScanLoop:
                         reason = ReasonCode[str(reason_raw).upper()]
                     except KeyError:
                         reason = None
+            # Plant PVs expire when the simulator stops flushing (SWD-171).
+            if name in PLANT_FILE_INPUT_TAGS:
+                try:
+                    tag_ts = float(body["ts"]) if body.get("ts") is not None else None
+                except (TypeError, ValueError):
+                    tag_ts = None
+                if tag_ts is None or (now - tag_ts) > PLANT_FILE_STALE_S:
+                    try:
+                        self.image.apply_input(
+                            name, None, QualityStatus.BAD, ReasonCode.UNAVAILABLE
+                        )
+                    except Exception:  # noqa: BLE001 — best-effort IN hydrate
+                        pass
+                    continue
+            value: Any = body.get("value")
+            if status is QualityStatus.GOOD:
+                try:
+                    numeric = float(value)
+                    if not math.isfinite(numeric):
+                        raise ValueError("non-finite")
+                    value = numeric
+                except (TypeError, ValueError):
+                    status = QualityStatus.BAD
+                    reason = ReasonCode.FAULT
+                    value = None
             try:
-                self.image.apply_input(name, body.get("value"), status, reason)
+                self.image.apply_input(name, value, status, reason)
             except Exception:  # noqa: BLE001 — best-effort IN hydrate
                 continue
 
@@ -350,8 +383,8 @@ class MqttScanLoop:
         file_cmd = drain_cmd()
         if file_cmd:
             self.bridge.enqueue_command(file_cmd)
-        # Retained operator IN tags (SP_LEVEL_REQ) when MQTT is silent — SWD-141.
-        # Apply before MQTT so a live broker still wins on the same scan.
+        # File IN tags (SP_LEVEL_REQ + plant PV fallback, SWD-141/171) when MQTT
+        # is silent. Apply before MQTT so a live broker still wins on the same scan.
         self._apply_file_inputs()
         self.bridge.apply_inputs(self.image, clear=True)
         drained = self.bridge.drain_commands()

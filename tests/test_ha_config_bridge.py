@@ -249,3 +249,107 @@ def test_write_input_tags_batch_merges(tmp_path: Path) -> None:
     assert float(snap["tags"]["LT_TANK"]["value"]) == pytest.approx(0.25)
     assert float(snap["tags"]["LT_RES"]["value"]) == pytest.approx(0.15)
     assert float(snap["tags"]["FT_INLET"]["value"]) == pytest.approx(1.2)
+    assert "ts" in snap["tags"]["LT_TANK"]
+
+
+def test_file_plant_malformed_value_demotes_bad(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """SWD-171 review: non-numeric GOOD plant values must not crash the scan."""
+    from plcassistant.app.runtime import MqttScanLoop, declare_default_image
+    from plcassistant.io.ha_config_bridge import write_input_tags
+    from plcassistant.io.mqtt_bridge import InMemoryMqttBus, MqttIoBridge
+    from plcassistant.io.quality import QualityStatus, ReasonCode
+
+    monkeypatch.setenv("PLCASSISTANT_HA_CONFIG", str(tmp_path))
+    monkeypatch.setattr(MqttScanLoop, "FILE_BRIDGE_PERIOD_S", 0.0)
+    bus = InMemoryMqttBus()
+    image = declare_default_image()
+    bridge = MqttIoBridge(bus, instance_id="default")
+    loop = MqttScanLoop(bridge, image, period_s=0.05)
+    bridge.start()
+    assert write_input_tags(
+        {"LT_TANK": {"value": "not-a-number", "status": "GOOD"}},
+        root=tmp_path,
+    )
+    loop.scan_once()  # must not raise
+    assert image.get_quality("LT_TANK").status is QualityStatus.BAD
+    assert image.get_quality("LT_TANK").reason is ReasonCode.FAULT
+
+
+def test_file_plant_stale_demotes_unavailable(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """SWD-171 review: stale plant file PVs demote; SP_LEVEL_REQ stays retained."""
+    import time
+
+    from plcassistant.app.runtime import MqttScanLoop, declare_default_image
+    from plcassistant.io.ha_config_bridge import PLANT_FILE_STALE_S, write_input_tags
+    from plcassistant.io.mqtt_bridge import InMemoryMqttBus, MqttIoBridge
+    from plcassistant.io.quality import QualityStatus, ReasonCode
+
+    monkeypatch.setenv("PLCASSISTANT_HA_CONFIG", str(tmp_path))
+    monkeypatch.setattr(MqttScanLoop, "FILE_BRIDGE_PERIOD_S", 0.0)
+    bus = InMemoryMqttBus()
+    image = declare_default_image()
+    bridge = MqttIoBridge(bus, instance_id="default")
+    loop = MqttScanLoop(bridge, image, period_s=0.05)
+    bridge.start()
+    stale_ts = time.time() - (PLANT_FILE_STALE_S + 1.0)
+    assert write_input_tags(
+        {
+            "LT_TANK": {"value": 0.33, "status": "GOOD", "ts": stale_ts},
+            "SP_LEVEL_REQ": {"value": 0.30, "status": "GOOD", "ts": stale_ts},
+        },
+        root=tmp_path,
+    )
+    loop._apply_file_inputs()
+    assert image.get_quality("LT_TANK").status is QualityStatus.BAD
+    assert image.get_quality("LT_TANK").reason is ReasonCode.UNAVAILABLE
+    assert float(image.get_value("SP_LEVEL_REQ")) == pytest.approx(0.30)
+
+
+def test_concurrent_input_tag_merges_preserve_both(tmp_path: Path) -> None:
+    """SWD-171 review: locked merge keeps plant + SP_LEVEL_REQ writes."""
+    import threading
+
+    from plcassistant.io.ha_config_bridge import write_input_tag, write_input_tags
+
+    errors: list[BaseException] = []
+
+    def plant_writer() -> None:
+        try:
+            for i in range(40):
+                write_input_tags(
+                    {
+                        "LT_TANK": 0.10 + i * 0.001,
+                        "LT_RES": 0.20,
+                        "FT_INLET": 1.0,
+                    },
+                    root=tmp_path,
+                )
+        except BaseException as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    def sp_writer() -> None:
+        try:
+            for i in range(40):
+                write_input_tag("SP_LEVEL_REQ", 0.20 + i * 0.001, root=tmp_path)
+        except BaseException as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    t1 = threading.Thread(target=plant_writer)
+    t2 = threading.Thread(target=sp_writer)
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
+    assert not errors
+    snap = read_inputs(root=tmp_path)
+    assert snap is not None
+    tags = snap["tags"]
+    assert "SP_LEVEL_REQ" in tags
+    assert "LT_TANK" in tags
+    assert "LT_RES" in tags
+    assert "FT_INLET" in tags
+

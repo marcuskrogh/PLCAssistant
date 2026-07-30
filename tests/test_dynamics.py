@@ -309,6 +309,9 @@ def test_integration_wires_plant_simulator_lifecycle() -> None:
     assert "in_values" in sim
     assert "write_input_tags" in sim
     assert "config_root" in sim
+    # File fallback must be queued before MQTT publish calls in _flush.
+    flush_src = sim[sim.index("async def _flush") : sim.index("async def _run")]
+    assert flush_src.index("write_input_tags") < flush_src.index('services.async_call')
     init_text2 = (CC / "__init__.py").read_text(encoding="utf-8")
     assert "entry_id=entry.entry_id" in init_text2
     assert "in_values" in init_text2

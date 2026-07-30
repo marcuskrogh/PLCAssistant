@@ -143,6 +143,13 @@ class HassPlantSimulator:
             parsed = _parse_tag_payload(payload)
             if parsed is not None:
                 file_tags[tag_key] = parsed
+        # Write file fallback before MQTT so a publish failure cannot starve the
+        # silent Soft-PLC path.
+        if file_tags and config_root is not None:
+            await self.hass.async_add_executor_job(
+                write_input_tags, file_tags, config_root
+            )
+        for tag, payload in pending.items():
             await self.hass.services.async_call(
                 "mqtt",
                 "publish",
@@ -153,10 +160,6 @@ class HassPlantSimulator:
                     "retain": True,
                 },
                 blocking=False,
-            )
-        if file_tags and config_root is not None:
-            await self.hass.async_add_executor_job(
-                write_input_tags, file_tags, config_root
             )
 
     async def _run(self) -> None:

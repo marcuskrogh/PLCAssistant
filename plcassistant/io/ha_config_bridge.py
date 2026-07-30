@@ -19,6 +19,11 @@ CMD_REL = "plcassistant/cmd.json"
 INPUTS_REL = "plcassistant/inputs.json"
 VALID_CMDS = frozenset({"start", "stop", "reset"})
 
+# Plant PVs on the file bridge expire when the simulator stops flushing (SWD-171).
+# Operator requests (SP_LEVEL_REQ) stay retained indefinitely.
+PLANT_FILE_INPUT_TAGS = frozenset({"LT_TANK", "LT_RES", "FT_INLET"})
+PLANT_FILE_STALE_S = 5.0
+
 
 def ha_config_root(explicit: str | None = None) -> Path | None:
     """Return HA config root when available (App mount or env)."""
@@ -147,50 +152,74 @@ def write_input_tags(
     """Merge multiple IN tags into ``inputs.json`` in one atomic write (SWD-171).
 
     Each value may be a raw engineering value or a dict with ``value`` /
-    ``status`` / ``reason`` keys.
+    ``status`` / ``reason`` keys. Writers serialize via an advisory lock so
+    plant flush and operator SP writes cannot lose each other's merges.
     """
     if not tags:
         return False
     path = inputs_path(root)
     if path is None:
         return False
-    existing: dict[str, Any] = {}
-    if path.is_file():
-        try:
-            loaded = json.loads(path.read_text(encoding="utf-8"))
-            if isinstance(loaded, dict):
-                existing = loaded
-        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
-            existing = {}
-    merged = existing.get("tags") if isinstance(existing.get("tags"), dict) else {}
-    merged = dict(merged)
-    for raw_name, body in tags.items():
-        name = str(raw_name or "").strip()
-        if not name:
-            continue
-        if isinstance(body, Mapping) and "value" in body:
-            merged[name] = {
-                "value": body.get("value"),
-                "status": body.get("status") or "GOOD",
-                "reason": body.get("reason"),
-            }
-        else:
-            merged[name] = {"value": body, "status": "GOOD", "reason": None}
-    if not merged:
-        return False
-    payload = {"tags": merged, "ts": time.time()}
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
-        os.replace(tmp, path)
-        return True
     except OSError:
         return False
 
+    lock_path = path.with_suffix(".lock")
+    try:
+        lock_fd = os.open(str(lock_path), os.O_CREAT | os.O_RDWR, 0o644)
+    except OSError:
+        return False
+    try:
+        _lock_file(lock_fd)
+        existing: dict[str, Any] = {}
+        if path.is_file():
+            try:
+                loaded = json.loads(path.read_text(encoding="utf-8"))
+                if isinstance(loaded, dict):
+                    existing = loaded
+            except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+                existing = {}
+        merged = existing.get("tags") if isinstance(existing.get("tags"), dict) else {}
+        merged = dict(merged)
+        now = time.time()
+        for raw_name, body in tags.items():
+            name = str(raw_name or "").strip()
+            if not name:
+                continue
+            if isinstance(body, Mapping) and "value" in body:
+                entry = {
+                    "value": body.get("value"),
+                    "status": body.get("status") or "GOOD",
+                    "reason": body.get("reason"),
+                    "ts": float(body["ts"]) if body.get("ts") is not None else now,
+                }
+            else:
+                entry = {"value": body, "status": "GOOD", "reason": None, "ts": now}
+            merged[name] = entry
+        if not merged:
+            return False
+        payload = {"tags": merged, "ts": now}
+        tmp = path.with_name(f"{path.name}.{os.getpid()}.{now}.tmp")
+        try:
+            tmp.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
+            os.replace(tmp, path)
+            return True
+        except OSError:
+            try:
+                tmp.unlink(missing_ok=True)
+            except OSError:
+                pass
+            return False
+    finally:
+        try:
+            _unlock_file(lock_fd)
+        finally:
+            os.close(lock_fd)
+
 
 def read_inputs(root: Path | None = None) -> dict[str, Any] | None:
-    """Read retained operator IN tags under HA config, or None."""
+    """Read retained operator / plant IN tags under HA config, or None."""
     path = inputs_path(root)
     if path is None or not path.is_file():
         return None
@@ -201,9 +230,30 @@ def read_inputs(root: Path | None = None) -> dict[str, Any] | None:
     return data if isinstance(data, dict) else None
 
 
+def _lock_file(fd: int) -> None:
+    try:
+        import fcntl
+
+        fcntl.flock(fd, fcntl.LOCK_EX)
+    except (ImportError, OSError):
+        # Best-effort on platforms without flock; unique tmp still helps.
+        return
+
+
+def _unlock_file(fd: int) -> None:
+    try:
+        import fcntl
+
+        fcntl.flock(fd, fcntl.LOCK_UN)
+    except (ImportError, OSError):
+        return
+
+
 __all__ = [
     "CMD_REL",
     "INPUTS_REL",
+    "PLANT_FILE_INPUT_TAGS",
+    "PLANT_FILE_STALE_S",
     "RUNTIME_REL",
     "VALID_CMDS",
     "cmd_path",
