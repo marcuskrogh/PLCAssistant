@@ -77,14 +77,15 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-158 | Subtask | SWD-144: Compiler + YAML model documents | Done | SWD-144 | docs/PLAN.md | — |
 | SWD-160 | Subtask | SWD-144: DynamicsModel typing + preset registry wiring | Done | SWD-144 | docs/PLAN.md | — |
 | SWD-161 | Subtask | SWD-144: Acceptance tests + packaging/docs/version | Done | SWD-144 | docs/PLAN.md | — |
-| SWD-143 | Task | Integration mock UI + preset selection | To Do | Relates SWD-142 | docs/PLAN.md | `/implement SWD-143` (App 0.1.24) |
-| SWD-162 | Subtask | SWD-143: Options flow + preset persistence | To Do | SWD-143 | docs/PLAN.md | — |
-| SWD-163 | Subtask | SWD-143: Wire HassPlantSimulator to selected preset | To Do | SWD-143 | docs/PLAN.md | — |
-| SWD-164 | Subtask | SWD-143: Service + Lovelace operator surface | To Do | SWD-143 | docs/PLAN.md | — |
-| SWD-165 | Subtask | SWD-143: Acceptance tests + packaging/docs/version | To Do | SWD-143 | docs/PLAN.md | — |
+| SWD-143 | Task | Integration mock UI + preset selection | In Review | Relates SWD-142 | docs/PLAN.md | `/review-fix SWD-143` (App 0.1.24) |
+| SWD-162 | Subtask | SWD-143: Options flow + preset persistence | Done | SWD-143 | docs/PLAN.md | — |
+| SWD-163 | Subtask | SWD-143: Wire HassPlantSimulator to selected preset | Done | SWD-143 | docs/PLAN.md | — |
+| SWD-164 | Subtask | SWD-143: Service + Lovelace operator surface | Done | SWD-143 | docs/PLAN.md | — |
+| SWD-165 | Subtask | SWD-143: Acceptance tests + packaging/docs/version | Done | SWD-143 | docs/PLAN.md | — |
 
 ## Log
 
+- 2026-07-30 — Implement SWD-143: App 0.1.24; Options flow + set_dynamics_preset + preset sensor; Next `/review-fix SWD-143`.
 - 2026-07-30 — Define SWD-143: PLAN.md + Sub-tasks SWD-162/163/164/165; Options flow + options SoT + service; Next `/implement SWD-143` (ship requested).
 - 2026-07-30 — Shipped SWD-144 via PR #65 (App 0.1.23); review-fix CLEAN after 1 iter (README); Task Done; Next `/define SWD-143`.
 - 2026-07-30 — Implement SWD-144: App 0.1.23; unit-ops + AST sandbox + skid_composed oracle; PR #65 → In Review. Next `/review-fix SWD-144`.
