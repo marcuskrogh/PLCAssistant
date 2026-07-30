@@ -194,6 +194,8 @@ def test_integration_wires_plant_simulator_lifecycle() -> None:
     assert "_plant_in" in number or "plant_in" in number
     assert "outputs()" in number
     assert "async_write_ha_state" in number
+    assert "math.isfinite" in number
+    assert "except Exception" in number
 
     sim = (CC / "dynamics" / "simulator.py").read_text(encoding="utf-8")
     assert "entry_id" in sim

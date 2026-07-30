@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 from homeassistant.components.mqtt import async_subscribe
@@ -154,6 +155,8 @@ class PlcAssistantRequestNumber(NumberEntity):
             value = float(eng)
         except (TypeError, ValueError):
             return False
+        if not math.isfinite(value):
+            return False
         display = (value - self._offset) / self._scale if self._scale else value
         if self._attr_native_value is not None and abs(
             float(self._attr_native_value) - display
@@ -218,18 +221,20 @@ class PlcAssistantRequestNumber(NumberEntity):
             sim = self._plant_simulator()
             try:
                 outs = sim.plant.model.outputs()
-                if self._tag in outs and self._apply_eng_value(float(outs[self._tag])):
+                tag_key = str(self._tag).upper()
+                eng = outs.get(tag_key, outs.get(self._tag))
+                if eng is not None and self._apply_eng_value(float(eng)):
                     self.async_write_ha_state()
                 elif self._attr_native_value is not None:
                     self.async_write_ha_state()
-            except (TypeError, ValueError, AttributeError, KeyError):
+            except Exception:  # noqa: BLE001 — never abort entity add on bad model
                 if self._attr_native_value is not None:
                     self.async_write_ha_state()
 
             async def _on_plant_bus(event: Event) -> None:
                 if event.data.get("entry_id") != self._entry_id:
                     return
-                if event.data.get("tag") != self._tag:
+                if str(event.data.get("tag") or "").upper() != str(self._tag).upper():
                     return
                 if self._apply_payload(str(event.data.get("payload") or "")):
                     self.async_write_ha_state()
