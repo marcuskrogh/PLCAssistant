@@ -86,9 +86,11 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-167 | Task | [Iterate] Per-equation state/measurement authoring + exposed block dynamics | Done | Relates SWD-166 | docs/ITERATE.md | Done — shipped PR #69 (App 0.1.26) |
 | SWD-168 | Task | [Iterate] Show Restart required on Settings updates page after PLCAssistant integration sync | Done | Relates SWD-138 | docs/ITERATE.md | Done — shipped PR #70 (App 0.1.27) |
 | SWD-169 | Bug | [Iterate] Integration dashboard plant level/flow values unavailable | Done | Relates SWD-146 | docs/ITERATE.md | Done — shipped PR #71 (App 0.1.28) |
+| SWD-170 | Bug | [Iterate] Operate plant PVs still unavailable after 0.1.28 BOX hydrate | In Progress | Relates SWD-169 | docs/ITERATE.md | `/review-fix SWD-170` |
 
 ## Log
 
+- 2026-07-30 — Iterate SWD-170: App 0.1.29; plant IN Sensors + in_values cache + Lovelace Process sensors; Relates SWD-169.
 - 2026-07-30 — Shipped SWD-169 via PR #71 (App 0.1.28); review-fix CLEAN after 2 iters; Task Done.
 - 2026-07-30 — review-fix SWD-169 CLEAN after 2 iterations (iter1: isfinite+hydrate except; iter2: 0); closeout.
 - 2026-07-30 — Implement SWD-169: App 0.1.28; plant IN BOX + hydrate/bus; PR [#71](https://github.com/marcuskrogh/PLCAssistant/pull/71) → In Review. Next `/review-fix SWD-169`.

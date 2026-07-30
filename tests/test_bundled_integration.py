@@ -119,10 +119,12 @@ def test_platforms_publish_and_subscribe_paths():
     lovelace = (CC / "lovelace" / "plcassistant.yaml").read_text(encoding="utf-8")
     assert "number.plcassistant_sp_level_req" in lovelace
     assert "button.plcassistant_start" in lovelace
-    assert "number.plcassistant_lt_tank_in" in lovelace
+    assert "sensor.plcassistant_lt_tank_in" in lovelace
+    assert "sensor.plcassistant_ft_inlet_in" in lovelace
+    assert "entity: number.plcassistant_lt_tank_in" not in lovelace
     assert "sensor.plcassistant_status" in lovelace
     assert "sensor.plcassistant_mode" in lovelace
-    assert "live simulator" in lovelace.lower() or "0.1.26" in lovelace or "dynamics" in lovelace.lower()
+    assert "live simulator" in lovelace.lower() or "0.1.29" in lovelace or "dynamics" in lovelace.lower()
     assert "sensor.plcassistant_dynamics_preset" in lovelace
     assert "path: dynamics" in lovelace
     assert "set_dynamics_preset:" in (CC / "services.yaml").read_text(encoding="utf-8")
@@ -132,16 +134,25 @@ def test_platforms_publish_and_subscribe_paths():
     assert "plcassistant_sp_level_req" in number
     assert "plcassistant_lt_tank_in" in number
     assert "PlcAssistantStatusSensor" in sensor
+    assert "PlcAssistantPlantInSensor" in sensor
+    assert "_PLANT_IN_META" in sensor
+    assert "in_values" in sensor
     assert "status_topic" in (CC / "__init__.py").read_text(encoding="utf-8")
     # SWD-136: cache retained status + hydrate sensors on add.
     init_text = (CC / "__init__.py").read_text(encoding="utf-8")
     assert 'store["status_payload"]' in init_text or 'store["status_payload"] = text' in init_text
     assert "status_payload" in init_text
+    assert "in_values" in init_text
+    assert "async_purge_orphaned_plant_numbers" in init_text
     assert "status_payload" in sensor
     assert "_apply_status_payload" in sensor
     assert 'store.get("out_values")' in sensor or "out_values" in sensor
     topics = (CC / "mqtt_topics.py").read_text(encoding="utf-8")
     assert "parse_app_status_payload" in topics
+    cleanup = (CC / "entity_cleanup.py").read_text(encoding="utf-8")
+    assert "expected_plant_number_unique_id" in cleanup
+    assert "expected_plant_sensor_unique_id" in cleanup
+    assert "number.plcassistant_lt_tank_in" in cleanup
 
 
 def test_services_yaml_has_operator_actions():

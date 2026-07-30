@@ -33,7 +33,7 @@
 - Provider: jira
 - Story: [SWD-142](https://marcusknielsen.atlassian.net/browse/SWD-142) — **Done** (all theme Tasks Done)
 - Tasks: [SWD-145](https://marcusknielsen.atlassian.net/browse/SWD-145) (Done), [SWD-146](https://marcusknielsen.atlassian.net/browse/SWD-146) (Done), [SWD-144](https://marcusknielsen.atlassian.net/browse/SWD-144) (Done), [SWD-143](https://marcusknielsen.atlassian.net/browse/SWD-143) (Done — PR #66)
-- Iterate: [SWD-166](https://marcusknielsen.atlassian.net/browse/SWD-166) (Done — PR #68), [SWD-167](https://marcusknielsen.atlassian.net/browse/SWD-167) (Done — PR #69, App 0.1.26), [SWD-168](https://marcusknielsen.atlassian.net/browse/SWD-168) (Done — PR #70, App 0.1.27 Restart required on Updates), [SWD-169](https://marcusknielsen.atlassian.net/browse/SWD-169) (Done — PR #71, App 0.1.28 plant IN Number HMI)
+- Iterate: [SWD-166](https://marcusknielsen.atlassian.net/browse/SWD-166) (Done — PR #68), [SWD-167](https://marcusknielsen.atlassian.net/browse/SWD-167) (Done — PR #69, App 0.1.26), [SWD-168](https://marcusknielsen.atlassian.net/browse/SWD-168) (Done — PR #70, App 0.1.27 Restart required on Updates), [SWD-169](https://marcusknielsen.atlassian.net/browse/SWD-169) (Done — PR #71, App 0.1.28 plant IN Number HMI), [SWD-170](https://marcusknielsen.atlassian.net/browse/SWD-170) (In Progress — App 0.1.29 plant IN Sensors on Operate)
 - Prior initiative: [SWD-81](https://marcusknielsen.atlassian.net/browse/SWD-81) (Done)
 
 ## Next

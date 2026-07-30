@@ -47,8 +47,8 @@ def _is_stock_board_needing_status_upgrade(text: str) -> bool:
         return False
     if "sensor.plcassistant_status" not in text:
         return True
-    # Only refresh when an explicit older stock version is present (not 14+).
-    if re.search(r"plcassistant_dashboard_version:\s*(?:[1-9]|1[0-3])\b", text):
+    # Only refresh when an explicit older stock version is present (not 15+).
+    if re.search(r"plcassistant_dashboard_version:\s*(?:[1-9]|1[0-4])\b", text):
         return True
     return False
 

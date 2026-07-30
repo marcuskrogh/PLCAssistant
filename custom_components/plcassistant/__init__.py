@@ -200,6 +200,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # MQTT payload caches — filled on subscribe (incl. retained) before
         # platform entities listen on the HA bus (SWD-136 hydrate-on-add).
         "out_values": {},
+        # Plant IN cache (SWD-170) — simulator flush before entity listeners.
+        "in_values": {},
         "status_payload": None,
         "unsubs": [],
         "config_root": config_root,
@@ -391,6 +393,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await plant_sim.async_start()
 
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
+
+    # SWD-170: drop orphaned plant Number registry rows that block contracted IDs.
+    if mock_mode:
+        try:
+            from .entity_cleanup import async_purge_orphaned_plant_numbers
+
+            await async_purge_orphaned_plant_numbers(hass, instance_id)
+        except Exception:  # noqa: BLE001 — never block setup on registry cleanup
+            _LOGGER.debug(
+                "PLCAssistant: plant Number registry cleanup failed", exc_info=True
+            )
+
     async def _poll_file_bridge() -> None:
         entry_id = entry.entry_id
         while True:

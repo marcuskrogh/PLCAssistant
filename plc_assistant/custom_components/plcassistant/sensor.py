@@ -18,6 +18,7 @@ from .const import (
     CONF_MOCK_MODE,
     DOMAIN,
 )
+from .entity_cleanup import expected_plant_sensor_unique_id
 from .mqtt_topics import parse_app_status_payload
 
 _TAG_META: dict[str, dict] = {
@@ -53,6 +54,31 @@ _TAG_META: dict[str, dict] = {
         "name": "PLCAssistant Trip active",
         "object_id": "plcassistant_trip_active",
         "kind": "bool",
+    },
+}
+
+# SWD-170: plant PVs as Sensors for Operate HMI (Numbers remain for nudges).
+_PLANT_IN_META: dict[str, dict] = {
+    "LT_TANK": {
+        "name": "PLCAssistant Tank level",
+        "unit": "m",
+        "object_id": "plcassistant_lt_tank_in",
+        "default": 0.15,
+        "icon": "mdi:gauge",
+    },
+    "LT_RES": {
+        "name": "PLCAssistant Reservoir level",
+        "unit": "m",
+        "object_id": "plcassistant_lt_res_in",
+        "default": 0.20,
+        "icon": "mdi:water",
+    },
+    "FT_INLET": {
+        "name": "PLCAssistant Inlet flow",
+        "unit": "L/min",
+        "object_id": "plcassistant_ft_inlet_in",
+        "default": 0.0,
+        "icon": "mdi:pipe",
     },
 }
 
@@ -123,6 +149,25 @@ async def async_setup_entry(
                     entity_id=entity_id,
                 )
             )
+    # SWD-170: plant IN display Sensors (Operate Process card).
+    for binding in data.get(CONF_BINDINGS) or []:
+        direction = str(binding.get("direction", "")).upper()
+        if direction not in ("IN", "INOUT"):
+            continue
+        tag = str(binding.get("tag") or "").upper()
+        if tag not in _PLANT_IN_META:
+            continue
+        scale = float(binding.get("scale", 1.0))
+        offset = float(binding.get("offset", 0.0))
+        entities.append(
+            PlcAssistantPlantInSensor(
+                entry.entry_id,
+                data[CONF_INSTANCE_ID],
+                tag,
+                scale,
+                offset,
+            )
+        )
     async_add_entities(entities)
 
 
@@ -279,6 +324,99 @@ class PlcAssistantOutSensor(SensorEntity):
 
         self.async_on_remove(
             self.hass.bus.async_listen(f"{DOMAIN}_tag_out", _on_out)
+        )
+
+
+class PlcAssistantPlantInSensor(SensorEntity):
+    """Plant PV display Sensor — hydrate from simulator cache / plant_in bus."""
+
+    _attr_should_poll = False
+
+    def __init__(
+        self,
+        entry_id: str,
+        instance_id: str,
+        tag: str,
+        scale: float,
+        offset: float,
+    ) -> None:
+        self._entry_id = entry_id
+        self._instance_id = instance_id
+        self._tag = str(tag).upper()
+        self._scale = scale if scale else 1.0
+        self._offset = offset
+        meta = _PLANT_IN_META.get(self._tag, {})
+        self._attr_name = meta.get("name", f"PLCAssistant {self._tag}")
+        self._attr_unique_id = expected_plant_sensor_unique_id(instance_id, self._tag)
+        object_id = meta.get("object_id") or f"plcassistant_{self._tag.lower()}_in"
+        self._attr_suggested_object_id = object_id
+        self.entity_id = f"sensor.{object_id}"
+        if meta.get("unit"):
+            self._attr_native_unit_of_measurement = meta["unit"]
+        if meta.get("icon"):
+            self._attr_icon = meta["icon"]
+        self._attr_native_value = float(meta.get("default", 0.0))
+
+    def _plant_simulator(self):
+        store = self.hass.data.get(DOMAIN, {}).get(self._entry_id) or {}
+        return store.get("plant_simulator")
+
+    def _apply_eng_value(self, eng: float) -> bool:
+        try:
+            value = float(eng)
+        except (TypeError, ValueError):
+            return False
+        if not math.isfinite(value):
+            return False
+        display = (value - self._offset) / self._scale if self._scale else value
+        if self._attr_native_value is not None and abs(
+            float(self._attr_native_value) - display
+        ) < 1e-12:
+            return False
+        self._attr_native_value = display
+        return True
+
+    def _apply_payload(self, payload: str) -> bool:
+        try:
+            body = json.loads(payload or "{}")
+            if not isinstance(body, dict) or "value" not in body:
+                return False
+            return self._apply_eng_value(float(body["value"]))
+        except (TypeError, ValueError, UnicodeDecodeError, json.JSONDecodeError):
+            return False
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        store = self.hass.data.get(DOMAIN, {}).get(self._entry_id) or {}
+        cached = (store.get("in_values") or {}).get(self._tag)
+        hydrated = False
+        if cached and self._apply_payload(str(cached)):
+            self.async_write_ha_state()
+            hydrated = True
+        if not hydrated:
+            sim = self._plant_simulator()
+            if sim is not None:
+                try:
+                    outs = sim.plant.model.outputs()
+                    eng = outs.get(self._tag)
+                    if eng is not None and self._apply_eng_value(float(eng)):
+                        self.async_write_ha_state()
+                        hydrated = True
+                except Exception:  # noqa: BLE001
+                    pass
+        if not hydrated and self._attr_native_value is not None:
+            self.async_write_ha_state()
+
+        async def _on_plant_bus(event: Event) -> None:
+            if event.data.get("entry_id") != self._entry_id:
+                return
+            if str(event.data.get("tag") or "").upper() != self._tag:
+                return
+            if self._apply_payload(str(event.data.get("payload") or "")):
+                self.async_write_ha_state()
+
+        self.async_on_remove(
+            self.hass.bus.async_listen(f"{DOMAIN}_plant_in", _on_plant_bus)
         )
 
 

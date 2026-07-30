@@ -115,14 +115,19 @@ class HassPlantSimulator:
         pending = dict(self._pending)
         self._pending.clear()
         for tag, payload in pending.items():
-            # SWD-169: HMI Numbers hydrate from this bus (same-process); MQTT
-            # remains the Soft-PLC transport.
+            # SWD-169/170: HMI plant sensors/Numbers hydrate from this bus
+            # (same-process); MQTT remains the Soft-PLC transport.
+            # Cache before fire so entities that register later can hydrate.
+            tag_key = str(tag).upper()
             if self._entry_id is not None:
+                store = self.hass.data.get(DOMAIN, {}).get(self._entry_id)
+                if isinstance(store, dict):
+                    store.setdefault("in_values", {})[tag_key] = payload
                 self.hass.bus.async_fire(
                     f"{DOMAIN}_plant_in",
                     {
                         "entry_id": self._entry_id,
-                        "tag": str(tag).upper(),
+                        "tag": tag_key,
                         "payload": payload,
                     },
                 )

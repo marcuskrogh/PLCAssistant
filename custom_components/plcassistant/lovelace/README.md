@@ -31,28 +31,33 @@ refreshed on update so the status card and help appear.
 | `sensor.plcassistant_trip_active` | `on` / `off` |
 
 Press **Start** → Soft-PLC status `running`, MODE `RUNNING`, and Soft-PLC CVs
-(`CMD_SPEED`, active SPs) update. Plant level/flow Numbers are Soft-PLC **IN**
-from the integration simulator (SWD-146+); they show as **box** numbers with
-live values (SWD-169).
+(`CMD_SPEED`, active SPs) update. Plant level/flow **sensors** are Soft-PLC **IN**
+from the integration simulator (SWD-146+ / SWD-170); Numbers remain for nudges.
 
 ## Writable vs read-only
 
 | Entity | Role |
 |--------|------|
 | `number.plcassistant_sp_level_req` | Operator **level setpoint request** (writable) |
-| `number.plcassistant_lt_tank_in` / `_lt_res_in` / `_ft_inlet_in` | Plant PVs as Soft-PLC **IN** (live simulator display + nudge) |
+| `sensor.plcassistant_lt_tank_in` / `_lt_res_in` / `_ft_inlet_in` | Plant PVs as Soft-PLC **IN** (Operate Process display) |
+| `number.plcassistant_lt_tank_in` / `_lt_res_in` / `_ft_inlet_in` | Plant PV **nudges** (writable; same tags) |
 | `button.plcassistant_start` / `_stop` / `_reset` | Operator commands |
-| `sensor.plcassistant_*` | Soft-PLC OUT (CVs, active SPs, MODE / status) — read-only |
+| `sensor.plcassistant_*` (other) | Soft-PLC OUT (CVs, active SPs, MODE / status) — read-only |
 
-## Upgrading from App 0.1.10 / 0.1.19
+## Upgrading from App 0.1.10 / 0.1.19 / 0.1.28
 
-Entity IDs changed in **0.1.11** (OUT tags became sensors; setpoint request renamed)
-and again in **0.1.20** (plant PVs flipped back to Soft-PLC IN Numbers):
+Entity IDs changed in **0.1.11** (OUT tags became sensors; setpoint request renamed),
+again in **0.1.20** (plant PVs flipped back to Soft-PLC IN Numbers), and in
+**0.1.29** (Operate Process display uses plant IN **sensors**; Numbers stay for nudges):
 
 | Era | Plant tags |
 |-----|------------|
 | 0.1.10 | `number.plcassistant_lt_tank_in` (early mock IN) |
 | 0.1.11–0.1.19 | `sensor.plcassistant_lt_tank` (Soft-PLC plant OUT) |
-| **0.1.20+** | `number.plcassistant_lt_tank_in` (Soft-PLC plant IN; live from SWD-146) |
+| 0.1.20–0.1.28 | `number.plcassistant_lt_tank_in` (Soft-PLC plant IN display + nudge) |
+| **0.1.29+** | `sensor.plcassistant_lt_tank_in` (Operate display) + `number.*_in` (nudge) |
 
-After App Update + Core restart: remove the old PLCAssistant integration entry (or delete stale unavailable entities in the entity registry), then add the integration again so entity IDs match. Update any personal dashboards/automations that referenced the old plant sensors.
+After App Update + Core restart: stock Lovelace refreshes to dashboard version **15**.
+If personal boards still show unavailable plant Numbers, delete stale unavailable
+entities in the entity registry (or remove/re-add the integration). Update any
+personal dashboards that still reference plant Numbers for Process display.
