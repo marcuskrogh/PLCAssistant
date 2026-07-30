@@ -1,4 +1,4 @@
-# plcassistant_dashboard_version: 11
+# plcassistant_dashboard_version: 12
 title: PLCAssistant
 views:
   - title: Skid
@@ -11,6 +11,8 @@ views:
         entities:
           - entity: sensor.plcassistant_status
             name: Soft-PLC
+          - entity: sensor.plcassistant_dynamics_preset
+            name: Dynamics preset
           - entity: sensor.plcassistant_mode
             name: Mode
           - entity: sensor.plcassistant_perm_ok
@@ -19,7 +21,7 @@ views:
             name: Trip active
       - type: markdown
         content: |
-          **PLCAssistant** — Soft-PLC skid HMI. Soft-PLC must show **stopped** (not offline) before Start works. **Start ready** is On only while idle and healthy; it correctly shows Off while Mode is RUNNING (Start already succeeded). From App **0.1.23**, the thin integration runs the **skid plant simulator** (unit-op / custom-ODE authoring lands in-code; HA chooser → SWD-143) and publishes tank/reservoir/flow as Soft-PLC **IN** over MQTT. Soft-PLC stays mock-unaware (`HeldProcess`). Plant Numbers display live motion (nudges allowed). Update App, wait for Core reload, then reopen this board. Confirm Mosquitto + matching `instance_id` if still offline. Change the **Level setpoint**, press **Start**, then watch levels, inlet flow, and pump speed.
+          **PLCAssistant** — Soft-PLC skid HMI. Soft-PLC must show **stopped** (not offline) before Start works. **Start ready** is On only while idle and healthy; it correctly shows Off while Mode is RUNNING (Start already succeeded). From App **0.1.24**, choose the plant **dynamics preset** under **Settings → Devices → PLCAssistant → Configure** (or call `plcassistant.set_dynamics_preset`). Defaults to code `skid`; `skid_composed` is the unit-op rebuild. Soft-PLC stays mock-unaware (`HeldProcess`). Plant Numbers display live motion (nudges allowed). Update App, wait for Core reload, then reopen this board. Confirm Mosquitto + matching `instance_id` if still offline. Change the **Level setpoint**, press **Start**, then watch levels, inlet flow, and pump speed.
       - type: entities
         title: Operate
         show_header_toggle: false

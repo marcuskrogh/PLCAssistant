@@ -23,11 +23,14 @@ from homeassistant.helpers.typing import ConfigType
 
 from .const import (
     CONF_BINDINGS,
+    CONF_DYNAMICS_PARAMS,
+    CONF_DYNAMICS_PRESET,
     CONF_INSTANCE_ID,
     CONF_MOCK_MODE,
     DEFAULT_INSTANCE_ID,
     DOMAIN,
     SERVICE_RESET,
+    SERVICE_SET_DYNAMICS_PRESET,
     SERVICE_START,
     SERVICE_STOP,
 )
@@ -236,10 +239,46 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def handle_reset(call: ServiceCall) -> None:
         await _publish_cmd(SERVICE_RESET, call)
 
+    async def handle_set_dynamics_preset(call: ServiceCall) -> None:
+        target = call.data.get(CONF_INSTANCE_ID)
+        entry_obj: ConfigEntry | None = None
+        entries = list(hass.config_entries.async_entries(DOMAIN))
+        if target:
+            for cand in entries:
+                if cand.data.get(CONF_INSTANCE_ID) == target:
+                    entry_obj = cand
+                    break
+        elif entries:
+            entry_obj = entries[0]
+        if entry_obj is None:
+            _LOGGER.warning("set_dynamics_preset: no matching config entry")
+            return
+        from .dynamics.options import parse_dynamics_params, validate_preset
+        from .dynamics.registry import get_preset
+
+        try:
+            preset = validate_preset(call.data.get("preset"))
+            params = parse_dynamics_params(call.data.get("params"))
+            get_preset(preset, params=params)
+        except (KeyError, ValueError, TypeError) as exc:
+            _LOGGER.error("set_dynamics_preset rejected: %s", exc)
+            return
+        new_options = {
+            **dict(entry_obj.options),
+            CONF_DYNAMICS_PRESET: preset,
+            CONF_DYNAMICS_PARAMS: params,
+        }
+        # Update listener reloads the entry (rebuilds plant from initials).
+        hass.config_entries.async_update_entry(entry_obj, options=new_options)
+
     if not hass.services.has_service(DOMAIN, SERVICE_START):
         hass.services.async_register(DOMAIN, SERVICE_START, handle_start)
         hass.services.async_register(DOMAIN, SERVICE_STOP, handle_stop)
         hass.services.async_register(DOMAIN, SERVICE_RESET, handle_reset)
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_DYNAMICS_PRESET):
+        hass.services.async_register(
+            DOMAIN, SERVICE_SET_DYNAMICS_PRESET, handle_set_dynamics_preset
+        )
 
     for binding in bindings:
         direction = str(binding.get("direction", "")).upper()
@@ -306,13 +345,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     hass.data[DOMAIN][entry.entry_id]["unsubs"].append(status_unsub)
 
-    # SWD-146: integration-owned skid plant simulator (mock_mode only).
+    # SWD-146/143: integration-owned plant simulator (mock_mode only).
     if mock_mode:
+        from .dynamics.options import resolve_dynamics_options, validate_preset
         from .dynamics.simulator import HassPlantSimulator
 
-        plant_sim = HassPlantSimulator(hass, instance_id)
+        preset, params = resolve_dynamics_options(entry.options)
+        try:
+            preset = validate_preset(preset)
+        except KeyError as exc:
+            _LOGGER.error("Invalid dynamics preset in options: %s", exc)
+            raise
+        plant_sim = HassPlantSimulator(
+            hass, instance_id, preset=preset, params=params
+        )
         store = hass.data[DOMAIN][entry.entry_id]
         store["plant_simulator"] = plant_sim
+        store[CONF_DYNAMICS_PRESET] = preset
+        store[CONF_DYNAMICS_PARAMS] = dict(params)
         # Retained status/CMD may have arrived on subscribe before the simulator
         # existed — hydrate so we do not wait for the next Soft-PLC heartbeat.
         cached_status = store.get("status_payload")
@@ -323,6 +373,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             plant_sim.apply_cmd_from_payload(cached_cmd)
         await plant_sim.async_start()
 
+    entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     async def _poll_file_bridge() -> None:
         entry_id = entry.entry_id
         while True:
@@ -386,6 +437,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
     return unload_ok
+
+
+async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload entry when Options flow (or service) updates dynamics options."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 __all__ = [

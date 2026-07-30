@@ -15,5 +15,20 @@
     "abort": {
       "already_configured": "This instance_id is already configured"
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Mock dynamics",
+        "description": "Select a plant dynamics preset. Param overrides are a JSON object of numeric keys from the preset (e.g. {\"k_drain\": 6.0}). Applying rebuilds the plant from model initials.",
+        "data": {
+          "dynamics_preset": "Dynamics preset",
+          "dynamics_params": "Param overrides (JSON object)"
+        }
+      }
+    },
+    "error": {
+      "invalid_dynamics": "Invalid preset or params — check the preset name and JSON overrides"
+    }
   }
 }

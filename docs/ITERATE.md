@@ -1,17 +1,17 @@
-# Iterate notes: Unit-op library + custom equation authoring (SWD-144)
+# Iterate notes: Integration mock UI + preset selection (SWD-143)
 
-**Done** — App **0.1.23**; shipped PR [#65](https://github.com/marcuskrogh/PLCAssistant/pull/65)
+**Done** — App **0.1.24**; shipped PR [#66](https://github.com/marcuskrogh/PLCAssistant/pull/66)
 
 ## Shipped
-1. Unit-op catalog: `tank`, `pump`, `orifice`, `lag`, `custom_ode`
-2. Math AST whitelist sandbox (`expr.py`)
-3. JSON/YAML model documents + compiler → collected `ModelSpec`
-4. Composed skid document with 1e-9 oracle parity vs code `skid`
-5. `PlantSimulator` typed to `DynamicsModel`; live default remains code `skid`
-6. review-fix CLEAN after 1 iter (README 0.1.23 operator note)
+1. Options flow for `dynamics_preset` + JSON `dynamics_params`
+2. Config-entry options persistence; reload rebuilds plant from initials
+3. `HassPlantSimulator` / `for_preset` honor selected preset + overrides (default `skid`)
+4. Service `plcassistant.set_dynamics_preset` (same SoT; independent registration)
+5. `sensor.plcassistant_dynamics_preset` + Lovelace v12 operator copy
+6. review-fix CLEAN after 1 iter (service register + options merge)
 
 ## Operator note
-Update App to **0.1.23+**. Live plant behavior unchanged (code `skid`). Unit-op authoring is in-code/file; HA chooser → SWD-143.
+Update App to **0.1.24+**. Choose preset under **Settings → Devices → PLCAssistant → Configure**, or call `plcassistant.set_dynamics_preset`. Default remains `skid`.
 
 ## Next
-`/define SWD-143` — Integration mock UI + preset selection
+Done — SWD-142 phase closed (all theme Tasks Done).

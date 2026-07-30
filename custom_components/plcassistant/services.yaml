@@ -33,3 +33,31 @@ reset:
       required: false
       selector:
         text:
+
+set_dynamics_preset:
+  name: Set dynamics preset
+  description: >-
+    Select the integration plant dynamics preset (and optional numeric param
+    overrides). Persists on the config entry and rebuilds the plant simulator
+    from model initials. Soft-PLC stays mock-unaware.
+  fields:
+    preset:
+      name: Preset
+      description: Registry preset name (e.g. skid, skid_composed)
+      example: "skid"
+      required: true
+      selector:
+        text:
+    params:
+      name: Param overrides
+      description: Optional mapping of numeric param overrides (JSON object)
+      example: '{"k_drain": 6.0}'
+      required: false
+      selector:
+        object:
+    instance_id:
+      name: Instance ID
+      description: Optional Soft-PLC instance_id when multiple entries exist
+      required: false
+      selector:
+        text:

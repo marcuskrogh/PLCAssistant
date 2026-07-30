@@ -1,81 +1,69 @@
-# Implementation plan: Unit-op library + custom equation authoring (SWD-144)
+# Implementation plan: Integration mock UI + preset selection (SWD-143)
 
 ## Summary
-- Extend the SWD-146 integration dynamics core so plant models are built from a **small unit-op catalog** plus optional **custom ODE expressions**, compiled into one collected `ModelSpec` and stepped by the existing fixed-step runner.
-- Prove the path by **rebuilding the skid** from unit ops (oracle-parity with today’s code `skid` / `MockProcess`) while keeping Soft-PLC **mock-unaware**.
-- Authoring is **HA-free + file/YAML first**; Home Assistant preset/parameter UI stays deferred to [SWD-143](https://marcusknielsen.atlassian.net/browse/SWD-143).
+- Let operators **select a plant dynamics preset** (`skid`, `skid_composed`, …) and apply **numeric param overrides** from the thin Home Assistant integration — not from Soft-PLC or hard-wired code.
+- Persist selection on the **config entry**; rebuild the plant simulator on apply (reload), keeping Soft-PLC **mock-unaware**.
 
 ## Scope
 **In**
-- Unit-op contract (states / params / inputs / algebraic or ODE contributions / projection hooks)
-- v1 catalog derived from the skid: `tank`, `pump`, `orifice`, `lag`, plus `custom_ode`
-- Compiler: unit-op instances + connections → one `ModelSpec` (collected RHS + `project`)
-- Safe math-expression sandbox (AST whitelist) for `custom_ode` and any expression fields
-- YAML/JSON **model document** schema + HA-free loader under `custom_components/plcassistant/dynamics/`
-- Rebuild skid as a composed model document; register alongside code `skid`
-- Widen `PlantSimulator` to `DynamicsModel` (not `SkidModel`-only); programmatic preset selection for tests
-- Docs + tests (oracle parity, sandbox rejects unsafe code, loader validation)
-- App + integration version bump (**0.1.23**)
+- Config-entry **Options flow** (“Configure”) for `dynamics_preset` + optional `dynamics_params` overrides
+- Wire `HassPlantSimulator` / `PlantSimulator.for_preset` to the configured preset + params (default remains code `skid`)
+- Service `plcassistant.set_dynamics_preset` that writes the same options SoT and reloads the plant
+- Active-preset visibility (sensor state/attributes) + Lovelace/HMI operator copy
+- Docs + tests + App/integration version bump (**0.1.24**)
+- Dual-tree sync via `./scripts/sync-ha-app-package.sh`
 
 **Out**
-- Integration mock UI / preset chooser / live parameter editor → [SWD-143](https://marcusknielsen.atlassian.net/browse/SWD-143)
-- Soft-PLC block editor / surface programs for plant math (**mock ≠ PLC program**)
-- Full chem-eng unit-op library beyond the skid-derived set
+- Soft-PLC App Ingress / block-editor plant UI (mock ≠ PLC program)
+- Full unit-op graph / equation authoring UI (file/YAML documents remain the authoring path from SWD-144)
+- Mid-scan live rewiring of the model graph (apply = rebuild from initials)
+- Mock-off / field I/O commissioning changes
 - Scan-edge lockstep; Soft-PLC programming/control/safety changes
-- Persisted live plant state across Core restart (still reset to model initials)
-- Unrestricted Python `exec` for plant equations
+- Persisted live plant **state** across Core restart (still reset to model initials)
 
 ## Decisions
-1. **Runtime SoT unchanged:** `ModelSpec` + `FixedStepRunner` remain the only stepper. Unit ops **compile** into one collected RHS/projection; they do not introduce a second solver.
-2. **Composition model:** graph/list of unit-op instances + named connections → compiler → `ModelSpec`. Prefer compile-once at load; step path stays allocation-light.
-3. **v1 catalog (skid decomposition):**
-   - `tank` — level/inventory from net volumetric flow + clamps
-   - `pump` — `CMD`/speed → flow with lag + optional low-level derate
-   - `orifice` — `q = k * sqrt(max(h, 0))` (gravity drain)
-   - `lag` — first-order lag (generic)
-   - `custom_ode` — map of `state_key → d(state)/dt` expressions (and optional algebraic outs)
-4. **Expression language:** math-only AST whitelist in the HA-free engine (names for state/input/param, `+ - * / **`, parentheses, unary minus; functions `sqrt`, `exp`, `min`, `max`, `abs`, `clamp`). No attribute access, imports, comprehensions, or arbitrary calls. **Not** Soft-PLC `BlockRuntime` / user-template `exec`.
-5. **Persistence:** JSON (always) or YAML (when PyYAML present) model documents loaded by HA-free code. Live HA config-entry / UI ownership → SWD-143. Shipped composed-skid document: `dynamics/models/skid_composed.json`.
-6. **Default live preset:** keep code `skid` as the `mock_mode=true` default for zero operator regression. Composed skid is registered as `skid_composed` for oracle/acceptance; UI selection → SWD-143.
-7. **Typing:** `PlantSimulator.model` / `for_preset` speak `DynamicsModel`, not concrete `SkidModel`.
-8. **Soft-PLC boundary locked:** plant math stays under `custom_components/plcassistant/dynamics/`. Do not import or invoke `plcassistant.surface` for plant. Soft-PLC stays `HeldProcess` + MQTT plant IN.
-9. **Sandbox failure mode:** invalid/unsafe expressions fail at **load/compile** (clear error); never crash the HA plant task mid-scan. Already-running models are immutable until reload.
-10. **Versioning:** model document includes a schema `version` string (`"1.0"`); loader accepts the v1 schema only until a later migration story.
+1. **UI surface:** Config-entry **Options flow** is the primary chooser. No custom panel and no Soft-PLC Ingress plant UI. Lovelace documents how to configure; it is not a second authoring surface.
+2. **Apply model:** Changing preset/params **rebuilds** the plant simulator (stop → new `PlantSimulator.for_preset` → start). Plant state returns to model initials. Existing plant Number **nudges** stay the live state path; param overrides are not live mid-scan.
+3. **Preset list:** Driven by `list_presets()` / registry (`skid`, `skid_composed`, plus any future documents under `dynamics/models/`). Unknown names fail at apply/load with a clear error — never crash mid-tick.
+4. **Customize depth (v1):** Select preset + optional **numeric param overrides** (keys from `param_defaults`). No HA unit-op graph editor; composed documents stay file-based.
+5. **Persistence:** `config_entry.options` keys `dynamics_preset` (str, default `"skid"`) and `dynamics_params` (mapping of float overrides, default `{}`). Options win over hard-wired defaults; `data.mock_mode` still gates whether a simulator runs.
+6. **Service:** `set_dynamics_preset` updates options (same keys) and triggers the same reload path as Options flow — one SoT.
+7. **Visibility:** Expose active preset (and optionally effective params) on a thin integration sensor/attributes so operators and Lovelace can see what is running.
+8. **Soft-PLC boundary locked:** Plant math stays under `custom_components/plcassistant/dynamics/`. Soft-PLC stays `HeldProcess` + MQTT plant IN. Do not import Soft-PLC surface for plant config.
+9. **Versioning:** App + integration **0.1.24**; dual trees synced.
 
 ## Constraints
-- Soft-PLC remains mock-unaware (no plant synthesis OUT; no mock-mode API)
-- HA-free dynamics modules (`core`, catalog, compiler, expressions, plant) — no `homeassistant` imports; CI must import them without HA
-- Preserve MQTT topic/payload contracts; plant Numbers remain nudge-only while simulator owns tags
-- App + integration version lock; dual trees synced via `./scripts/sync-ha-app-package.sh`
-- One simulator task per config entry (unchanged lifecycle)
+- Soft-PLC remains mock-unaware
+- HA-free dynamics modules stay free of `homeassistant` imports; options/service/simulator wrappers may use HA
+- Preserve MQTT topic/payload contracts; plant Numbers remain display/nudge while simulator owns tags
+- One simulator task per config entry
+- Default live preset remains `skid` when options omit the key (zero operator regression)
 
 ## Acceptance criteria
-1. Unit-op catalog includes `tank`, `pump`, `orifice`, `lag`, `custom_ode` with documented contracts.
-2. A composed-skid model document compiles to a `ModelSpec` whose steps match code `SkidModel` / `MockProcess` within **1e-9**.
-3. `custom_ode` accepts safe expressions and **rejects** unsafe AST at load time with a clear error.
-4. Loader validates schema `version`, required fields, unknown op types, and dangling connection names.
-5. `PlantSimulator` runs any `DynamicsModel` from the preset registry; live default remains code `skid`.
-6. Soft-PLC App still constructs `HeldProcess` and does not gain plant math APIs.
-7. Docs state: unit-ops + expression sandbox live in the integration dynamics package; Soft-PLC surface is not the plant authoring path; UI → SWD-143.
-8. Automated tests cover: catalog ops, compiler/oracle parity, expression sandbox allow/deny, loader validation, registry/`DynamicsModel` typing.
-9. App + integration versions bumped and dual trees synced on implement.
+1. Options flow lists available presets and persists `dynamics_preset` / `dynamics_params` on the config entry.
+2. After apply/reload, `HassPlantSimulator` runs the selected registry preset with overrides; default without options is still `skid`.
+3. Selecting `skid_composed` runs the composed document path (oracle-equivalent dynamics from SWD-144).
+4. Invalid preset name fails apply/setup with a clear error; running tick path never raises from bad config mid-scan.
+5. Service `set_dynamics_preset` updates the same options and reloads equivalently to Options flow.
+6. Active preset is visible via integration sensor/attributes; Lovelace copy tells operators where to configure.
+7. Soft-PLC App does not gain plant math or preset APIs.
+8. Automated tests cover: options→registry wiring, param overrides, invalid preset, default `skid`.
+9. App + integration versions bumped to **0.1.24** and dual trees synced.
 
 ## Work packages
-1. **Unit-op contract + catalog** — op interface; implement `tank` / `pump` / `orifice` / `lag` / `custom_ode`
-2. **Expression sandbox** — AST parse/whitelist/eval; allow/deny tests
-3. **Compiler + model documents** — connections → collected `ModelSpec`; composed-skid JSON; schema version
-4. **Runtime wiring** — `DynamicsModel` typing; registry (`skid`, `skid_composed`); keep live default `skid`
-5. **Acceptance + packaging** — oracle/sandbox/loader tests, docs, version bump, dual-tree sync
+1. **Options flow + persistence** — OptionsFlow schema; constants; entry update + plant reload hook ([SWD-162](https://marcusknielsen.atlassian.net/browse/SWD-162))
+2. **Simulator wiring** — preset/params into `HassPlantSimulator` / `for_preset`; active-preset sensor attrs ([SWD-163](https://marcusknielsen.atlassian.net/browse/SWD-163))
+3. **Service + Lovelace copy** — `set_dynamics_preset`; HMI/help text for chooser ([SWD-164](https://marcusknielsen.atlassian.net/browse/SWD-164))
+4. **Acceptance + packaging** — tests, docs, version **0.1.24**, dual-tree sync ([SWD-165](https://marcusknielsen.atlassian.net/browse/SWD-165))
 
 ## Tracker
 - Provider: jira
 - Story: [SWD-142](https://marcusknielsen.atlassian.net/browse/SWD-142)
-- Task: [SWD-144](https://marcusknielsen.atlassian.net/browse/SWD-144)
-- Sub-tasks: [SWD-157](https://marcusknielsen.atlassian.net/browse/SWD-157) catalog, [SWD-159](https://marcusknielsen.atlassian.net/browse/SWD-159) sandbox, [SWD-158](https://marcusknielsen.atlassian.net/browse/SWD-158) compiler/YAML, [SWD-160](https://marcusknielsen.atlassian.net/browse/SWD-160) registry wiring, [SWD-161](https://marcusknielsen.atlassian.net/browse/SWD-161) acceptance
-- Prior: [SWD-146](https://marcusknielsen.atlassian.net/browse/SWD-146) Done (App 0.1.22)
-- Follow-on UI: [SWD-143](https://marcusknielsen.atlassian.net/browse/SWD-143)
-- Branch: `cursor/swd-144-unit-ops-implement-33f4`
-- Implement: App **0.1.23** — PR https://github.com/marcuskrogh/PLCAssistant/pull/65
+- Task: [SWD-143](https://marcusknielsen.atlassian.net/browse/SWD-143)
+- Sub-tasks: [SWD-162](https://marcusknielsen.atlassian.net/browse/SWD-162) options, [SWD-163](https://marcusknielsen.atlassian.net/browse/SWD-163) simulator wiring, [SWD-164](https://marcusknielsen.atlassian.net/browse/SWD-164) service/Lovelace, [SWD-165](https://marcusknielsen.atlassian.net/browse/SWD-165) acceptance
+- Prior: [SWD-144](https://marcusknielsen.atlassian.net/browse/SWD-144) Done (App 0.1.23)
+- Branch: `cursor/swd-143-mock-ui-presets-33f4`
+- Implement: App **0.1.24**
 
 ## Next
-`/define SWD-143` — after SWD-144 Done
+`/review-fix SWD-143`

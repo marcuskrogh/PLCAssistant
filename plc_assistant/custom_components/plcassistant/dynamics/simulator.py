@@ -9,7 +9,7 @@ import asyncio
 import json
 import logging
 import time
-from typing import Any
+from typing import Any, Mapping
 
 from homeassistant.core import HomeAssistant
 
@@ -22,16 +22,35 @@ _POLL_S = 0.05
 
 
 class HassPlantSimulator:
-    """One plant dynamics task per config entry (skid preset)."""
+    """One plant dynamics task per config entry (selected preset)."""
 
-    def __init__(self, hass: HomeAssistant, instance_id: str) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        instance_id: str,
+        *,
+        preset: str = "skid",
+        params: Mapping[str, float] | None = None,
+    ) -> None:
         self.hass = hass
         self._instance_id = instance_id
+        self._preset = str(preset or "skid").strip().lower() or "skid"
+        self._params = dict(params or {})
         self._pending: dict[str, str] = {}
-        self._plant = PlantSimulator.for_preset(self._queue_publish, preset="skid")
+        self._plant = PlantSimulator.for_preset(
+            self._queue_publish, preset=self._preset, params=self._params
+        )
         self._task: asyncio.Task[None] | None = None
         self._stop = asyncio.Event()
         self._last_mono: float | None = None
+
+    @property
+    def preset(self) -> str:
+        return self._preset
+
+    @property
+    def params(self) -> Mapping[str, float]:
+        return dict(self._params)
 
     @property
     def plant(self) -> PlantSimulator:
@@ -70,7 +89,9 @@ class HassPlantSimulator:
         except AttributeError:
             self._task = self.hass.async_create_task(self._run())
         _LOGGER.info(
-            "Plant simulator started (skid) for instance_id=%s", self._instance_id
+            "Plant simulator started (preset=%s) for instance_id=%s",
+            self._preset,
+            self._instance_id,
         )
 
     async def async_stop(self) -> None:
