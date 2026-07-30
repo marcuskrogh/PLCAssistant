@@ -14,12 +14,12 @@ After App **0.1.30**, Soft-PLC shows **MODE=TRIPPED**, **Trip active=On**, **Sta
 - Real LOS (explicit BAD/FAULT from the plant) must still trip.
 
 ## Acceptance criteria
-- [ ] Settled plant (unchanged PVs for >5 s) must **not** latch LOS from file age alone
-- [ ] Stale/missing plant file `ts`: hold last good (skip apply); do **not** force BAD/UNAVAILABLE
-- [ ] Plant publishes a file/MQTT heartbeat for plant tags even when value coalesce would skip
-- [ ] After a real LOS clears, Reset → STOP → Start works
-- [ ] Regression tests: settle-without-LOS + Reset recovery; update prior stale-demote expectation
-- [ ] App + integration **0.1.31**; dual trees synced
+- [x] Settled plant (unchanged PVs for >5 s) must **not** latch LOS from file age alone
+- [x] Stale/missing plant file `ts`: hold last good (skip apply); do **not** force BAD/UNAVAILABLE
+- [x] Plant publishes a file/MQTT heartbeat for plant tags even when value coalesce would skip
+- [x] After a real LOS clears, Reset → STOP → Start works
+- [x] Regression tests: settle-without-LOS + Reset recovery; update prior stale-demote expectation
+- [x] App + integration **0.1.31**; dual trees synced
 
 ## Out of scope
 - Changing trip thresholds / cascade tuning
@@ -34,7 +34,13 @@ After App **0.1.30**, Soft-PLC shows **MODE=TRIPPED**, **Trip active=On**, **Sta
 - Task: [SWD-173](https://marcusknielsen.atlassian.net/browse/SWD-173)
 - Relates: [SWD-171](https://marcusknielsen.atlassian.net/browse/SWD-171)
 - Branch: `cursor/swd-173-trip-stale-los-b0f4`
-- PR: [#74](https://github.com/marcuskrogh/PLCAssistant/pull/74)
+- PR: [#74](https://github.com/marcuskrogh/PLCAssistant/pull/74) (merged)
+
+## Shipped
+- Soft-PLC holds last good on stale/missing **GOOD** plant file `ts` (no BAD demote)
+- Explicit non-GOOD plant file status still applies (real LOS)
+- PlantSimulator per-tag heartbeat + status-transition republish
+- App + integration **0.1.31**
 
 ## Next
-`/review-fix SWD-173` — Review and auto-fix until clean
+Done — phase closed.
