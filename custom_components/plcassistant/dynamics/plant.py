@@ -37,6 +37,7 @@ class PlantSimulator:
     _quality: dict[str, tuple[str, str | None]] = field(default_factory=dict, init=False)
     _last_publish: dict[str, float] = field(default_factory=dict, init=False)
     _last_publish_mono: dict[str, float] = field(default_factory=dict, init=False)
+    _last_publish_status: dict[str, str] = field(default_factory=dict, init=False)
 
     def __post_init__(self) -> None:
         self._runner = FixedStepRunner(self.model, period_s=self.period_s)
@@ -148,13 +149,16 @@ class PlantSimulator:
             status, reason = self._quality.get(tag, ("GOOD", None))
             last_val = self._last_publish.get(tag)
             last_mono = self._last_publish_mono.get(tag)
+            last_status = self._last_publish_status.get(tag)
+            status_changed = last_status is None or last_status != status
             unchanged = (
                 status == "GOOD"
+                and not status_changed
                 and last_val is not None
                 and abs(float(last_val) - float(value)) < 1e-9
             )
             heartbeat_due = last_mono is None or (now - float(last_mono)) >= hb
-            # Coalesce unchanged GOOD values unless forced or this tag's heartbeat.
+            # Coalesce unchanged GOOD values unless forced, status flip, or heartbeat.
             if not force and unchanged and not heartbeat_due:
                 continue
             payload = json.dumps(
@@ -163,6 +167,7 @@ class PlantSimulator:
             self.publish(tag, payload)
             if status == "GOOD":
                 self._last_publish[tag] = float(value)
+            self._last_publish_status[tag] = status
             self._last_publish_mono[tag] = now
 
 

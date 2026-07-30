@@ -329,6 +329,34 @@ def test_plant_heartbeat_does_not_starve_static_tags() -> None:
     assert "LT_RES" in batch
 
 
+def test_plant_status_transition_republishes_immediately() -> None:
+    """SWD-173 review: BAD→GOOD with unchanged PV must not wait for heartbeat."""
+    import json
+    import time
+
+    from dynamics.plant import PlantSimulator
+
+    published: list[tuple[str, dict]] = []
+
+    def publish(tag: str, payload: str) -> None:
+        published.append((tag, json.loads(payload)))
+
+    plant = PlantSimulator.for_preset(publish, period_s=0.1)
+    plant.file_heartbeat_s = 5.0
+    plant.apply_status_payload({"state": "stopped", "scan_period_s": 0.1})
+    outs = {"LT_TANK": 0.20, "LT_RES": 0.15, "FT_INLET": 0.0}
+    plant.force_quality("LT_TANK", "BAD", "LOS")
+    plant._publish_outputs(outs, force=False)
+    assert any(
+        t == "LT_TANK" and p.get("status") == "BAD" for t, p in published
+    )
+    plant.force_quality("LT_TANK", "GOOD")
+    before = len(published)
+    plant._publish_outputs(outs, force=False)
+    batch = published[before:]
+    assert any(t == "LT_TANK" and p.get("status") == "GOOD" for t, p in batch)
+
+
 def test_integration_wires_plant_simulator_lifecycle() -> None:
     init_text = (CC / "__init__.py").read_text(encoding="utf-8")
     assert "HassPlantSimulator" in init_text

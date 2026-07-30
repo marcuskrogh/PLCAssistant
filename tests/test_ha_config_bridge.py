@@ -333,6 +333,63 @@ def test_file_plant_stale_holds_last_good_no_los(
     assert float(image.get_value("SP_LEVEL_REQ")) == pytest.approx(0.30)
 
 
+def test_file_plant_aged_explicit_bad_still_applies(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """SWD-173 review: aged explicit BAD/FAULT still applies (real LOS)."""
+    import time
+
+    from plcassistant.app.runtime import MqttScanLoop, declare_default_image
+    from plcassistant.io.ha_config_bridge import PLANT_FILE_STALE_S, write_input_tags
+    from plcassistant.io.mqtt_bridge import InMemoryMqttBus, MqttIoBridge
+    from plcassistant.io.quality import QualityStatus, ReasonCode
+    from plcassistant.wedge.safety import Mode
+
+    monkeypatch.setenv("PLCASSISTANT_HA_CONFIG", str(tmp_path))
+    monkeypatch.setattr(MqttScanLoop, "FILE_BRIDGE_PERIOD_S", 0.0)
+    bus = InMemoryMqttBus()
+    image = declare_default_image()
+    bridge = MqttIoBridge(bus, instance_id="default")
+    loop = MqttScanLoop(bridge, image, period_s=0.05)
+    bridge.start()
+    assert write_input_tags(
+        {
+            "LT_TANK": 0.22,
+            "LT_RES": 0.18,
+            "FT_INLET": 1.0,
+            "SP_LEVEL_REQ": 0.25,
+        },
+        root=tmp_path,
+    )
+    from plcassistant.io.ha_config_bridge import write_cmd
+
+    assert write_cmd("start", root=tmp_path)
+    for _ in range(5):
+        loop.scan_once()
+    assert loop.logic.skid.last.mode is Mode.RUNNING
+    assert loop.logic.skid.last.trip_active is False
+
+    stale_ts = time.time() - (PLANT_FILE_STALE_S + 2.0)
+    assert write_input_tags(
+        {
+            "LT_TANK": {
+                "value": None,
+                "status": "BAD",
+                "reason": "unavailable",
+                "ts": stale_ts,
+            },
+            "LT_RES": {"value": 0.18, "status": "GOOD", "ts": time.time()},
+            "FT_INLET": {"value": 1.0, "status": "GOOD", "ts": time.time()},
+        },
+        root=tmp_path,
+    )
+    for _ in range(5):
+        loop.scan_once()
+    assert image.get_quality("LT_TANK").status is QualityStatus.BAD
+    assert image.get_quality("LT_TANK").reason is ReasonCode.UNAVAILABLE
+    assert loop.logic.skid.last.trip_active is True
+
+
 def test_settled_plant_file_age_does_not_block_reset(
     tmp_path: Path, monkeypatch
 ) -> None:

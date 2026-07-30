@@ -301,10 +301,11 @@ class MqttScanLoop:
                         reason = ReasonCode[str(reason_raw).upper()]
                     except KeyError:
                         reason = None
-            # Plant PVs: if file age is stale, hold last good — do NOT demote to
-            # BAD/UNAVAILABLE (that latches LOS and blocks Reset; SWD-173).
-            # Real LOS still arrives as explicit BAD/FAULT from plant/MQTT.
-            if name in PLANT_FILE_INPUT_TAGS:
+            # Plant PVs: stale/missing ts on GOOD → hold last good (skip apply).
+            # Do NOT demote to BAD/UNAVAILABLE (that latches LOS; SWD-173).
+            # Explicit non-GOOD (BAD/FAULT/…) always applies regardless of age —
+            # real LOS must still trip on the file path.
+            if name in PLANT_FILE_INPUT_TAGS and status is QualityStatus.GOOD:
                 try:
                     tag_ts = float(body["ts"]) if body.get("ts") is not None else None
                 except (TypeError, ValueError):
