@@ -30,7 +30,9 @@ Default `instance_id` = `default`.
 
 Tag names match the Soft-PLC image / binding table (e.g. `LT_TANK`, `CMD_SPEED`, `SP_LEVEL_REQ`).
 
-**Direction (SWD-145):** plant PVs (`LT_TANK`, `LT_RES`, `FT_INLET`) are Soft-PLC **IN** (`…/tag/{tag}/in`); Soft-PLC CVs/status (`CMD_SPEED`, `SP_LEVEL`, `SP_FLOW`, `MODE`, `PERM_OK`, `TRIP_ACTIVE`) are **OUT** (`…/tag/{tag}/out`). Process ↔ Soft-PLC transport is MQTT (mock ≡ field).
+**Direction (SWD-145):** plant PVs (`LT_TANK`, `LT_RES`, `FT_INLET`) are Soft-PLC **IN** (`…/tag/{tag}/in`); Soft-PLC CVs/status (`CMD_SPEED`, `SP_LEVEL`, `SP_FLOW`, `MODE`, `PERM_OK`, `TRIP_ACTIVE`) are **OUT** (`…/tag/{tag}/out`). Process ↔ Soft-PLC **primary** transport is MQTT (mock ≡ field).
+
+**MQTT-silent fallback (SWD-139…141 / SWD-171):** when the broker path is quiet, the shared HA-config file bridge carries Soft-PLC OUT (`runtime.json`), operator cmds (`cmd.json`), and IN tags in `inputs.json` — including `SP_LEVEL_REQ` and plant PVs — so cascade still tracks level when MQTT plant→App never delivers. Live MQTT still wins on the same Soft-PLC scan when present.
 
 ### App status topic (SWD-135 / SWD-136 / SWD-145)
 

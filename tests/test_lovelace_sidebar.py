@@ -32,14 +32,14 @@ def test_manifest_depends_on_frontend_and_lovelace() -> None:
     assert "frontend" in deps
     assert "lovelace" in deps
     assert "mqtt" in deps
-    assert manifest["version"] == "0.1.29"
+    assert manifest["version"] == "0.1.30"
 
 
 def test_app_version_locked_to_integration() -> None:
     text = (ROOT / "plc_assistant" / "config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.29"' in text
+    assert 'version: "0.1.30"' in text
     docker = (ROOT / "plc_assistant" / "Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.29" in docker
+    assert "BUILD_VERSION=0.1.30" in docker
 
 
 def test_url_path_contains_hyphen() -> None:

@@ -9,11 +9,13 @@ import asyncio
 import json
 import logging
 import time
+from pathlib import Path
 from typing import Any, Mapping
 
 from homeassistant.core import HomeAssistant
 
 from ..const import DOMAIN
+from ..ha_config_bridge import write_input_tags
 from ..mqtt_topics import tag_in_topic
 from .plant import PlantSimulator
 
@@ -114,6 +116,8 @@ class HassPlantSimulator:
             return
         pending = dict(self._pending)
         self._pending.clear()
+        file_tags: dict[str, dict[str, Any]] = {}
+        config_root: Path | None = None
         for tag, payload in pending.items():
             # SWD-169/170: HMI plant sensors/Numbers hydrate from this bus
             # (same-process); MQTT remains the Soft-PLC transport.
@@ -123,6 +127,9 @@ class HassPlantSimulator:
                 store = self.hass.data.get(DOMAIN, {}).get(self._entry_id)
                 if isinstance(store, dict):
                     store.setdefault("in_values", {})[tag_key] = payload
+                    root = store.get("config_root")
+                    if isinstance(root, Path):
+                        config_root = root
                 self.hass.bus.async_fire(
                     f"{DOMAIN}_plant_in",
                     {
@@ -131,6 +138,18 @@ class HassPlantSimulator:
                         "payload": payload,
                     },
                 )
+            # SWD-171: shared-config plant IN so Soft-PLC cascade sees PVs when
+            # MQTT plant→App is silent (same fallback pattern as SP_LEVEL_REQ).
+            parsed = _parse_tag_payload(payload)
+            if parsed is not None:
+                file_tags[tag_key] = parsed
+        # Write file fallback before MQTT so a publish failure cannot starve the
+        # silent Soft-PLC path.
+        if file_tags and config_root is not None:
+            await self.hass.async_add_executor_job(
+                write_input_tags, file_tags, config_root
+            )
+        for tag, payload in pending.items():
             await self.hass.services.async_call(
                 "mqtt",
                 "publish",
@@ -159,6 +178,17 @@ class HassPlantSimulator:
 
 
 def _parse_tag_value(payload: Any) -> float | None:
+    parsed = _parse_tag_payload(payload)
+    if parsed is None:
+        return None
+    try:
+        return float(parsed["value"])
+    except (TypeError, ValueError, KeyError):
+        return None
+
+
+def _parse_tag_payload(payload: Any) -> dict[str, Any] | None:
+    """Decode a plant MQTT JSON payload into inputs.json tag body."""
     try:
         if isinstance(payload, (bytes, bytearray)):
             text = payload.decode("utf-8")
@@ -166,8 +196,12 @@ def _parse_tag_value(payload: Any) -> float | None:
             text = str(payload)
         body = json.loads(text or "{}")
         if isinstance(body, dict) and "value" in body:
-            return float(body["value"])
-        return float(text)
+            return {
+                "value": body.get("value"),
+                "status": body.get("status") or "GOOD",
+                "reason": body.get("reason"),
+            }
+        return {"value": float(text), "status": "GOOD", "reason": None}
     except (TypeError, ValueError, UnicodeDecodeError, json.JSONDecodeError):
         return None
 
