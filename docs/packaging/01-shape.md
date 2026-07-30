@@ -38,7 +38,7 @@
 
 **Invariant:** mock path ≡ field path. The Soft-PLC does not branch on “mock mode.”
 
-**Ownership (SWD-145/146):** The thin integration owns the stand-alone process simulator (`custom_components/plcassistant/dynamics/`). Soft-PLC treats plant PVs (`LT_TANK`, `LT_RES`, `FT_INLET`, …) as MQTT **IN** like field signals and stays on `HeldProcess`. The integration observes Soft-PLC MQTT status (`scan_period_s`, state), consumes `CMD_SPEED` OUT, and publishes plant IN for the default **skid** preset. Soft-PLC receives no mock/plant identity back. Preset chooser / unit-op authoring → SWD-143/144.
+**Ownership (SWD-145/146):** The thin integration owns the stand-alone process simulator (`custom_components/plcassistant/dynamics/`). Soft-PLC treats plant PVs (`LT_TANK`, `LT_RES`, `FT_INLET`, …) as MQTT **IN** like field signals and stays on `HeldProcess`. The integration observes Soft-PLC MQTT status (`scan_period_s`, state), consumes `CMD_SPEED` OUT, and publishes plant IN for the default **skid** preset. Soft-PLC receives no mock/plant identity back. Unit-op / custom-equation authoring → [SWD-144](https://marcusknielsen.atlassian.net/browse/SWD-144); preset chooser UI → [SWD-143](https://marcusknielsen.atlassian.net/browse/SWD-143).
 
 ## Install target (v1)
 
