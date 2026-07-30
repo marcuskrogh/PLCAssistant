@@ -112,7 +112,13 @@ def load_user_model(root: Path, name: str) -> dict[str, Any]:
 
 def save_user_model(root: Path, name: str, doc: Mapping[str, Any]) -> Path:
     key = str(name or "").strip().lower()
-    if not key or any(ch in key for ch in "/\\.."):
+    if (
+        not key
+        or "/" in key
+        or "\\" in key
+        or key in {".", ".."}
+        or ".." in key
+    ):
         raise ValueError(f"invalid model name: {name!r}")
     validated = validate_document(doc)
     # Keep document name in sync with file stem.

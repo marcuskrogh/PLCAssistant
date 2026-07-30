@@ -245,8 +245,7 @@ class DynamicsApplyView(HomeAssistantView):
             CONF_DYNAMICS_PARAMS: dict(entry.options.get(CONF_DYNAMICS_PARAMS) or {}),
         }
         hass.config_entries.async_update_entry(entry, options=new_options)
-        # Update listener reloads; call reload explicitly for reliability.
-        await hass.config_entries.async_reload(entry.entry_id)
+        # Update listener reloads the entry (rebuilds plant from initials).
         return web.json_response(
             {"ok": True, "path": path, "preset": name.lower(), "reloaded": True}
         )
