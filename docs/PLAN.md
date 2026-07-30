@@ -75,7 +75,7 @@
 - Prior: [SWD-146](https://marcusknielsen.atlassian.net/browse/SWD-146) Done (App 0.1.22)
 - Follow-on UI: [SWD-143](https://marcusknielsen.atlassian.net/browse/SWD-143)
 - Branch: `cursor/swd-144-unit-ops-implement-33f4`
-- Implement: App **0.1.23**
+- Implement: App **0.1.23** — PR https://github.com/marcuskrogh/PLCAssistant/pull/65
 
 ## Next
-`/review-fix SWD-144` — then `/ship SWD-144`
+`/define SWD-143` — after SWD-144 Done

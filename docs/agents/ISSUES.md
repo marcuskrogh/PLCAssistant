@@ -58,7 +58,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-139 | Bug | [Iterate] Soft-PLC attached (stopped) but HMI still offline — MQTT never reaches HA entities | Done | Relates SWD-138 | docs/ITERATE.md | Done — shipped PR #55 |
 | SWD-140 | Bug | [Iterate] HMI zeros on SP_LEVEL/SP_FLOW/LT_RES + clarify PERM_OK while RUNNING | Done | Relates SWD-139 | docs/ITERATE.md | Done — shipped PR #56 |
 | SWD-141 | Bug | [Iterate] Level setpoint request does not update Active level SP (stuck 0.2 m) | Done | Relates SWD-140 | docs/ITERATE.md | Done — shipped PR #57 |
-| SWD-142 | Story | Configurable mock dynamics — tags, unit ops, ODEs, selectable presets | To Do | — | docs/ROADMAP.md | `/implement SWD-144` |
+| SWD-142 | Story | Configurable mock dynamics — tags, unit ops, ODEs, selectable presets | To Do | — | docs/ROADMAP.md | `/define SWD-143` |
 | SWD-145 | Task | Soft-PLC ↔ integration mock ownership boundary | Done | Relates SWD-142 | docs/PLAN.md | Done — shipped PR #59+#60 |
 | SWD-149 | Subtask | SWD-145: Ownership docs (packaging / wedge / I/O) | Done | SWD-145 | docs/PLAN.md | — |
 | SWD-150 | Subtask | SWD-145: Expose scan_period_s on Soft-PLC MQTT status | Done | SWD-145 | docs/PLAN.md | — |
@@ -71,17 +71,18 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-152 | Subtask | SWD-146: HA simulator lifecycle + status/CMD_SPEED coupling | Done | SWD-146 | docs/PLAN.md | — |
 | SWD-155 | Subtask | SWD-146: Plant Number ownership + HMI live-motion copy | Done | SWD-146 | docs/PLAN.md | — |
 | SWD-153 | Subtask | SWD-146: Acceptance tests + packaging/docs/version | Done | SWD-146 | docs/PLAN.md | — |
-| SWD-144 | Task | Unit-op library + custom equation authoring | In Progress | Relates SWD-142 | docs/PLAN.md | `/review-fix SWD-144` |
-| SWD-157 | Subtask | SWD-144: Unit-op contract + skid-derived catalog | In Progress | SWD-144 | docs/PLAN.md | — |
-| SWD-159 | Subtask | SWD-144: Math expression AST sandbox | In Progress | SWD-144 | docs/PLAN.md | — |
-| SWD-158 | Subtask | SWD-144: Compiler + YAML model documents | In Progress | SWD-144 | docs/PLAN.md | — |
-| SWD-160 | Subtask | SWD-144: DynamicsModel typing + preset registry wiring | In Progress | SWD-144 | docs/PLAN.md | — |
-| SWD-161 | Subtask | SWD-144: Acceptance tests + packaging/docs/version | In Progress | SWD-144 | docs/PLAN.md | — |
+| SWD-144 | Task | Unit-op library + custom equation authoring | Done | Relates SWD-142 | docs/PLAN.md | Done — shipped PR #65 |
+| SWD-157 | Subtask | SWD-144: Unit-op contract + skid-derived catalog | Done | SWD-144 | docs/PLAN.md | — |
+| SWD-159 | Subtask | SWD-144: Math expression AST sandbox | Done | SWD-144 | docs/PLAN.md | — |
+| SWD-158 | Subtask | SWD-144: Compiler + YAML model documents | Done | SWD-144 | docs/PLAN.md | — |
+| SWD-160 | Subtask | SWD-144: DynamicsModel typing + preset registry wiring | Done | SWD-144 | docs/PLAN.md | — |
+| SWD-161 | Subtask | SWD-144: Acceptance tests + packaging/docs/version | Done | SWD-144 | docs/PLAN.md | — |
 | SWD-143 | Task | Explore theme: Integration mock UI + preset selection | To Do | Relates SWD-142 | docs/ROADMAP.md | After SWD-144 |
 
 ## Log
 
-- 2026-07-30 — Implement SWD-144: App 0.1.23; unit-ops + AST sandbox + skid_composed oracle; PR pending → In Review. Next `/review-fix SWD-144`.
+- 2026-07-30 — Shipped SWD-144 via PR #65 (App 0.1.23); review-fix CLEAN after 1 iter (README); Task Done; Next `/define SWD-143`.
+- 2026-07-30 — Implement SWD-144: App 0.1.23; unit-ops + AST sandbox + skid_composed oracle; PR #65 → In Review. Next `/review-fix SWD-144`.
 - 2026-07-30 — Define SWD-144: PLAN.md + Sub-tasks SWD-157/159/158/160/161; unit-ops compile → ModelSpec + AST sandbox; Next `/implement SWD-144`.
 - 2026-07-29 — Shipped SWD-146 via PR #63 (App 0.1.22); review-fix CLEAN after 1 iter (retained-status hydrate + docs); Task Done; Next `/define SWD-144`.
 - 2026-07-29 — Define SWD-146: PLAN.md + Sub-tasks SWD-156/154/152/155/153; integration dynamics core + skid preset; Next `/implement SWD-146`.
