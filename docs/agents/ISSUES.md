@@ -92,7 +92,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
-- 2026-07-30 — Implement SWD-173: App 0.1.31; hold last-good on stale plant file + plant heartbeat; PR pending → In Review. Next `/review-fix SWD-173`.
+- 2026-07-30 — Implement SWD-173: App 0.1.31; hold last-good on stale plant file + plant heartbeat; PR [#74](https://github.com/marcuskrogh/PLCAssistant/pull/74) → In Review. Next `/review-fix SWD-173`.
 - 2026-07-30 — Iterate SWD-173: Soft-PLC stuck TRIPPED after settle (stale plant file LOS from SWD-171); Relates SWD-171.
 - 2026-07-30 — Shipped SWD-171 via PR #73 (App 0.1.30); review-fix CLEAN after 2 iters; Task Done.
 - 2026-07-30 — review-fix SWD-171 CLEAN after 2 iterations (iter1: 4SF lock/stale/coerce/file-before-mqtt; iter2: 0); closeout.

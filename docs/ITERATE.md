@@ -34,6 +34,7 @@ After App **0.1.30**, Soft-PLC shows **MODE=TRIPPED**, **Trip active=On**, **Sta
 - Task: [SWD-173](https://marcusknielsen.atlassian.net/browse/SWD-173)
 - Relates: [SWD-171](https://marcusknielsen.atlassian.net/browse/SWD-171)
 - Branch: `cursor/swd-173-trip-stale-los-b0f4`
+- PR: [#74](https://github.com/marcuskrogh/PLCAssistant/pull/74)
 
 ## Next
 `/review-fix SWD-173` — Review and auto-fix until clean
