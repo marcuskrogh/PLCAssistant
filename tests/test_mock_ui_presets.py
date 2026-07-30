@@ -94,6 +94,9 @@ def test_options_flow_and_service_surface_in_integration_sources() -> None:
     assert "add_update_listener" in init
     assert "HassPlantSimulator" in init
     assert "preset=preset" in init
+    # Service must register independently of start/stop/reset (upgrade path).
+    assert "SERVICE_SET_DYNAMICS_PRESET" in init
+    assert init.count("has_service(DOMAIN, SERVICE_") >= 2
 
     services = (CC / "services.yaml").read_text(encoding="utf-8")
     assert "set_dynamics_preset:" in services

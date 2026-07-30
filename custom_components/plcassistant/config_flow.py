@@ -88,6 +88,7 @@ class PlcAssistantOptionsFlow(config_entries.OptionsFlow):
                 return self.async_create_entry(
                     title="",
                     data={
+                        **dict(self._config_entry.options),
                         CONF_DYNAMICS_PRESET: preset,
                         CONF_DYNAMICS_PARAMS: params,
                     },

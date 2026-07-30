@@ -275,6 +275,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.services.async_register(DOMAIN, SERVICE_START, handle_start)
         hass.services.async_register(DOMAIN, SERVICE_STOP, handle_stop)
         hass.services.async_register(DOMAIN, SERVICE_RESET, handle_reset)
+    if not hass.services.has_service(DOMAIN, SERVICE_SET_DYNAMICS_PRESET):
         hass.services.async_register(
             DOMAIN, SERVICE_SET_DYNAMICS_PRESET, handle_set_dynamics_preset
         )
