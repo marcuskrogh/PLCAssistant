@@ -33,6 +33,8 @@ App update detection works (Settings → check for updates shows PLCAssistant). 
 ## Tracker
 - Task: [SWD-168](https://marcusknielsen.atlassian.net/browse/SWD-168)
 - Relates: [SWD-138](https://marcusknielsen.atlassian.net/browse/SWD-138)
+- PR: [#70](https://github.com/marcuskrogh/PLCAssistant/pull/70)
+- Branch: `cursor/swd-168-restart-required-0337`
 
 ## Next
 `/review-fix SWD-168` — Review and auto-fix until clean
