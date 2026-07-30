@@ -71,16 +71,17 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-152 | Subtask | SWD-146: HA simulator lifecycle + status/CMD_SPEED coupling | Done | SWD-146 | docs/PLAN.md | — |
 | SWD-155 | Subtask | SWD-146: Plant Number ownership + HMI live-motion copy | Done | SWD-146 | docs/PLAN.md | — |
 | SWD-153 | Subtask | SWD-146: Acceptance tests + packaging/docs/version | Done | SWD-146 | docs/PLAN.md | — |
-| SWD-144 | Task | Unit-op library + custom equation authoring | In Review | Relates SWD-142 | docs/PLAN.md | `/implement SWD-144` |
-| SWD-157 | Subtask | SWD-144: Unit-op contract + skid-derived catalog | To Do | SWD-144 | docs/PLAN.md | — |
-| SWD-159 | Subtask | SWD-144: Math expression AST sandbox | To Do | SWD-144 | docs/PLAN.md | — |
-| SWD-158 | Subtask | SWD-144: Compiler + YAML model documents | To Do | SWD-144 | docs/PLAN.md | — |
-| SWD-160 | Subtask | SWD-144: DynamicsModel typing + preset registry wiring | To Do | SWD-144 | docs/PLAN.md | — |
-| SWD-161 | Subtask | SWD-144: Acceptance tests + packaging/docs/version | To Do | SWD-144 | docs/PLAN.md | — |
+| SWD-144 | Task | Unit-op library + custom equation authoring | In Progress | Relates SWD-142 | docs/PLAN.md | `/review-fix SWD-144` |
+| SWD-157 | Subtask | SWD-144: Unit-op contract + skid-derived catalog | In Progress | SWD-144 | docs/PLAN.md | — |
+| SWD-159 | Subtask | SWD-144: Math expression AST sandbox | In Progress | SWD-144 | docs/PLAN.md | — |
+| SWD-158 | Subtask | SWD-144: Compiler + YAML model documents | In Progress | SWD-144 | docs/PLAN.md | — |
+| SWD-160 | Subtask | SWD-144: DynamicsModel typing + preset registry wiring | In Progress | SWD-144 | docs/PLAN.md | — |
+| SWD-161 | Subtask | SWD-144: Acceptance tests + packaging/docs/version | In Progress | SWD-144 | docs/PLAN.md | — |
 | SWD-143 | Task | Explore theme: Integration mock UI + preset selection | To Do | Relates SWD-142 | docs/ROADMAP.md | After SWD-144 |
 
 ## Log
 
+- 2026-07-30 — Implement SWD-144: App 0.1.23; unit-ops + AST sandbox + skid_composed oracle; PR pending → In Review. Next `/review-fix SWD-144`.
 - 2026-07-30 — Define SWD-144: PLAN.md + Sub-tasks SWD-157/159/158/160/161; unit-ops compile → ModelSpec + AST sandbox; Next `/implement SWD-144`.
 - 2026-07-29 — Shipped SWD-146 via PR #63 (App 0.1.22); review-fix CLEAN after 1 iter (retained-status hydrate + docs); Task Done; Next `/define SWD-144`.
 - 2026-07-29 — Define SWD-146: PLAN.md + Sub-tasks SWD-156/154/152/155/153; integration dynamics core + skid preset; Next `/implement SWD-146`.

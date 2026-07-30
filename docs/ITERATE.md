@@ -1,13 +1,13 @@
 # Iterate notes: Unit-op library + custom equation authoring (SWD-144)
 
-**In Review (define)** — PLAN locked on `cursor/swd-144-unit-ops-define-33f4`
+**In Progress** — App **0.1.23**; implement on `cursor/swd-144-unit-ops-implement-33f4`
 
-## Define locks
-1. Unit ops compile → one collected `ModelSpec` (SWD-146 stepper unchanged)
-2. v1 catalog: `tank`, `pump`, `orifice`, `lag`, `custom_ode` (skid decomposition)
-3. Math AST whitelist sandbox (not Soft-PLC surface `exec`)
-4. YAML/JSON model documents; live default stays code `skid`
-5. HA UI / preset chooser → SWD-143
+## Shipped in this PR
+1. Unit-op catalog: `tank`, `pump`, `orifice`, `lag`, `custom_ode`
+2. Math AST whitelist sandbox (`expr.py`)
+3. JSON/YAML model documents + compiler → collected `ModelSpec`
+4. Composed skid document with 1e-9 oracle parity vs code `skid`
+5. `PlantSimulator` typed to `DynamicsModel`; live default remains code `skid`
 
 ## Next
-`/implement SWD-144` — after define approval
+`/review-fix SWD-144` — then `/ship SWD-144`

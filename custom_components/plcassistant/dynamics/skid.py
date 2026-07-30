@@ -207,6 +207,16 @@ class SkidModel:
             raise KeyError(name)
         self._inputs[name] = float(value)
 
+    def set_state(self, name: str, value: float) -> None:
+        if name == "h_tank":
+            self.set_levels(h_tank=float(value))
+        elif name == "h_res":
+            self.set_levels(h_res=float(value))
+        elif name in self._state:
+            self._state[name] = float(value)
+        else:
+            raise KeyError(name)
+
     def step(self, dt: float) -> Mapping[str, float]:
         tentative = SKID_SPEC.rhs(dt, self._state, self._inputs, self._params)
         self._state = SKID_SPEC.project(tentative, self._params, dt)
@@ -245,12 +255,11 @@ PRESETS: dict[str, type[SkidModel]] = {
 }
 
 
-def get_preset(name: str = "skid", params: Mapping[str, float] | None = None) -> SkidModel:
-    key = str(name or "skid").strip().lower() or "skid"
-    cls = PRESETS.get(key)
-    if cls is None:
-        raise KeyError(f"unknown dynamics preset: {name!r}")
-    return cls(params=params)
+def get_preset(name: str = "skid", params: Mapping[str, float] | None = None):
+    """Return a DynamicsModel for a named preset (code or composed document)."""
+    from .registry import get_preset as _registry_get_preset
+
+    return _registry_get_preset(name, params=params)
 
 
 __all__ = ["PRESETS", "SKID_SPEC", "SkidModel", "get_preset", "skid_project", "skid_rhs"]

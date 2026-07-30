@@ -15,7 +15,7 @@
 - Rebuild skid as a composed model document; register alongside code `skid`
 - Widen `PlantSimulator` to `DynamicsModel` (not `SkidModel`-only); programmatic preset selection for tests
 - Docs + tests (oracle parity, sandbox rejects unsafe code, loader validation)
-- App + integration version bump when implementing
+- App + integration version bump (**0.1.23**)
 
 **Out**
 - Integration mock UI / preset chooser / live parameter editor → [SWD-143](https://marcusknielsen.atlassian.net/browse/SWD-143)
@@ -35,12 +35,12 @@
    - `lag` — first-order lag (generic)
    - `custom_ode` — map of `state_key → d(state)/dt` expressions (and optional algebraic outs)
 4. **Expression language:** math-only AST whitelist in the HA-free engine (names for state/input/param, `+ - * / **`, parentheses, unary minus; functions `sqrt`, `exp`, `min`, `max`, `abs`, `clamp`). No attribute access, imports, comprehensions, or arbitrary calls. **Not** Soft-PLC `BlockRuntime` / user-template `exec`.
-5. **Persistence:** YAML (preferred) or JSON model documents loaded by HA-free code. Live HA config-entry / UI ownership → SWD-143. Ship at least one composed-skid document in-tree for tests and future UI.
-6. **Default live preset:** keep code `skid` as the `mock_mode=true` default for zero operator regression. Composed skid is a registered preset (e.g. `skid_composed`) used for oracle/acceptance; UI selection → SWD-143.
+5. **Persistence:** JSON (always) or YAML (when PyYAML present) model documents loaded by HA-free code. Live HA config-entry / UI ownership → SWD-143. Shipped composed-skid document: `dynamics/models/skid_composed.json`.
+6. **Default live preset:** keep code `skid` as the `mock_mode=true` default for zero operator regression. Composed skid is registered as `skid_composed` for oracle/acceptance; UI selection → SWD-143.
 7. **Typing:** `PlantSimulator.model` / `for_preset` speak `DynamicsModel`, not concrete `SkidModel`.
 8. **Soft-PLC boundary locked:** plant math stays under `custom_components/plcassistant/dynamics/`. Do not import or invoke `plcassistant.surface` for plant. Soft-PLC stays `HeldProcess` + MQTT plant IN.
 9. **Sandbox failure mode:** invalid/unsafe expressions fail at **load/compile** (clear error); never crash the HA plant task mid-scan. Already-running models are immutable until reload.
-10. **Versioning:** model document includes a schema `version` string; loader accepts the v1 schema only until a later migration story.
+10. **Versioning:** model document includes a schema `version` string (`"1.0"`); loader accepts the v1 schema only until a later migration story.
 
 ## Constraints
 - Soft-PLC remains mock-unaware (no plant synthesis OUT; no mock-mode API)
@@ -49,18 +49,11 @@
 - App + integration version lock; dual trees synced via `./scripts/sync-ha-app-package.sh`
 - One simulator task per config entry (unchanged lifecycle)
 
-## Inputs (supportive)
-- Dynamics core: `custom_components/plcassistant/dynamics/{core,skid,plant,simulator}.py`
-- Prior plan: shipped SWD-146 (`docs/PLAN.md` history), ownership [`docs/packaging/01-shape.md`](packaging/01-shape.md)
-- Physics: [`docs/wedge/05-mock-process.md`](wedge/05-mock-process.md), `plcassistant/wedge/process.py` (`MockProcess`)
-- Non-goal pattern reference only: Soft-PLC surface (`plcassistant/surface/`, `docs/surface/`) — control blocks, not plant
-- Roadmap: [`docs/ROADMAP.md`](ROADMAP.md) phase 3
-
 ## Acceptance criteria
 1. Unit-op catalog includes `tank`, `pump`, `orifice`, `lag`, `custom_ode` with documented contracts.
-2. A composed-skid model document compiles to a `ModelSpec` whose steps match code `SkidModel` / `MockProcess` within the existing oracle tolerance (**1e-9** or documented band).
-3. `custom_ode` accepts safe expressions and **rejects** unsafe AST (import, attribute, non-whitelist call, etc.) at load time with a clear error.
-4. YAML/JSON loader validates schema `version`, required fields, unknown op types, and dangling connection names.
+2. A composed-skid model document compiles to a `ModelSpec` whose steps match code `SkidModel` / `MockProcess` within **1e-9**.
+3. `custom_ode` accepts safe expressions and **rejects** unsafe AST at load time with a clear error.
+4. Loader validates schema `version`, required fields, unknown op types, and dangling connection names.
 5. `PlantSimulator` runs any `DynamicsModel` from the preset registry; live default remains code `skid`.
 6. Soft-PLC App still constructs `HeldProcess` and does not gain plant math APIs.
 7. Docs state: unit-ops + expression sandbox live in the integration dynamics package; Soft-PLC surface is not the plant authoring path; UI → SWD-143.
@@ -70,16 +63,9 @@
 ## Work packages
 1. **Unit-op contract + catalog** — op interface; implement `tank` / `pump` / `orifice` / `lag` / `custom_ode`
 2. **Expression sandbox** — AST parse/whitelist/eval; allow/deny tests
-3. **Compiler + model documents** — connections → collected `ModelSpec`; composed-skid YAML; schema version
-4. **Runtime wiring** — `DynamicsModel` typing; registry (`skid`, `skid_composed`, future custom); keep live default `skid`
+3. **Compiler + model documents** — connections → collected `ModelSpec`; composed-skid JSON; schema version
+4. **Runtime wiring** — `DynamicsModel` typing; registry (`skid`, `skid_composed`); keep live default `skid`
 5. **Acceptance + packaging** — oracle/sandbox/loader tests, docs, version bump, dual-tree sync
-
-## Open items
-- Exact YAML field names for connections (implement choice; document in schema)
-- Whether composed skid **replaces** code `skid` internals later (not required for SWD-144; default stays code path)
-- Broader catalog (valves, heat exchangers, multi-tank) → follow-on
-- HA config-entry persistence + editor → SWD-143
-- Optional restricted-Python bodies (surface-like) → explicitly **not** v1
 
 ## Tracker
 - Provider: jira
@@ -88,8 +74,8 @@
 - Sub-tasks: [SWD-157](https://marcusknielsen.atlassian.net/browse/SWD-157) catalog, [SWD-159](https://marcusknielsen.atlassian.net/browse/SWD-159) sandbox, [SWD-158](https://marcusknielsen.atlassian.net/browse/SWD-158) compiler/YAML, [SWD-160](https://marcusknielsen.atlassian.net/browse/SWD-160) registry wiring, [SWD-161](https://marcusknielsen.atlassian.net/browse/SWD-161) acceptance
 - Prior: [SWD-146](https://marcusknielsen.atlassian.net/browse/SWD-146) Done (App 0.1.22)
 - Follow-on UI: [SWD-143](https://marcusknielsen.atlassian.net/browse/SWD-143)
-- Branch: `cursor/swd-144-unit-ops-define-33f4`
-- Define PR: https://github.com/marcuskrogh/PLCAssistant/pull/64
+- Branch: `cursor/swd-144-unit-ops-implement-33f4`
+- Implement: App **0.1.23**
 
 ## Next
-`/implement SWD-144` — after define approval of this plan
+`/review-fix SWD-144` — then `/ship SWD-144`
