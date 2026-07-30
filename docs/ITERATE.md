@@ -38,7 +38,7 @@ After App **0.1.29**, Operate **Process** shows live plant PVs, but the tank **s
 - Task: [SWD-171](https://marcusknielsen.atlassian.net/browse/SWD-171)
 - Relates: [SWD-170](https://marcusknielsen.atlassian.net/browse/SWD-170)
 - Branch: `cursor/swd-171-level-settle-ci-b0f4`
-- PR: _(pending)_
+- PR: [#73](https://github.com/marcuskrogh/PLCAssistant/pull/73)
 
 ## Next
 `/review-fix SWD-171` — Review and auto-fix until clean

@@ -91,7 +91,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
-- 2026-07-30 — Implement SWD-171: App 0.1.30; plant IN file-bridge + settle regression + GitHub Actions CI; PR pending → In Review. Next `/review-fix SWD-171`.
+- 2026-07-30 — Implement SWD-171: App 0.1.30; plant IN file-bridge + settle regression + GitHub Actions CI; PR [#73](https://github.com/marcuskrogh/PLCAssistant/pull/73) → In Review. Next `/review-fix SWD-171`.
 - 2026-07-30 — Iterate SWD-171: tank settles away from Active level SP when MQTT plant→Soft-PLC silent; Relates SWD-170.
 - 2026-07-30 — Shipped SWD-170 via PR #72 (App 0.1.29); review-fix CLEAN after 2 iters; Task Done.
 - 2026-07-30 — review-fix SWD-170 CLEAN after 2 iterations (iter1: SP_LEVEL_REQ unique_id/purge/run.sh/tests; iter2: 0); closeout.
