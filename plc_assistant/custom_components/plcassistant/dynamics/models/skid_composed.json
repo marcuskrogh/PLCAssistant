@@ -7,6 +7,11 @@
     "LT_RES": "h_res",
     "FT_INLET": "ft_inlet"
   },
+  "measurements": [
+    { "tag": "LT_TANK", "expr": "h_tank" },
+    { "tag": "LT_RES", "expr": "h_res" },
+    { "tag": "FT_INLET", "expr": "ft_inlet" }
+  ],
   "params": {
     "a_tank": 0.05,
     "a_res": 0.10,

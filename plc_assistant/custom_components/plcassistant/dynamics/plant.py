@@ -79,7 +79,8 @@ class PlantSimulator:
         if state in {"offline", "fault"}:
             self.frozen = True
             self._runner.reset_timing()
-            self.model.set_input("cmd_speed", 0.0)
+            if "cmd_speed" in self.model.spec.input_keys:
+                self.model.set_input("cmd_speed", 0.0)
         else:
             if prev in {"offline", "fault"} and state in {"running", "stopped"}:
                 self._runner.reset_timing()
@@ -87,7 +88,8 @@ class PlantSimulator:
 
     def apply_cmd_speed(self, value: float, *, mono: float | None = None) -> None:
         now = time.monotonic() if mono is None else float(mono)
-        self.model.set_input("cmd_speed", float(value))
+        if "cmd_speed" in self.model.spec.input_keys:
+            self.model.set_input("cmd_speed", float(value))
         self._last_cmd_mono = now
 
     def force_quality(self, tag: str, status: str = "GOOD", reason: str | None = None) -> None:
@@ -120,7 +122,8 @@ class PlantSimulator:
             self._last_cmd_mono is not None
             and (now - self._last_cmd_mono) > self.cmd_watchdog_s
         ):
-            self.model.set_input("cmd_speed", 0.0)
+            if "cmd_speed" in self.model.spec.input_keys:
+                self.model.set_input("cmd_speed", 0.0)
         if self.frozen:
             return self.model.outputs()
         # Continue gravity drain while Soft-PLC is stopped (CMD may be 0).

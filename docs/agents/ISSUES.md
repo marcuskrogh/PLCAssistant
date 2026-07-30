@@ -83,9 +83,12 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-164 | Subtask | SWD-143: Service + Lovelace operator surface | Done | SWD-143 | docs/PLAN.md | — |
 | SWD-165 | Subtask | SWD-143: Acceptance tests + packaging/docs/version | Done | SWD-143 | docs/PLAN.md | — |
 | SWD-166 | Task | [Iterate] Sidebar dynamics block editor + toy setup guide | Done | Relates SWD-143 | docs/ITERATE.md | Done — shipped PR #68 (App 0.1.25) |
+| SWD-167 | Task | [Iterate] Per-equation state/measurement authoring + exposed block dynamics | In Review | Relates SWD-166 | docs/ITERATE.md | `/review-fix SWD-167` (App 0.1.26) |
 
 ## Log
 
+- 2026-07-30 — Implement SWD-167: App 0.1.26; per-row state/measurement equations + catalog dynamics exposure; Next `/review-fix SWD-167`.
+- 2026-07-30 — Iterate SWD-167: per-equation state/measurement UX + expose catalog dynamics; App 0.1.26; Relates SWD-166.
 - 2026-07-30 — Shipped SWD-166 via PR #68 (App 0.1.25); review-fix CLEAN after 1 iter; Task Done.
 - 2026-07-30 — Iterate SWD-166: sidebar Dynamics block editor + toy README guide; App 0.1.25; Relates SWD-143.
 - 2026-07-30 — Shipped SWD-143 via PR #66 (App 0.1.24); review-fix CLEAN after 1 iter; Task Done; Story SWD-142 → Done (initiative complete).

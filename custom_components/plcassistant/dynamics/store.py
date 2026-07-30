@@ -1,4 +1,4 @@
-"""HA-free helpers for dynamics model store + editor catalog (SWD-166)."""
+"""HA-free helpers for dynamics model store + editor catalog (SWD-166/167)."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from .compile import parse_model_document
+from .equations import describe_op_equations, equation_templates
 from .expr import ExpressionError
 from .ops import OP_CATALOG
 
@@ -15,7 +16,7 @@ OP_UI_META: dict[str, dict[str, Any]] = {
     "tank": {
         "label": "Tank",
         "binds": ["h", "q_in", "q_out"],
-        "params": [],
+        "params": ["area"],
         "help": "Level inventory from net volumetric flow.",
     },
     "pump": {
@@ -39,24 +40,53 @@ OP_UI_META: dict[str, dict[str, Any]] = {
     "custom_ode": {
         "label": "Custom ODE",
         "binds": [],
-        "params": ["derivatives"],
+        "params": [],
         "ode": True,
-        "help": "Map of state_key → d(state)/dt expression.",
+        "help": "Author state equations (and optional algebraics) one row at a time.",
     },
 }
 
 
 def catalog_payload() -> dict[str, Any]:
+    templates = equation_templates()
     return {
         "ops": [
             {
                 "type": name,
                 **{k: v for k, v in OP_UI_META.get(name, {}).items()},
+                "equation_templates": templates.get(name, []),
+                # Default example forms (unbound) for palette preview.
+                "equations": [
+                    e.as_dict()
+                    for e in describe_op_equations(
+                        name,
+                        {b: b for b in OP_UI_META.get(name, {}).get("binds", [])},
+                        {},
+                    )
+                ]
+                if name != "custom_ode"
+                else [],
             }
             for name in sorted(OP_CATALOG)
         ],
         "schema_version": "1.0",
+        "measurement_help": (
+            "Measurement equations map Soft-PLC IN tags to expressions over "
+            "state, inputs, and params (y = g(x, u, θ)). Distinct from ODEs."
+        ),
     }
+
+
+def describe_document_op(op: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """Substituted equations for one op instance (editor inspector)."""
+    return [
+        e.as_dict()
+        for e in describe_op_equations(
+            str(op.get("type") or ""),
+            op.get("bind") or {},
+            op.get("params") or {},
+        )
+    ]
 
 
 def validate_document(doc: Mapping[str, Any] | dict[str, Any]) -> dict[str, Any]:
@@ -143,6 +173,7 @@ def seed_skid_composed(root: Path, bundled: Path) -> Path | None:
 __all__ = [
     "OP_UI_META",
     "catalog_payload",
+    "describe_document_op",
     "list_user_models",
     "load_user_model",
     "models_dir",

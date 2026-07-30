@@ -58,13 +58,14 @@ header .spacer { flex: 1; }
 .btn.primary { background: var(--teal); border-color: var(--teal); color: #fff; }
 .btn.primary:hover { background: var(--teal-2); }
 .btn.danger { color: var(--bad); border-color: #e0b4b4; }
+.btn.small { padding: 4px 10px; font-size: 0.75rem; }
 #status {
   min-height: 1.2em; padding: 0 16px 8px; font-size: 0.8rem; color: var(--muted);
 }
 #status.ok { color: var(--ok); }
 #status.err { color: var(--bad); }
 main {
-  flex: 1; display: grid; grid-template-columns: 200px 1fr 320px;
+  flex: 1; display: grid; grid-template-columns: 200px 1fr minmax(340px, 400px);
   gap: 0; min-height: 0;
 }
 @media (max-width: 960px) {
@@ -75,9 +76,10 @@ main {
   padding: 14px; overflow: auto;
 }
 .inspector { border-right: none; border-left: 1px solid var(--line); }
-.rail h2, .inspector h2 {
-  font-family: var(--font-display); font-size: 1rem; margin-bottom: 10px;
+.rail h2, .inspector h2, .inspector h3 {
+  font-family: var(--font-display); font-size: 1rem; margin-bottom: 8px;
 }
+.inspector h3 { font-size: 0.92rem; margin-top: 16px; }
 .palette button {
   display: block; width: 100%; text-align: left; margin: 0 0 8px;
   padding: 10px 12px; border-radius: var(--radius);
@@ -96,7 +98,7 @@ main {
   position: relative; min-height: 520px; min-width: 640px;
 }
 .block {
-  position: absolute; width: 220px; background: var(--block);
+  position: absolute; width: 240px; background: var(--block);
   border: 1px solid var(--line); border-radius: var(--radius);
   box-shadow: 0 8px 24px rgba(18,32,51,0.08);
   cursor: grab; user-select: none;
@@ -108,7 +110,11 @@ main {
   background: rgba(15,107,98,0.08); border: none; border-radius: var(--radius) var(--radius) 0 0;
   font-size: 0.85rem; font-weight: 600;
 }
-.block .body { padding: 8px 10px 10px; font-size: 0.75rem; color: var(--muted); }
+.block .body { padding: 8px 10px 10px; font-size: 0.72rem; color: var(--muted); }
+.block .eq {
+  font-family: var(--mono); color: var(--ink); margin-top: 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .block .ports { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .chip {
   display: inline-block; padding: 2px 7px; border-radius: 999px;
@@ -121,17 +127,36 @@ main {
   width: 100%; padding: 8px 10px; border-radius: 8px;
   border: 1px solid var(--line); background: #fff; font: 400 0.85rem var(--font-ui);
 }
-.field textarea { font-family: var(--mono); min-height: 90px; }
-.row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.field input.mono, .eq-row input {
+  font-family: var(--mono); font-size: 0.8rem;
+}
 .empty { color: var(--muted); font-size: 0.85rem; padding: 12px 0; }
-.tags-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-.tags-table th, .tags-table td { text-align: left; padding: 4px 0; border-bottom: 1px solid #e4ebf2; }
+.hint { font-size: 0.75rem; color: var(--muted); margin-bottom: 8px; line-height: 1.35; }
+.eq-panel {
+  border: 1px solid var(--line); border-radius: 8px; background: #fff;
+  padding: 8px; margin-bottom: 10px;
+}
+.eq-row {
+  display: grid; grid-template-columns: 1fr 14px 1.4fr auto; gap: 6px;
+  align-items: center; margin-bottom: 6px;
+}
+.eq-row.meas { grid-template-columns: 0.9fr 14px 1.5fr auto; }
+.eq-row .op { text-align: center; color: var(--muted); font-family: var(--mono); font-size: 0.8rem; }
+.eq-readonly {
+  font-family: var(--mono); font-size: 0.78rem; background: #f3f7fb;
+  border-radius: 6px; padding: 8px 10px; margin-bottom: 6px; border: 1px solid #e4ebf2;
+}
+.eq-readonly .note { display: block; margin-top: 4px; font-family: var(--font-ui); font-size: 0.7rem; color: var(--muted); }
+.section-bar {
+  display: flex; align-items: center; gap: 8px; margin: 14px 0 8px;
+}
+.section-bar h3 { margin: 0; flex: 1; }
 </style>
 </head>
 <body>
 <header>
   <div class="brand">PLCAssistant</div>
-  <div class="sub">Dynamics block editor</div>
+  <div class="sub">Dynamics — state &amp; measurement equations</div>
   <div class="spacer"></div>
   <label class="sub">Model
     <input id="model-name" value="skid_composed" style="margin-left:6px;padding:4px 8px;border-radius:6px;border:1px solid var(--line);font:500 0.85rem var(--font-ui);width:140px">
@@ -141,25 +166,36 @@ main {
   <button class="btn" id="btn-save">Save</button>
   <button class="btn primary" id="btn-apply">Apply &amp; reload</button>
 </header>
-<div id="status">Load a model, add unit-op blocks, bind variables, map Soft-PLC tags, then Apply.</div>
+<div id="status">Add blocks, enter one state equation per row, and map Soft-PLC tags with measurement equations.</div>
 <main>
   <aside class="rail">
     <h2>Add block</h2>
     <div class="palette" id="palette"></div>
-    <p class="hint" style="margin-top:14px;font-size:0.75rem;color:var(--muted)">
-      Blocks compile into one collected ODE. Soft-PLC stays mock-unaware — plant tags publish as MQTT IN.
+    <p class="hint" style="margin-top:14px">
+      Blocks contribute state / algebraic dynamics into one collected model. Soft-PLC stays mock-unaware — tags publish as MQTT IN.
     </p>
   </aside>
   <section id="canvas-wrap"><div id="canvas"></div></section>
   <aside class="inspector">
     <h2>Inspector</h2>
-    <div id="inspector"><p class="empty">Select a block to edit binds and params.</p></div>
-    <h2 style="margin-top:18px">Soft-PLC tags</h2>
-    <p class="hint" style="font-size:0.75rem;color:var(--muted);margin-bottom:8px">
-      Map plant IN tags to state variables (e.g. LT_TANK → h_tank).
+    <div id="inspector"><p class="empty">Select a block to edit binds, params, and equations.</p></div>
+    <div class="section-bar">
+      <h3>Measurement equations</h3>
+      <button class="btn small" id="btn-add-meas">Add</button>
+    </div>
+    <p class="hint" id="meas-help">
+      Soft-PLC IN tags: one row each — <code>tag = expression</code> over state, inputs, and params.
     </p>
-    <div id="tag-map"></div>
-    <button class="btn" id="btn-add-tag" style="margin-top:8px">Add tag</button>
+    <div id="meas-map"></div>
+    <div class="section-bar">
+      <h3>Model I/O</h3>
+    </div>
+    <div class="field"><label>Inputs (comma-separated)</label>
+      <input id="f-inputs" class="mono" placeholder="cmd_speed, u"></div>
+    <div class="field"><label>Global params (JSON object)</label>
+      <textarea id="f-params" class="mono" style="min-height:70px" placeholder='{"tau": 0.5}'></textarea></div>
+    <div class="field"><label>Initial state (JSON object)</label>
+      <textarea id="f-initial" class="mono" style="min-height:70px" placeholder='{"y": 0}'></textarea></div>
   </aside>
 </main>
 <script>
@@ -172,11 +208,12 @@ let drag = null;
 function emptyDoc() {
   return {
     version: "1.0",
-    name: "skid_composed",
-    inputs: ["cmd_speed"],
-    outputs: { LT_TANK: "h_tank", LT_RES: "h_res", FT_INLET: "ft_inlet" },
+    name: "untitled",
+    inputs: ["u"],
+    outputs: { Y_OUT: "y" },
+    measurements: [{ tag: "Y_OUT", expr: "y" }],
     params: {},
-    initial: {},
+    initial: { y: 0 },
     ops: [],
   };
 }
@@ -188,7 +225,6 @@ function status(msg, kind) {
 }
 
 async function api(path, opts = {}) {
-  // Prefer parent HA frontend auth when embedded in the Lovelace iframe.
   const method = (opts.method || "GET").toUpperCase();
   const callPath = "plcassistant/dynamics" + path;
   const hass = (() => {
@@ -219,7 +255,7 @@ async function api(path, opts = {}) {
 }
 
 function opMeta(type) {
-  return catalog.ops.find(o => o.type === type) || { binds: [], params: [], label: type };
+  return catalog.ops.find(o => o.type === type) || { binds: [], params: [], label: type, equations: [] };
 }
 
 function defaultBind(type) {
@@ -231,7 +267,7 @@ function defaultBind(type) {
 
 function defaultParams(type) {
   const meta = opMeta(type);
-  if (meta.ode) return { derivatives: { x: "0" } };
+  if (meta.ode) return { derivatives: { y: "(u - y) / tau" }, algebraic: {} };
   const params = {};
   (meta.params || []).forEach(k => { params[k] = ""; });
   return params;
@@ -241,9 +277,60 @@ function ensureLayout() {
   doc._layout = doc._layout || {};
   (doc.ops || []).forEach((op, i) => {
     if (!doc._layout[op.id]) {
-      doc._layout[op.id] = { x: 40 + (i % 3) * 240, y: 40 + Math.floor(i / 3) * 140 };
+      doc._layout[op.id] = { x: 40 + (i % 3) * 260, y: 40 + Math.floor(i / 3) * 150 };
     }
   });
+}
+
+function ensureMeasurements() {
+  if (Array.isArray(doc.measurements) && doc.measurements.length) return;
+  const outs = doc.outputs || {};
+  doc.measurements = Object.entries(outs).map(([tag, expr]) => ({ tag, expr: String(expr) }));
+  if (!doc.measurements.length) {
+    doc.measurements = [{ tag: "Y_OUT", expr: "y" }];
+  }
+}
+
+function syncOutputsFromMeasurements() {
+  ensureMeasurements();
+  const outs = {};
+  doc.measurements.forEach(m => {
+    const tag = String(m.tag || "").trim().toUpperCase();
+    const expr = String(m.expr || "").trim();
+    if (!tag || !expr) return;
+    if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(expr)) outs[tag] = expr;
+  });
+  doc.outputs = outs;
+}
+
+function formatTemplate(tpl, bind, params) {
+  let left = tpl.left || "";
+  let right = tpl.right || "";
+  const repl = (s) => s.replace(/\{([a-zA-Z0-9_]+)\}/g, (_, key) => {
+    if (bind && bind[key]) return bind[key];
+    if (params && params[key] !== undefined && params[key] !== "") return String(params[key]);
+    return key;
+  });
+  return { kind: tpl.kind, left: repl(left), right: repl(right), note: tpl.note };
+}
+
+function equationsForOp(op) {
+  const meta = opMeta(op.type);
+  if (meta.ode) {
+    const rows = [];
+    const deriv = (op.params && op.params.derivatives) || {};
+    Object.entries(deriv).forEach(([state, expr]) => {
+      rows.push({ kind: "state", left: `d(${state})/dt`, right: String(expr) });
+    });
+    const alg = (op.params && op.params.algebraic) || {};
+    Object.entries(alg).forEach(([name, expr]) => {
+      rows.push({ kind: "algebraic", left: String(name), right: String(expr), note: "Not integrated" });
+    });
+    return rows;
+  }
+  return (meta.equation_templates || meta.equations || []).map(tpl =>
+    formatTemplate(tpl, op.bind || {}, op.params || {})
+  );
 }
 
 function renderPalette() {
@@ -252,10 +339,16 @@ function renderPalette() {
   catalog.ops.forEach(op => {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.innerHTML = `<strong>${op.label || op.type}</strong><div class="hint">${op.help || ""}</div>`;
+    const preview = (op.equations || []).slice(0, 1).map(e =>
+      `${e.left} = ${e.right}`).join("; ");
+    btn.innerHTML = `<strong>${op.label || op.type}</strong><div class="hint">${op.help || ""}</div>` +
+      (preview ? `<div class="hint" style="font-family:var(--mono)">${esc(preview)}</div>` : "");
     btn.onclick = () => addBlock(op.type);
     root.appendChild(btn);
   });
+  if (catalog.measurement_help) {
+    document.getElementById("meas-help").textContent = catalog.measurement_help;
+  }
 }
 
 function addBlock(type) {
@@ -295,8 +388,10 @@ function renderCanvas() {
     el.dataset.id = op.id;
     const ports = Object.entries(op.bind || {}).map(([k, v]) =>
       `<span class="chip">${k}→${v}</span>`).join("");
+    const eqs = equationsForOp(op).slice(0, 2).map(e =>
+      `<div class="eq">${esc(e.left)} = ${esc(e.right)}</div>`).join("");
     el.innerHTML = `<header><span>${meta.label || op.type}</span><span style="margin-left:auto;opacity:.7">${op.id}</span></header>
-      <div class="body">${meta.help || ""}<div class="ports">${ports || "<em>no binds</em>"}</div></div>`;
+      <div class="body">${eqs || esc(meta.help || "")}<div class="ports">${ports || "<em>custom</em>"}</div></div>`;
     el.addEventListener("mousedown", e => startDrag(e, op.id));
     el.addEventListener("click", e => { e.stopPropagation(); selectedId = op.id; renderInspector(); highlight(); });
     canvas.appendChild(el);
@@ -333,38 +428,157 @@ window.addEventListener("mousemove", e => {
 });
 window.addEventListener("mouseup", () => { drag = null; });
 
+function renderStateEquationEditor(op) {
+  op.params = op.params || {};
+  op.params.derivatives = op.params.derivatives || {};
+  op.params.algebraic = op.params.algebraic || {};
+  const derivEntries = Object.entries(op.params.derivatives);
+  const algEntries = Object.entries(op.params.algebraic);
+  let html = `<div class="section-bar"><h3>State equations</h3>
+    <button class="btn small" id="btn-add-state">Add</button></div>
+    <p class="hint">One integrated variable per row: <code>d(state)/dt = expression</code></p>
+    <div class="eq-panel" id="state-eqs">`;
+  if (!derivEntries.length) {
+    html += `<p class="empty">No state equations yet.</p>`;
+  }
+  derivEntries.forEach(([state, expr], i) => {
+    html += `<div class="eq-row" data-state-i="${i}">
+      <input data-state-key="${i}" value="${esc(state)}" placeholder="state">
+      <span class="op">=</span>
+      <input data-state-expr="${i}" value="${esc(expr)}" placeholder="d(state)/dt expression">
+      <button class="btn small danger" data-del-state="${i}">×</button>
+    </div>
+    <div class="hint" style="margin:-2px 0 8px 2px">d(<strong>${esc(state || "…")}</strong>)/dt</div>`;
+  });
+  html += `</div>
+    <div class="section-bar"><h3>Algebraic (optional)</h3>
+    <button class="btn small" id="btn-add-alg">Add</button></div>
+    <p class="hint">Signals computed each step, not integrated: <code>name = expression</code></p>
+    <div class="eq-panel" id="alg-eqs">`;
+  if (!algEntries.length) {
+    html += `<p class="empty">No algebraic equations.</p>`;
+  }
+  algEntries.forEach(([name, expr], i) => {
+    html += `<div class="eq-row" data-alg-i="${i}">
+      <input data-alg-key="${i}" value="${esc(name)}" placeholder="name">
+      <span class="op">=</span>
+      <input data-alg-expr="${i}" value="${esc(expr)}" placeholder="expression">
+      <button class="btn small danger" data-del-alg="${i}">×</button>
+    </div>`;
+  });
+  html += `</div>`;
+  return html;
+}
+
+function wireCustomEquations(root, op) {
+  const readDeriv = () => {
+    const keys = [...root.querySelectorAll("[data-state-key]")];
+    const exprs = [...root.querySelectorAll("[data-state-expr]")];
+    const next = {};
+    keys.forEach((k, i) => {
+      const name = k.value.trim();
+      const expr = (exprs[i] && exprs[i].value.trim()) || "0";
+      if (name) next[name] = expr;
+    });
+    op.params = op.params || {};
+    op.params.derivatives = next;
+  };
+  const readAlg = () => {
+    const keys = [...root.querySelectorAll("[data-alg-key]")];
+    const exprs = [...root.querySelectorAll("[data-alg-expr]")];
+    const next = {};
+    keys.forEach((k, i) => {
+      const name = k.value.trim();
+      const expr = (exprs[i] && exprs[i].value.trim()) || "0";
+      if (name) next[name] = expr;
+    });
+    op.params = op.params || {};
+    op.params.algebraic = next;
+  };
+  root.querySelector("#btn-add-state").onclick = () => {
+    readDeriv();
+    let n = 1;
+    let key = "x";
+    while (op.params.derivatives[key] !== undefined) { n += 1; key = "x" + n; }
+    op.params.derivatives[key] = "0";
+    renderInspector();
+    renderCanvas();
+  };
+  root.querySelector("#btn-add-alg").onclick = () => {
+    readAlg();
+    let n = 1;
+    let key = "z";
+    while (op.params.algebraic[key] !== undefined) { n += 1; key = "z" + n; }
+    op.params.algebraic[key] = "0";
+    renderInspector();
+    renderCanvas();
+  };
+  root.querySelectorAll("[data-del-state]").forEach(btn => {
+    btn.onclick = () => {
+      readDeriv();
+      const keys = Object.keys(op.params.derivatives);
+      const idx = Number(btn.dataset.delState);
+      delete op.params.derivatives[keys[idx]];
+      renderInspector();
+      renderCanvas();
+    };
+  });
+  root.querySelectorAll("[data-del-alg]").forEach(btn => {
+    btn.onclick = () => {
+      readAlg();
+      const keys = Object.keys(op.params.algebraic);
+      const idx = Number(btn.dataset.delAlg);
+      delete op.params.algebraic[keys[idx]];
+      renderInspector();
+      renderCanvas();
+    };
+  });
+  root.querySelectorAll("[data-state-key],[data-state-expr]").forEach(inp => {
+    inp.onchange = () => { readDeriv(); renderCanvas(); };
+  });
+  root.querySelectorAll("[data-alg-key],[data-alg-expr]").forEach(inp => {
+    inp.onchange = () => { readAlg(); renderCanvas(); };
+  });
+}
+
 function renderInspector() {
   const root = document.getElementById("inspector");
   const op = (doc.ops || []).find(o => o.id === selectedId);
   if (!op) {
-    root.innerHTML = `<p class="empty">Select a block to edit binds and params.</p>`;
+    root.innerHTML = `<p class="empty">Select a block to edit binds, params, and equations.</p>`;
     return;
   }
   const meta = opMeta(op.type);
   let html = `
     <div class="field"><label>Block id</label><input id="f-id" value="${esc(op.id)}"></div>
-    <div class="field"><label>Type</label><input value="${esc(op.type)}" disabled></div>
-    <h3 style="font-size:0.85rem;margin:12px 0 6px">Binds (variable ports)</h3>`;
+    <div class="field"><label>Type</label><input value="${esc(op.type)}" disabled></div>`;
+
   const binds = meta.binds && meta.binds.length ? meta.binds : Object.keys(op.bind || {});
-  if (!binds.length && !meta.ode) {
-    html += `<p class="empty">No bind ports for this op.</p>`;
-  }
-  binds.forEach(k => {
-    html += `<div class="field"><label>${esc(k)} → signal / state</label>
-      <input data-bind="${esc(k)}" value="${esc((op.bind || {})[k] || "")}"></div>`;
-  });
-  if (meta.ode) {
-    const deriv = (op.params && op.params.derivatives) || {};
-    html += `<h3 style="font-size:0.85rem;margin:12px 0 6px">ODE derivatives</h3>
-      <div class="field"><label>JSON map state → d(state)/dt</label>
-      <textarea id="f-ode">${esc(JSON.stringify(deriv, null, 2))}</textarea></div>`;
-  } else {
-    html += `<h3 style="font-size:0.85rem;margin:12px 0 6px">Params</h3>`;
-    (meta.params || []).forEach(k => {
-      html += `<div class="field"><label>${esc(k)}</label>
-        <input data-param="${esc(k)}" value="${esc(String((op.params || {})[k] ?? ""))}"></div>`;
+  if (binds.length) {
+    html += `<h3>Binds (variable ports)</h3>`;
+    binds.forEach(k => {
+      html += `<div class="field"><label>${esc(k)} → signal / state</label>
+        <input data-bind="${esc(k)}" class="mono" value="${esc((op.bind || {})[k] || "")}"></div>`;
     });
   }
+
+  if (meta.ode) {
+    html += renderStateEquationEditor(op);
+  } else {
+    html += `<h3>Dynamics</h3><p class="hint">Underlying equations for this block (bind/param substituted).</p>`;
+    const eqs = equationsForOp(op);
+    if (!eqs.length) html += `<p class="empty">No equations.</p>`;
+    eqs.forEach(e => {
+      html += `<div class="eq-readonly"><strong>${esc(e.kind)}</strong>: ${esc(e.left)} = ${esc(e.right)}
+        ${e.note ? `<span class="note">${esc(e.note)}</span>` : ""}</div>`;
+    });
+    html += `<h3>Params</h3>`;
+    (meta.params || []).forEach(k => {
+      html += `<div class="field"><label>${esc(k)}</label>
+        <input data-param="${esc(k)}" class="mono" value="${esc(String((op.params || {})[k] ?? ""))}"></div>`;
+    });
+  }
+
   html += `<button class="btn danger" id="btn-del" style="margin-top:8px">Remove block</button>`;
   root.innerHTML = html;
   root.querySelector("#btn-del").onclick = removeSelected;
@@ -386,6 +600,7 @@ function renderInspector() {
       op.bind = op.bind || {};
       op.bind[inp.dataset.bind] = inp.value.trim();
       renderCanvas();
+      renderInspector();
     };
   });
   root.querySelectorAll("[data-param]").forEach(inp => {
@@ -393,66 +608,87 @@ function renderInspector() {
       op.params = op.params || {};
       const v = inp.value.trim();
       op.params[inp.dataset.param] = v === "" ? "" : (isFinite(Number(v)) ? Number(v) : v);
+      renderCanvas();
+      renderInspector();
     };
   });
-  const ode = root.querySelector("#f-ode");
-  if (ode) {
-    ode.onchange = () => {
-      try {
-        op.params = op.params || {};
-        op.params.derivatives = JSON.parse(ode.value);
-        status("ODE map updated");
-      } catch (err) {
-        status("Invalid ODE JSON: " + err.message, "err");
+  if (meta.ode) wireCustomEquations(root, op);
+}
+
+function renderMeasurements() {
+  ensureMeasurements();
+  const root = document.getElementById("meas-map");
+  let html = `<div class="eq-panel">`;
+  doc.measurements.forEach((m, i) => {
+    html += `<div class="eq-row meas">
+      <input data-meas-tag="${i}" class="mono" value="${esc(m.tag || "")}" placeholder="TAG">
+      <span class="op">=</span>
+      <input data-meas-expr="${i}" class="mono" value="${esc(m.expr || "")}" placeholder="expression">
+      <button class="btn small danger" data-del-meas="${i}">×</button>
+    </div>`;
+  });
+  html += `</div>`;
+  root.innerHTML = html;
+  root.querySelectorAll("[data-meas-tag],[data-meas-expr]").forEach(inp => {
+    inp.onchange = () => {
+      const i = Number(inp.dataset.measTag ?? inp.dataset.measExpr);
+      doc.measurements[i] = doc.measurements[i] || { tag: "", expr: "" };
+      if (inp.dataset.measTag !== undefined) {
+        doc.measurements[i].tag = inp.value.trim().toUpperCase();
+      } else {
+        doc.measurements[i].expr = inp.value.trim();
       }
+      syncOutputsFromMeasurements();
     };
+  });
+  root.querySelectorAll("[data-del-meas]").forEach(btn => {
+    btn.onclick = () => {
+      doc.measurements.splice(Number(btn.dataset.delMeas), 1);
+      if (!doc.measurements.length) doc.measurements = [{ tag: "Y_OUT", expr: "y" }];
+      syncOutputsFromMeasurements();
+      renderMeasurements();
+    };
+  });
+}
+
+document.getElementById("btn-add-meas").onclick = () => {
+  ensureMeasurements();
+  let i = 1;
+  let tag = "TAG_" + i;
+  const used = new Set(doc.measurements.map(m => String(m.tag || "").toUpperCase()));
+  while (used.has(tag)) { i += 1; tag = "TAG_" + i; }
+  doc.measurements.push({ tag, expr: "0" });
+  syncOutputsFromMeasurements();
+  renderMeasurements();
+};
+
+function renderModelFields() {
+  document.getElementById("f-inputs").value = (doc.inputs || []).join(", ");
+  document.getElementById("f-params").value = JSON.stringify(doc.params || {}, null, 2);
+  document.getElementById("f-initial").value = JSON.stringify(doc.initial || {}, null, 2);
+}
+
+function readModelFields() {
+  const inputs = document.getElementById("f-inputs").value.split(",").map(s => s.trim()).filter(Boolean);
+  doc.inputs = inputs;
+  try {
+    doc.params = JSON.parse(document.getElementById("f-params").value || "{}");
+  } catch (err) {
+    throw new Error("Global params JSON: " + err.message);
+  }
+  try {
+    doc.initial = JSON.parse(document.getElementById("f-initial").value || "{}");
+  } catch (err) {
+    throw new Error("Initial state JSON: " + err.message);
   }
 }
 
-function renderTags() {
-  const root = document.getElementById("tag-map");
-  const outs = doc.outputs || {};
-  let html = `<table class="tags-table"><tr><th>Tag</th><th>State</th><th></th></tr>`;
-  Object.entries(outs).forEach(([tag, state]) => {
-    html += `<tr>
-      <td><input data-tag-key="${esc(tag)}" value="${esc(tag)}" style="width:100%"></td>
-      <td><input data-tag-val="${esc(tag)}" value="${esc(state)}" style="width:100%"></td>
-      <td><button class="btn danger" data-del-tag="${esc(tag)}">×</button></td>
-    </tr>`;
-  });
-  html += `</table>`;
-  root.innerHTML = html;
-  root.querySelectorAll("[data-del-tag]").forEach(btn => {
-    btn.onclick = () => {
-      delete doc.outputs[btn.dataset.delTag];
-      renderTags();
-    };
-  });
-  root.querySelectorAll("[data-tag-key]").forEach(inp => {
-    inp.onchange = () => {
-      const old = inp.dataset.tagKey;
-      const next = inp.value.trim().toUpperCase();
-      const state = doc.outputs[old];
-      delete doc.outputs[old];
-      if (next) doc.outputs[next] = state;
-      renderTags();
-    };
-  });
-  root.querySelectorAll("[data-tag-val]").forEach(inp => {
-    inp.onchange = () => {
-      doc.outputs[inp.dataset.tagVal] = inp.value.trim();
-    };
-  });
-}
-
-document.getElementById("btn-add-tag").onclick = () => {
-  doc.outputs = doc.outputs || {};
-  let i = 1;
-  let tag = "TAG_" + i;
-  while (doc.outputs[tag]) { i += 1; tag = "TAG_" + i; }
-  doc.outputs[tag] = "state_" + i;
-  renderTags();
-};
+["f-inputs", "f-params", "f-initial"].forEach(id => {
+  document.getElementById(id).onchange = () => {
+    try { readModelFields(); status("Model I/O updated"); }
+    catch (err) { status(String(err.message || err), "err"); }
+  };
+});
 
 function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, c => ({
@@ -463,23 +699,38 @@ function esc(s) {
 function stripLayout(d) {
   const copy = JSON.parse(JSON.stringify(d));
   delete copy._layout;
-  // Drop empty string params
   (copy.ops || []).forEach(op => {
     if (op.params) {
       Object.keys(op.params).forEach(k => {
         if (op.params[k] === "") delete op.params[k];
       });
+      if (op.params.algebraic && !Object.keys(op.params.algebraic).length) {
+        delete op.params.algebraic;
+      }
       if (!Object.keys(op.params).length) delete op.params;
     }
   });
+  // Persist measurements + identity outputs for nudge.
+  if (Array.isArray(copy.measurements)) {
+    copy.measurements = copy.measurements
+      .map(m => ({ tag: String(m.tag || "").trim().toUpperCase(), expr: String(m.expr || "").trim() }))
+      .filter(m => m.tag && m.expr);
+  }
+  const outs = {};
+  (copy.measurements || []).forEach(m => {
+    if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(m.expr)) outs[m.tag] = m.expr;
+  });
+  copy.outputs = outs;
   return copy;
 }
 
 function render() {
   document.getElementById("model-name").value = doc.name || "skid_composed";
+  ensureMeasurements();
   renderCanvas();
   renderInspector();
-  renderTags();
+  renderMeasurements();
+  renderModelFields();
 }
 
 async function loadModel() {
@@ -488,6 +739,7 @@ async function loadModel() {
     const data = await api("/model?name=" + encodeURIComponent(name));
     doc = data.document;
     doc.name = name;
+    ensureMeasurements();
     selectedId = null;
     render();
     status("Loaded “" + name + "”.", "ok");
@@ -497,6 +749,12 @@ async function loadModel() {
 }
 
 async function validateModel() {
+  try {
+    readModelFields();
+  } catch (err) {
+    status(String(err.message || err), "err");
+    return;
+  }
   doc.name = document.getElementById("model-name").value.trim() || doc.name;
   try {
     await api("/validate", { method: "POST", body: JSON.stringify({ document: stripLayout(doc) }) });
@@ -507,6 +765,12 @@ async function validateModel() {
 }
 
 async function saveModel() {
+  try {
+    readModelFields();
+  } catch (err) {
+    status(String(err.message || err), "err");
+    return;
+  }
   doc.name = document.getElementById("model-name").value.trim() || doc.name;
   try {
     const data = await api("/save", {
@@ -520,6 +784,12 @@ async function saveModel() {
 }
 
 async function applyModel() {
+  try {
+    readModelFields();
+  } catch (err) {
+    status(String(err.message || err), "err");
+    return;
+  }
   doc.name = document.getElementById("model-name").value.trim() || doc.name;
   try {
     const data = await api("/apply", {

@@ -115,7 +115,7 @@ def test_platforms_publish_and_subscribe_paths():
     assert "number.plcassistant_lt_tank_in" in lovelace
     assert "sensor.plcassistant_status" in lovelace
     assert "sensor.plcassistant_mode" in lovelace
-    assert "live simulator" in lovelace.lower() or "0.1.25" in lovelace or "dynamics" in lovelace.lower()
+    assert "live simulator" in lovelace.lower() or "0.1.26" in lovelace or "dynamics" in lovelace.lower()
     assert "sensor.plcassistant_dynamics_preset" in lovelace
     assert "path: dynamics" in lovelace
     assert "set_dynamics_preset:" in (CC / "services.yaml").read_text(encoding="utf-8")

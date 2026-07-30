@@ -19,13 +19,15 @@ class ModelSpec:
     state_keys: tuple[str, ...]
     input_keys: tuple[str, ...]
     output_tags: Mapping[str, str]
-    """Soft-PLC IN tag → state key (e.g. LT_TANK → h_tank)."""
+    """Soft-PLC IN tag → nudgeable state key (identity measurements only)."""
     param_defaults: Mapping[str, float]
     initial_state: Mapping[str, float]
     rhs: Callable[[float, StateDict, InputDict, ParamDict], StateDict]
     """Return tentative next state from ``dt``, current state, inputs, params."""
     project: Callable[[StateDict, ParamDict, float], StateDict]
     """Post-step projection (inventory clamps, etc.)."""
+    measurement_exprs: Mapping[str, str] = field(default_factory=dict)
+    """Soft-PLC IN tag → measurement expression ``y = g(x, u, θ)``."""
 
 
 class DynamicsModel(Protocol):

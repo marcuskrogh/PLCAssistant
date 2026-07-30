@@ -130,8 +130,11 @@ class TankOp:
         params: Mapping[str, float],
     ) -> None:
         # Tank integration is applied by the compiler after inventory coupling.
-        # Here we only stamp area/h_max aliases used by inventory_couple.
-        del dt, ctx, bind, params
+        # Stamp per-tank area so uncoupled tanks resolve `{h}_area` / `area`.
+        del dt
+        area = _resolve_param(params.get("area"), params, 0.05)
+        ctx[bind["h"] + "_area"] = area
+        ctx.setdefault("area", area)
 
 
 class PumpOp:
@@ -223,15 +226,27 @@ class CustomOdeOp:
     name = "custom_ode"
 
     def declare(self, bind: Mapping[str, str], params: Mapping[str, Any]) -> OpDecl:
+        del bind
         derivatives = params.get("derivatives") or {}
         if not isinstance(derivatives, Mapping) or not derivatives:
             raise ExpressionError("custom_ode requires non-empty derivatives map")
         # Validate expressions at declare/load time.
         for key, expr in derivatives.items():
+            if not str(key).strip():
+                raise ExpressionError("custom_ode state key must be non-empty")
             compile_expr(str(expr))
-            del key
+        algebraic = params.get("algebraic") or {}
+        intermediates: list[str] = []
+        if algebraic is not None:
+            if not isinstance(algebraic, Mapping):
+                raise ExpressionError("custom_ode algebraic must be a mapping")
+            for key, expr in algebraic.items():
+                if not str(key).strip():
+                    raise ExpressionError("custom_ode algebraic name must be non-empty")
+                compile_expr(str(expr))
+                intermediates.append(str(key))
         states = tuple(str(k) for k in derivatives.keys())
-        return OpDecl(state_keys=states)
+        return OpDecl(state_keys=states, intermediate_keys=tuple(intermediates))
 
     def contribute(
         self,
@@ -243,13 +258,18 @@ class CustomOdeOp:
     ) -> None:
         del bind
         derivatives = params.get("derivatives") or {}
-        if dt <= 0.0:
-            return
-        # Snapshot before updates so simultaneous derivatives see prior state.
-        prior = dict(ctx)
-        for key, expr in derivatives.items():
-            deriv = compile_expr(str(expr))(prior)
-            ctx[str(key)] = float(prior.get(str(key), 0.0)) + float(deriv) * dt
+        if dt > 0.0:
+            # Snapshot before updates so simultaneous derivatives see prior state.
+            prior = dict(ctx)
+            for key, expr in derivatives.items():
+                deriv = compile_expr(str(expr))(prior)
+                ctx[str(key)] = float(prior.get(str(key), 0.0)) + float(deriv) * dt
+        algebraic = params.get("algebraic") or {}
+        if isinstance(algebraic, Mapping):
+            # Evaluate after state update so algebraics can depend on new states.
+            snap = dict(ctx)
+            for key, expr in algebraic.items():
+                ctx[str(key)] = float(compile_expr(str(expr))(snap))
 
 
 OP_CATALOG: dict[str, UnitOp] = {

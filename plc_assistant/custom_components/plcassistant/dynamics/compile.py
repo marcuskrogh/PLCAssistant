@@ -1,17 +1,26 @@
-"""Compile unit-op model documents into ModelSpec + SpecModel (SWD-144)."""
+"""Compile unit-op model documents into ModelSpec + SpecModel (SWD-144/167)."""
 
 from __future__ import annotations
 
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping
 
 from .core import DynamicsModel, InputDict, ModelSpec, ParamDict, StateDict
-from .expr import ExpressionError
+from .equations import is_simple_name, validate_measurement_expr
+from .expr import ExpressionError, compile_expr
 from .ops import OP_CATALOG, get_op, limit_flows
 
 SCHEMA_VERSION = "1.0"
+
+
+@dataclass(frozen=True)
+class Measurement:
+    """One Soft-PLC IN tag produced by evaluating an expression."""
+
+    tag: str
+    expr: str
 
 
 @dataclass
@@ -22,9 +31,11 @@ class ModelDocument:
     version: str
     inputs: tuple[str, ...]
     outputs: Mapping[str, str]
+    """Nudge map tag → state key (identity subset of measurements)."""
     params: ParamDict
     initial: StateDict
     ops: tuple[dict[str, Any], ...]
+    measurements: tuple[Measurement, ...] = ()
     inventory_couple: Mapping[str, str] | None = None
 
 
@@ -32,6 +43,44 @@ def _as_mapping(value: Any, *, field: str) -> Mapping[str, Any]:
     if not isinstance(value, Mapping):
         raise ExpressionError(f"{field} must be a mapping")
     return value
+
+
+def _parse_measurements(
+    data: Mapping[str, Any],
+    outputs: Mapping[str, str],
+) -> tuple[Measurement, ...]:
+    raw = data.get("measurements")
+    if raw is None:
+        if not outputs:
+            raise ExpressionError("outputs or measurements required")
+        return tuple(Measurement(tag=str(k), expr=str(v)) for k, v in outputs.items())
+    if not isinstance(raw, list) or not raw:
+        raise ExpressionError("measurements must be a non-empty list")
+    seen: set[str] = set()
+    out: list[Measurement] = []
+    for item in raw:
+        row = _as_mapping(item, field="measurement")
+        tag = str(row.get("tag") or "").strip().upper()
+        expr = str(row.get("expr") or "").strip()
+        if not tag or not expr:
+            raise ExpressionError("each measurement requires tag and expr")
+        if tag in seen:
+            raise ExpressionError(f"duplicate measurement tag: {tag!r}")
+        seen.add(tag)
+        validate_measurement_expr(expr)
+        out.append(Measurement(tag=tag, expr=expr))
+    return tuple(out)
+
+
+def _nudge_outputs_from_measurements(
+    measurements: tuple[Measurement, ...],
+) -> dict[str, str]:
+    """Identity measurements remain Number-nudgeable via output_tags."""
+    nudge: dict[str, str] = {}
+    for m in measurements:
+        if is_simple_name(m.expr):
+            nudge[m.tag] = m.expr.strip()
+    return nudge
 
 
 def parse_model_document(raw: Any) -> ModelDocument:
@@ -51,8 +100,14 @@ def parse_model_document(raw: Any) -> ModelDocument:
         str(k).upper(): str(v)
         for k, v in _as_mapping(data.get("outputs") or {}, field="outputs").items()
     }
-    if not outputs:
-        raise ExpressionError("outputs must be a non-empty mapping")
+    measurements = _parse_measurements(data, outputs)
+    # Prefer explicit outputs; fill gaps from identity measurements.
+    merged = dict(outputs)
+    for tag, state_key in _nudge_outputs_from_measurements(measurements).items():
+        merged.setdefault(tag, state_key)
+    outputs = merged
+    if not measurements:
+        raise ExpressionError("outputs or measurements required")
     params = {
         str(k): float(v)
         for k, v in _as_mapping(data.get("params") or {}, field="params").items()
@@ -112,6 +167,7 @@ def parse_model_document(raw: Any) -> ModelDocument:
         params=params,
         initial=initial,
         ops=tuple(ops),
+        measurements=measurements,
         inventory_couple=couple,
     )
 
@@ -134,10 +190,10 @@ def load_model_document(path: str | Path) -> ModelDocument:
 def _param_map(op: Mapping[str, Any], model_params: ParamDict) -> dict[str, Any]:
     """Merge op-local params; string values may reference model params."""
     local = dict(op.get("params") or {})
-    # Keep derivatives map intact for custom_ode.
+    # Keep derivatives / algebraic maps intact for custom_ode.
     resolved: dict[str, Any] = {}
     for key, value in local.items():
-        if key == "derivatives" and isinstance(value, Mapping):
+        if key in {"derivatives", "algebraic"} and isinstance(value, Mapping):
             resolved[key] = dict(value)
             continue
         if isinstance(value, str) and value in model_params:
@@ -162,10 +218,13 @@ def compile_document(doc: ModelDocument) -> ModelSpec:
     for key in doc.initial:
         if key not in state_keys:
             state_keys.append(key)
-    # Ensure output state keys exist.
+    # Ensure identity-measurement / output state keys exist.
     for state_key in doc.outputs.values():
         if state_key not in state_keys:
             state_keys.append(state_key)
+    for m in doc.measurements:
+        if is_simple_name(m.expr) and m.expr.strip() not in state_keys:
+            state_keys.append(m.expr.strip())
 
     op_runtime = []
     for op in doc.ops:
@@ -182,6 +241,7 @@ def compile_document(doc: ModelDocument) -> ModelSpec:
     initial_state = {k: float(doc.initial.get(k, 0.0)) for k in state_keys}
     input_keys = tuple(doc.inputs)
     output_tags = dict(doc.outputs)
+    measurement_exprs = {m.tag: m.expr for m in doc.measurements}
     tank_binds = [
         bind
         for op, bind, _ in op_runtime
@@ -199,7 +259,6 @@ def compile_document(doc: ModelDocument) -> ModelSpec:
         for key, value in params.items():
             ctx[key] = float(value)
         for op, bind, op_params in op_runtime:
-            # Refresh resolved numeric params from live ``params``.
             live_params = dict(op_params)
             for key, value in params.items():
                 live_params[key] = float(value)
@@ -232,12 +291,10 @@ def compile_document(doc: ModelDocument) -> ModelSpec:
             ctx[q_in_name] = q_in
             ctx[q_drain_name] = q_drain
             if dt > 0.0:
-                # Integrate tanks after limiting (matches skid_rhs order).
                 for bind in tank_binds:
                     h_key = bind["h"]
                     q_in_key = bind["q_in"]
                     q_out_key = bind["q_out"]
-                    # Find area from matching couple or params.
                     if h_key == couple["h_tank"]:
                         area = float(
                             params.get(couple["a_tank"], ctx.get(couple["a_tank"], 0.05))
@@ -262,7 +319,6 @@ def compile_document(doc: ModelDocument) -> ModelSpec:
                 ) * to_m * dt
 
         out: StateDict = {k: float(ctx.get(k, state.get(k, 0.0))) for k in state_keys}
-        # Preserve command echo when present in state (skid parity).
         if "cmd_speed" in state or "cmd_speed" in inputs:
             out["cmd_speed"] = float(inputs.get("cmd_speed", ctx.get("cmd_speed", 0.0)))
         return out
@@ -303,6 +359,7 @@ def compile_document(doc: ModelDocument) -> ModelSpec:
         initial_state=initial_state,
         rhs=rhs,
         project=project,
+        measurement_exprs=measurement_exprs,
     )
 
 
@@ -321,8 +378,13 @@ class SpecModel:
         self._state: StateDict = {
             key: float(spec.initial_state.get(key, 0.0)) for key in spec.state_keys
         }
-        # Optional extras (e.g. cmd_speed echo) kept in state for project.
         self._inputs: InputDict = {key: 0.0 for key in spec.input_keys}
+        exprs = dict(spec.measurement_exprs) if spec.measurement_exprs else {
+            tag: key for tag, key in spec.output_tags.items()
+        }
+        self._measurement_fns: dict[str, Callable[[Mapping[str, float]], float]] = {
+            tag: compile_expr(expr) for tag, expr in exprs.items()
+        }
 
     @property
     def spec(self) -> ModelSpec:
@@ -349,7 +411,6 @@ class SpecModel:
     def step(self, dt: float) -> Mapping[str, float]:
         tentative = self._spec.rhs(dt, self._state, self._inputs, self._params)
         self._state = self._spec.project(tentative, self._params, dt)
-        # Keep only declared state keys + optional cmd_speed echo.
         keep = set(self._spec.state_keys)
         if "cmd_speed" in self._state:
             keep.add("cmd_speed")
@@ -357,9 +418,12 @@ class SpecModel:
         return dict(self._state)
 
     def outputs(self) -> Mapping[str, float]:
-        return {
-            tag: float(self._state[key]) for tag, key in self._spec.output_tags.items()
-        }
+        ctx: dict[str, float] = {k: float(v) for k, v in self._state.items()}
+        for key, value in self._params.items():
+            ctx[key] = float(value)
+        for key, value in self._inputs.items():
+            ctx[key] = float(value)
+        return {tag: float(fn(ctx)) for tag, fn in self._measurement_fns.items()}
 
     def nudge(self, **deltas: float) -> None:
         if "h_tank" in deltas or "dh_tank" in deltas:
@@ -386,6 +450,7 @@ def document_to_model(
 
 __all__ = [
     "SCHEMA_VERSION",
+    "Measurement",
     "ModelDocument",
     "SpecModel",
     "compile_document",

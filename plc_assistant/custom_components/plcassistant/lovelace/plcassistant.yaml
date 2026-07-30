@@ -1,4 +1,4 @@
-# plcassistant_dashboard_version: 13
+# plcassistant_dashboard_version: 14
 title: PLCAssistant
 views:
   - title: Operate
@@ -21,7 +21,7 @@ views:
             name: Trip active
       - type: markdown
         content: |
-          **PLCAssistant** — Soft-PLC skid HMI (**Operate**). Soft-PLC must show **stopped** (not offline) before Start works. Open the **Dynamics** tab to edit unit-op / ODE plant blocks and Soft-PLC tag maps (App **0.1.25+**). Soft-PLC stays mock-unaware (`HeldProcess`). Plant Numbers display live motion (nudges allowed). Update App, wait for Core reload, then reopen this board. Confirm Mosquitto + matching `instance_id` if still offline. Change the **Level setpoint**, press **Start**, then watch levels, inlet flow, and pump speed.
+          **PLCAssistant** — Soft-PLC skid HMI (**Operate**). Soft-PLC must show **stopped** (not offline) before Start works. Open the **Dynamics** tab to edit unit-op / ODE **state equations** and Soft-PLC **measurement equations** (App **0.1.26+**). Soft-PLC stays mock-unaware (`HeldProcess`). Plant Numbers display live motion (nudges allowed). Update App, wait for Core reload, then reopen this board. Confirm Mosquitto + matching `instance_id` if still offline. Change the **Level setpoint**, press **Start**, then watch levels, inlet flow, and pump speed.
       - type: entities
         title: Operate
         show_header_toggle: false
