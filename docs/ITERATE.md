@@ -30,7 +30,7 @@ Plant Numbers relied on MQTT retain echo for display and used AUTO/slider mode, 
 - Task: [SWD-169](https://marcusknielsen.atlassian.net/browse/SWD-169)
 - Relates: [SWD-146](https://marcusknielsen.atlassian.net/browse/SWD-146)
 - Branch: `cursor/swd-169-plant-in-values-6867`
-- PR: _(pending)_
+- PR: [#71](https://github.com/marcuskrogh/PLCAssistant/pull/71)
 
 ## Next
 `/review-fix SWD-169` — Review and auto-fix until clean
