@@ -120,11 +120,13 @@ class PlcAssistantRequestNumber(NumberEntity):
         self._unsub = None
         meta = _TAG_META.get(tag, {})
         self._attr_name = meta.get("name", f"PLCAssistant {tag}")
-        # SWD-170: stable unique_id by instance+tag (survives config-entry recreate).
+        # SWD-170: plant Numbers use stable instance+tag unique_ids.
+        # Request SP keeps `_req` suffix (and entry_id) so Lovelace Level setpoint
+        # does not orphan after reload (unique_id churn → entity_id_2).
         if tag in _PLANT_IN_TAGS:
             self._attr_unique_id = expected_plant_number_unique_id(instance_id, tag)
         else:
-            self._attr_unique_id = f"plcassistant_{instance_id}_{tag}_number"
+            self._attr_unique_id = f"{entry_id}_{tag}_req"
         object_id = meta.get("object_id") or _object_id_from_entity(
             entity_id, f"plcassistant_{tag.lower()}"
         )

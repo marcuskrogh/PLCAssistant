@@ -64,6 +64,8 @@ def test_bundled_yaml_exists() -> None:
     assert "button.plcassistant_start" in text
     assert "number.plcassistant_sp_level_req" in text
     assert "sensor.plcassistant_lt_tank_in" in text
+    assert "sensor.plcassistant_lt_res_in" in text
+    assert "sensor.plcassistant_ft_inlet_in" in text
     assert "sensor.plcassistant_status" in text
     assert "sensor.plcassistant_mode" in text
     assert text.lstrip().startswith("# plcassistant_dashboard_version:")
@@ -72,6 +74,10 @@ def test_bundled_yaml_exists() -> None:
     assert "entity: number.plcassistant_lt_tank_in" not in text
     assert "entity: sensor.plcassistant_ft_inlet_in" in text
     assert "entity: sensor.plcassistant_sp_flow" in text
+    hist = text.split("type: history-graph", 1)[1]
+    assert "sensor.plcassistant_lt_tank_in" in hist
+    assert "sensor.plcassistant_lt_res_in" in hist
+    assert "sensor.plcassistant_ft_inlet_in" in hist
 
 
 def test_setup_entry_calls_sidebar_dashboard() -> None:
@@ -237,13 +243,13 @@ def test_run_sh_refreshes_stock_missing_status_not_custom() -> None:
     assert "sensor.plcassistant_status" in text
     assert "button.plcassistant_start" in text
     assert "seeded default" in text or "mqtt_broker=core-mosquitto" in text
-    # Explicit old versions only — do not refresh merely missing version 14.
-    assert "plcassistant_dashboard_version:[[:space:]]*([1-9]|1[0-3])" in text
+    # Explicit old versions only — refresh 1–14 stock boards to v15 (SWD-170).
+    assert "plcassistant_dashboard_version:[[:space:]]*([1-9]|1[0-4])" in text
     assert "request_core_restart_after_sync" in text
     assert "supervisor/core/restart" in text
     assert "PLCASSISTANT_AUTO_CORE_RESTART" in text
     assert "PLCASSISTANT_HA_CONFIG" in text
-    assert "! grep -q 'plcassistant_dashboard_version: 14'" not in text
+    assert "! grep -q 'plcassistant_dashboard_version: 15'" not in text
     # Regression: never refresh-on-newer (would clobber operator edits).
     assert 'src_dash}" -nt' not in text
     assert "[ \"${src_dash}\" -nt" not in text

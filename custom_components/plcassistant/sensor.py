@@ -1,4 +1,4 @@
-"""Read-only Soft-PLC OUT tags + App status as sensors."""
+"""Read-only Soft-PLC OUT tags, plant IN display PVs, and App status as sensors."""
 
 from __future__ import annotations
 

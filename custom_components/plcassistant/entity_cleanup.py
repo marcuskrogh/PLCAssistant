@@ -36,6 +36,22 @@ def expected_plant_sensor_unique_id(instance_id: str, tag: str) -> str:
     return f"plcassistant_{instance_id}_{tag}_plant_in"
 
 
+def should_purge_plant_number(
+    *,
+    state_unavailable: bool,
+    unique_id: str,
+    expected_unique_id: str,
+) -> bool:
+    """True when a contracted plant Number registry row should be removed.
+
+    Only purge when the contracted entity_id is unavailable (missing state or
+    ``unavailable``). Never delete a live available entity solely because the
+    unique_id differs — that can yank an active nudge mid-session.
+    """
+    del unique_id, expected_unique_id  # reserved for logging/callers; not a delete gate
+    return bool(state_unavailable)
+
+
 async def async_purge_orphaned_plant_numbers(
     hass: HomeAssistant, instance_id: str
 ) -> list[str]:
@@ -57,25 +73,27 @@ async def async_purge_orphaned_plant_numbers(
         expected = expected_plant_number_unique_id(instance_id, tag)
         state = hass.states.get(entity_id)
         state_unavailable = state is None or str(state.state) == "unavailable"
-        wrong_unique = entry.unique_id != expected
-        # Purge orphans: unavailable under the contracted id, or stale unique_id
-        # that will fight the live entity for the same object_id.
-        if state_unavailable or wrong_unique:
-            try:
-                registry.async_remove(entity_id)
-                removed.append(entity_id)
-                _LOGGER.info(
-                    "PLCAssistant: removed orphaned plant Number %s "
-                    "(unique_id=%s, expected=%s, state=%s)",
-                    entity_id,
-                    entry.unique_id,
-                    expected,
-                    None if state is None else state.state,
-                )
-            except Exception:  # noqa: BLE001
-                _LOGGER.debug(
-                    "PLCAssistant: failed to remove orphaned %s", entity_id, exc_info=True
-                )
+        if not should_purge_plant_number(
+            state_unavailable=state_unavailable,
+            unique_id=str(entry.unique_id),
+            expected_unique_id=expected,
+        ):
+            continue
+        try:
+            registry.async_remove(entity_id)
+            removed.append(entity_id)
+            _LOGGER.info(
+                "PLCAssistant: removed orphaned plant Number %s "
+                "(unique_id=%s, expected=%s, state=%s)",
+                entity_id,
+                entry.unique_id,
+                expected,
+                None if state is None else state.state,
+            )
+        except Exception:  # noqa: BLE001
+            _LOGGER.debug(
+                "PLCAssistant: failed to remove orphaned %s", entity_id, exc_info=True
+            )
     return removed
 
 
@@ -83,4 +101,5 @@ __all__ = [
     "async_purge_orphaned_plant_numbers",
     "expected_plant_number_unique_id",
     "expected_plant_sensor_unique_id",
+    "should_purge_plant_number",
 ]
