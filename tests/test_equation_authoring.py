@@ -312,6 +312,42 @@ def test_predefined_lag_equations_match_runtime() -> None:
     assert model.state["speed"] == pytest.approx(50.0, abs=0.5)
 
 
+def test_measurement_sees_algebraic_before_step() -> None:
+    """Identity measurement of orifice q must reflect k*sqrt(h) at t=0."""
+    from dynamics.compile import document_to_model, parse_model_document
+
+    doc = parse_model_document(
+        {
+            "version": "1.0",
+            "name": "alg_meas",
+            "inputs": ["qin"],
+            "measurements": [
+                {"tag": "LT", "expr": "h"},
+                {"tag": "FT", "expr": "q"},
+            ],
+            "params": {"k": 2.0},
+            "initial": {"h": 0.25},
+            "ops": [
+                {
+                    "id": "drain",
+                    "type": "orifice",
+                    "params": {"k": "k"},
+                    "bind": {"h": "h", "q": "q"},
+                },
+                {
+                    "id": "tank",
+                    "type": "tank",
+                    "params": {"area": 0.05},
+                    "bind": {"h": "h", "q_in": "qin", "q_out": "q"},
+                },
+            ],
+        }
+    )
+    model = document_to_model(doc)
+    model.set_input("qin", 0.0)
+    assert model.outputs()["FT"] == pytest.approx(2.0 * math.sqrt(0.25))
+
+
 def test_editor_shows_state_and_measurement_rows() -> None:
     html = (CC / "www" / "dynamics_editor.html").read_text(encoding="utf-8")
     assert "State equations" in html

@@ -264,7 +264,7 @@ def compile_document(doc: ModelDocument) -> ModelSpec:
                 live_params[key] = float(value)
             op.contribute(dt=dt, ctx=ctx, bind=bind, params=live_params)
 
-        if couple is not None:
+        if couple is not None and dt > 0.0:
             q_in_name = couple["q_in"]
             q_drain_name = couple["q_drain"]
             q_in_cmd = float(ctx.get(q_in_name + "__cmd", ctx.get(q_in_name, 0.0)))
@@ -290,25 +290,25 @@ def compile_document(doc: ModelDocument) -> ModelSpec:
             )
             ctx[q_in_name] = q_in
             ctx[q_drain_name] = q_drain
-            if dt > 0.0:
-                for bind in tank_binds:
-                    h_key = bind["h"]
-                    q_in_key = bind["q_in"]
-                    q_out_key = bind["q_out"]
-                    if h_key == couple["h_tank"]:
-                        area = float(
-                            params.get(couple["a_tank"], ctx.get(couple["a_tank"], 0.05))
-                        )
-                    elif h_key == couple["h_res"]:
-                        area = float(
-                            params.get(couple["a_res"], ctx.get(couple["a_res"], 0.10))
-                        )
-                    else:
-                        area = float(ctx.get(h_key + "_area", 0.05))
-                    to_m = 1.0 / (area * 1000.0 * 60.0)
-                    ctx[h_key] = float(ctx[h_key]) + (
-                        float(ctx[q_in_key]) - float(ctx[q_out_key])
-                    ) * to_m * dt
+            # Integrate tanks after limiting (matches skid_rhs order).
+            for bind in tank_binds:
+                h_key = bind["h"]
+                q_in_key = bind["q_in"]
+                q_out_key = bind["q_out"]
+                if h_key == couple["h_tank"]:
+                    area = float(
+                        params.get(couple["a_tank"], ctx.get(couple["a_tank"], 0.05))
+                    )
+                elif h_key == couple["h_res"]:
+                    area = float(
+                        params.get(couple["a_res"], ctx.get(couple["a_res"], 0.10))
+                    )
+                else:
+                    area = float(ctx.get(h_key + "_area", 0.05))
+                to_m = 1.0 / (area * 1000.0 * 60.0)
+                ctx[h_key] = float(ctx[h_key]) + (
+                    float(ctx[q_in_key]) - float(ctx[q_out_key])
+                ) * to_m * dt
         elif dt > 0.0:
             for bind in tank_binds:
                 h_key = bind["h"]
@@ -418,7 +418,10 @@ class SpecModel:
         return dict(self._state)
 
     def outputs(self) -> Mapping[str, float]:
-        ctx: dict[str, float] = {k: float(v) for k, v in self._state.items()}
+        # Refresh algebraics (orifice q, custom_ode algebraic, …) without
+        # advancing time so measurement exprs see a coherent ctx.
+        snap = self._spec.rhs(0.0, self._state, self._inputs, self._params)
+        ctx: dict[str, float] = {k: float(v) for k, v in snap.items()}
         for key, value in self._params.items():
             ctx[key] = float(value)
         for key, value in self._inputs.items():

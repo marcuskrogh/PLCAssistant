@@ -267,7 +267,7 @@ function defaultBind(type) {
 
 function defaultParams(type) {
   const meta = opMeta(type);
-  if (meta.ode) return { derivatives: { y: "(u - y) / tau" }, algebraic: {} };
+  if (meta.ode) return { derivatives: { y: "(u - y) / 1" }, algebraic: {} };
   const params = {};
   (meta.params || []).forEach(k => { params[k] = ""; });
   return params;
