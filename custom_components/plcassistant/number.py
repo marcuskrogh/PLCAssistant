@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 from homeassistant.components.mqtt import async_subscribe
-from homeassistant.components.number import NumberEntity
+from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import Event, HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import CONF_BINDINGS, CONF_INSTANCE_ID, CONF_MOCK_MODE, DOMAIN
@@ -134,6 +135,9 @@ class PlcAssistantRequestNumber(NumberEntity):
             self._attr_native_value = float(meta["default"])
         else:
             self._attr_native_value = 0.0
+        # SWD-169: box mode so Operate always shows a numeric value (AUTO/slider
+        # renders empty grey tracks on mobile with no readable engineering value).
+        self._attr_mode = NumberMode.BOX
 
     def _plant_simulator(self):
         store = self.hass.data.get(DOMAIN, {}).get(self._entry_id) or {}
@@ -144,6 +148,31 @@ class PlcAssistantRequestNumber(NumberEntity):
             return False
         sim = self._plant_simulator()
         return sim is not None and sim.owns_plant_tag(self._tag)
+
+    def _apply_eng_value(self, eng: float) -> bool:
+        """Update display from engineering units; True when state should be written."""
+        try:
+            value = float(eng)
+        except (TypeError, ValueError):
+            return False
+        if not math.isfinite(value):
+            return False
+        display = (value - self._offset) / self._scale if self._scale else value
+        if self._attr_native_value is not None and abs(
+            float(self._attr_native_value) - display
+        ) < 1e-12:
+            return False
+        self._attr_native_value = display
+        return True
+
+    def _apply_payload(self, payload: str) -> bool:
+        try:
+            body = json.loads(payload or "{}")
+            if not isinstance(body, dict) or "value" not in body:
+                return False
+            return self._apply_eng_value(float(body["value"]))
+        except (TypeError, ValueError, UnicodeDecodeError, json.JSONDecodeError):
+            return False
 
     async def async_set_native_value(self, value: float) -> None:
         self._attr_native_value = value
@@ -184,29 +213,50 @@ class PlcAssistantRequestNumber(NumberEntity):
         self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
-        """Publish operator request, or subscribe to simulator plant IN for display."""
+        """Publish operator request, or hydrate/subscribe for simulator plant IN."""
         await super().async_added_to_hass()
         if self._simulator_owns():
+            # SWD-169: hydrate from live plant outputs (OUT sensors already hydrate
+            # from cache — plant Numbers must not wait on MQTT retain alone).
+            sim = self._plant_simulator()
+            try:
+                outs = sim.plant.model.outputs()
+                tag_key = str(self._tag).upper()
+                eng = outs.get(tag_key, outs.get(self._tag))
+                if eng is not None and self._apply_eng_value(float(eng)):
+                    self.async_write_ha_state()
+                elif self._attr_native_value is not None:
+                    self.async_write_ha_state()
+            except Exception:  # noqa: BLE001 — never abort entity add on bad model
+                if self._attr_native_value is not None:
+                    self.async_write_ha_state()
 
-            async def _on_plant_in(msg) -> None:
+            async def _on_plant_bus(event: Event) -> None:
+                if event.data.get("entry_id") != self._entry_id:
+                    return
+                if str(event.data.get("tag") or "").upper() != str(self._tag).upper():
+                    return
+                if self._apply_payload(str(event.data.get("payload") or "")):
+                    self.async_write_ha_state()
+
+            self.async_on_remove(
+                self.hass.bus.async_listen(f"{DOMAIN}_plant_in", _on_plant_bus)
+            )
+
+            async def _on_plant_mqtt(msg) -> None:
                 try:
                     raw = msg.payload
                     text = raw.decode("utf-8") if isinstance(raw, bytes) else str(raw)
-                    body = json.loads(text or "{}")
-                    if not isinstance(body, dict) or "value" not in body:
-                        return
-                    eng = float(body["value"])
-                except (TypeError, ValueError, UnicodeDecodeError, json.JSONDecodeError):
+                except UnicodeDecodeError:
                     return
-                # Invert binding scale/offset for entity display.
-                display = (eng - self._offset) / self._scale if self._scale else eng
-                self._attr_native_value = display
-                self.async_write_ha_state()
+                if self._apply_payload(text):
+                    self.async_write_ha_state()
 
+            # Secondary: MQTT IN (Soft-PLC / external) still refreshes HMI.
             self._unsub = await async_subscribe(
                 self.hass,
                 tag_in_topic(self._instance_id, self._tag),
-                _on_plant_in,
+                _on_plant_mqtt,
                 qos=0,
             )
             return

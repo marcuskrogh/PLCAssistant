@@ -189,6 +189,20 @@ def test_integration_wires_plant_simulator_lifecycle() -> None:
     assert "_simulator_owns" in number
     assert "set_tag" in number
     assert "do not compete" in number
+    # SWD-169: readable HMI values (BOX) + hydrate from plant + bus updates.
+    assert "NumberMode.BOX" in number
+    assert "_plant_in" in number or "plant_in" in number
+    assert "outputs()" in number
+    assert "async_write_ha_state" in number
+    assert "math.isfinite" in number
+    assert "except Exception" in number
+
+    sim = (CC / "dynamics" / "simulator.py").read_text(encoding="utf-8")
+    assert "entry_id" in sim
+    assert "_plant_in" in sim or "plant_in" in sim
+    assert "async_fire" in sim
+    init_text2 = (CC / "__init__.py").read_text(encoding="utf-8")
+    assert "entry_id=entry.entry_id" in init_text2
 
 
 def test_packaging_docs_mention_live_simulator() -> None:

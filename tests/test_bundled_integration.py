@@ -101,6 +101,9 @@ def test_platforms_publish_and_subscribe_paths():
     assert "SP_LEVEL_REQ" in number
     assert "_simulator_owns" in number
     assert "set_tag" in number
+    assert "NumberMode.BOX" in number
+    assert "plant_in" in number
+    assert "outputs()" in number
 
     sensor = (CC / "sensor.py").read_text(encoding="utf-8")
     assert "_tag_out" in sensor
