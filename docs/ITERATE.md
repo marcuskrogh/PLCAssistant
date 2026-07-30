@@ -1,5 +1,7 @@
 # Iterate: Restart required on Settings → Updates (SWD-168)
 
+**Done** — App **0.1.27**; shipped PR [#70](https://github.com/marcuskrogh/PLCAssistant/pull/70)
+
 ## Prior work
 - Task: [SWD-138](https://marcusknielsen.atlassian.net/browse/SWD-138) — auto Core restart after thin-integration sync
 - PR: [#53](https://github.com/marcuskrogh/PLCAssistant/pull/53)
@@ -14,22 +16,24 @@ App update detection works (Settings → check for updates shows PLCAssistant). 
 - The Update entity ships in the thin integration, so the first upgrade *to* 0.1.27 still relies on auto/manual Core restart; the card appears on later syncs once 0.1.27+ is already loaded.
 
 ## Acceptance criteria
-- [ ] Thin integration registers an `update` entity for PLCAssistant.
-- [ ] When disk version ≠ loaded version, the Updates page shows the entity with a HACS-style Restart required `release_summary` (`ha-alert`).
-- [ ] A fixable repair issue (`restart_required`) offers Restart Home Assistant.
-- [ ] When versions match after Core restart, update entity is off and the repair is cleared.
-- [ ] Auto Core restart path unchanged.
-- [ ] Docs (`04-updates.md`) mention the Restart required indicator.
-- [ ] Tests cover version helpers + wiring (no HA import in CI); App ↔ integration version bumped together.
+- [x] Thin integration registers an `update` entity for PLCAssistant.
+- [x] When disk version ≠ loaded version, the Updates page shows the entity with a HACS-style Restart required `release_summary` (`ha-alert`).
+- [x] A fixable repair issue (`restart_required`) offers Restart Home Assistant.
+- [x] When versions match after Core restart, update entity is off and the repair is cleared.
+- [x] Auto Core restart path unchanged.
+- [x] Docs (`04-updates.md`) mention the Restart required indicator.
+- [x] Tests cover version helpers + wiring (no HA import in CI); App ↔ integration version bumped together.
 
 ## Out of scope
 - Customizing the Supervisor App update entity itself
 - Removing or changing `PLCASSISTANT_AUTO_CORE_RESTART` defaults
 
-## Work packages
-1. Pure helpers: read loaded vs disk version; pending-restart predicate
-2. `update` platform + repair issue create/clear + strings
-3. Wire platform in `__init__.py`; bump version; docs + tests; sync App package
+## Shipped
+1. `version_sync.py` — loaded vs disk version helpers
+2. `update.py` — Update entity + repair issue sync (HACS-style alert)
+3. `repairs.py` — confirm → `homeassistant.restart`
+4. review-fix CLEAN after 2 iters (docs first-upgrade + manifest/repair harden)
+5. App **0.1.27**
 
 ## Tracker
 - Task: [SWD-168](https://marcusknielsen.atlassian.net/browse/SWD-168)
@@ -38,4 +42,4 @@ App update detection works (Settings → check for updates shows PLCAssistant). 
 - Branch: `cursor/swd-168-restart-required-0337`
 
 ## Next
-`/review-fix SWD-168` — Review and auto-fix until clean
+Done — phase closed.
