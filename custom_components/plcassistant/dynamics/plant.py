@@ -11,8 +11,8 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Mapping
 
-from .core import FixedStepRunner, parse_scan_period_s
-from .skid import SkidModel, get_preset
+from .core import DynamicsModel, FixedStepRunner, parse_scan_period_s
+from .registry import get_preset
 
 PublishFn = Callable[[str, str], None]
 """publish(tag, json_payload)"""
@@ -22,7 +22,7 @@ PublishFn = Callable[[str, str], None]
 class PlantSimulator:
     """Own plant MQTT IN publishing for one mock_mode config entry."""
 
-    model: SkidModel
+    model: DynamicsModel
     publish: PublishFn
     period_s: float = 0.1
     cmd_watchdog_s: float = 2.0
@@ -101,12 +101,12 @@ class PlantSimulator:
         state_key = self.model.spec.output_tags.get(key)
         if state_key is None:
             raise KeyError(tag)
-        if state_key == "h_tank":
-            self.model.set_levels(h_tank=float(value))
-        elif state_key == "h_res":
-            self.model.set_levels(h_res=float(value))
+        set_state = getattr(self.model, "set_state", None)
+        if callable(set_state):
+            set_state(state_key, float(value))
         else:
-            self.model.nudge(**{state_key: float(value)})
+            current = float(self.model.state.get(state_key, 0.0))
+            self.model.nudge(**{state_key: float(value) - current})
         self.publish_now()
 
     def tick(self, wall_dt: float, *, mono: float | None = None) -> Mapping[str, float]:

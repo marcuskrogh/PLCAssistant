@@ -1,0 +1,89 @@
+{
+  "version": "1.0",
+  "name": "skid_composed",
+  "inputs": ["cmd_speed"],
+  "outputs": {
+    "LT_TANK": "h_tank",
+    "LT_RES": "h_res",
+    "FT_INLET": "ft_inlet"
+  },
+  "params": {
+    "a_tank": 0.05,
+    "a_res": 0.10,
+    "h_tank_max": 0.40,
+    "h_res_max": 0.30,
+    "q_pump_max": 8.0,
+    "k_drain": 5.0,
+    "pump_tau": 0.5,
+    "speed_fb_tau": 0.2,
+    "lim_res_ll": 0.05
+  },
+  "initial": {
+    "h_tank": 0.15,
+    "h_res": 0.20,
+    "ft_inlet": 0.0,
+    "sc_pump": 0.0
+  },
+  "ops": [
+    {
+      "id": "pump",
+      "type": "pump",
+      "params": {
+        "q_max": "q_pump_max",
+        "tau": "pump_tau",
+        "lim_ll": "lim_res_ll"
+      },
+      "bind": {
+        "cmd": "cmd_speed",
+        "h_source": "h_res",
+        "q": "ft_inlet"
+      }
+    },
+    {
+      "id": "drain",
+      "type": "orifice",
+      "params": { "k": "k_drain" },
+      "bind": {
+        "h": "h_tank",
+        "q": "q_drain"
+      }
+    },
+    {
+      "id": "tank",
+      "type": "tank",
+      "bind": {
+        "h": "h_tank",
+        "q_in": "ft_inlet",
+        "q_out": "q_drain"
+      }
+    },
+    {
+      "id": "res",
+      "type": "tank",
+      "bind": {
+        "h": "h_res",
+        "q_in": "q_drain",
+        "q_out": "ft_inlet"
+      }
+    },
+    {
+      "id": "speed_fb",
+      "type": "lag",
+      "params": { "tau": "speed_fb_tau" },
+      "bind": {
+        "u": "cmd_speed",
+        "y": "sc_pump"
+      }
+    }
+  ],
+  "inventory_couple": {
+    "q_in": "ft_inlet",
+    "q_drain": "q_drain",
+    "h_tank": "h_tank",
+    "h_res": "h_res",
+    "a_tank": "a_tank",
+    "a_res": "a_res",
+    "h_tank_max": "h_tank_max",
+    "h_res_max": "h_res_max"
+  }
+}

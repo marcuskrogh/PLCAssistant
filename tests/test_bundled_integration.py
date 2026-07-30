@@ -110,7 +110,7 @@ def test_platforms_publish_and_subscribe_paths():
     assert "number.plcassistant_lt_tank_in" in lovelace
     assert "sensor.plcassistant_status" in lovelace
     assert "sensor.plcassistant_mode" in lovelace
-    assert "live simulator" in lovelace.lower() or "0.1.22" in lovelace
+    assert "live simulator" in lovelace.lower() or "0.1.23" in lovelace or "unit-op" in lovelace.lower()
     assert 'entity_id = f"number.' in number or "suggested_object_id" in number
     assert "plcassistant_sp_level_req" in number
     assert "plcassistant_lt_tank_in" in number
