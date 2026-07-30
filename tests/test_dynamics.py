@@ -267,6 +267,34 @@ def test_mqtt_silent_file_bridge_closed_loop_settles(
     assert image.get_quality("LT_TANK").status is QualityStatus.GOOD
 
 
+def test_plant_heartbeat_republishes_settled_values() -> None:
+    """SWD-173: unchanged GOOD plant tags still refresh on file heartbeat."""
+    import time
+
+    from dynamics.plant import PlantSimulator
+
+    published: list[str] = []
+
+    def publish(tag: str, payload: str) -> None:
+        published.append(tag)
+
+    plant = PlantSimulator.for_preset(publish, period_s=0.1)
+    plant.file_heartbeat_s = 0.5
+    plant.apply_status_payload({"state": "stopped", "scan_period_s": 0.1})
+    outs = dict(plant.model.outputs())
+    plant._publish_outputs(outs, force=True)
+    for tag, value in outs.items():
+        plant._last_publish[tag] = float(value)
+    plant._last_file_heartbeat_mono = time.monotonic()
+    before = len(published)
+    plant._publish_outputs(outs, force=False)  # coalesce inside heartbeat window
+    assert len(published) == before
+    plant._last_file_heartbeat_mono = time.monotonic() - 1.0
+    plant._publish_outputs(outs, force=False)  # heartbeat forces refresh
+    assert len(published) >= before + 3
+    assert set(published[before:]) >= {"LT_TANK", "LT_RES", "FT_INLET"}
+
+
 def test_integration_wires_plant_simulator_lifecycle() -> None:
     init_text = (CC / "__init__.py").read_text(encoding="utf-8")
     assert "HassPlantSimulator" in init_text

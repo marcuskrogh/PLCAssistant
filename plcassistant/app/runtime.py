@@ -301,19 +301,15 @@ class MqttScanLoop:
                         reason = ReasonCode[str(reason_raw).upper()]
                     except KeyError:
                         reason = None
-            # Plant PVs expire when the simulator stops flushing (SWD-171).
+            # Plant PVs: if file age is stale, hold last good — do NOT demote to
+            # BAD/UNAVAILABLE (that latches LOS and blocks Reset; SWD-173).
+            # Real LOS still arrives as explicit BAD/FAULT from plant/MQTT.
             if name in PLANT_FILE_INPUT_TAGS:
                 try:
                     tag_ts = float(body["ts"]) if body.get("ts") is not None else None
                 except (TypeError, ValueError):
                     tag_ts = None
                 if tag_ts is None or (now - tag_ts) > PLANT_FILE_STALE_S:
-                    try:
-                        self.image.apply_input(
-                            name, None, QualityStatus.BAD, ReasonCode.UNAVAILABLE
-                        )
-                    except Exception:  # noqa: BLE001 — best-effort IN hydrate
-                        pass
                     continue
             value: Any = body.get("value")
             if status is QualityStatus.GOOD:

@@ -26,6 +26,9 @@ class PlantSimulator:
     publish: PublishFn
     period_s: float = 0.1
     cmd_watchdog_s: float = 2.0
+    # Refresh file/MQTT timestamps for settled PVs so Soft-PLC does not treat
+    # coalesce silence as LOS (SWD-173).
+    file_heartbeat_s: float = 1.0
     # Stay frozen until Soft-PLC status is running/stopped (SWD-146).
     frozen: bool = True
     status_state: str = "offline"
@@ -33,6 +36,7 @@ class PlantSimulator:
     _last_cmd_mono: float | None = field(default=None, init=False)
     _quality: dict[str, tuple[str, str | None]] = field(default_factory=dict, init=False)
     _last_publish: dict[str, float] = field(default_factory=dict, init=False)
+    _last_file_heartbeat_mono: float | None = field(default=None, init=False)
 
     def __post_init__(self) -> None:
         self._runner = FixedStepRunner(self.model, period_s=self.period_s)
@@ -138,11 +142,17 @@ class PlantSimulator:
         return outs
 
     def _publish_outputs(self, outs: Mapping[str, float], *, force: bool = False) -> None:
+        now = time.monotonic()
+        heartbeat = force or self._last_file_heartbeat_mono is None or (
+            (now - float(self._last_file_heartbeat_mono)) >= float(self.file_heartbeat_s)
+        )
+        published = False
         for tag, value in outs.items():
             status, reason = self._quality.get(tag, ("GOOD", None))
-            # Coalesce: skip unchanged GOOD values unless forced.
+            # Coalesce unchanged GOOD values unless forced or heartbeat due.
             if (
                 not force
+                and not heartbeat
                 and status == "GOOD"
                 and tag in self._last_publish
                 and abs(self._last_publish[tag] - float(value)) < 1e-9
@@ -152,8 +162,11 @@ class PlantSimulator:
                 {"value": float(value), "status": status, "reason": reason, "ts": None}
             )
             self.publish(tag, payload)
+            published = True
             if status == "GOOD":
                 self._last_publish[tag] = float(value)
+        if published or heartbeat:
+            self._last_file_heartbeat_mono = now
 
 
 __all__ = ["PlantSimulator", "PublishFn"]
