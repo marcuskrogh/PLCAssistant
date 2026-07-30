@@ -27,7 +27,7 @@ class PlantSimulator:
     period_s: float = 0.1
     cmd_watchdog_s: float = 2.0
     # Refresh file/MQTT timestamps for settled PVs so Soft-PLC does not treat
-    # coalesce silence as LOS (SWD-173).
+    # coalesce silence as LOS (SWD-173). Per-tag so a busy PV cannot starve others.
     file_heartbeat_s: float = 1.0
     # Stay frozen until Soft-PLC status is running/stopped (SWD-146).
     frozen: bool = True
@@ -36,7 +36,7 @@ class PlantSimulator:
     _last_cmd_mono: float | None = field(default=None, init=False)
     _quality: dict[str, tuple[str, str | None]] = field(default_factory=dict, init=False)
     _last_publish: dict[str, float] = field(default_factory=dict, init=False)
-    _last_file_heartbeat_mono: float | None = field(default=None, init=False)
+    _last_publish_mono: dict[str, float] = field(default_factory=dict, init=False)
 
     def __post_init__(self) -> None:
         self._runner = FixedStepRunner(self.model, period_s=self.period_s)
@@ -143,30 +143,27 @@ class PlantSimulator:
 
     def _publish_outputs(self, outs: Mapping[str, float], *, force: bool = False) -> None:
         now = time.monotonic()
-        heartbeat = force or self._last_file_heartbeat_mono is None or (
-            (now - float(self._last_file_heartbeat_mono)) >= float(self.file_heartbeat_s)
-        )
-        published = False
+        hb = float(self.file_heartbeat_s)
         for tag, value in outs.items():
             status, reason = self._quality.get(tag, ("GOOD", None))
-            # Coalesce unchanged GOOD values unless forced or heartbeat due.
-            if (
-                not force
-                and not heartbeat
-                and status == "GOOD"
-                and tag in self._last_publish
-                and abs(self._last_publish[tag] - float(value)) < 1e-9
-            ):
+            last_val = self._last_publish.get(tag)
+            last_mono = self._last_publish_mono.get(tag)
+            unchanged = (
+                status == "GOOD"
+                and last_val is not None
+                and abs(float(last_val) - float(value)) < 1e-9
+            )
+            heartbeat_due = last_mono is None or (now - float(last_mono)) >= hb
+            # Coalesce unchanged GOOD values unless forced or this tag's heartbeat.
+            if not force and unchanged and not heartbeat_due:
                 continue
             payload = json.dumps(
                 {"value": float(value), "status": status, "reason": reason, "ts": None}
             )
             self.publish(tag, payload)
-            published = True
             if status == "GOOD":
                 self._last_publish[tag] = float(value)
-        if published or heartbeat:
-            self._last_file_heartbeat_mono = now
+            self._last_publish_mono[tag] = now
 
 
 __all__ = ["PlantSimulator", "PublishFn"]
