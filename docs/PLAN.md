@@ -63,7 +63,7 @@
 - Sub-tasks: [SWD-162](https://marcusknielsen.atlassian.net/browse/SWD-162) options, [SWD-163](https://marcusknielsen.atlassian.net/browse/SWD-163) simulator wiring, [SWD-164](https://marcusknielsen.atlassian.net/browse/SWD-164) service/Lovelace, [SWD-165](https://marcusknielsen.atlassian.net/browse/SWD-165) acceptance
 - Prior: [SWD-144](https://marcusknielsen.atlassian.net/browse/SWD-144) Done (App 0.1.23)
 - Branch: `cursor/swd-143-mock-ui-presets-33f4`
-- Implement: App **0.1.24**
+- Implement: App **0.1.24** — PR https://github.com/marcuskrogh/PLCAssistant/pull/66
 
 ## Next
-`/review-fix SWD-143`
+Done — phase closed.
