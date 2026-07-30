@@ -126,6 +126,26 @@ def test_skid_cascade_when_running_produces_sp_flow_and_speed():
     assert snap.lt_tank_quality.status is QualityStatus.GOOD
 
 
+def test_skid_level_settles_near_setpoint():
+    """SWD-171: in-process Skid+MockProcess settles LT_TANK near SP_LEVEL."""
+    skid = Skid(
+        SkidConfig(
+            cascade=CascadeConfig(level_kp=50.0, level_ki=4.0, flow_kp=15.0, flow_ki=2.0),
+            process=ProcessConfig(pump_tau=0.2, k_drain=3.5, q_pump_max=8.0),
+            sp_level=0.30,
+        )
+    )
+    skid.process.set_levels(lt_tank=0.15, lt_res=0.20)
+    snap = skid.step(0.1, command=OperatorCommand.START)
+    assert snap.mode is Mode.RUNNING
+    for _ in range(2500):
+        snap = skid.step(0.1)
+    assert snap.lt_tank is not None
+    assert snap.lt_tank == pytest.approx(0.30, abs=0.04)
+    assert snap.lt_tank < 0.38
+    assert snap.sp_flow < 5.9
+
+
 def test_skid_stop_zeros_speed_and_holds_sp_flow():
     skid = Skid()
     skid.process.set_levels(lt_tank=0.15, lt_res=0.20)

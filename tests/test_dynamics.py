@@ -162,6 +162,111 @@ def test_closed_loop_held_process_consumes_plant_in() -> None:
     assert isinstance(logic.skid.process, HeldProcess)
 
 
+def test_closed_loop_settles_near_level_setpoint() -> None:
+    """SWD-171: cascade + plant settle LT_TANK near SP_LEVEL (not H_TANK_MAX)."""
+    from dynamics.plant import PlantSimulator
+    from plcassistant.app.default_image import declare_default_image
+    from plcassistant.app.skid_scan import SkidImageLogic
+    from plcassistant.io.mqtt_bridge import InMemoryMqttBus, MqttIoBridge
+    from plcassistant.io.mqtt_topics import tag_in_topic
+    from plcassistant.io.quality import QualityStatus
+    from plcassistant.wedge.process import HeldProcess
+
+    bus = InMemoryMqttBus()
+    image = declare_default_image()
+    bridge = MqttIoBridge(bus, instance_id="default")
+    bridge.start()
+    logic = SkidImageLogic(period_s=0.1)
+    assert isinstance(logic.skid.process, HeldProcess)
+
+    def publish(tag: str, payload: str) -> None:
+        bus.publish(tag_in_topic("default", tag), payload.encode("utf-8"))
+
+    plant = PlantSimulator.for_preset(publish)
+    plant.apply_status_payload({"state": "running", "scan_period_s": 0.1})
+    plant.publish_now()
+    bridge.apply_inputs(image, clear=False)
+
+    sp = 0.30
+    image.apply_input("SP_LEVEL_REQ", sp, QualityStatus.GOOD)
+    logic.enqueue_operator("start")
+    for _ in range(2500):  # 250 s
+        bridge.apply_inputs(image, clear=False)
+        logic(image)
+        cmd = float(image.get_value("CMD_SPEED") or 0.0)
+        plant.apply_cmd_speed(cmd)
+        plant.tick(0.1)
+
+    lt = float(image.get_value("LT_TANK"))
+    active_sp = float(image.get_value("SP_LEVEL"))
+    assert active_sp == pytest.approx(sp)
+    assert lt == pytest.approx(sp, abs=0.04)
+    # Must not be stuck at the tank clamp with max pump (operator screenshot).
+    assert lt < 0.38
+    assert float(image.get_value("SP_FLOW")) < 5.9
+
+
+def test_mqtt_silent_file_bridge_closed_loop_settles(
+    tmp_path: pathlib.Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """SWD-171: plant→file→Soft-PLC (no MQTT IN) settles near SP_LEVEL."""
+    from dynamics.plant import PlantSimulator
+    from plcassistant.app.runtime import MqttScanLoop
+    from plcassistant.app.default_image import declare_default_image
+    from plcassistant.io.ha_config_bridge import read_inputs, write_input_tags
+    from plcassistant.io.mqtt_bridge import InMemoryMqttBus, MqttIoBridge
+    from plcassistant.io.quality import QualityStatus
+    from plcassistant.wedge.process import HeldProcess
+
+    monkeypatch.setenv("PLCASSISTANT_HA_CONFIG", str(tmp_path))
+    monkeypatch.setattr(MqttScanLoop, "FILE_BRIDGE_PERIOD_S", 0.0)
+
+    # Soft-PLC bus is isolated — plant does NOT publish to it (MQTT silent).
+    plc_bus = InMemoryMqttBus()
+    image = declare_default_image()
+    bridge = MqttIoBridge(plc_bus, instance_id="default")
+    loop = MqttScanLoop(bridge, image, period_s=0.1)
+    bridge.start()
+    assert isinstance(loop.logic.skid.process, HeldProcess)
+
+    def publish(tag: str, payload: str) -> None:
+        body = json.loads(payload)
+        write_input_tags(
+            {
+                str(tag).upper(): {
+                    "value": body.get("value"),
+                    "status": body.get("status") or "GOOD",
+                    "reason": body.get("reason"),
+                }
+            },
+            root=tmp_path,
+        )
+
+    plant = PlantSimulator.for_preset(publish)
+    plant.apply_status_payload({"state": "running", "scan_period_s": 0.1})
+    plant.publish_now()
+    assert write_input_tags({"SP_LEVEL_REQ": 0.30}, root=tmp_path)
+
+    from plcassistant.io.ha_config_bridge import write_cmd
+
+    assert write_cmd("start", root=tmp_path)
+    for _ in range(2500):
+        loop.scan_once()
+        cmd = float(image.get_value("CMD_SPEED") or 0.0)
+        plant.apply_cmd_speed(cmd)
+        plant.tick(0.1)
+
+    snap = read_inputs(root=tmp_path)
+    assert snap is not None
+    assert "LT_TANK" in snap["tags"]
+    lt = float(image.get_value("LT_TANK"))
+    assert float(image.get_value("SP_LEVEL")) == pytest.approx(0.30)
+    assert lt == pytest.approx(0.30, abs=0.04)
+    assert lt < 0.38
+    assert float(image.get_value("CMD_SPEED")) < 95.0
+    assert image.get_quality("LT_TANK").status is QualityStatus.GOOD
+
+
 def test_integration_wires_plant_simulator_lifecycle() -> None:
     init_text = (CC / "__init__.py").read_text(encoding="utf-8")
     assert "HassPlantSimulator" in init_text
@@ -202,6 +307,8 @@ def test_integration_wires_plant_simulator_lifecycle() -> None:
     assert "_plant_in" in sim or "plant_in" in sim
     assert "async_fire" in sim
     assert "in_values" in sim
+    assert "write_input_tags" in sim
+    assert "config_root" in sim
     init_text2 = (CC / "__init__.py").read_text(encoding="utf-8")
     assert "entry_id=entry.entry_id" in init_text2
     assert "in_values" in init_text2

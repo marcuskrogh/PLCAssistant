@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    name: Full pytest suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install package + test deps
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev,mqtt]"
+          python -m pip install -r requirements-dev.txt
+
+      - name: Run full test suite
+        run: python -m pytest -q
+
+      - name: Sync dual trees stay consistent
+        run: |
+          ./scripts/sync-ha-app-package.sh
+          git diff --exit-code -- plc_assistant/plcassistant plc_assistant/custom_components || {
+            echo "ERROR: plc_assistant/ out of sync with sources; run scripts/sync-ha-app-package.sh" >&2
+            exit 1
+          }

@@ -48,6 +48,12 @@ from the integration simulator (SWD-146+ / SWD-170); Numbers remain for nudges.
 
 Entity IDs changed in **0.1.11** (OUT tags became sensors; setpoint request renamed),
 again in **0.1.20** (plant PVs flipped back to Soft-PLC IN Numbers), and in
+**0.1.30** (Soft-PLC plant IN via file bridge when MQTT silent — level settles to SP):
+
+| Tag | Entity |
+|-----|--------|
+| Plant IN → Soft-PLC | MQTT primary + `config/plcassistant/inputs.json` fallback |
+
 **0.1.29** (Operate Process display uses plant IN **sensors**; Numbers stay for nudges):
 
 | Era | Plant tags |

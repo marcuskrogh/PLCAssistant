@@ -1,8 +1,9 @@
 """Shared HA-config bridge between Soft-PLC App and thin integration (SWD-139+).
 
 Both sides mount the Home Assistant config directory. Soft-PLC writes a runtime
-snapshot; the integration polls it when MQTT is silent. Operator cmds and IN
-request tags (e.g. ``SP_LEVEL_REQ``) travel the other way via shared files.
+snapshot; the integration polls it when MQTT is silent. Operator cmds, IN
+request tags (e.g. ``SP_LEVEL_REQ``), and plant IN PVs (SWD-171 MQTT-silent
+fallback) travel via shared files.
 """
 
 from __future__ import annotations
@@ -11,7 +12,7 @@ import json
 import os
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 RUNTIME_REL = "plcassistant/runtime.json"
 CMD_REL = "plcassistant/cmd.json"
@@ -129,9 +130,26 @@ def write_input_tag(
     reason: str | None = None,
     root: Path | None = None,
 ) -> bool:
-    """Merge one operator IN tag into the retained inputs file (SWD-141)."""
+    """Merge one operator / plant IN tag into the retained inputs file (SWD-141/171)."""
     name = str(tag or "").strip()
     if not name:
+        return False
+    return write_input_tags(
+        {name: {"value": value, "status": status, "reason": reason}},
+        root=root,
+    )
+
+
+def write_input_tags(
+    tags: Mapping[str, Any],
+    root: Path | None = None,
+) -> bool:
+    """Merge multiple IN tags into ``inputs.json`` in one atomic write (SWD-171).
+
+    Each value may be a raw engineering value or a dict with ``value`` /
+    ``status`` / ``reason`` keys.
+    """
+    if not tags:
         return False
     path = inputs_path(root)
     if path is None:
@@ -144,14 +162,27 @@ def write_input_tag(
                 existing = loaded
         except (OSError, json.JSONDecodeError, UnicodeDecodeError):
             existing = {}
-    tags = existing.get("tags") if isinstance(existing.get("tags"), dict) else {}
-    tags = dict(tags)
-    tags[name] = {"value": value, "status": status, "reason": reason}
-    body = {"tags": tags, "ts": time.time()}
+    merged = existing.get("tags") if isinstance(existing.get("tags"), dict) else {}
+    merged = dict(merged)
+    for raw_name, body in tags.items():
+        name = str(raw_name or "").strip()
+        if not name:
+            continue
+        if isinstance(body, Mapping) and "value" in body:
+            merged[name] = {
+                "value": body.get("value"),
+                "status": body.get("status") or "GOOD",
+                "reason": body.get("reason"),
+            }
+        else:
+            merged[name] = {"value": body, "status": "GOOD", "reason": None}
+    if not merged:
+        return False
+    payload = {"tags": merged, "ts": time.time()}
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(body, separators=(",", ":")), encoding="utf-8")
+        tmp.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
         os.replace(tmp, path)
         return True
     except OSError:
@@ -184,5 +215,6 @@ __all__ = [
     "runtime_path",
     "write_cmd",
     "write_input_tag",
+    "write_input_tags",
     "write_runtime_snapshot",
 ]

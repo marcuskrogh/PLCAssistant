@@ -203,7 +203,7 @@ class PlcAssistantRequestNumber(NumberEntity):
             blocking=False,
         )
         # Shared-config fallback when MQTT never reaches Soft-PLC (SWD-141).
-        # Operator request tags only — plant process↔PLC stays MQTT (SWD-145).
+        # Operator request tags; plant IN is written by the plant simulator (SWD-171).
         if self._tag == "SP_LEVEL_REQ":
             store = self.hass.data.get(DOMAIN, {}).get(self._entry_id) or {}
             root = store.get("config_root")

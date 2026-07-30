@@ -186,6 +186,11 @@ class MqttScanLoop:
     # recover without an operator Start/Stop (SWD-136).
     STATUS_HEARTBEAT_S = 2.0
     FILE_BRIDGE_PERIOD_S = 1.0
+    # Operator request + plant IN fallback when MQTT plant→App is silent (SWD-171).
+    # Live MQTT still wins on the same scan (applied after file hydrate).
+    _FILE_INPUT_TAGS = frozenset(
+        {"SP_LEVEL_REQ", "LT_TANK", "LT_RES", "FT_INLET"}
+    )
 
     def __init__(
         self,
@@ -261,11 +266,8 @@ class MqttScanLoop:
         ):
             self._last_file_bridge = time.monotonic()
 
-    # Operator request tags only — plant process↔PLC stays MQTT (SWD-145).
-    _FILE_INPUT_TAGS = frozenset({"SP_LEVEL_REQ"})
-
     def _apply_file_inputs(self) -> None:
-        """Apply retained HA-config operator IN tags (SP_LEVEL_REQ) (SWD-141)."""
+        """Apply retained HA-config IN tags (SP_LEVEL_REQ + plant PVs) (SWD-141/171)."""
         snap = read_inputs()
         if not snap:
             return

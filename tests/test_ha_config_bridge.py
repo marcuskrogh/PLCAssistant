@@ -165,17 +165,26 @@ def test_hmi_tags_list_excludes_plant_includes_active_setpoints() -> None:
         assert "_FILE_INPUT_TAGS" in src
         for tag in ("SP_LEVEL", "SP_FLOW"):
             assert f'"{tag}"' in src
-        # Plant tags must not appear in the runtime OUT write list block.
-        write_fn = src[src.index("def _write_ha_config_runtime") : src.index("def _apply_file_inputs")]
+        # Soft-PLC OUT snapshot must not republish plant PVs as OUT.
+        write_start = src.index("def _write_ha_config_runtime")
+        write_end = src.index("\n    def ", write_start + 1)
+        write_fn = src[write_start:write_end]
         for plant in ("LT_TANK", "LT_RES", "FT_INLET"):
             assert f'"{plant}"' not in write_fn
+        # SWD-171: plant IN is allowed on the file-input fallback path.
+        file_inputs = src[src.index("_FILE_INPUT_TAGS") : src.index("def _apply_file_inputs")]
+        for plant in ("LT_TANK", "LT_RES", "FT_INLET"):
+            assert f'"{plant}"' in file_inputs
+        assert '"SP_LEVEL_REQ"' in file_inputs
 
 
-def test_file_inputs_ignore_plant_tags(tmp_path: Path, monkeypatch) -> None:
-    """SWD-145: inputs.json plant tags are not Soft-PLC plant transport."""
+def test_file_plant_inputs_drive_soft_plc_when_mqtt_silent(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """SWD-171: inputs.json plant tags feed Soft-PLC when MQTT plant IN is silent."""
     from plcassistant.app.runtime import MqttScanLoop, declare_default_image
     from plcassistant.io.mqtt_bridge import InMemoryMqttBus, MqttIoBridge
-    from plcassistant.io.quality import ReasonCode
+    from plcassistant.io.quality import QualityStatus
 
     monkeypatch.setenv("PLCASSISTANT_HA_CONFIG", str(tmp_path))
     monkeypatch.setattr(MqttScanLoop, "FILE_BRIDGE_PERIOD_S", 0.0)
@@ -184,10 +193,59 @@ def test_file_inputs_ignore_plant_tags(tmp_path: Path, monkeypatch) -> None:
     bridge = MqttIoBridge(bus, instance_id="default")
     loop = MqttScanLoop(bridge, image, period_s=0.05)
     bridge.start()
-    assert write_input_tag("LT_TANK", 0.99, root=tmp_path)
+    assert write_input_tag("LT_TANK", 0.33, root=tmp_path)
+    assert write_input_tag("LT_RES", 0.18, root=tmp_path)
+    assert write_input_tag("FT_INLET", 2.5, root=tmp_path)
     assert write_input_tag("SP_LEVEL_REQ", 0.30, root=tmp_path)
     loop._apply_file_inputs()
     assert float(image.get_value("SP_LEVEL_REQ")) == pytest.approx(0.30)
-    # Plant remains declared-default / unavailable until MQTT IN.
-    assert image.get_quality("LT_TANK").reason is ReasonCode.UNAVAILABLE
-    assert float(image.get_value("LT_TANK")) != pytest.approx(0.99)
+    assert float(image.get_value("LT_TANK")) == pytest.approx(0.33)
+    assert float(image.get_value("LT_RES")) == pytest.approx(0.18)
+    assert float(image.get_value("FT_INLET")) == pytest.approx(2.5)
+    assert image.get_quality("LT_TANK").status is QualityStatus.GOOD
+
+
+def test_mqtt_plant_in_wins_over_file_on_same_scan(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """SWD-171: live MQTT plant IN overrides file hydrate on the same scan."""
+    from plcassistant.app.runtime import MqttScanLoop, declare_default_image
+    from plcassistant.io.mqtt_bridge import InMemoryMqttBus, MqttIoBridge
+    from plcassistant.io.mqtt_topics import MqttTagPayload, tag_in_topic
+    from plcassistant.io.quality import QualityStatus
+
+    monkeypatch.setenv("PLCASSISTANT_HA_CONFIG", str(tmp_path))
+    monkeypatch.setattr(MqttScanLoop, "FILE_BRIDGE_PERIOD_S", 0.0)
+    bus = InMemoryMqttBus()
+    image = declare_default_image()
+    bridge = MqttIoBridge(bus, instance_id="default")
+    loop = MqttScanLoop(bridge, image, period_s=0.05)
+    bridge.start()
+    assert write_input_tag("LT_TANK", 0.10, root=tmp_path)
+    bus.publish(
+        tag_in_topic("default", "LT_TANK"),
+        MqttTagPayload.now(0.28).encode(),
+    )
+    loop.scan_once()
+    assert float(image.get_value("LT_TANK")) == pytest.approx(0.28)
+    assert image.get_quality("LT_TANK").status is QualityStatus.GOOD
+
+
+def test_write_input_tags_batch_merges(tmp_path: Path) -> None:
+    from plcassistant.io.ha_config_bridge import write_input_tags
+
+    assert write_input_tag("SP_LEVEL_REQ", 0.20, root=tmp_path)
+    assert write_input_tags(
+        {
+            "LT_TANK": {"value": 0.25, "status": "GOOD", "reason": None},
+            "LT_RES": 0.15,
+            "FT_INLET": {"value": 1.2, "status": "GOOD"},
+        },
+        root=tmp_path,
+    )
+    snap = read_inputs(root=tmp_path)
+    assert snap is not None
+    assert float(snap["tags"]["SP_LEVEL_REQ"]["value"]) == pytest.approx(0.20)
+    assert float(snap["tags"]["LT_TANK"]["value"]) == pytest.approx(0.25)
+    assert float(snap["tags"]["LT_RES"]["value"]) == pytest.approx(0.15)
+    assert float(snap["tags"]["FT_INLET"]["value"]) == pytest.approx(1.2)
