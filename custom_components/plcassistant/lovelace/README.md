@@ -32,14 +32,15 @@ refreshed on update so the status card and help appear.
 
 Press **Start** → Soft-PLC status `running`, MODE `RUNNING`, and Soft-PLC CVs
 (`CMD_SPEED`, active SPs) update. Plant level/flow Numbers are Soft-PLC **IN**
-and stay static until the integration simulator (SWD-146).
+from the integration simulator (SWD-146+); they show as **box** numbers with
+live values (SWD-169).
 
 ## Writable vs read-only
 
 | Entity | Role |
 |--------|------|
 | `number.plcassistant_sp_level_req` | Operator **level setpoint request** (writable) |
-| `number.plcassistant_lt_tank_in` / `_lt_res_in` / `_ft_inlet_in` | Plant PVs as Soft-PLC **IN** (static until SWD-146) |
+| `number.plcassistant_lt_tank_in` / `_lt_res_in` / `_ft_inlet_in` | Plant PVs as Soft-PLC **IN** (live simulator display + nudge) |
 | `button.plcassistant_start` / `_stop` / `_reset` | Operator commands |
 | `sensor.plcassistant_*` | Soft-PLC OUT (CVs, active SPs, MODE / status) — read-only |
 
@@ -52,6 +53,6 @@ and again in **0.1.20** (plant PVs flipped back to Soft-PLC IN Numbers):
 |-----|------------|
 | 0.1.10 | `number.plcassistant_lt_tank_in` (early mock IN) |
 | 0.1.11–0.1.19 | `sensor.plcassistant_lt_tank` (Soft-PLC plant OUT) |
-| **0.1.20+** | `number.plcassistant_lt_tank_in` (Soft-PLC plant IN; static until SWD-146) |
+| **0.1.20+** | `number.plcassistant_lt_tank_in` (Soft-PLC plant IN; live from SWD-146) |
 
 After App Update + Core restart: remove the old PLCAssistant integration entry (or delete stale unavailable entities in the entity registry), then add the integration again so entity IDs match. Update any personal dashboards/automations that referenced the old plant sensors.

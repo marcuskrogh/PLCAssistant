@@ -1,12 +1,18 @@
 {
   "domain": "plcassistant",
   "name": "PLCAssistant",
-  "codeowners": ["@marcuskrogh"],
+  "codeowners": [
+    "@marcuskrogh"
+  ],
   "config_flow": true,
-  "dependencies": ["mqtt", "frontend", "lovelace"],
+  "dependencies": [
+    "mqtt",
+    "frontend",
+    "lovelace"
+  ],
   "documentation": "https://github.com/marcuskrogh/PLCAssistant/blob/main/README.md",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/marcuskrogh/PLCAssistant/issues",
   "requirements": [],
-  "version": "0.1.27"
+  "version": "0.1.28"
 }

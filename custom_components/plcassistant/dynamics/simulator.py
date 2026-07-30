@@ -13,6 +13,7 @@ from typing import Any, Mapping
 
 from homeassistant.core import HomeAssistant
 
+from ..const import DOMAIN
 from ..mqtt_topics import tag_in_topic
 from .plant import PlantSimulator
 
@@ -29,11 +30,13 @@ class HassPlantSimulator:
         hass: HomeAssistant,
         instance_id: str,
         *,
+        entry_id: str | None = None,
         preset: str = "skid",
         params: Mapping[str, float] | None = None,
     ) -> None:
         self.hass = hass
         self._instance_id = instance_id
+        self._entry_id = entry_id
         self._preset = str(preset or "skid").strip().lower() or "skid"
         self._params = dict(params or {})
         self._pending: dict[str, str] = {}
@@ -112,6 +115,17 @@ class HassPlantSimulator:
         pending = dict(self._pending)
         self._pending.clear()
         for tag, payload in pending.items():
+            # SWD-169: HMI Numbers hydrate from this bus (same-process); MQTT
+            # remains the Soft-PLC transport.
+            if self._entry_id is not None:
+                self.hass.bus.async_fire(
+                    f"{DOMAIN}_plant_in",
+                    {
+                        "entry_id": self._entry_id,
+                        "tag": str(tag).upper(),
+                        "payload": payload,
+                    },
+                )
             await self.hass.services.async_call(
                 "mqtt",
                 "publish",

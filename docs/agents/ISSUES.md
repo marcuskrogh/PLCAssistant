@@ -85,9 +85,11 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-166 | Task | [Iterate] Sidebar dynamics block editor + toy setup guide | Done | Relates SWD-143 | docs/ITERATE.md | Done — shipped PR #68 (App 0.1.25) |
 | SWD-167 | Task | [Iterate] Per-equation state/measurement authoring + exposed block dynamics | Done | Relates SWD-166 | docs/ITERATE.md | Done — shipped PR #69 (App 0.1.26) |
 | SWD-168 | Task | [Iterate] Show Restart required on Settings updates page after PLCAssistant integration sync | Done | Relates SWD-138 | docs/ITERATE.md | Done — shipped PR #70 (App 0.1.27) |
+| SWD-169 | Bug | [Iterate] Integration dashboard plant level/flow values unavailable | In Progress | Relates SWD-146 | docs/ITERATE.md | `/review-fix SWD-169` |
 
 ## Log
 
+- 2026-07-30 — Iterate SWD-169: App 0.1.28; plant IN Number BOX mode + hydrate/bus; Relates SWD-146.
 - 2026-07-30 — Shipped SWD-168 via PR #70 (App 0.1.27); review-fix CLEAN after 2 iters; Task Done.
 - 2026-07-30 — review-fix SWD-168 CLEAN after 2 iterations (iter1: docs/manifest/repair; iter2: 0); closeout.
 - 2026-07-30 — Implement SWD-168: App 0.1.27; Update entity + repair; PR [#70](https://github.com/marcuskrogh/PLCAssistant/pull/70) → In Review. Next `/review-fix SWD-168`.

@@ -370,7 +370,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             _LOGGER.error("Invalid dynamics preset in options: %s", exc)
             raise
         plant_sim = HassPlantSimulator(
-            hass, instance_id, preset=preset, params=params
+            hass,
+            instance_id,
+            entry_id=entry.entry_id,
+            preset=preset,
+            params=params,
         )
         store = hass.data[DOMAIN][entry.entry_id]
         store["plant_simulator"] = plant_sim

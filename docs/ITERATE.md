@@ -1,45 +1,36 @@
-# Iterate: Restart required on Settings → Updates (SWD-168)
-
-**Done** — App **0.1.27**; shipped PR [#70](https://github.com/marcuskrogh/PLCAssistant/pull/70)
+# Iterate: Integration dashboard plant level/flow values unavailable
 
 ## Prior work
-- Task: [SWD-138](https://marcusknielsen.atlassian.net/browse/SWD-138) — auto Core restart after thin-integration sync
-- PR: [#53](https://github.com/marcuskrogh/PLCAssistant/pull/53)
-- Spec context: `docs/packaging/04-updates.md`, `plc_assistant/run.sh`
+- Task: [SWD-146](https://marcusknielsen.atlassian.net/browse/SWD-146) — integration skid plant simulator + plant Number ownership
+- PR: [#63](https://github.com/marcuskrogh/PLCAssistant/pull/63)
+- Spec context: `docs/PLAN.md` (SWD-146/143), `custom_components/plcassistant/number.py`, Lovelace Operate board
 
 ## Problem
-App update detection works (Settings → check for updates shows PLCAssistant). After the App syncs the thin integration, Core must restart for the new integration code to load. Other integrations (HACS-style) show **Restart required** on the same Settings → System → Updates page; PLCAssistant does not.
+On the PLCAssistant Lovelace **Operate** board, **Process (IN — live simulator)** shows blank value areas for **Tank level**, **Reservoir level**, and **Inlet flow**, while Soft-PLC OUT rows (**Pump speed command**, **Active level/flow SP**) display correctly.
+
+Plant Numbers relied on MQTT retain echo for display and used AUTO/slider mode, so mobile HMI often showed empty grey tracks with no readable engineering value — and missed same-process hydrate that OUT sensors already have.
 
 ## Clarifications
-- Keep existing auto Core restart (SWD-138); add visible pending-restart UX when Core has not yet picked up the synced files.
-- Signal = on-disk `manifest.json` version ≠ version loaded into memory at import time (HACS-equivalent pending restart).
-- The Update entity ships in the thin integration, so the first upgrade *to* 0.1.27 still relies on auto/manual Core restart; the card appears on later syncs once 0.1.27+ is already loaded.
+- Soft-PLC remains mock-unaware; MQTT IN stays the process↔PLC transport.
+- HMI Numbers must show numerics immediately (box mode) and hydrate from the live plant simulator on add, with live updates via a HA bus event when the simulator publishes (MQTT remains for Soft-PLC).
 
 ## Acceptance criteria
-- [x] Thin integration registers an `update` entity for PLCAssistant.
-- [x] When disk version ≠ loaded version, the Updates page shows the entity with a HACS-style Restart required `release_summary` (`ha-alert`).
-- [x] A fixable repair issue (`restart_required`) offers Restart Home Assistant.
-- [x] When versions match after Core restart, update entity is off and the repair is cleared.
-- [x] Auto Core restart path unchanged.
-- [x] Docs (`04-updates.md`) mention the Restart required indicator.
-- [x] Tests cover version helpers + wiring (no HA import in CI); App ↔ integration version bumped together.
+- [x] Plant IN Number entities use box mode so Operate always shows a numeric value.
+- [x] On add, simulator-owned plant Numbers hydrate from current plant outputs and write HA state (not MQTT-retain-only).
+- [x] Plant simulator publishes fire `{domain}_plant_in` so Numbers update live without depending on MQTT round-trip for HMI.
+- [x] MQTT subscribe path retained as secondary (Soft-PLC / external) update source.
+- [x] Tests cover BOX mode + hydrate/bus wiring; App + integration version bumped to **0.1.28**; dual trees synced.
 
 ## Out of scope
-- Customizing the Supervisor App update entity itself
-- Removing or changing `PLCASSISTANT_AUTO_CORE_RESTART` defaults
-
-## Shipped
-1. `version_sync.py` — loaded vs disk version helpers
-2. `update.py` — Update entity + repair issue sync (HACS-style alert)
-3. `repairs.py` — confirm → `homeassistant.restart`
-4. review-fix CLEAN after 2 iters (docs first-upgrade + manifest/repair harden)
-5. App **0.1.27**
+- Soft-PLC HeldProcess / control / safety changes
+- Redesigning Lovelace card layout beyond Number display mode
+- Field (non-mock) I/O commissioning
 
 ## Tracker
-- Task: [SWD-168](https://marcusknielsen.atlassian.net/browse/SWD-168)
-- Relates: [SWD-138](https://marcusknielsen.atlassian.net/browse/SWD-138)
-- PR: [#70](https://github.com/marcuskrogh/PLCAssistant/pull/70)
-- Branch: `cursor/swd-168-restart-required-0337`
+- Task: [SWD-169](https://marcusknielsen.atlassian.net/browse/SWD-169)
+- Relates: [SWD-146](https://marcusknielsen.atlassian.net/browse/SWD-146)
+- Branch: `cursor/swd-169-plant-in-values-6867`
+- PR: _(pending)_
 
 ## Next
-Done — phase closed.
+`/review-fix SWD-169` — Review and auto-fix until clean
