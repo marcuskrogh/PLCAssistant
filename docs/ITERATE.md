@@ -1,5 +1,7 @@
 # Iterate: Integration dashboard plant level/flow values unavailable
 
+**Done** — App **0.1.28**; shipped PR [#71](https://github.com/marcuskrogh/PLCAssistant/pull/71)
+
 ## Prior work
 - Task: [SWD-146](https://marcusknielsen.atlassian.net/browse/SWD-146) — integration skid plant simulator + plant Number ownership
 - PR: [#63](https://github.com/marcuskrogh/PLCAssistant/pull/63)
@@ -26,11 +28,17 @@ Plant Numbers relied on MQTT retain echo for display and used AUTO/slider mode, 
 - Redesigning Lovelace card layout beyond Number display mode
 - Field (non-mock) I/O commissioning
 
+## Shipped
+1. `NumberMode.BOX` on plant/request Numbers for readable Operate values
+2. Hydrate-from-simulator on add + `plcassistant_plant_in` bus updates
+3. review-fix CLEAN after 2 iters (iter1: isfinite + hydrate except; iter2: 0)
+4. App **0.1.28**
+
 ## Tracker
 - Task: [SWD-169](https://marcusknielsen.atlassian.net/browse/SWD-169)
 - Relates: [SWD-146](https://marcusknielsen.atlassian.net/browse/SWD-146)
-- Branch: `cursor/swd-169-plant-in-values-6867`
 - PR: [#71](https://github.com/marcuskrogh/PLCAssistant/pull/71)
+- Branch: `cursor/swd-169-plant-in-values-6867`
 
 ## Next
-`/review-fix SWD-169` — Review and auto-fix until clean
+Done — phase closed.
