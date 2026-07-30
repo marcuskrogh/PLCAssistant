@@ -39,7 +39,12 @@ from .mqtt_topics import cmd_topic, status_topic, tag_in_topic, tag_out_topic
 
 _LOGGER = logging.getLogger(__name__)
 
-PLATFORMS: list[Platform] = [Platform.NUMBER, Platform.SENSOR, Platform.BUTTON]
+PLATFORMS: list[Platform] = [
+    Platform.NUMBER,
+    Platform.SENSOR,
+    Platform.BUTTON,
+    Platform.UPDATE,
+]
 # Poll shared App runtime file when MQTT stays silent (SWD-139).
 _FILE_BRIDGE_POLL_S = 1.0
 _FILE_BRIDGE_FRESH_S = 3.0
