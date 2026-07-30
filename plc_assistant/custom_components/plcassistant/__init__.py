@@ -345,6 +345,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     hass.data[DOMAIN][entry.entry_id]["unsubs"].append(status_unsub)
 
+    # SWD-166: register user model dir before plant loads presets.
+    try:
+        from .dynamics.http_api import async_setup_dynamics_api
+
+        await async_setup_dynamics_api(hass)
+    except Exception:  # noqa: BLE001 — never block setup on editor
+        _LOGGER.exception("PLCAssistant: dynamics editor API setup failed")
+
     # SWD-146/143: integration-owned plant simulator (mock_mode only).
     if mock_mode:
         from .dynamics.options import resolve_dynamics_options, validate_preset

@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PLCAssistant — Dynamics editor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Sora:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #e7eef5;
+  --paper-2: #d9e3ee;
+  --ink: #122033;
+  --muted: #5a6a7a;
+  --line: #b8c5d3;
+  --panel: rgba(250, 252, 255, 0.88);
+  --teal: #0f6b62;
+  --teal-2: #148578;
+  --amber: #b86a10;
+  --bad: #a83232;
+  --ok: #1f7a4d;
+  --block: #f7fafc;
+  --radius: 10px;
+  --font-display: "Fraunces", "Times New Roman", serif;
+  --font-ui: "Sora", "Segoe UI", sans-serif;
+  --mono: "Cascadia Code", "Fira Code", Consolas, monospace;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  min-height: 100dvh;
+  color: var(--ink);
+  font-family: var(--font-ui);
+  background:
+    radial-gradient(ellipse 80% 50% at 8% -8%, #c9d5e2 0%, transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(15,107,98,0.12) 0%, transparent 50%),
+    linear-gradient(165deg, var(--paper), var(--paper-2));
+  display: flex;
+  flex-direction: column;
+}
+header {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px;
+  padding: 12px 16px; border-bottom: 1px solid var(--line);
+  background: rgba(247,250,253,0.9); backdrop-filter: blur(8px);
+}
+header .brand {
+  font-family: var(--font-display); font-weight: 700; font-size: 1.25rem;
+}
+header .sub { color: var(--muted); font-size: 0.85rem; }
+header .spacer { flex: 1; }
+.btn {
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  border-radius: 999px; padding: 7px 14px; font: 500 0.85rem var(--font-ui);
+  cursor: pointer; transition: transform .15s var(--ease), background .15s;
+}
+.btn:hover { transform: translateY(-1px); background: #fff; }
+.btn.primary { background: var(--teal); border-color: var(--teal); color: #fff; }
+.btn.primary:hover { background: var(--teal-2); }
+.btn.danger { color: var(--bad); border-color: #e0b4b4; }
+#status {
+  min-height: 1.2em; padding: 0 16px 8px; font-size: 0.8rem; color: var(--muted);
+}
+#status.ok { color: var(--ok); }
+#status.err { color: var(--bad); }
+main {
+  flex: 1; display: grid; grid-template-columns: 200px 1fr 320px;
+  gap: 0; min-height: 0;
+}
+@media (max-width: 960px) {
+  main { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; }
+}
+.rail, .inspector {
+  background: var(--panel); border-right: 1px solid var(--line);
+  padding: 14px; overflow: auto;
+}
+.inspector { border-right: none; border-left: 1px solid var(--line); }
+.rail h2, .inspector h2 {
+  font-family: var(--font-display); font-size: 1rem; margin-bottom: 10px;
+}
+.palette button {
+  display: block; width: 100%; text-align: left; margin: 0 0 8px;
+  padding: 10px 12px; border-radius: var(--radius);
+  border: 1px dashed var(--line); background: #fff; cursor: pointer;
+  font: 500 0.85rem var(--font-ui);
+}
+.palette button:hover { border-color: var(--teal); color: var(--teal); }
+.palette .hint { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+#canvas-wrap {
+  position: relative; overflow: auto; padding: 18px;
+  background:
+    linear-gradient(90deg, rgba(183,196,209,0.25) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(rgba(183,196,209,0.25) 1px, transparent 1px) 0 0 / 24px 24px;
+}
+#canvas {
+  position: relative; min-height: 520px; min-width: 640px;
+}
+.block {
+  position: absolute; width: 220px; background: var(--block);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(18,32,51,0.08);
+  cursor: grab; user-select: none;
+  animation: rise .28s var(--ease);
+}
+.block.selected { border-color: var(--teal); box-shadow: 0 0 0 2px rgba(15,107,98,0.25); }
+.block header {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+  background: rgba(15,107,98,0.08); border: none; border-radius: var(--radius) var(--radius) 0 0;
+  font-size: 0.85rem; font-weight: 600;
+}
+.block .body { padding: 8px 10px 10px; font-size: 0.75rem; color: var(--muted); }
+.block .ports { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.chip {
+  display: inline-block; padding: 2px 7px; border-radius: 999px;
+  background: #e8f3f1; color: var(--teal); font-size: 0.7rem;
+}
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.field { margin-bottom: 10px; }
+.field label { display: block; font-size: 0.75rem; color: var(--muted); margin-bottom: 4px; }
+.field input, .field textarea, .field select {
+  width: 100%; padding: 8px 10px; border-radius: 8px;
+  border: 1px solid var(--line); background: #fff; font: 400 0.85rem var(--font-ui);
+}
+.field textarea { font-family: var(--mono); min-height: 90px; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.empty { color: var(--muted); font-size: 0.85rem; padding: 12px 0; }
+.tags-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.tags-table th, .tags-table td { text-align: left; padding: 4px 0; border-bottom: 1px solid #e4ebf2; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">PLCAssistant</div>
+  <div class="sub">Dynamics block editor</div>
+  <div class="spacer"></div>
+  <label class="sub">Model
+    <input id="model-name" value="skid_composed" style="margin-left:6px;padding:4px 8px;border-radius:6px;border:1px solid var(--line);font:500 0.85rem var(--font-ui);width:140px">
+  </label>
+  <button class="btn" id="btn-load">Load</button>
+  <button class="btn" id="btn-validate">Validate</button>
+  <button class="btn" id="btn-save">Save</button>
+  <button class="btn primary" id="btn-apply">Apply &amp; reload</button>
+</header>
+<div id="status">Load a model, add unit-op blocks, bind variables, map Soft-PLC tags, then Apply.</div>
+<main>
+  <aside class="rail">
+    <h2>Add block</h2>
+    <div class="palette" id="palette"></div>
+    <p class="hint" style="margin-top:14px;font-size:0.75rem;color:var(--muted)">
+      Blocks compile into one collected ODE. Soft-PLC stays mock-unaware — plant tags publish as MQTT IN.
+    </p>
+  </aside>
+  <section id="canvas-wrap"><div id="canvas"></div></section>
+  <aside class="inspector">
+    <h2>Inspector</h2>
+    <div id="inspector"><p class="empty">Select a block to edit binds and params.</p></div>
+    <h2 style="margin-top:18px">Soft-PLC tags</h2>
+    <p class="hint" style="font-size:0.75rem;color:var(--muted);margin-bottom:8px">
+      Map plant IN tags to state variables (e.g. LT_TANK → h_tank).
+    </p>
+    <div id="tag-map"></div>
+    <button class="btn" id="btn-add-tag" style="margin-top:8px">Add tag</button>
+  </aside>
+</main>
+<script>
+const API = "/api/plcassistant/dynamics";
+let catalog = { ops: [] };
+let doc = emptyDoc();
+let selectedId = null;
+let drag = null;
+
+function emptyDoc() {
+  return {
+    version: "1.0",
+    name: "skid_composed",
+    inputs: ["cmd_speed"],
+    outputs: { LT_TANK: "h_tank", LT_RES: "h_res", FT_INLET: "ft_inlet" },
+    params: {},
+    initial: {},
+    ops: [],
+  };
+}
+
+function status(msg, kind) {
+  const el = document.getElementById("status");
+  el.textContent = msg || "";
+  el.className = kind || "";
+}
+
+async function api(path, opts = {}) {
+  // Prefer parent HA frontend auth when embedded in the Lovelace iframe.
+  const method = (opts.method || "GET").toUpperCase();
+  const callPath = "plcassistant/dynamics" + path;
+  const hass = (() => {
+    try {
+      return window.parent?.document?.querySelector("home-assistant")?.hass || null;
+    } catch (_) {
+      return null;
+    }
+  })();
+  if (hass && typeof hass.callApi === "function") {
+    const body = opts.body ? JSON.parse(opts.body) : undefined;
+    const data = await hass.callApi(method.toLowerCase(), callPath, body);
+    if (data && data.ok === false) {
+      throw new Error(data.error || "request failed");
+    }
+    return data;
+  }
+  const res = await fetch(API + path, {
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
+    ...opts,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.ok === false) {
+    throw new Error(data.error || res.statusText || "request failed");
+  }
+  return data;
+}
+
+function opMeta(type) {
+  return catalog.ops.find(o => o.type === type) || { binds: [], params: [], label: type };
+}
+
+function defaultBind(type) {
+  const meta = opMeta(type);
+  const bind = {};
+  (meta.binds || []).forEach(k => { bind[k] = k; });
+  return bind;
+}
+
+function defaultParams(type) {
+  const meta = opMeta(type);
+  if (meta.ode) return { derivatives: { x: "0" } };
+  const params = {};
+  (meta.params || []).forEach(k => { params[k] = ""; });
+  return params;
+}
+
+function ensureLayout() {
+  doc._layout = doc._layout || {};
+  (doc.ops || []).forEach((op, i) => {
+    if (!doc._layout[op.id]) {
+      doc._layout[op.id] = { x: 40 + (i % 3) * 240, y: 40 + Math.floor(i / 3) * 140 };
+    }
+  });
+}
+
+function renderPalette() {
+  const root = document.getElementById("palette");
+  root.innerHTML = "";
+  catalog.ops.forEach(op => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.innerHTML = `<strong>${op.label || op.type}</strong><div class="hint">${op.help || ""}</div>`;
+    btn.onclick = () => addBlock(op.type);
+    root.appendChild(btn);
+  });
+}
+
+function addBlock(type) {
+  const base = type;
+  let n = 1;
+  let id = base;
+  const used = new Set((doc.ops || []).map(o => o.id));
+  while (used.has(id)) { n += 1; id = `${base}_${n}`; }
+  const op = { id, type, bind: defaultBind(type), params: defaultParams(type) };
+  doc.ops = doc.ops || [];
+  doc.ops.push(op);
+  ensureLayout();
+  selectedId = id;
+  render();
+  status(`Added ${type} block “${id}”.`);
+}
+
+function removeSelected() {
+  if (!selectedId) return;
+  doc.ops = (doc.ops || []).filter(o => o.id !== selectedId);
+  if (doc._layout) delete doc._layout[selectedId];
+  selectedId = null;
+  render();
+}
+
+function renderCanvas() {
+  ensureLayout();
+  const canvas = document.getElementById("canvas");
+  canvas.innerHTML = "";
+  (doc.ops || []).forEach(op => {
+    const meta = opMeta(op.type);
+    const pos = doc._layout[op.id] || { x: 40, y: 40 };
+    const el = document.createElement("div");
+    el.className = "block" + (op.id === selectedId ? " selected" : "");
+    el.style.left = pos.x + "px";
+    el.style.top = pos.y + "px";
+    el.dataset.id = op.id;
+    const ports = Object.entries(op.bind || {}).map(([k, v]) =>
+      `<span class="chip">${k}→${v}</span>`).join("");
+    el.innerHTML = `<header><span>${meta.label || op.type}</span><span style="margin-left:auto;opacity:.7">${op.id}</span></header>
+      <div class="body">${meta.help || ""}<div class="ports">${ports || "<em>no binds</em>"}</div></div>`;
+    el.addEventListener("mousedown", e => startDrag(e, op.id));
+    el.addEventListener("click", e => { e.stopPropagation(); selectedId = op.id; renderInspector(); highlight(); });
+    canvas.appendChild(el);
+  });
+  canvas.onclick = () => { selectedId = null; renderInspector(); highlight(); };
+}
+
+function highlight() {
+  document.querySelectorAll(".block").forEach(el => {
+    el.classList.toggle("selected", el.dataset.id === selectedId);
+  });
+}
+
+function startDrag(e, id) {
+  if (e.button !== 0) return;
+  selectedId = id;
+  highlight();
+  renderInspector();
+  const pos = doc._layout[id];
+  drag = { id, ox: e.clientX - pos.x, oy: e.clientY - pos.y };
+  e.preventDefault();
+}
+window.addEventListener("mousemove", e => {
+  if (!drag) return;
+  doc._layout[drag.id] = {
+    x: Math.max(0, e.clientX - drag.ox),
+    y: Math.max(0, e.clientY - drag.oy),
+  };
+  const el = document.querySelector(`.block[data-id="${drag.id}"]`);
+  if (el) {
+    el.style.left = doc._layout[drag.id].x + "px";
+    el.style.top = doc._layout[drag.id].y + "px";
+  }
+});
+window.addEventListener("mouseup", () => { drag = null; });
+
+function renderInspector() {
+  const root = document.getElementById("inspector");
+  const op = (doc.ops || []).find(o => o.id === selectedId);
+  if (!op) {
+    root.innerHTML = `<p class="empty">Select a block to edit binds and params.</p>`;
+    return;
+  }
+  const meta = opMeta(op.type);
+  let html = `
+    <div class="field"><label>Block id</label><input id="f-id" value="${esc(op.id)}"></div>
+    <div class="field"><label>Type</label><input value="${esc(op.type)}" disabled></div>
+    <h3 style="font-size:0.85rem;margin:12px 0 6px">Binds (variable ports)</h3>`;
+  const binds = meta.binds && meta.binds.length ? meta.binds : Object.keys(op.bind || {});
+  if (!binds.length && !meta.ode) {
+    html += `<p class="empty">No bind ports for this op.</p>`;
+  }
+  binds.forEach(k => {
+    html += `<div class="field"><label>${esc(k)} → signal / state</label>
+      <input data-bind="${esc(k)}" value="${esc((op.bind || {})[k] || "")}"></div>`;
+  });
+  if (meta.ode) {
+    const deriv = (op.params && op.params.derivatives) || {};
+    html += `<h3 style="font-size:0.85rem;margin:12px 0 6px">ODE derivatives</h3>
+      <div class="field"><label>JSON map state → d(state)/dt</label>
+      <textarea id="f-ode">${esc(JSON.stringify(deriv, null, 2))}</textarea></div>`;
+  } else {
+    html += `<h3 style="font-size:0.85rem;margin:12px 0 6px">Params</h3>`;
+    (meta.params || []).forEach(k => {
+      html += `<div class="field"><label>${esc(k)}</label>
+        <input data-param="${esc(k)}" value="${esc(String((op.params || {})[k] ?? ""))}"></div>`;
+    });
+  }
+  html += `<button class="btn danger" id="btn-del" style="margin-top:8px">Remove block</button>`;
+  root.innerHTML = html;
+  root.querySelector("#btn-del").onclick = removeSelected;
+  root.querySelector("#f-id").onchange = ev => {
+    const next = ev.target.value.trim();
+    if (!next || next === op.id) return;
+    if ((doc.ops || []).some(o => o.id === next)) {
+      status("Block id already exists", "err"); return;
+    }
+    const layout = doc._layout[op.id];
+    delete doc._layout[op.id];
+    op.id = next;
+    doc._layout[next] = layout;
+    selectedId = next;
+    render();
+  };
+  root.querySelectorAll("[data-bind]").forEach(inp => {
+    inp.onchange = () => {
+      op.bind = op.bind || {};
+      op.bind[inp.dataset.bind] = inp.value.trim();
+      renderCanvas();
+    };
+  });
+  root.querySelectorAll("[data-param]").forEach(inp => {
+    inp.onchange = () => {
+      op.params = op.params || {};
+      const v = inp.value.trim();
+      op.params[inp.dataset.param] = v === "" ? "" : (isFinite(Number(v)) ? Number(v) : v);
+    };
+  });
+  const ode = root.querySelector("#f-ode");
+  if (ode) {
+    ode.onchange = () => {
+      try {
+        op.params = op.params || {};
+        op.params.derivatives = JSON.parse(ode.value);
+        status("ODE map updated");
+      } catch (err) {
+        status("Invalid ODE JSON: " + err.message, "err");
+      }
+    };
+  }
+}
+
+function renderTags() {
+  const root = document.getElementById("tag-map");
+  const outs = doc.outputs || {};
+  let html = `<table class="tags-table"><tr><th>Tag</th><th>State</th><th></th></tr>`;
+  Object.entries(outs).forEach(([tag, state]) => {
+    html += `<tr>
+      <td><input data-tag-key="${esc(tag)}" value="${esc(tag)}" style="width:100%"></td>
+      <td><input data-tag-val="${esc(tag)}" value="${esc(state)}" style="width:100%"></td>
+      <td><button class="btn danger" data-del-tag="${esc(tag)}">×</button></td>
+    </tr>`;
+  });
+  html += `</table>`;
+  root.innerHTML = html;
+  root.querySelectorAll("[data-del-tag]").forEach(btn => {
+    btn.onclick = () => {
+      delete doc.outputs[btn.dataset.delTag];
+      renderTags();
+    };
+  });
+  root.querySelectorAll("[data-tag-key]").forEach(inp => {
+    inp.onchange = () => {
+      const old = inp.dataset.tagKey;
+      const next = inp.value.trim().toUpperCase();
+      const state = doc.outputs[old];
+      delete doc.outputs[old];
+      if (next) doc.outputs[next] = state;
+      renderTags();
+    };
+  });
+  root.querySelectorAll("[data-tag-val]").forEach(inp => {
+    inp.onchange = () => {
+      doc.outputs[inp.dataset.tagVal] = inp.value.trim();
+    };
+  });
+}
+
+document.getElementById("btn-add-tag").onclick = () => {
+  doc.outputs = doc.outputs || {};
+  let i = 1;
+  let tag = "TAG_" + i;
+  while (doc.outputs[tag]) { i += 1; tag = "TAG_" + i; }
+  doc.outputs[tag] = "state_" + i;
+  renderTags();
+};
+
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
+  })[c]);
+}
+
+function stripLayout(d) {
+  const copy = JSON.parse(JSON.stringify(d));
+  delete copy._layout;
+  // Drop empty string params
+  (copy.ops || []).forEach(op => {
+    if (op.params) {
+      Object.keys(op.params).forEach(k => {
+        if (op.params[k] === "") delete op.params[k];
+      });
+      if (!Object.keys(op.params).length) delete op.params;
+    }
+  });
+  return copy;
+}
+
+function render() {
+  document.getElementById("model-name").value = doc.name || "skid_composed";
+  renderCanvas();
+  renderInspector();
+  renderTags();
+}
+
+async function loadModel() {
+  const name = document.getElementById("model-name").value.trim() || "skid_composed";
+  try {
+    const data = await api("/model?name=" + encodeURIComponent(name));
+    doc = data.document;
+    doc.name = name;
+    selectedId = null;
+    render();
+    status("Loaded “" + name + "”.", "ok");
+  } catch (err) {
+    status(String(err.message || err), "err");
+  }
+}
+
+async function validateModel() {
+  doc.name = document.getElementById("model-name").value.trim() || doc.name;
+  try {
+    await api("/validate", { method: "POST", body: JSON.stringify({ document: stripLayout(doc) }) });
+    status("Document validates.", "ok");
+  } catch (err) {
+    status(String(err.message || err), "err");
+  }
+}
+
+async function saveModel() {
+  doc.name = document.getElementById("model-name").value.trim() || doc.name;
+  try {
+    const data = await api("/save", {
+      method: "POST",
+      body: JSON.stringify({ name: doc.name, document: stripLayout(doc) }),
+    });
+    status("Saved " + data.path, "ok");
+  } catch (err) {
+    status(String(err.message || err), "err");
+  }
+}
+
+async function applyModel() {
+  doc.name = document.getElementById("model-name").value.trim() || doc.name;
+  try {
+    const data = await api("/apply", {
+      method: "POST",
+      body: JSON.stringify({ name: doc.name, document: stripLayout(doc) }),
+    });
+    status("Applied preset “" + data.preset + "” and reloaded plant.", "ok");
+  } catch (err) {
+    status(String(err.message || err), "err");
+  }
+}
+
+document.getElementById("btn-load").onclick = loadModel;
+document.getElementById("btn-validate").onclick = validateModel;
+document.getElementById("btn-save").onclick = saveModel;
+document.getElementById("btn-apply").onclick = applyModel;
+
+(async function init() {
+  try {
+    catalog = await api("/catalog");
+    renderPalette();
+    await loadModel();
+  } catch (err) {
+    status("Init failed: " + (err.message || err), "err");
+    renderPalette();
+    render();
+  }
+})();
+</script>
+</body>
+</html>

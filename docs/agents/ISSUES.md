@@ -82,9 +82,12 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-163 | Subtask | SWD-143: Wire HassPlantSimulator to selected preset | Done | SWD-143 | docs/PLAN.md | — |
 | SWD-164 | Subtask | SWD-143: Service + Lovelace operator surface | Done | SWD-143 | docs/PLAN.md | — |
 | SWD-165 | Subtask | SWD-143: Acceptance tests + packaging/docs/version | Done | SWD-143 | docs/PLAN.md | — |
+| SWD-166 | Task | [Iterate] Sidebar dynamics block editor + toy setup guide | Done | Relates SWD-143 | docs/ITERATE.md | Done — shipped PR #68 (App 0.1.25) |
 
 ## Log
 
+- 2026-07-30 — Shipped SWD-166 via PR #68 (App 0.1.25); review-fix CLEAN after 1 iter; Task Done.
+- 2026-07-30 — Iterate SWD-166: sidebar Dynamics block editor + toy README guide; App 0.1.25; Relates SWD-143.
 - 2026-07-30 — Shipped SWD-143 via PR #66 (App 0.1.24); review-fix CLEAN after 1 iter; Task Done; Story SWD-142 → Done (initiative complete).
 - 2026-07-30 — Implement SWD-143: App 0.1.24; Options flow + set_dynamics_preset + preset sensor; Next `/review-fix SWD-143`.
 - 2026-07-30 — Define SWD-143: PLAN.md + Sub-tasks SWD-162/163/164/165; Options flow + options SoT + service; Next `/implement SWD-143` (ship requested).
