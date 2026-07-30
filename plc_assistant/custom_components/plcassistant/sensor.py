@@ -10,7 +10,14 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_BINDINGS, CONF_INSTANCE_ID, CONF_MOCK_MODE, DOMAIN
+from .const import (
+    CONF_BINDINGS,
+    CONF_DYNAMICS_PARAMS,
+    CONF_DYNAMICS_PRESET,
+    CONF_INSTANCE_ID,
+    CONF_MOCK_MODE,
+    DOMAIN,
+)
 from .mqtt_topics import parse_app_status_payload
 
 _TAG_META: dict[str, dict] = {
@@ -70,6 +77,10 @@ async def async_setup_entry(
     entities: list[SensorEntity] = [
         PlcAssistantStatusSensor(entry.entry_id, data[CONF_INSTANCE_ID])
     ]
+    if data.get(CONF_MOCK_MODE, True):
+        entities.append(
+            PlcAssistantDynamicsPresetSensor(entry.entry_id, data[CONF_INSTANCE_ID])
+        )
     if not data.get(CONF_MOCK_MODE, True):
         async_add_entities(entities)
         return
@@ -166,6 +177,44 @@ class PlcAssistantStatusSensor(SensorEntity):
         self.async_on_remove(
             self.hass.bus.async_listen(f"{DOMAIN}_status", _on_status)
         )
+
+
+class PlcAssistantDynamicsPresetSensor(SensorEntity):
+    """Active plant dynamics preset (SWD-143)."""
+
+    _attr_should_poll = False
+    _attr_icon = "mdi:graph"
+
+    def __init__(self, entry_id: str, instance_id: str) -> None:
+        self._entry_id = entry_id
+        self._instance_id = instance_id
+        self._attr_name = "PLCAssistant Dynamics preset"
+        self._attr_unique_id = f"{entry_id}_dynamics_preset"
+        self._attr_suggested_object_id = "plcassistant_dynamics_preset"
+        self.entity_id = "sensor.plcassistant_dynamics_preset"
+        self._attr_native_value = "skid"
+        self._attr_extra_state_attributes: dict = {"params": {}}
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self._refresh_from_store()
+        self.async_write_ha_state()
+
+    def _refresh_from_store(self) -> None:
+        store = self.hass.data.get(DOMAIN, {}).get(self._entry_id) or {}
+        preset = store.get(CONF_DYNAMICS_PRESET)
+        sim = store.get("plant_simulator")
+        if sim is not None and getattr(sim, "preset", None):
+            preset = sim.preset
+        if not preset:
+            preset = "skid"
+        params = store.get(CONF_DYNAMICS_PARAMS)
+        if sim is not None and getattr(sim, "params", None) is not None:
+            params = dict(sim.params)
+        if not isinstance(params, dict):
+            params = {}
+        self._attr_native_value = str(preset)
+        self._attr_extra_state_attributes = {"params": dict(params)}
 
 
 class PlcAssistantOutSensor(SensorEntity):

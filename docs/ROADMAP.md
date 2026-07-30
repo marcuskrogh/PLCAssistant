@@ -11,7 +11,7 @@
 | 1 | Soft-PLC ↔ integration mock ownership | Docs put plant under the integration; runtime hard-wires `Skid`/`MockProcess` in the App — this choice shapes everything else | **Done** (App 0.1.21) | [SWD-145](https://marcusknielsen.atlassian.net/browse/SWD-145) |
 | 2 | Configurable dynamics core + skid preset | States/tags + collected ODE at scan period; skid as first preset | **Done** (App 0.1.22) | [SWD-146](https://marcusknielsen.atlassian.net/browse/SWD-146) |
 | 3 | Unit-op library + custom equation authoring | Easy mocks vs expressive custom DEs | **Done** (App 0.1.23) | [SWD-144](https://marcusknielsen.atlassian.net/browse/SWD-144) |
-| 4 | Integration mock UI + preset selection | Configure and select presets in HA, not only in code | define → implement | [SWD-143](https://marcusknielsen.atlassian.net/browse/SWD-143) |
+| 4 | Integration mock UI + preset selection | Configure and select presets in HA, not only in code | **In Review** (App 0.1.24) | [SWD-143](https://marcusknielsen.atlassian.net/browse/SWD-143) |
 
 ## Open questions
 - ~~Where the ODE solver should run~~ → **locked (SWD-145/146):** integration-owned simulator; Soft-PLC mock-unaware
@@ -35,4 +35,4 @@
 - Prior initiative: [SWD-81](https://marcusknielsen.atlassian.net/browse/SWD-81) (Done)
 
 ## Next
-`/implement SWD-143` — Integration mock UI + preset selection (App 0.1.24)
+`/review-fix SWD-143` — Integration mock UI + preset selection (App 0.1.24)

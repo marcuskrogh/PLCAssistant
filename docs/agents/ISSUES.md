@@ -58,7 +58,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-139 | Bug | [Iterate] Soft-PLC attached (stopped) but HMI still offline — MQTT never reaches HA entities | Done | Relates SWD-138 | docs/ITERATE.md | Done — shipped PR #55 |
 | SWD-140 | Bug | [Iterate] HMI zeros on SP_LEVEL/SP_FLOW/LT_RES + clarify PERM_OK while RUNNING | Done | Relates SWD-139 | docs/ITERATE.md | Done — shipped PR #56 |
 | SWD-141 | Bug | [Iterate] Level setpoint request does not update Active level SP (stuck 0.2 m) | Done | Relates SWD-140 | docs/ITERATE.md | Done — shipped PR #57 |
-| SWD-142 | Story | Configurable mock dynamics — tags, unit ops, ODEs, selectable presets | To Do | — | docs/ROADMAP.md | `/implement SWD-143` |
+| SWD-142 | Story | Configurable mock dynamics — tags, unit ops, ODEs, selectable presets | To Do | — | docs/ROADMAP.md | `/review-fix SWD-143` |
 | SWD-145 | Task | Soft-PLC ↔ integration mock ownership boundary | Done | Relates SWD-142 | docs/PLAN.md | Done — shipped PR #59+#60 |
 | SWD-149 | Subtask | SWD-145: Ownership docs (packaging / wedge / I/O) | Done | SWD-145 | docs/PLAN.md | — |
 | SWD-150 | Subtask | SWD-145: Expose scan_period_s on Soft-PLC MQTT status | Done | SWD-145 | docs/PLAN.md | — |

@@ -43,9 +43,14 @@ class PlantSimulator:
         publish: PublishFn,
         *,
         preset: str = "skid",
+        params: Mapping[str, float] | None = None,
         period_s: float = 0.1,
     ) -> PlantSimulator:
-        return cls(model=get_preset(preset), publish=publish, period_s=period_s)
+        return cls(
+            model=get_preset(preset, params=params),
+            publish=publish,
+            period_s=period_s,
+        )
 
     @property
     def owned_tags(self) -> frozenset[str]:

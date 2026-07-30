@@ -39,10 +39,13 @@ def test_manifest_mqtt_dependency_and_config_keys():
         "CONF_MQTT_PORT",
         "CONF_BINDINGS",
         "CONF_MOCK_MODE",
+        "CONF_DYNAMICS_PRESET",
+        "CONF_DYNAMICS_PARAMS",
         "DEFAULT_MQTT_BROKER",
         "SERVICE_START",
         "SERVICE_STOP",
         "SERVICE_RESET",
+        "SERVICE_SET_DYNAMICS_PRESET",
     ):
         assert key in const_text
 
@@ -54,6 +57,8 @@ def test_manifest_mqtt_dependency_and_config_keys():
     assert "FT_INLET" in init_text
     assert "HassPlantSimulator" in init_text
     assert "plant_simulator" in init_text
+    assert "resolve_dynamics_options" in init_text
+    assert "set_dynamics_preset" in init_text
     # hass.components was removed in modern HA Core; subscribe via mqtt helper.
     assert "hass.components" not in init_text
     assert "from homeassistant.components.mqtt import async_subscribe" in init_text
@@ -110,7 +115,10 @@ def test_platforms_publish_and_subscribe_paths():
     assert "number.plcassistant_lt_tank_in" in lovelace
     assert "sensor.plcassistant_status" in lovelace
     assert "sensor.plcassistant_mode" in lovelace
-    assert "live simulator" in lovelace.lower() or "0.1.23" in lovelace or "unit-op" in lovelace.lower()
+    assert "live simulator" in lovelace.lower() or "0.1.24" in lovelace or "dynamics preset" in lovelace.lower()
+    assert "sensor.plcassistant_dynamics_preset" in lovelace
+    assert "set_dynamics_preset:" in (CC / "services.yaml").read_text(encoding="utf-8")
+    assert "PlcAssistantOptionsFlow" in (CC / "config_flow.py").read_text(encoding="utf-8")
     assert 'entity_id = f"number.' in number or "suggested_object_id" in number
     assert "plcassistant_sp_level_req" in number
     assert "plcassistant_lt_tank_in" in number

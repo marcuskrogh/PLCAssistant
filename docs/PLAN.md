@@ -66,4 +66,4 @@
 - Implement: App **0.1.24**
 
 ## Next
-`/implement SWD-143` — or `/ship SWD-143` to finish remaining through Done
+`/review-fix SWD-143`

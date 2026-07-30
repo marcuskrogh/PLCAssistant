@@ -1,13 +1,13 @@
 # Iterate notes: Integration mock UI + preset selection (SWD-143)
 
-**In progress** — define locked; implement App **0.1.24** on `cursor/swd-143-mock-ui-presets-33f4`
+**In Review** — App **0.1.24** on `cursor/swd-143-mock-ui-presets-33f4`
 
-## Define lock
-1. Options flow is the primary preset chooser (not Soft-PLC Ingress / custom panel)
-2. Persist `dynamics_preset` + `dynamics_params` on config-entry options
-3. Apply = rebuild plant simulator from initials (not mid-scan graph edit)
-4. Service `set_dynamics_preset` shares the same options SoT
-5. File/YAML remains unit-op authoring; UI selects presets + numeric overrides only
+## Delivered
+1. Options flow for `dynamics_preset` + JSON `dynamics_params`
+2. Config-entry options persistence; reload rebuilds plant from initials
+3. `HassPlantSimulator` / `for_preset` honor selected preset + overrides (default `skid`)
+4. Service `plcassistant.set_dynamics_preset` (same SoT)
+5. `sensor.plcassistant_dynamics_preset` + Lovelace v12 operator copy
 
 ## Next
-`/implement SWD-143` — or `/ship SWD-143` to finish remaining through Done
+`/review-fix SWD-143`
