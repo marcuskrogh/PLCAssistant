@@ -21,6 +21,9 @@ def test_integration_required_files():
         "strings.json",
         "number.py",
         "button.py",
+        "update.py",
+        "repairs.py",
+        "version_sync.py",
         "README.md",
     ):
         assert (CC / name).is_file(), name
@@ -54,6 +57,7 @@ def test_manifest_mqtt_dependency_and_config_keys():
     assert "tag_out_topic" in init_text
     assert "Platform.NUMBER" in init_text
     assert "Platform.BUTTON" in init_text
+    assert "Platform.UPDATE" in init_text
     assert "FT_INLET" in init_text
     assert "HassPlantSimulator" in init_text
     assert "plant_simulator" in init_text

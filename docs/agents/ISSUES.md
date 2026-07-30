@@ -84,9 +84,14 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-165 | Subtask | SWD-143: Acceptance tests + packaging/docs/version | Done | SWD-143 | docs/PLAN.md | — |
 | SWD-166 | Task | [Iterate] Sidebar dynamics block editor + toy setup guide | Done | Relates SWD-143 | docs/ITERATE.md | Done — shipped PR #68 (App 0.1.25) |
 | SWD-167 | Task | [Iterate] Per-equation state/measurement authoring + exposed block dynamics | Done | Relates SWD-166 | docs/ITERATE.md | Done — shipped PR #69 (App 0.1.26) |
+| SWD-168 | Task | [Iterate] Show Restart required on Settings updates page after PLCAssistant integration sync | Done | Relates SWD-138 | docs/ITERATE.md | Done — shipped PR #70 (App 0.1.27) |
 
 ## Log
 
+- 2026-07-30 — Shipped SWD-168 via PR #70 (App 0.1.27); review-fix CLEAN after 2 iters; Task Done.
+- 2026-07-30 — review-fix SWD-168 CLEAN after 2 iterations (iter1: docs/manifest/repair; iter2: 0); closeout.
+- 2026-07-30 — Implement SWD-168: App 0.1.27; Update entity + repair; PR [#70](https://github.com/marcuskrogh/PLCAssistant/pull/70) → In Review. Next `/review-fix SWD-168`.
+- 2026-07-30 — Iterate SWD-168: App 0.1.27; Update entity + repair for Restart required on Settings → Updates; Relates SWD-138.
 - 2026-07-30 — Shipped SWD-167 via PR #69 (App 0.1.26); review-fix CLEAN after 1 iter; Task Done.
 - 2026-07-30 — Implement SWD-167: App 0.1.26; per-row state/measurement equations + catalog dynamics exposure; Next `/review-fix SWD-167`.
 - 2026-07-30 — Iterate SWD-167: per-equation state/measurement UX + expose catalog dynamics; App 0.1.26; Relates SWD-166.

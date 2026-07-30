@@ -51,6 +51,7 @@ A second file with the same `slug` makes update detection unreliable (store can 
 5. Merge to `main`.
 6. On HA: **Check for updates** → hard-refresh → **Update** PLCAssistant → App Start requests Core restart (**0.1.16+**; restart manually only if opt-out / `SUPERVISOR_TOKEN` missing / request failed)
    so the synced thin integration reloads.
+   From **0.1.27+**, once that integration version is loaded, a later App sync that leaves a newer on-disk `manifest.json` than Core has imported shows a **PLCAssistant** card on Settings → System → Updates with **Restart of Home Assistant required** (and a matching repair under Settings → System → Repairs) until Core restarts. The first upgrade *to* 0.1.27 still relies on auto/manual Core restart because the old in-memory code has no Update entity yet.
 
 ## Version lock (App ≡ integration)
 

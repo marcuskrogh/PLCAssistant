@@ -31,6 +31,9 @@ Talks to the Soft-PLC **App** over MQTT (`dependencies: ["mqtt", "frontend", "lo
 
 **Install (HA OS):** starting the PLCAssistant App copies this folder into
 `/config/custom_components/plcassistant/`. Restart Core once, then add the
-integration under Devices & services. The integration installs
-`/config/dashboards/plcassistant.yaml` (if missing) and adds **PLCAssistant**
-to the sidebar — no paste step.
+integration under Devices & services. After a later App Update (once
+**0.1.27+** is already loaded), if Core has not yet reloaded, Settings →
+System → Updates shows **Restart of Home Assistant required** on the
+PLCAssistant update card. The integration installs
+`/config/dashboards/plcassistant.yaml` (if missing) and adds
+**PLCAssistant** to the sidebar — no paste step.

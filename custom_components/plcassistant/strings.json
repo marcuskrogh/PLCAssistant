@@ -30,5 +30,19 @@
     "error": {
       "invalid_dynamics": "Invalid preset or params — check the preset name and JSON overrides"
     }
+  },
+  "issues": {
+    "restart_required": {
+      "title": "PLCAssistant: restart required",
+      "description": "The App updated the thin integration on disk (running {loaded}, disk has {disk}). Restart Home Assistant Core so Soft-PLC status and entities load the new code.",
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Restart Home Assistant",
+            "description": "Restart Core now to load PLCAssistant {disk} (currently running {loaded})."
+          }
+        }
+      }
+    }
   }
 }
