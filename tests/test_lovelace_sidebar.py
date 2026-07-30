@@ -32,14 +32,14 @@ def test_manifest_depends_on_frontend_and_lovelace() -> None:
     assert "frontend" in deps
     assert "lovelace" in deps
     assert "mqtt" in deps
-    assert manifest["version"] == "0.1.28"
+    assert manifest["version"] == "0.1.29"
 
 
 def test_app_version_locked_to_integration() -> None:
     text = (ROOT / "plc_assistant" / "config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.28"' in text
+    assert 'version: "0.1.29"' in text
     docker = (ROOT / "plc_assistant" / "Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.28" in docker
+    assert "BUILD_VERSION=0.1.29" in docker
 
 
 def test_url_path_contains_hyphen() -> None:
@@ -63,10 +63,21 @@ def test_bundled_yaml_exists() -> None:
     assert "title: PLCAssistant" in text
     assert "button.plcassistant_start" in text
     assert "number.plcassistant_sp_level_req" in text
-    assert "number.plcassistant_lt_tank_in" in text
+    assert "sensor.plcassistant_lt_tank_in" in text
+    assert "sensor.plcassistant_lt_res_in" in text
+    assert "sensor.plcassistant_ft_inlet_in" in text
     assert "sensor.plcassistant_status" in text
     assert "sensor.plcassistant_mode" in text
     assert text.lstrip().startswith("# plcassistant_dashboard_version:")
+    assert "plcassistant_dashboard_version: 15" in text
+    # Process display is sensors (SWD-170); Numbers remain for nudges only.
+    assert "entity: number.plcassistant_lt_tank_in" not in text
+    assert "entity: sensor.plcassistant_ft_inlet_in" in text
+    assert "entity: sensor.plcassistant_sp_flow" in text
+    hist = text.split("type: history-graph", 1)[1]
+    assert "sensor.plcassistant_lt_tank_in" in hist
+    assert "sensor.plcassistant_lt_res_in" in hist
+    assert "sensor.plcassistant_ft_inlet_in" in hist
 
 
 def test_setup_entry_calls_sidebar_dashboard() -> None:
@@ -144,11 +155,11 @@ def test_ensure_refreshes_stock_board_missing_status(tmp_path) -> None:
     text = out.read_text(encoding="utf-8")
     assert "sensor.plcassistant_status" in text
     assert "sensor.plcassistant_mode" in text
-    assert "plcassistant_dashboard_version: 14" in text
+    assert "plcassistant_dashboard_version: 15" in text
 
 
 def test_ensure_refreshes_stock_board_old_dashboard_version(tmp_path) -> None:
-    """SWD-167: stock boards on version 13 get equation-authoring Dynamics view."""
+    """SWD-170: stock boards on version 14 get plant IN sensors on Process card."""
     mod = _load("plcassistant_lovelace_dashboard3c", CC / "lovelace_dashboard.py")
 
     class FakeConfig:
@@ -161,22 +172,24 @@ def test_ensure_refreshes_stock_board_old_dashboard_version(tmp_path) -> None:
     dest = tmp_path / "dashboards" / "plcassistant.yaml"
     dest.parent.mkdir(parents=True)
     dest.write_text(
-        "# plcassistant_dashboard_version: 13\n"
+        "# plcassistant_dashboard_version: 14\n"
         "title: PLCAssistant\nviews:\n"
         "  - cards:\n"
         "      - type: entities\n"
         "        entities:\n"
         "          - entity: sensor.plcassistant_status\n"
-        "          - entity: button.plcassistant_start\n",
+        "          - entity: button.plcassistant_start\n"
+        "          - entity: number.plcassistant_lt_tank_in\n",
         encoding="utf-8",
     )
     out = mod.ensure_dashboard_yaml(FakeHass())  # type: ignore[arg-type]
     text = out.read_text(encoding="utf-8")
-    assert "plcassistant_dashboard_version: 14" in text
+    assert "plcassistant_dashboard_version: 15" in text
     assert "path: dynamics" in text
     assert "/api/plcassistant/dynamics/ui" in text
-    assert "number.plcassistant_lt_tank_in" in text
-    assert "0.1.26" in text or "measurement" in text.lower()
+    assert "sensor.plcassistant_lt_tank_in" in text
+    assert "entity: number.plcassistant_lt_tank_in" not in text
+    assert "0.1.29" in text or "sensors" in text.lower()
 
 
 def test_ensure_preserves_status_board_without_version_marker(tmp_path) -> None:
@@ -230,13 +243,13 @@ def test_run_sh_refreshes_stock_missing_status_not_custom() -> None:
     assert "sensor.plcassistant_status" in text
     assert "button.plcassistant_start" in text
     assert "seeded default" in text or "mqtt_broker=core-mosquitto" in text
-    # Explicit old versions only — do not refresh merely missing version 14.
-    assert "plcassistant_dashboard_version:[[:space:]]*([1-9]|1[0-3])" in text
+    # Explicit old versions only — refresh 1–14 stock boards to v15 (SWD-170).
+    assert "plcassistant_dashboard_version:[[:space:]]*([1-9]|1[0-4])" in text
     assert "request_core_restart_after_sync" in text
     assert "supervisor/core/restart" in text
     assert "PLCASSISTANT_AUTO_CORE_RESTART" in text
     assert "PLCASSISTANT_HA_CONFIG" in text
-    assert "! grep -q 'plcassistant_dashboard_version: 14'" not in text
+    assert "! grep -q 'plcassistant_dashboard_version: 15'" not in text
     # Regression: never refresh-on-newer (would clobber operator edits).
     assert 'src_dash}" -nt' not in text
     assert "[ \"${src_dash}\" -nt" not in text

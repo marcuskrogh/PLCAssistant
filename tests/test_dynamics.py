@@ -201,8 +201,16 @@ def test_integration_wires_plant_simulator_lifecycle() -> None:
     assert "entry_id" in sim
     assert "_plant_in" in sim or "plant_in" in sim
     assert "async_fire" in sim
+    assert "in_values" in sim
     init_text2 = (CC / "__init__.py").read_text(encoding="utf-8")
     assert "entry_id=entry.entry_id" in init_text2
+    assert "in_values" in init_text2
+
+    sensor = (CC / "sensor.py").read_text(encoding="utf-8")
+    assert "PlcAssistantPlantInSensor" in sensor
+    assert "expected_plant_sensor_unique_id" in sensor
+    assert "in_values" in sensor
+    assert "math.isfinite" in sensor
 
 
 def test_packaging_docs_mention_live_simulator() -> None:

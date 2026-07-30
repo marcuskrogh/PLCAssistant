@@ -3,7 +3,7 @@
 Home Assistant custom component that owns:
 
 - Entity ↔ Soft-PLC tag **bindings**
-- **Mock / plant IN** entities (writable Number for request SPs and plant PVs from the stand-alone simulator — SWD-146/169) and read-only Sensors for Soft-PLC OUT
+- **Mock / plant IN** entities — Operate **Sensors** for live plant PVs (SWD-170) plus writable Numbers for request SPs and plant nudges (SWD-146/169) — and read-only Sensors for Soft-PLC OUT
 - Operator **button** entities and services for **start / stop / reset** (MQTT cmd topics)
 - Default **Lovelace** dashboard registered in the **HA sidebar** (`lovelace_dashboard.py`)
 
@@ -12,9 +12,9 @@ Default mock bindings (wedge process I/O):
 | Tag | Direction | HA entity | Role |
 |-----|-----------|-----------|------|
 | `SP_LEVEL_REQ` | IN | `number.plcassistant_sp_level_req` | Level setpoint **request** (writable) |
-| `LT_TANK` | IN | `number.plcassistant_lt_tank_in` | Tank level (plant → Soft-PLC; live box Number) |
-| `LT_RES` | IN | `number.plcassistant_lt_res_in` | Reservoir level (plant → Soft-PLC) |
-| `FT_INLET` | IN | `number.plcassistant_ft_inlet_in` | Inlet flow (plant → Soft-PLC) |
+| `LT_TANK` | IN | `sensor.plcassistant_lt_tank_in` (+ `number.*` nudge) | Tank level (plant → Soft-PLC) |
+| `LT_RES` | IN | `sensor.plcassistant_lt_res_in` (+ `number.*` nudge) | Reservoir level (plant → Soft-PLC) |
+| `FT_INLET` | IN | `sensor.plcassistant_ft_inlet_in` (+ `number.*` nudge) | Inlet flow (plant → Soft-PLC) |
 | `CMD_SPEED` | OUT | `sensor.plcassistant_cmd_speed` | Pump speed command |
 | `SP_LEVEL` | OUT | `sensor.plcassistant_sp_level` | Active level setpoint |
 | `SP_FLOW` | OUT | `sensor.plcassistant_sp_flow` | Active flow setpoint |
@@ -25,7 +25,7 @@ Default mock bindings (wedge process I/O):
 
 Talks to the Soft-PLC **App** over MQTT (`dependencies: ["mqtt", "frontend", "lovelace"]`). Full install steps: [`README.md`](../../README.md). Packaging contract: [`docs/packaging/`](../../docs/packaging/README.md).
 
-**Ownership (SWD-145/146/169):** Soft-PLC is mock-unaware. Process ↔ Soft-PLC I/O is MQTT. The stand-alone process simulator lives in this integration and publishes plant IN; Lovelace plant Numbers hydrate from the simulator (box mode) so Operate always shows readable levels/flows.
+**Ownership (SWD-145/146/169/170):** Soft-PLC is mock-unaware. Process ↔ Soft-PLC I/O is MQTT. The stand-alone process simulator lives in this integration and publishes plant IN; Operate Process uses plant **sensors** hydrated from the simulator (`in_values` cache + bus) so levels/flows stay readable.
 
 **Version:** always matches the PLCAssistant App (`plc_assistant/config.yaml` ↔ this `manifest.json`).
 

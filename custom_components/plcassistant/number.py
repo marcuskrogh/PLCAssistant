@@ -13,6 +13,7 @@ from homeassistant.core import Event, HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import CONF_BINDINGS, CONF_INSTANCE_ID, CONF_MOCK_MODE, DOMAIN
+from .entity_cleanup import expected_plant_number_unique_id
 from .ha_config_bridge import write_input_tag
 from .mqtt_topics import tag_in_topic
 
@@ -119,7 +120,13 @@ class PlcAssistantRequestNumber(NumberEntity):
         self._unsub = None
         meta = _TAG_META.get(tag, {})
         self._attr_name = meta.get("name", f"PLCAssistant {tag}")
-        self._attr_unique_id = f"{entry_id}_{tag}_req"
+        # SWD-170: plant Numbers use stable instance+tag unique_ids.
+        # Request SP keeps `_req` suffix (and entry_id) so Lovelace Level setpoint
+        # does not orphan after reload (unique_id churn → entity_id_2).
+        if tag in _PLANT_IN_TAGS:
+            self._attr_unique_id = expected_plant_number_unique_id(instance_id, tag)
+        else:
+            self._attr_unique_id = f"{entry_id}_{tag}_req"
         object_id = meta.get("object_id") or _object_id_from_entity(
             entity_id, f"plcassistant_{tag.lower()}"
         )
@@ -135,8 +142,7 @@ class PlcAssistantRequestNumber(NumberEntity):
             self._attr_native_value = float(meta["default"])
         else:
             self._attr_native_value = 0.0
-        # SWD-169: box mode so Operate always shows a numeric value (AUTO/slider
-        # renders empty grey tracks on mobile with no readable engineering value).
+        # SWD-169: box mode for readable nudge values (Process display is sensors).
         self._attr_mode = NumberMode.BOX
 
     def _plant_simulator(self):
@@ -216,20 +222,26 @@ class PlcAssistantRequestNumber(NumberEntity):
         """Publish operator request, or hydrate/subscribe for simulator plant IN."""
         await super().async_added_to_hass()
         if self._simulator_owns():
-            # SWD-169: hydrate from live plant outputs (OUT sensors already hydrate
-            # from cache — plant Numbers must not wait on MQTT retain alone).
-            sim = self._plant_simulator()
-            try:
-                outs = sim.plant.model.outputs()
-                tag_key = str(self._tag).upper()
-                eng = outs.get(tag_key, outs.get(self._tag))
-                if eng is not None and self._apply_eng_value(float(eng)):
-                    self.async_write_ha_state()
-                elif self._attr_native_value is not None:
-                    self.async_write_ha_state()
-            except Exception:  # noqa: BLE001 — never abort entity add on bad model
-                if self._attr_native_value is not None:
-                    self.async_write_ha_state()
+            # SWD-169/170: hydrate from in_values cache, then live plant outputs.
+            store = self.hass.data.get(DOMAIN, {}).get(self._entry_id) or {}
+            cached = (store.get("in_values") or {}).get(str(self._tag).upper())
+            hydrated = False
+            if cached and self._apply_payload(str(cached)):
+                self.async_write_ha_state()
+                hydrated = True
+            if not hydrated:
+                sim = self._plant_simulator()
+                try:
+                    outs = sim.plant.model.outputs()
+                    tag_key = str(self._tag).upper()
+                    eng = outs.get(tag_key, outs.get(self._tag))
+                    if eng is not None and self._apply_eng_value(float(eng)):
+                        self.async_write_ha_state()
+                        hydrated = True
+                except Exception:  # noqa: BLE001 — never abort entity add on bad model
+                    pass
+            if not hydrated and self._attr_native_value is not None:
+                self.async_write_ha_state()
 
             async def _on_plant_bus(event: Event) -> None:
                 if event.data.get("entry_id") != self._entry_id:
