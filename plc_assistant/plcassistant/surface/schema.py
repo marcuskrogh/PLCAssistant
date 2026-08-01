@@ -447,6 +447,7 @@ def project_to_dict(project: SoftPlcProject) -> dict[str, Any]:
             {
                 "id": task.task_id,
                 "priority": task.priority,
+                "description": task.description,
                 "programs": list(task.programs),
             }
             for task in project.tasks
@@ -492,6 +493,7 @@ def project_from_dict(data: Mapping[str, Any]) -> SoftPlcProject:
                 task_id=str(tdata["id"]),
                 priority=int(tdata["priority"]),
                 programs=[str(p) for p in raw_progs],
+                description=str(tdata.get("description", "")),
             )
         )
 

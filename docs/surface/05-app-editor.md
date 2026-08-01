@@ -1,4 +1,4 @@
-# App Program Surface + HTTP API (SWD-120, SWD-181)
+# App Program Surface + HTTP API (SWD-120, SWD-181, SWD-191)
 
 ## Overview
 
@@ -7,8 +7,9 @@ engineering surface backed by a plain-Python `http.server` HTTP server. It:
 
 - Serves a vanilla HTML/JS single-page app at `GET /`.
 - Shows one-column Program cards and opens each Program into Diagram, Log, and Settings.
-- Exposes JSON APIs so clients can list, create, edit, apply, and delete Programs.
-- Holds an in-memory `ProjectLoader`, `TemplateLibrary`, and `BlockRuntime`; no HA dependency.
+- Adds a top nav to the one-column Task editor for schedule CRUD and Program call lists.
+- Exposes JSON APIs so clients can list, create, edit, apply, and delete Programs and Tasks.
+- Holds a saved project draft plus a live `ProjectLoader` project; no HA dependency.
 
 ### Start
 
@@ -26,8 +27,12 @@ Open `http://localhost:8099` in any browser.
 - `#/programs/<id>/diagram`: existing block editor canvas, Hot Apply, and Apply restart for the selected Program.
 - `#/programs/<id>/log`: chronological info/warn/error Program log.
 - `#/programs/<id>/settings`: name/description save and confirmed delete.
+- `#/tasks`: one-column Task schedule list with Save and Apply (restart).
+- `#/tasks/new`: create Task from id, priority, and optional description.
+- `#/tasks/<id>`: edit Task metadata, delete with confirmation, and manage the ordered Program call list.
 
-Scheduling UI is intentionally out of scope for SWD-181.
+Program cards show the live applied schedule status. When saved Task edits differ
+from the live project, cards also include `pending_schedule` and `saved_task_id`.
 
 ## HTTP API
 
@@ -43,7 +48,9 @@ Returns Program cards:
     "description": "Default tank level-flow cascade program.",
     "status": "not running",
     "health": "ok",
-    "task_id": "main"
+    "task_id": "main",
+    "saved_task_id": "main",
+    "pending_schedule": false
   }
 ]
 ```
@@ -96,6 +103,37 @@ Round-trips the full Soft-PLC project tree (`tasks`, `programs`, and
 `scan_period_s`). Structure changes restart; logic-only project changes use the
 existing hot-apply policy.
 
+### Task schedule APIs
+
+- `GET /api/tasks` returns saved-draft Tasks as `{id, priority, description, programs}`.
+- `POST /api/tasks` creates a saved-draft Task from `{id, priority, description?}`.
+- `PUT /api/tasks/<id>` updates Task metadata; renames reject duplicate ids.
+- `DELETE /api/tasks/<id>` deletes the Task from the saved draft; its Programs become unscheduled.
+- `PUT /api/tasks/<id>/programs` replaces the ordered call list with `{"programs": [...]}`.
+- `GET /api/programs/unscheduled` lists Programs not assigned to any saved-draft Task.
+
+Call-list validation accepts only unscheduled Programs or Programs already on the
+same Task; a Program may still appear on at most one Task.
+
+### Save/apply schedule APIs
+
+- `GET /api/schedule/status` returns `saved_applied` plus saved/applied task signatures.
+- `POST /api/schedule/save` writes the saved draft to `program_path` without changing the live Soft-PLC.
+- `POST /api/schedule/apply` restart-applies the saved draft into the live `ProjectLoader` and persists both snapshots.
+
+When `program_path` is set, persistence uses:
+
+```json
+{
+  "version": "2.0",
+  "project": {"version": "2.0", "programs": {}, "tasks": []},
+  "applied_project": {"version": "2.0", "programs": {}, "tasks": []}
+}
+```
+
+Older raw project files still load; if `applied_project` is missing, applied
+defaults to the saved project on load.
+
 ### `GET /api/library`
 
 Returns all registered templates (builtin + user) as a JSON array.
@@ -143,7 +181,7 @@ Hot apply requires server-side authority via `PLCASSISTANT_SUPERUSER_HOT_APPLY=1
 ## Testing
 
 ```bash
-python3 -m pytest -q tests/test_app_api.py tests/test_swd181_acceptance.py
+python3 -m pytest -q tests/test_swd191_acceptance.py tests/test_app_api.py tests/test_swd181_acceptance.py
 ```
 
 Tests use `urllib.request` directly against a real `HTTPServer` bound to a random
