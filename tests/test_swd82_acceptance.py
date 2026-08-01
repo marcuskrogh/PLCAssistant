@@ -99,14 +99,14 @@ def test_ac2_place_block_creates_independent_copy():
 
     lib = TemplateLibrary()
     register_builtins(lib, BlockRuntime(lib))
-    tmpl = lib.get("builtin", "level_pi")
+    tmpl = lib.get("builtin", "PID")
     assert tmpl is not None
 
-    inst = place_block(tmpl, "lpi_test", params={"kp": 99.0})
+    inst = place_block(tmpl, "pid_test", params={"kp": 99.0})
     assert inst.params["kp"] == pytest.approx(99.0)
     # Mutating the placed instance must not affect the template
     inst.params["kp"] = 1.0
-    assert tmpl.params["kp"] == pytest.approx(40.0)
+    assert tmpl.params["kp"] == pytest.approx(1.0)
 
 
 def test_ac2_two_placed_instances_are_independent():
@@ -115,13 +115,13 @@ def test_ac2_two_placed_instances_are_independent():
 
     lib = TemplateLibrary()
     register_builtins(lib, BlockRuntime(lib))
-    tmpl = lib.get("builtin", "level_pi")
+    tmpl = lib.get("builtin", "PID")
     assert tmpl is not None
 
     a = place_block(tmpl, "a")
     b = place_block(tmpl, "b")
     a.params["kp"] = 500.0
-    assert b.params["kp"] == pytest.approx(40.0)
+    assert b.params["kp"] == pytest.approx(1.0)
 
 
 def test_ac2_reset_instance_restores_template_defaults():
@@ -130,16 +130,16 @@ def test_ac2_reset_instance_restores_template_defaults():
 
     lib = TemplateLibrary()
     register_builtins(lib, BlockRuntime(lib))
-    tmpl = lib.get("builtin", "level_pi")
+    tmpl = lib.get("builtin", "PID")
     assert tmpl is not None
 
-    inst = place_block(tmpl, "lpi_r", params={"kp": 999.0})
+    inst = place_block(tmpl, "pid_r", params={"kp": 999.0})
     restored = reset_instance(inst, tmpl)
-    assert restored.instance_id == "lpi_r"
-    assert restored.params["kp"] == pytest.approx(40.0)
+    assert restored.instance_id == "pid_r"
+    assert restored.params["kp"] == pytest.approx(1.0)
     # Mutating the restored instance must not affect the template
     restored.params["kp"] = 0.0
-    assert tmpl.params["kp"] == pytest.approx(40.0)
+    assert tmpl.params["kp"] == pytest.approx(1.0)
 
 
 # ---------------------------------------------------------------------------

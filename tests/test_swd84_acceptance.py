@@ -158,7 +158,7 @@ def test_program_path_persistence_and_place(tmp_path):
         templates = state2.library.all_templates()
         assert templates
         tmpl = templates[0]
-    prog = state2.loader.program
+    prog = state2.program_for_id(state2.main_program_id())
     assert prog is not None
     inst = place_block(tmpl, "i1", x=1.0, y=2.0)
     prog.instances["i1"] = inst

@@ -245,8 +245,9 @@ def test_get_library_returns_builtins(app_server):
     assert status == 200
     assert isinstance(data, list)
     ids = [t["template_id"] for t in data]
-    assert "level_pi" in ids
-    assert "flow_pi" in ids
+    assert "PID" in ids
+    assert "level_pi" not in ids
+    assert "flow_pi" not in ids
 
 
 # ---------------------------------------------------------------------------
@@ -257,18 +258,19 @@ def test_get_library_returns_builtins(app_server):
 def test_place_builtin_block(app_server):
     _, base_url, _ = app_server
     payload = {
-        "template_id": "level_pi",
+        "template_id": "PID",
         "library": "builtin",
-        "instance_id": "lpi_test",
+        "instance_id": "pid_test",
         "x": 100.0,
         "y": 200.0,
     }
     status, resp = _json_request(base_url + "/api/place", "POST", payload)
     assert status == 200
-    assert "lpi_test" in resp["instances"]
-    assert resp["instances"]["lpi_test"]["template_id"] == "level_pi"
-    assert resp["instances"]["lpi_test"]["params"]["kp"] == pytest.approx(40.0)
-    assert "lpi_test" in resp["execution_order"]
+    assert "pid_test" in resp["instances"]
+    assert resp["instances"]["pid_test"]["template_id"] == "PID"
+    assert resp["instances"]["pid_test"]["params"]["kp"] == pytest.approx(1.0)
+    assert resp["instances"]["pid_test"]["equation"]
+    assert "pid_test" in resp["execution_order"]
 
 
 def test_place_unknown_template_returns_404(app_server):
@@ -287,17 +289,17 @@ def test_reset_instance_restores_defaults(app_server):
     _, base_url, state = app_server
     # First place a block
     _json_request(base_url + "/api/place", "POST", {
-        "template_id": "level_pi", "library": "builtin", "instance_id": "lpi_r"
+        "template_id": "PID", "library": "builtin", "instance_id": "pid_r"
     })
     # Modify the program's instance params
     prog = state.loader.program
-    prog.instances["lpi_r"].params["kp"] = 999.0
+    prog.instances["pid_r"].params["kp"] = 999.0
     # Reset
     status, resp = _json_request(
-        base_url + "/api/reset_instance", "POST", {"instance_id": "lpi_r"}
+        base_url + "/api/reset_instance", "POST", {"instance_id": "pid_r"}
     )
     assert status == 200
-    assert resp["instances"]["lpi_r"]["params"]["kp"] == pytest.approx(40.0)
+    assert resp["instances"]["pid_r"]["params"]["kp"] == pytest.approx(1.0)
 
 
 def test_reset_instance_unknown_returns_404(app_server):
@@ -465,12 +467,12 @@ def test_full_round_trip(app_server):
 
     # Place a block
     status, prog = _json_request(base_url + "/api/place", "POST", {
-        "template_id": "flow_pi",
+        "template_id": "PID",
         "library": "builtin",
-        "instance_id": "fpi_1",
+        "instance_id": "pid_1",
     })
     assert status == 200
-    assert "fpi_1" in prog["instances"]
+    assert "pid_1" in prog["instances"]
 
     # Apply restart
     status, apply_resp = _json_request(base_url + "/api/apply", "POST", {"mode": "restart"})
@@ -480,4 +482,4 @@ def test_full_round_trip(app_server):
     # GET should return updated program
     status, final = _json_get(base_url + "/api/program")
     assert status == 200
-    assert "fpi_1" in final["instances"]
+    assert "pid_1" in final["instances"]

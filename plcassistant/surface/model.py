@@ -49,14 +49,16 @@ class BlockTemplate:
 class BlockInstance:
     """A placed copy of a template.
 
-    Editing params on an instance never affects the originating template.
-    Created by schema.place_block; reset by schema.reset_instance.
+    Editing params or ``equation`` on an instance never affects the
+    originating template.  Created by schema.place_block; reset by
+    schema.reset_instance.
     """
 
     instance_id: str
     template_id: str
     library: str
     params: dict[str, Any] = field(default_factory=dict)
+    equation: str = ""
     x: float = 0.0
     y: float = 0.0
 

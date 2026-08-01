@@ -51,6 +51,7 @@ def place_block(
         template_id=template.template_id,
         library=template.library,
         params=merged,
+        equation=copy.deepcopy(template.body),
         x=x,
         y=y,
     )
@@ -76,6 +77,7 @@ def reset_instance(instance: BlockInstance, template: BlockTemplate) -> BlockIns
         template_id=template.template_id,
         library=template.library,
         params=copy.deepcopy(template.params),
+        equation=copy.deepcopy(template.body),
         x=instance.x,
         y=instance.y,
     )
@@ -229,6 +231,8 @@ def _instance_to_dict(inst: BlockInstance) -> dict[str, Any]:
         "library": inst.library,
         "params": copy.deepcopy(inst.params),
     }
+    if inst.equation:
+        d["equation"] = inst.equation
     if inst.x != 0.0 or inst.y != 0.0:
         d["x"] = inst.x
         d["y"] = inst.y
@@ -247,8 +251,62 @@ def _instance_from_dict(iid: str, data: Mapping[str, Any]) -> BlockInstance:
         template_id=str(data["template_id"]),
         library=str(data["library"]),
         params=dict(raw_params),
+        equation=str(data.get("equation", "")),
         x=float(data.get("x", 0.0)),
         y=float(data.get("y", 0.0)),
+    )
+
+
+def _migrate_instance_to_pid(inst: BlockInstance) -> BlockInstance:
+    """Auto-migrate legacy level_pi/flow_pi blocks to placed PID copies."""
+    from plcassistant.surface.builtin import (
+        PID_EQUATION,
+        PID_TEMPLATE_ID,
+        pid_default_params,
+    )
+
+    if inst.library != "builtin":
+        return inst
+
+    hold_when_stopped: bool | None = None
+    if inst.template_id == "level_pi":
+        hold_when_stopped = True
+    elif inst.template_id == "flow_pi":
+        hold_when_stopped = False
+    elif inst.template_id != PID_TEMPLATE_ID:
+        return inst
+
+    params = pid_default_params()
+    params.update(copy.deepcopy(inst.params))
+    if hold_when_stopped is not None:
+        params["hold_when_stopped"] = hold_when_stopped
+    return BlockInstance(
+        instance_id=inst.instance_id,
+        template_id=PID_TEMPLATE_ID,
+        library="builtin",
+        params=params,
+        equation=inst.equation or PID_EQUATION,
+        x=inst.x,
+        y=inst.y,
+    )
+
+
+def migrate_program_to_pid(program: Program) -> Program:
+    """Return *program* with legacy built-in PI instances rewritten to PID."""
+    migrated = {
+        iid: _migrate_instance_to_pid(inst)
+        for iid, inst in program.instances.items()
+    }
+    if all(migrated[iid] is program.instances[iid] for iid in program.instances):
+        return program
+    return Program(
+        name=program.name,
+        description=program.description,
+        instances=migrated,
+        wires=list(program.wires),
+        execution_order=list(program.execution_order),
+        user_templates=dict(program.user_templates),
+        version=program.version,
     )
 
 
@@ -358,6 +416,7 @@ def program_from_dict(data: Mapping[str, Any]) -> Program:
         user_templates=user_templates,
         version=version,
     )
+    program = migrate_program_to_pid(program)
     validate_program(program)
     return program
 
@@ -565,6 +624,7 @@ __all__ = [
     "is_legacy_program_dict",
     "main_program",
     "migrate_legacy_program_dict",
+    "migrate_program_to_pid",
     "place_block",
     "program_from_dict",
     "program_to_dict",

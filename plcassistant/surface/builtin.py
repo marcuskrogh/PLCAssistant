@@ -1,11 +1,11 @@
-"""Built-in block library for the wedge cascade (SWD-115).
+"""Built-in block library for the wedge cascade (SWD-115 / SWD-180).
 
-Registers ``level_pi`` and ``flow_pi`` templates and callables.
-Provides ``wedge_cascade_program()`` factory for the default cascade program.
+Registers one generic ``PID`` template.  The default tank program places two
+PID copies (kept at instance ids ``level_pi`` and ``flow_pi`` for stable tags).
 
-PI math mirrors ``CascadeController`` gains, clamps, and anti-windup so that
-a wired ``[level_pi → flow_pi]`` program is numerically equivalent to one
-``CascadeController.step()`` for the same inputs and gains.
+PID equation math mirrors ``CascadeController`` PI behavior when ``kd = td = 0``:
+clamps, conditional anti-windup, level-loop hold when stopped, and flow-loop
+zero when stopped.
 
 No Home Assistant dependency; no hard-wired Skid.
 """
@@ -20,7 +20,32 @@ from plcassistant.surface.model import (
     PinSpec,
     TemplateLibrary,
 )
-from plcassistant.surface.runtime import BlockCallable, BlockRuntime
+from plcassistant.surface.runtime import BlockRuntime
+
+
+PID_TEMPLATE_ID = "PID"
+
+
+PID_EQUATION = """# Generic PID; PI when kd = td = 0.
+running_flag = bool(running)
+prev_integral = state("integral", 0.0)
+integral = 0.0 if not running_flag else prev_integral
+bumpless_pending = False if not running_flag else bool(state("bumpless_pending", False))
+last_cv = state("last_cv", 0.0)
+error = sp - pv
+p_term = kp * error
+tentative_i = integral if bumpless_pending else integral + error * dt
+derivative = 0.0 if dt <= 0.0 else (error - state("last_error", error)) / dt
+raw_cv = p_term + ki * tentative_i + (kd + kp * td) * derivative
+clamped_cv = clamp(raw_cv, cv_min, cv_max)
+stopped_cv = last_cv if hold_when_stopped else 0.0
+cv = clamped_cv if running_flag else stopped_cv
+can_integrate = running_flag and (clamped_cv == raw_cv or ((raw_cv > cv_max and error <= 0.0) or (raw_cv < cv_min and error >= 0.0)))
+integral = tentative_i if can_integrate else integral
+bumpless_pending = False
+last_error = error
+last_cv = cv
+"""
 
 
 # ---------------------------------------------------------------------------
@@ -151,56 +176,79 @@ def _flow_pi_fn(
     return {"cv": cv}
 
 
-# ---------------------------------------------------------------------------
-# Template definitions
-# ---------------------------------------------------------------------------
+def pid_template() -> BlockTemplate:
+    """Return a fresh factory PID template."""
+    return BlockTemplate(
+        template_id=PID_TEMPLATE_ID,
+        library="builtin",
+        description=(
+            "PID controller. Full PID with kp/ki/kd/td; set kd=0 and td=0 for PI."
+        ),
+        pins=[
+            PinSpec("pv", PinDirection.IN, "float", 0.0),
+            PinSpec("sp", PinDirection.IN, "float", 0.0),
+            PinSpec("running", PinDirection.IN, "bool", False),
+            PinSpec("cv", PinDirection.OUT, "float", 0.0),
+        ],
+        params=pid_default_params(),
+        body=PID_EQUATION,
+        is_builtin=True,
+    )
 
 
-_LEVEL_PI_TEMPLATE = BlockTemplate(
-    template_id="level_pi",
-    library="builtin",
-    description=(
-        "Level PI controller — outer loop of the wedge cascade. "
-        "Compares measured level (pv) to setpoint (sp) and outputs "
-        "a flow setpoint (cv)."
-    ),
-    pins=[
-        PinSpec("pv", PinDirection.IN, "float", 0.0),
-        PinSpec("sp", PinDirection.IN, "float", 0.0),
-        PinSpec("running", PinDirection.IN, "bool", False),
-        PinSpec("cv", PinDirection.OUT, "float"),
-    ],
-    params={
-        "kp": 40.0,
-        "ki": 5.0,
-        "cv_min": 0.0,
-        "cv_max": 6.0,
-    },
-    body="",
-    is_builtin=True,
-)
-
-_FLOW_PI_TEMPLATE = BlockTemplate(
-    template_id="flow_pi",
-    library="builtin",
-    description=(
-        "Flow PI controller — inner loop of the wedge cascade. "
-        "Compares measured flow (pv) to flow setpoint (sp, normally wired "
-        "from level_pi.cv) and outputs a speed command (cv)."
-    ),
-    pins=[
-        PinSpec("pv", PinDirection.IN, "float", 0.0),
-        PinSpec("sp", PinDirection.IN, "float", 0.0),
-        PinSpec("running", PinDirection.IN, "bool", False),
-        PinSpec("cv", PinDirection.OUT, "float"),
-    ],
-    params={
-        "kp": 12.0,
-        "ki": 2.0,
+def pid_default_params() -> dict[str, Any]:
+    """Generic PID defaults used for new placements."""
+    return {
+        "kp": 1.0,
+        "ki": 0.0,
+        "kd": 0.0,
+        "td": 0.0,
         "cv_min": 0.0,
         "cv_max": 100.0,
-    },
-    body="",
+        "hold_when_stopped": False,
+    }
+
+
+def pid_params_for_pi(
+    *,
+    kp: float,
+    ki: float,
+    cv_min: float,
+    cv_max: float,
+    hold_when_stopped: bool,
+) -> dict[str, Any]:
+    """Return PID params that reproduce the prior PI controller behavior."""
+    params = pid_default_params()
+    params.update(
+        {
+            "kp": kp,
+            "ki": ki,
+            "kd": 0.0,
+            "td": 0.0,
+            "cv_min": cv_min,
+            "cv_max": cv_max,
+            "hold_when_stopped": hold_when_stopped,
+        }
+    )
+    return params
+
+
+# Legacy template objects are retained only for tests/docs that import module
+# internals on older branches; register_builtins no longer exposes them.
+_LEVEL_PI_TEMPLATE = BlockTemplate(
+    template_id=PID_TEMPLATE_ID,
+    library="builtin",
+    description=(
+        "PID controller. Full PID with kp/ki/kd/td; set kd=0 and td=0 for PI."
+    ),
+    pins=[
+        PinSpec("pv", PinDirection.IN, "float", 0.0),
+        PinSpec("sp", PinDirection.IN, "float", 0.0),
+        PinSpec("running", PinDirection.IN, "bool", False),
+        PinSpec("cv", PinDirection.OUT, "float", 0.0),
+    ],
+    params=pid_default_params(),
+    body=PID_EQUATION,
     is_builtin=True,
 )
 
@@ -219,11 +267,8 @@ def register_builtins(library: TemplateLibrary, runtime: BlockRuntime) -> None:
         runtime = BlockRuntime(library)
         register_builtins(library, runtime)
     """
-    library.register(_LEVEL_PI_TEMPLATE)
-    library.register(_FLOW_PI_TEMPLATE)
-
-    runtime.register_callable("builtin", "level_pi", _level_pi_fn)
-    runtime.register_callable("builtin", "flow_pi", _flow_pi_fn)
+    del runtime  # PID is equation-driven; no native callable is required.
+    library.register(pid_template())
 
 
 # ---------------------------------------------------------------------------
@@ -266,24 +311,28 @@ def wedge_cascade_program(
         "description": "Default tank level-flow cascade program.",
         "instances": {
             "level_pi": {
-                "template_id": "level_pi",
+                "template_id": PID_TEMPLATE_ID,
                 "library": "builtin",
-                "params": {
-                    "kp": level_kp,
-                    "ki": level_ki,
-                    "cv_min": sp_flow_min,
-                    "cv_max": sp_flow_max,
-                },
+                "params": pid_params_for_pi(
+                    kp=level_kp,
+                    ki=level_ki,
+                    cv_min=sp_flow_min,
+                    cv_max=sp_flow_max,
+                    hold_when_stopped=True,
+                ),
+                "equation": PID_EQUATION,
             },
             "flow_pi": {
-                "template_id": "flow_pi",
+                "template_id": PID_TEMPLATE_ID,
                 "library": "builtin",
-                "params": {
-                    "kp": flow_kp,
-                    "ki": flow_ki,
-                    "cv_min": cmd_speed_min,
-                    "cv_max": cmd_speed_max,
-                },
+                "params": pid_params_for_pi(
+                    kp=flow_kp,
+                    ki=flow_ki,
+                    cv_min=cmd_speed_min,
+                    cv_max=cmd_speed_max,
+                    hold_when_stopped=False,
+                ),
+                "equation": PID_EQUATION,
             },
         },
         "wires": [
@@ -337,6 +386,11 @@ def wedge_softplc_project(
 
 
 __all__ = [
+    "PID_EQUATION",
+    "PID_TEMPLATE_ID",
+    "pid_default_params",
+    "pid_params_for_pi",
+    "pid_template",
     "register_builtins",
     "wedge_cascade_program",
     "wedge_softplc_project",

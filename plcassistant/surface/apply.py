@@ -48,6 +48,7 @@ from plcassistant.surface.schema import (
     classify_project_apply,
     main_program,
     migrate_legacy_program_dict,
+    migrate_program_to_pid,
     program_to_dict,
     project_from_dict,
     scheduled_programs,
@@ -316,6 +317,7 @@ class ProjectLoader:
         superuser: bool = False,
     ) -> None:
         """Swap the Main-task program (canvas / legacy Program apply path)."""
+        program = migrate_program_to_pid(program)
         proj = self._project
         if proj is None:
             self.load(
@@ -347,6 +349,7 @@ class ProjectLoader:
         superuser: bool = False,
     ) -> None:
         """Swap a selected Program in the active project."""
+        program = migrate_program_to_pid(program)
         proj = self._project
         if proj is None:
             if program_id in ("", self._main_program_id(SoftPlcProject())):
@@ -389,6 +392,17 @@ class ProjectLoader:
         if isinstance(project, Program):
             return project_from_dict(
                 migrate_legacy_program_dict(program_to_dict(project))
+            )
+        migrated_programs = {
+            pid: migrate_program_to_pid(prog)
+            for pid, prog in project.programs.items()
+        }
+        if any(migrated_programs[pid] is not project.programs[pid] for pid in project.programs):
+            return SoftPlcProject(
+                programs=migrated_programs,
+                tasks=list(project.tasks),
+                scan_period_s=project.scan_period_s,
+                version=project.version,
             )
         return project
 

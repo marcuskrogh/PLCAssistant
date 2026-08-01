@@ -6,6 +6,11 @@ No Home Assistant dependency.
 
 from plcassistant.surface.apply import ProgramLoader, ProjectLoader
 from plcassistant.surface.builtin import (
+    PID_EQUATION,
+    PID_TEMPLATE_ID,
+    pid_default_params,
+    pid_params_for_pi,
+    pid_template,
     register_builtins,
     wedge_cascade_program,
     wedge_softplc_project,
@@ -36,6 +41,7 @@ from plcassistant.surface.schema import (
     is_legacy_program_dict,
     main_program,
     migrate_legacy_program_dict,
+    migrate_program_to_pid,
     place_block,
     program_from_dict,
     program_to_dict,
@@ -75,6 +81,7 @@ __all__ = [
     "is_legacy_program_dict",
     "main_program",
     "migrate_legacy_program_dict",
+    "migrate_program_to_pid",
     "place_block",
     "program_from_dict",
     "program_to_dict",
@@ -92,6 +99,11 @@ __all__ = [
     "TagContext",
     "make_runtime",
     # built-in library
+    "PID_EQUATION",
+    "PID_TEMPLATE_ID",
+    "pid_default_params",
+    "pid_params_for_pi",
+    "pid_template",
     "register_builtins",
     "wedge_cascade_program",
     "wedge_softplc_project",
