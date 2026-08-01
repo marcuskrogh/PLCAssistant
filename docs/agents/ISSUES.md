@@ -91,7 +91,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-173 | Bug | [Iterate] Soft-PLC stuck TRIPPED after settle — stale plant file LOS | Done | Relates SWD-171 | docs/ITERATE.md | Done — shipped PR #74 (App 0.1.31) |
 | SWD-178 | Story | Industrial-parity Soft-PLC programming surface (multi-program) | Done | — | docs/ROADMAP.md, docs/RESEARCH.md, docs/PLAN.md | Done — initiative complete |
 | SWD-183 | Task | Online / runtime visibility + PID HMI faceplates | Done | Relates SWD-178; blocked by SWD-181 | docs/PLAN.md | Done — shipped PR [#81](https://github.com/marcuskrogh/PLCAssistant/pull/81) (App 0.1.38) |
-| SWD-219 | Bug | [Iterate] Integration setup fails: No module named plcassistant.io | In Review | Relates SWD-183 | docs/ITERATE.md | `/review-fix SWD-219` — PR [#82](https://github.com/marcuskrogh/PLCAssistant/pull/82) |
+| SWD-219 | Bug | [Iterate] Integration setup fails: No module named plcassistant.io | Done | Relates SWD-183 | docs/ITERATE.md | Done — shipped PR [#82](https://github.com/marcuskrogh/PLCAssistant/pull/82) (App 0.1.39) |
 | SWD-217 | Subtask | SWD-183: PID SP-source mode logic + Datablock tag contract | Done | SWD-183 | docs/PLAN.md | — |
 | SWD-214 | Subtask | SWD-183: HA compound PID loop entity platform | Done | SWD-183 | docs/PLAN.md | — |
 | SWD-215 | Subtask | SWD-183: Lovelace PID card + generic list card | Done | SWD-183 | docs/PLAN.md | — |
@@ -135,6 +135,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
+- 2026-08-01 — Shipped SWD-219 via PR #82 (App 0.1.39); review-fix CLEAN after 1 iter; Task Done.
 - 2026-08-01 — Implement SWD-219: HA-local Datablock catalog (App 0.1.39); PR [#82](https://github.com/marcuskrogh/PLCAssistant/pull/82) → In Review. Next `/review-fix SWD-219`.
 - 2026-08-01 — Iterate SWD-219: HA Core setup fails ModuleNotFoundError plcassistant.io after 0.1.38; Relates SWD-183; App 0.1.39 HA-local Datablock catalog.
 - 2026-08-01 — Shipped SWD-183 via PR #81 (App 0.1.38); review-fix CLEAN after 2 iters; Task Done; Story SWD-178 Done — initiative complete.

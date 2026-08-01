@@ -23,11 +23,11 @@ setup crashes before entities load.
 - None — traceback + packaging shape are sufficient.
 
 ## Acceptance criteria
-- [ ] `_default_bindings()` and Datablock store/API import only HA-local modules
-- [ ] Integration setup path works with Soft-PLC absent from `sys.path`
-- [ ] Default tank bindings stay parity-checked against Soft-PLC `default_tank_datablock_catalog`
-- [ ] Regression test fails if thin-integration setup reintroduces `from plcassistant…` for datablocks
-- [ ] App/integration version bumped; dual trees synced
+- [x] `_default_bindings()` and Datablock store/API import only HA-local modules
+- [x] Integration setup path works with Soft-PLC absent from `sys.path`
+- [x] Default tank bindings stay parity-checked against Soft-PLC `default_tank_datablock_catalog`
+- [x] Regression test fails if thin-integration setup reintroduces `from plcassistant…` for datablocks
+- [x] App/integration version bumped; dual trees synced
 
 ## Out of scope
 - Changing Soft-PLC Datablock ownership / MQTT contracts
@@ -45,5 +45,10 @@ setup crashes before entities load.
 - Branch: `cursor/swd-219-integration-plcassistant-io-a52c`
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/82
 
+## Shipped
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/82
+- App: **0.1.39**
+- review-fix: CLEAN after 1 iteration
+
 ## Next
-`/review-fix SWD-219` — Review and auto-fix until clean
+Done — phase closed.
