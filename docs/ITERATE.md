@@ -44,4 +44,4 @@
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/85 (App 0.1.42)
 
 ## Next
-`/review-fix SWD-222` — Review and auto-fix until clean
+`/ship SWD-222` — Merge PR and close the Task
