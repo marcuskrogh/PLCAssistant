@@ -200,6 +200,12 @@ def test_system_reload_saved_schedule_then_apply_with_mqtt_runtime(tmp_path) -> 
         restarted.apply_saved_schedule()
         assert restarted.program_card("tank")["task_id"] == "process"
         assert restarted.program_card("tank")["pending_schedule"] is False
+        live_loader = restarted._live_skid_loader()
+        assert live_loader is not None
+        live_project = live_loader.project
+        assert live_project is not None
+        assert [t.task_id for t in live_project.tasks] == ["process"]
+        assert live_project.tasks[0].programs == ["tank"]
         loop.scan_once()
     finally:
         life.stop()

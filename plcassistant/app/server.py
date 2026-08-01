@@ -151,6 +151,23 @@ class AppState:
         if loop is not None and hasattr(loop, "set_scan_period_s"):
             loop.set_scan_period_s(proj.scan_period_s)
 
+    def _live_skid_loader(self) -> Any | None:
+        """ProjectLoader owned by the attached MQTT scan loop Skid, if any."""
+        loop = self.operator._scan_loop()
+        if loop is None:
+            return None
+        logic = getattr(loop, "logic", None)
+        skid = getattr(logic, "skid", None)
+        return getattr(skid, "program_loader", None) if skid is not None else None
+
+    def _sync_applied_project_to_runtime(self) -> None:
+        """Push the live applied project into the scan-loop Skid loader."""
+        live = self._live_skid_loader()
+        applied = self.loader.project
+        if live is None or applied is None:
+            return
+        live.restart_apply(_clone_project(applied))
+
     @property
     def instance_id(self) -> str:
         return self.operator.instance_id
@@ -162,11 +179,16 @@ class AppState:
     def attach_runtime(self, lifecycle: Any) -> None:
         """Attach MQTT scan lifecycle so the UI can read tags and issue cmds."""
         self.operator.attach(lifecycle)
+
+        def _on_attach(_loop: Any) -> None:
+            self._sync_applied_project_to_runtime()
+            self._sync_scan_period_to_runtime()
+
         loop = self.operator._scan_loop()
         if loop is not None:
-            self._sync_scan_period_to_runtime()
+            _on_attach(loop)
         elif hasattr(lifecycle, "set_on_attach"):
-            lifecycle.set_on_attach(lambda _loop: self._sync_scan_period_to_runtime())
+            lifecycle.set_on_attach(_on_attach)
 
     def runtime_snapshot(self) -> dict[str, Any]:
         """JSON-serialisable Soft-PLC status for the operator dashboard."""
@@ -543,6 +565,7 @@ class AppState:
 
     def apply_saved_schedule(self) -> dict[str, Any]:
         self.loader.restart_apply(_clone_project(self.saved_project))
+        self._sync_applied_project_to_runtime()
         self._sync_scan_period_to_runtime()
         self._ensure_program_logs()
         self.persist_program()
