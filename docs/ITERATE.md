@@ -35,6 +35,7 @@
 - Task: [SWD-223](https://marcusknielsen.atlassian.net/browse/SWD-223)
 - Relates: SWD-222
 - Branch: `cursor/swd-223-pid-manual-cv-a52c`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/86 (App 0.1.43)
 
 ## Next
 `/review-fix SWD-223` — Review and auto-fix until clean
