@@ -17,7 +17,7 @@ from .entity_cleanup import expected_plant_number_unique_id
 from .ha_config_bridge import write_input_tag
 from .mqtt_topics import tag_in_topic
 
-# Friendly operator ranges for known IN tags (request SP + plant nudges).
+# Friendly operator ranges for known IN tags (request SP + plant nudges + PID).
 _TAG_META: dict[str, dict] = {
     "SP_LEVEL_REQ": {
         "name": "PLCAssistant Level setpoint",
@@ -27,6 +27,99 @@ _TAG_META: dict[str, dict] = {
         "unit": "m",
         "object_id": "plcassistant_sp_level_req",
         "default": 0.20,
+    },
+    "SP_LEVEL_MAN": {
+        "name": "PLCAssistant Level SP (manual)",
+        "min": 0.0,
+        "max": 0.40,
+        "step": 0.01,
+        "unit": "m",
+        "object_id": "plcassistant_sp_level_man",
+        "default": 0.20,
+    },
+    "SP_LEVEL_AUTO": {
+        "name": "PLCAssistant Level SP (automatic)",
+        "min": 0.0,
+        "max": 0.40,
+        "step": 0.01,
+        "unit": "m",
+        "object_id": "plcassistant_sp_level_auto",
+        "default": 0.20,
+    },
+    "SP_LEVEL_REM": {
+        "name": "PLCAssistant Level SP (remote)",
+        "min": 0.0,
+        "max": 0.40,
+        "step": 0.01,
+        "unit": "m",
+        "object_id": "plcassistant_sp_level_rem",
+        "default": 0.20,
+    },
+    "LEVEL_MODE": {
+        "name": "PLCAssistant Level SP mode",
+        "min": 0.0,
+        "max": 2.0,
+        "step": 1.0,
+        "object_id": "plcassistant_level_mode",
+        "default": 1.0,
+    },
+    "SP_FLOW_MAN": {
+        "name": "PLCAssistant Flow SP (manual)",
+        "min": 0.0,
+        "max": 20.0,
+        "step": 0.1,
+        "unit": "L/min",
+        "object_id": "plcassistant_sp_flow_man",
+        "default": 0.0,
+    },
+    "SP_FLOW_REM": {
+        "name": "PLCAssistant Flow SP (remote)",
+        "min": 0.0,
+        "max": 20.0,
+        "step": 0.1,
+        "unit": "L/min",
+        "object_id": "plcassistant_sp_flow_rem",
+        "default": 0.0,
+    },
+    "FLOW_MODE": {
+        "name": "PLCAssistant Flow SP mode",
+        "min": 0.0,
+        "max": 2.0,
+        "step": 1.0,
+        "object_id": "plcassistant_flow_mode",
+        "default": 1.0,
+    },
+    "LEVEL_KP": {
+        "name": "PLCAssistant Level Kp",
+        "min": 0.0,
+        "max": 100.0,
+        "step": 0.1,
+        "object_id": "plcassistant_level_kp",
+        "default": 8.0,
+    },
+    "LEVEL_KI": {
+        "name": "PLCAssistant Level Ki",
+        "min": 0.0,
+        "max": 100.0,
+        "step": 0.01,
+        "object_id": "plcassistant_level_ki",
+        "default": 0.4,
+    },
+    "FLOW_KP": {
+        "name": "PLCAssistant Flow Kp",
+        "min": 0.0,
+        "max": 100.0,
+        "step": 0.1,
+        "object_id": "plcassistant_flow_kp",
+        "default": 1.2,
+    },
+    "FLOW_KI": {
+        "name": "PLCAssistant Flow Ki",
+        "min": 0.0,
+        "max": 100.0,
+        "step": 0.01,
+        "object_id": "plcassistant_flow_ki",
+        "default": 0.8,
     },
     "LT_TANK": {
         "name": "PLCAssistant Tank level (IN)",
@@ -58,6 +151,32 @@ _TAG_META: dict[str, dict] = {
 }
 
 _PLANT_IN_TAGS = frozenset({"LT_TANK", "LT_RES", "FT_INLET"})
+
+# Writing Manual/Remote SP auto-flips the faceplate mode (SWD-183).
+_SP_MODE_FLIP: dict[str, tuple[str, float]] = {
+    "SP_LEVEL_MAN": ("LEVEL_MODE", 0.0),
+    "SP_LEVEL_REM": ("LEVEL_MODE", 2.0),
+    "SP_FLOW_MAN": ("FLOW_MODE", 0.0),
+    "SP_FLOW_REM": ("FLOW_MODE", 2.0),
+}
+
+# Operator request / PID faceplate tags that also write the file-bridge fallback.
+_FILE_BRIDGE_IN_TAGS = frozenset(
+    {
+        "SP_LEVEL_REQ",
+        "SP_LEVEL_MAN",
+        "SP_LEVEL_AUTO",
+        "SP_LEVEL_REM",
+        "LEVEL_MODE",
+        "SP_FLOW_MAN",
+        "SP_FLOW_REM",
+        "FLOW_MODE",
+        "LEVEL_KP",
+        "LEVEL_KI",
+        "FLOW_KP",
+        "FLOW_KI",
+    }
+)
 
 
 def _object_id_from_entity(entity: str, fallback: str) -> str:
@@ -180,6 +299,42 @@ class PlcAssistantRequestNumber(NumberEntity):
         except (TypeError, ValueError, UnicodeDecodeError, json.JSONDecodeError):
             return False
 
+    async def _publish_in_tag(self, tag: str, eng: float) -> None:
+        """Publish one Soft-PLC IN tag via MQTT (+ file-bridge for operator tags)."""
+        payload = json.dumps(
+            {"value": eng, "status": "GOOD", "reason": None, "ts": None}
+        )
+        store = self.hass.data.get(DOMAIN, {}).get(self._entry_id) or {}
+        in_values = store.setdefault("in_values", {})
+        in_values[str(tag).upper()] = payload
+        self.hass.bus.async_fire(
+            f"{DOMAIN}_tag_in",
+            {"tag": tag, "payload": payload, "entry_id": self._entry_id},
+        )
+        await self.hass.services.async_call(
+            "mqtt",
+            "publish",
+            {
+                "topic": tag_in_topic(self._instance_id, tag),
+                "payload": payload,
+                "qos": 1,
+                "retain": False,
+            },
+            blocking=False,
+        )
+        if tag not in _FILE_BRIDGE_IN_TAGS:
+            return
+        root = store.get("config_root")
+        if isinstance(root, Path):
+            await self.hass.async_add_executor_job(
+                write_input_tag,
+                tag,
+                eng,
+                "GOOD",
+                None,
+                root,
+            )
+
     async def async_set_native_value(self, value: float) -> None:
         self._attr_native_value = value
         eng = (float(value) * self._scale) + self._offset
@@ -188,34 +343,15 @@ class PlcAssistantRequestNumber(NumberEntity):
             self._plant_simulator().set_tag(self._tag, eng)
             self.async_write_ha_state()
             return
-        payload = json.dumps(
-            {"value": eng, "status": "GOOD", "reason": None, "ts": None}
-        )
-        await self.hass.services.async_call(
-            "mqtt",
-            "publish",
-            {
-                "topic": tag_in_topic(self._instance_id, self._tag),
-                "payload": payload,
-                "qos": 1,
-                "retain": False,
-            },
-            blocking=False,
-        )
-        # Shared-config fallback when MQTT never reaches Soft-PLC (SWD-141).
-        # Operator request tags; plant IN is written by the plant simulator (SWD-171).
+        await self._publish_in_tag(self._tag, eng)
+        # SWD-183: writing Manual/Remote SP also flips LEVEL_MODE / FLOW_MODE.
+        flip = _SP_MODE_FLIP.get(self._tag)
+        if flip is not None:
+            mode_tag, mode_code = flip
+            await self._publish_in_tag(mode_tag, float(mode_code))
+        # Keep Automatic source in sync when the legacy request SP is written.
         if self._tag == "SP_LEVEL_REQ":
-            store = self.hass.data.get(DOMAIN, {}).get(self._entry_id) or {}
-            root = store.get("config_root")
-            if isinstance(root, Path):
-                await self.hass.async_add_executor_job(
-                    write_input_tag,
-                    self._tag,
-                    eng,
-                    "GOOD",
-                    None,
-                    root,
-                )
+            await self._publish_in_tag("SP_LEVEL_AUTO", eng)
         self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:

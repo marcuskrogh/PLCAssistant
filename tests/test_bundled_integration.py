@@ -100,6 +100,9 @@ def test_platforms_publish_and_subscribe_paths():
     assert "async_set_native_value" in number
     assert "PlcAssistantRequestNumber" in number
     assert "SP_LEVEL_REQ" in number
+    assert "SP_LEVEL_MAN" in number
+    assert "LEVEL_MODE" in number
+    assert "_SP_MODE_FLIP" in number
     assert "_simulator_owns" in number
     assert "set_tag" in number
     assert "NumberMode.BOX" in number
@@ -109,6 +112,11 @@ def test_platforms_publish_and_subscribe_paths():
     sensor = (CC / "sensor.py").read_text(encoding="utf-8")
     assert "_tag_out" in sensor
     assert "PlcAssistantOutSensor" in sensor
+    assert "SP_FLOW_AUTO" in sensor
+    assert "async_setup_pid_loop_sensors" in sensor
+    assert (CC / "pid_loop.py").is_file()
+    assert 'loop_id": "level"' in (CC / "pid_loop.py").read_text(encoding="utf-8")
+    assert "plcassistant_pid_" in (CC / "pid_loop.py").read_text(encoding="utf-8")
 
     button = (CC / "button.py").read_text(encoding="utf-8")
     assert "DOMAIN" in button
@@ -125,6 +133,11 @@ def test_platforms_publish_and_subscribe_paths():
     assert "entity: number.plcassistant_lt_tank_in" not in lovelace
     assert "sensor.plcassistant_status" in lovelace
     assert "sensor.plcassistant_mode" in lovelace
+    assert "custom:plcassistant-pid-card" in lovelace
+    assert "sensor.plcassistant_pid_level" in lovelace
+    assert "plcassistant_dashboard_version: 17" in lovelace
+    assert (CC / "www" / "pid-loop-card.js").is_file()
+    assert (CC / "www" / "block-list-card.js").is_file()
     assert "live simulator" in lovelace.lower() or "0.1.29" in lovelace or "dynamics" in lovelace.lower()
     assert "sensor.plcassistant_dynamics_preset" in lovelace
     assert "path: dynamics" in lovelace
@@ -132,6 +145,8 @@ def test_platforms_publish_and_subscribe_paths():
     assert "PlcAssistantOptionsFlow" in (CC / "config_flow.py").read_text(encoding="utf-8")
     assert (CC / "www" / "dynamics_editor.html").is_file()
     assert 'entity_id = f"number.' in number or "suggested_object_id" in number
+    assert "add_extra_js_url" in (CC / "__init__.py").read_text(encoding="utf-8")
+    assert "SP_FLOW_AUTO" in (CC / "__init__.py").read_text(encoding="utf-8")
     assert "plcassistant_sp_level_req" in number
     assert "plcassistant_lt_tank_in" in number
     assert "PlcAssistantStatusSensor" in sensor

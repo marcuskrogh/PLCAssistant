@@ -86,6 +86,33 @@ _HTML = r"""<!DOCTYPE html>
   #msg-status.ok { color: var(--teal); }
   #msg-status.err { color: var(--bad); }
 
+  #online-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    align-items: center;
+    padding: 6px 18px;
+    font-size: 0.72rem;
+    color: var(--ink-soft);
+    background: rgba(18, 32, 51, 0.04);
+    border-bottom: 1px solid var(--line);
+    flex-shrink: 0;
+  }
+  #online-strip .chip { font-size: 0.68rem; }
+  #live-watch {
+    max-height: 180px;
+    overflow-y: auto;
+    padding: 8px 10px;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    background: rgba(255,255,255,0.45);
+  }
+  #live-watch .row { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; border-bottom: 1px solid rgba(183,196,209,0.35); }
+  #live-watch .row:last-child { border-bottom: none; }
+  #live-watch .k { color: var(--muted); }
+  #live-watch .v { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .live-pin { fill: var(--teal); font-size: 8px; font-family: var(--mono); }
+
   .hmi-banner {
     padding: 8px 18px;
     font-size: 0.78rem;
@@ -348,6 +375,11 @@ _HTML = r"""<!DOCTYPE html>
   </nav>
   <div id="msg-status" class="ok">Ready</div>
 </header>
+<div id="online-strip" aria-live="polite">
+  <span class="chip" id="online-softplc">Soft-PLC: …</span>
+  <span class="chip" id="online-schedule">Schedule: …</span>
+  <span class="chip" id="online-tags">Tags: —</span>
+</div>
 <p class="hmi-banner">Operator HMI is in Home Assistant Lovelace — this App is the Soft-PLC Program editor.</p>
 
 <main id="programs-view" class="page" aria-label="Programs">
@@ -526,6 +558,9 @@ _HTML = r"""<!DOCTYPE html>
         </div>
 
         <div id="right">
+          <h2>Live tags</h2>
+          <div id="live-watch" data-testid="live-watch">Loading…</div>
+          <div class="panel-sep"></div>
           <h2>Program JSON</h2>
           <textarea id="yaml-area" spellcheck="false" oninput="onYamlEdit()"></textarea>
           <div class="panel-sep"></div>
@@ -599,6 +634,8 @@ let dragging = null;
 let wiring = null;
 let overlayInst = null;
 let ueVisible = true;
+let runtimeSnap = { status: 'offline', tags: {} };
+let scheduleSnap = { saved_applied: null };
 
 const BLOCK_W = 140, BLOCK_H_BASE = 30, PIN_ROW = 16, PIN_R = 5;
 
@@ -606,7 +643,70 @@ window.onload = () => {
   window.addEventListener('hashchange', route);
   loadLibrary();
   route();
+  pollOnline();
+  setInterval(pollOnline, 1500);
 };
+
+async function pollOnline() {
+  try {
+    const [runtime, schedule] = await Promise.all([
+      fetch(apiUrl('api/runtime')).then(r => r.ok ? r.json() : null),
+      fetch(apiUrl('api/schedule/status')).then(r => r.ok ? r.json() : null),
+    ]);
+    if (runtime) runtimeSnap = runtime;
+    if (schedule) scheduleSnap = schedule;
+    renderOnlineStrip();
+    renderLiveWatch();
+    if (document.getElementById('diagram-view')?.classList.contains('active')) {
+      render();
+    }
+  } catch (_e) {
+    const soft = document.getElementById('online-softplc');
+    if (soft) soft.textContent = 'Soft-PLC: unreachable';
+  }
+}
+
+function renderOnlineStrip() {
+  const soft = document.getElementById('online-softplc');
+  const sched = document.getElementById('online-schedule');
+  const tagsEl = document.getElementById('online-tags');
+  if (!soft || !sched || !tagsEl) return;
+  const status = String(runtimeSnap.status || 'offline');
+  soft.textContent = 'Soft-PLC: ' + status;
+  soft.className = 'chip ' + (status === 'running' ? 'ok' : status === 'fault' ? 'error' : '');
+  const applied = scheduleSnap.saved_applied;
+  sched.textContent = applied === true
+    ? 'Schedule: saved=applied'
+    : applied === false
+      ? 'Schedule: pending apply'
+      : 'Schedule: …';
+  sched.className = 'chip ' + (applied === true ? 'ok' : applied === false ? 'warning' : '');
+  const tags = runtimeSnap.tags && typeof runtimeSnap.tags === 'object' ? runtimeSnap.tags : {};
+  tagsEl.textContent = 'Tags: ' + Object.keys(tags).length;
+}
+
+function renderLiveWatch() {
+  const el = document.getElementById('live-watch');
+  if (!el) return;
+  const tags = runtimeSnap.tags && typeof runtimeSnap.tags === 'object' ? runtimeSnap.tags : {};
+  const names = Object.keys(tags).sort();
+  if (!names.length) {
+    el.textContent = 'No live tags yet';
+    return;
+  }
+  const prefer = selectedId
+    ? names.filter(n => n.toLowerCase().includes(String(selectedId).toLowerCase().slice(0, 4)))
+    : [];
+  const show = (prefer.length ? prefer : names).slice(0, 24);
+  el.innerHTML = show.map(name => {
+    const body = tags[name] || {};
+    const val = body.value;
+    const text = (typeof val === 'number' && Number.isFinite(val))
+      ? val.toFixed(3)
+      : String(val ?? '—');
+    return `<div class="row"><span class="k">${esc(name)}</span><span class="v">${esc(text)}</span></div>`;
+  }).join('');
+}
 
 function setStatus(msg, ok = true) {
   const el = document.getElementById('msg-status');
@@ -1328,9 +1428,29 @@ function render() {
       g.appendChild(lbl);
     });
 
+    if (iid === selectedId) {
+      const tags = runtimeSnap.tags && typeof runtimeSnap.tags === 'object' ? runtimeSnap.tags : {};
+      const watch = ['LT_TANK', 'SP_LEVEL', 'SP_FLOW', 'CMD_SPEED', 'FT_INLET', 'MODE']
+        .filter(n => n in tags)
+        .slice(0, 4);
+      watch.forEach((name, wi) => {
+        const body = tags[name] || {};
+        const val = body.value;
+        const text = (typeof val === 'number' && Number.isFinite(val))
+          ? name + '=' + val.toFixed(3)
+          : name + '=' + String(val ?? '—');
+        const live = svgEl('text');
+        live.setAttribute('x', bx + BLOCK_W + 8);
+        live.setAttribute('y', by + 12 + wi * 11);
+        live.setAttribute('class', 'live-pin');
+        live.textContent = text;
+        g.appendChild(live);
+      });
+    }
+
     g.addEventListener('mousedown', e => {
       if (e.target.classList.contains('pin-circle')) return;
-      selectedId = iid; render();
+      selectedId = iid; render(); renderLiveWatch();
       dragging = {id: iid, ox: e.clientX - (inst.x||0), oy: e.clientY - (inst.y||0)};
       e.stopPropagation();
     });
@@ -1369,7 +1489,7 @@ canvasSvg.addEventListener('mouseup', async () => {
     document.getElementById('draft-wire').style.display = 'none';
   }
 });
-canvasSvg.addEventListener('click', () => { selectedId = null; render(); });
+canvasSvg.addEventListener('click', () => { selectedId = null; render(); renderLiveWatch(); });
 
 function onPinMouseDown(e) {
   const circ = e.currentTarget;

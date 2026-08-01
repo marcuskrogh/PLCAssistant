@@ -195,7 +195,10 @@ def binding_rows_from_table(table: BindingTable) -> list[dict[str, Any]]:
 
 
 def default_tank_datablock() -> Datablock:
-    """Fully defined demo Datablock for the tank example (SWD-184)."""
+    """Fully defined demo Datablock for the tank example (SWD-184 / SWD-183).
+
+    Includes PID faceplate SP-source tags (Manual / Automatic / Remote).
+    """
     return datablock_from_dict(
         {
             "id": "DB_Tank",
@@ -204,9 +207,24 @@ def default_tank_datablock() -> Datablock:
                 "LT_TANK": {"default": 0.15, "unit": "m"},
                 "LT_RES": {"default": 0.20, "unit": "m"},
                 "FT_INLET": {"default": 0.0, "unit": "L/min"},
+                # Legacy request alias — automatic SP writer for level loop.
                 "SP_LEVEL_REQ": {"default": 0.20, "unit": "m"},
                 "SP_LEVEL": {"default": 0.20, "unit": "m"},
+                "SP_LEVEL_MAN": {"default": 0.20, "unit": "m"},
+                "SP_LEVEL_AUTO": {"default": 0.20, "unit": "m"},
+                "SP_LEVEL_REM": {"default": 0.20, "unit": "m"},
+                "LEVEL_MODE": {"default": 1.0, "unit": None},
+                "LEVEL_KP": {"default": 8.0, "unit": None},
+                "LEVEL_KI": {"default": 0.4, "unit": None},
+                "LEVEL_KD": {"default": 0.0, "unit": None},
                 "SP_FLOW": {"default": 0.0, "unit": "L/min"},
+                "SP_FLOW_MAN": {"default": 0.0, "unit": "L/min"},
+                "SP_FLOW_AUTO": {"default": 0.0, "unit": "L/min"},
+                "SP_FLOW_REM": {"default": 0.0, "unit": "L/min"},
+                "FLOW_MODE": {"default": 1.0, "unit": None},
+                "FLOW_KP": {"default": 1.2, "unit": None},
+                "FLOW_KI": {"default": 0.8, "unit": None},
+                "FLOW_KD": {"default": 0.0, "unit": None},
                 "CMD_SPEED": {"default": 0.0, "unit": "pct"},
                 "MODE": {"default": "STOP", "unit": None},
                 "PERM_OK": {"default": False, "unit": None},
@@ -216,6 +234,41 @@ def default_tank_datablock() -> Datablock:
                 {
                     "tag": "SP_LEVEL_REQ",
                     "entity": "number.plcassistant_sp_level_req",
+                    "direction": "IN",
+                },
+                {
+                    "tag": "SP_LEVEL_MAN",
+                    "entity": "number.plcassistant_sp_level_man",
+                    "direction": "IN",
+                },
+                {
+                    "tag": "SP_LEVEL_AUTO",
+                    "entity": "number.plcassistant_sp_level_auto",
+                    "direction": "IN",
+                },
+                {
+                    "tag": "SP_LEVEL_REM",
+                    "entity": "number.plcassistant_sp_level_rem",
+                    "direction": "IN",
+                },
+                {
+                    "tag": "LEVEL_MODE",
+                    "entity": "number.plcassistant_level_mode",
+                    "direction": "IN",
+                },
+                {
+                    "tag": "SP_FLOW_MAN",
+                    "entity": "number.plcassistant_sp_flow_man",
+                    "direction": "IN",
+                },
+                {
+                    "tag": "SP_FLOW_REM",
+                    "entity": "number.plcassistant_sp_flow_rem",
+                    "direction": "IN",
+                },
+                {
+                    "tag": "FLOW_MODE",
+                    "entity": "number.plcassistant_flow_mode",
                     "direction": "IN",
                 },
                 {
@@ -249,6 +302,11 @@ def default_tank_datablock() -> Datablock:
                     "direction": "OUT",
                 },
                 {
+                    "tag": "SP_FLOW_AUTO",
+                    "entity": "sensor.plcassistant_sp_flow_auto",
+                    "direction": "OUT",
+                },
+                {
                     "tag": "MODE",
                     "entity": "sensor.plcassistant_mode",
                     "direction": "OUT",
@@ -262,6 +320,26 @@ def default_tank_datablock() -> Datablock:
                     "tag": "TRIP_ACTIVE",
                     "entity": "sensor.plcassistant_trip_active",
                     "direction": "OUT",
+                },
+                {
+                    "tag": "LEVEL_KP",
+                    "entity": "number.plcassistant_level_kp",
+                    "direction": "IN",
+                },
+                {
+                    "tag": "LEVEL_KI",
+                    "entity": "number.plcassistant_level_ki",
+                    "direction": "IN",
+                },
+                {
+                    "tag": "FLOW_KP",
+                    "entity": "number.plcassistant_flow_kp",
+                    "direction": "IN",
+                },
+                {
+                    "tag": "FLOW_KI",
+                    "entity": "number.plcassistant_flow_ki",
+                    "direction": "IN",
                 },
             ],
         }

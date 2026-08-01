@@ -89,5 +89,4 @@
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/81
 
 ## Next
-`/implement SWD-183` — Build per this plan on the same branch/PR  
-(or `/ship SWD-183` to finish remaining through Done)
+`/review-fix SWD-183` — Review and auto-fix until clean

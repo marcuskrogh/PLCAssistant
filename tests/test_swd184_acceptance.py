@@ -39,8 +39,12 @@ def test_unit_db_tank_is_fully_defined() -> None:
     assert "LT_TANK" in block.tags
     assert "CMD_SPEED" in block.tags
     table = block.binding_table()
-    assert len(table.bindings) == 10
-    assert {b.tag for b in table.bindings} == set(block.tags)
+    assert len(table.bindings) == 22
+    assert {b.tag for b in table.bindings} <= set(block.tags)
+    assert {"LEVEL_KD", "FLOW_KD"} <= set(block.tags)
+    assert set(block.tags) - {b.tag for b in table.bindings} == {"LEVEL_KD", "FLOW_KD"}
+    assert "LEVEL_MODE" in block.tags
+    assert "SP_LEVEL_MAN" in block.tags
 
 
 def test_unit_program_access_resolves_tag_set() -> None:
