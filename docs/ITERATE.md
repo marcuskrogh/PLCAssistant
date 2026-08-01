@@ -38,6 +38,8 @@
 - Task: [SWD-221](https://marcusknielsen.atlassian.net/browse/SWD-221)
 - Relates: SWD-220
 - Branch: `cursor/swd-221-cascade-reliability-a52c`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/84 (App 0.1.41)
+- Review-fix: CLEAN after 2 iterations
 
 ## Next
-`/review-fix SWD-221` — Review and auto-fix until clean
+Done — phase closed.
