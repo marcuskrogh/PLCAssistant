@@ -89,7 +89,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-170 | Bug | [Iterate] Operate plant PVs still unavailable after 0.1.28 BOX hydrate | Done | Relates SWD-169 | docs/ITERATE.md | Done — shipped PR #72 (App 0.1.29) |
 | SWD-171 | Bug | [Iterate] Tank level settles away from setpoint (Soft-PLC plant IN silent) | Done | Relates SWD-170 | docs/ITERATE.md | Done — shipped PR #73 (App 0.1.30) |
 | SWD-173 | Bug | [Iterate] Soft-PLC stuck TRIPPED after settle — stale plant file LOS | Done | Relates SWD-171 | docs/ITERATE.md | Done — shipped PR #74 (App 0.1.31) |
-| SWD-178 | Story | Industrial-parity Soft-PLC programming surface (multi-program) | To Do | — | docs/ROADMAP.md, docs/RESEARCH.md, docs/PLAN.md | `/ship SWD-181` |
+| SWD-178 | Story | Industrial-parity Soft-PLC programming surface (multi-program) | To Do | — | docs/ROADMAP.md, docs/RESEARCH.md, docs/PLAN.md | `/define SWD-191` |
 | SWD-179 | Task | Research: industrial PLC program organization & engineering UI capabilities | Done | Relates SWD-178, SWD-173 | docs/RESEARCH.md | Done — PR [#75](https://github.com/marcuskrogh/PLCAssistant/pull/75) |
 | SWD-182 | Task | Soft-PLC program organization model (tasks → programs → instances) | Done | Relates SWD-178; blocked by SWD-179 | docs/PLAN.md | Done — shipped PR [#76](https://github.com/marcuskrogh/PLCAssistant/pull/76) (App 0.1.32) |
 | SWD-187 | Sub-task | SWD-182: Schema + legacy Program migration | Done | SWD-182 | docs/PLAN.md | — |
@@ -97,19 +97,20 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-188 | Sub-task | SWD-182: Wedge tank Program under Main Task | Done | SWD-182 | docs/PLAN.md | — |
 | SWD-189 | Sub-task | SWD-182: Minimal App/API project tree JSON | Done | SWD-182 | docs/PLAN.md | — |
 | SWD-186 | Sub-task | SWD-182: Unit + integration + system tests (HA/App/MQTT) | Done | SWD-182 | docs/PLAN.md | — |
-| SWD-181 | Task | App engineering surface (Program cards + Diagram/Log/Settings) | In Progress | Relates SWD-178; blocked by SWD-182 | docs/PLAN.md | `/ship SWD-181` |
-| SWD-190 | Subtask | SWD-181: Main Program cards overview | To Do | SWD-181 | docs/PLAN.md | — |
-| SWD-192 | Subtask | SWD-181: Program shell Diagram\|Log\|Settings + Back | To Do | SWD-181 | docs/PLAN.md | — |
-| SWD-194 | Subtask | SWD-181: Create + Settings pages | To Do | SWD-181 | docs/PLAN.md | — |
-| SWD-195 | Subtask | SWD-181: Diagram binding + Hot Apply | To Do | SWD-181 | docs/PLAN.md | — |
-| SWD-193 | Subtask | SWD-181: unit + integration + system tests | To Do | SWD-181 | docs/PLAN.md | — |
-| SWD-191 | Task | Define Task/Program scheduling editor | To Do | Relates SWD-178; blocked by SWD-181 | docs/ROADMAP.md | after SWD-181 |
+| SWD-181 | Task | App engineering surface (Program cards + Diagram/Log/Settings) | Done | Relates SWD-178; blocked by SWD-182 | docs/PLAN.md | Done — shipped PR [#77](https://github.com/marcuskrogh/PLCAssistant/pull/77) (App 0.1.33) |
+| SWD-190 | Subtask | SWD-181: Main Program cards overview | Done | SWD-181 | docs/PLAN.md | — |
+| SWD-192 | Subtask | SWD-181: Program shell Diagram\|Log\|Settings + Back | Done | SWD-181 | docs/PLAN.md | — |
+| SWD-194 | Subtask | SWD-181: Create + Settings pages | Done | SWD-181 | docs/PLAN.md | — |
+| SWD-195 | Subtask | SWD-181: Diagram binding + Hot Apply | Done | SWD-181 | docs/PLAN.md | — |
+| SWD-193 | Subtask | SWD-181: unit + integration + system tests | Done | SWD-181 | docs/PLAN.md | — |
+| SWD-191 | Task | Define Task/Program scheduling editor | To Do | Relates SWD-178; blocked by SWD-181 | docs/ROADMAP.md | `/define SWD-191` |
 | SWD-180 | Task | Define library inspectability + generic PID | To Do | Relates SWD-178; blocked by SWD-182 | docs/ROADMAP.md | `/define SWD-180` (parallel after SWD-182) |
 | SWD-184 | Task | Define integration multi-datablock tag mapping UI | To Do | Relates SWD-178; blocked by SWD-182 | docs/ROADMAP.md | `/define SWD-184` (parallel after SWD-182) |
-| SWD-183 | Task | Define online / runtime visibility (loaded vs running) | To Do | Relates SWD-178; blocked by SWD-181 | docs/ROADMAP.md | blocked — after SWD-181 |
+| SWD-183 | Task | Define online / runtime visibility (loaded vs running) | To Do | Relates SWD-178; blocked by SWD-181 | docs/ROADMAP.md | `/define SWD-183` (after SWD-181) |
 
 ## Log
 
+- 2026-08-01 — Shipped SWD-181 via PR #77 (App 0.1.33); review-fix CLEAN after 3 iters; Task Done; Next `/define SWD-191`.
 - 2026-08-01 — Define SWD-181 approved + ship: PLAN.md; Sub-tasks SWD-190/192/194/195/193; scheduling follow-on SWD-191; branch `cursor/swd-181-app-engineering-surface-a52c`. Remaining: implement → review-fix → closeout.
 - 2026-08-01 — Shipped SWD-182 via PR #76 (App 0.1.32); review-fix CLEAN after 2 iters; Task Done; Next `/define SWD-181`.
 - 2026-08-01 — review-fix SWD-182 CLEAN after 2 iterations (iter1: 4SF scan_period/MQTT/system/403; iter2: 0); closeout.

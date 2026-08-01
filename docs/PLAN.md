@@ -57,38 +57,40 @@
 - `docs/surface/05-app-editor.md`
 
 ## Acceptance criteria
-- [ ] App load shows main Program cards (including unscheduled); name is the dominant card label
-- [ ] Each card shows status (running / not running / unscheduled) and health (ok / warning / error)
-- [ ] Create Program → create page → Save → Diagram of new empty unscheduled Program; card appears on main after Back
-- [ ] Program top bar: Diagram | Log | Settings + Back to main
-- [ ] Log shows chronological info/warn/error entries (empty list OK)
-- [ ] Settings can rename/description-save without losing blocks; delete requires confirm and removes Program
-- [ ] Diagram retains edit + Hot Apply / Apply restart for the selected Program
-- [ ] Mobile: one-column cards; Diagram/Log/Settings/Create usable on narrow viewports
-- [ ] **Unit** tests for Program list/create/settings/delete and status/health derivation helpers
-- [ ] **Integration** tests for App HTTP + project API round-trips (create → get → settings → delete)
-- [ ] **System** test: HA + App path loads project, shows cards, opens tank Program diagram
+- [x] App load shows main Program cards (including unscheduled); name is the dominant card label
+- [x] Each card shows status (running / not running / unscheduled) and health (ok / warning / error)
+- [x] Create Program → create page → Save → Diagram of new empty unscheduled Program; card appears on main after Back
+- [x] Program top bar: Diagram | Log | Settings + Back to main
+- [x] Log shows chronological info/warn/error entries (empty list OK)
+- [x] Settings can rename/description-save without losing blocks; delete requires confirm and removes Program
+- [x] Diagram retains edit + Hot Apply / Apply restart for the selected Program
+- [x] Mobile: one-column cards; Diagram/Log/Settings/Create usable on narrow viewports
+- [x] **Unit** tests for Program list/create/settings/delete and status/health derivation helpers
+- [x] **Integration** tests for App HTTP + project API round-trips (create → get → settings → delete)
+- [x] **System** test: HA + App path loads project, shows cards, opens tank Program diagram
 
 ## Work packages
-1. **Main Program cards** — one-column overview; status + health; open Program — [SWD-190](https://marcusknielsen.atlassian.net/browse/SWD-190)
-2. **Program shell** — Diagram | Log | Settings + Back; mobile-first chrome — [SWD-192](https://marcusknielsen.atlassian.net/browse/SWD-192)
-3. **Create + Settings** — shared name/description form; create→Diagram; delete confirm; API wiring — [SWD-194](https://marcusknielsen.atlassian.net/browse/SWD-194)
-4. **Diagram binding** — selected Program canvas + Hot Apply / restart against project model — [SWD-195](https://marcusknielsen.atlassian.net/browse/SWD-195)
-5. **Tests** — unit + integration + system for the flows above — [SWD-193](https://marcusknielsen.atlassian.net/browse/SWD-193)
-6. **Roadmap extend** — scheduling editor Task [SWD-191](https://marcusknielsen.atlassian.net/browse/SWD-191); library-on-main stays SWD-180
+1. **Main Program cards** — Done (SWD-190)
+2. **Program shell** — Done (SWD-192)
+3. **Create + Settings** — Done (SWD-194)
+4. **Diagram binding** — Done (SWD-195)
+5. **Tests** — Done (SWD-193)
+6. **Roadmap extend** — scheduling editor Task SWD-191
 
-## Open items
-- Exact running/health signals available from today’s runtime vs thin stubs until SWD-183 deepens them (implement may stub honestly with clear semantics)
+## Shipped
+- App **0.1.33**
+- Program cards main page; Diagram | Log | Settings; create → Diagram; Settings delete confirm
+- Program-scoped APIs + user templates; Hot Apply retained
+- PR [#77](https://github.com/marcuskrogh/PLCAssistant/pull/77)
 
 ## Tracker
 - Provider: jira
 - Story: [SWD-178](https://marcusknielsen.atlassian.net/browse/SWD-178)
 - Task: [SWD-181](https://marcusknielsen.atlassian.net/browse/SWD-181)
-- Sub-tasks: SWD-190, SWD-192, SWD-194, SWD-195, SWD-193
+- Sub-tasks: SWD-190, SWD-192, SWD-194, SWD-195, SWD-193 (Done)
 - Follow-on Task: [SWD-191](https://marcusknielsen.atlassian.net/browse/SWD-191) (scheduling editor)
 - Branch: `cursor/swd-181-app-engineering-surface-a52c`
 - PR: [#77](https://github.com/marcuskrogh/PLCAssistant/pull/77)
 
 ## Next
-`/review-fix SWD-181` — Review and auto-fix until clean
-(or `/ship SWD-181` to finish remaining through Done)
+Done — phase closed.

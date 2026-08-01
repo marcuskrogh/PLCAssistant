@@ -17,7 +17,7 @@ Soft-PLC App and thin HA integration expose an industrial-style engineering surf
 |-------|------|------|------------|--------|-------|
 | 1 | Research: industrial PLC program organization & engineering UI capabilities | research | — | Done | [SWD-179](https://marcusknielsen.atlassian.net/browse/SWD-179) |
 | 2 | Soft-PLC program organization model (tasks → programs → instances) | define→ship | SWD-179 | Done (App 0.1.32, PR #76) | [SWD-182](https://marcusknielsen.atlassian.net/browse/SWD-182) |
-| 3 | Define App engineering surface (navigator + defined/active programs on canvas) | define→ship | SWD-182 | In Progress | [SWD-181](https://marcusknielsen.atlassian.net/browse/SWD-181) |
+| 3 | App engineering surface (Program cards + Diagram/Log/Settings) | define→ship | SWD-182 | Done (App 0.1.33, PR #77) | [SWD-181](https://marcusknielsen.atlassian.net/browse/SWD-181) |
 | 4 | Define Task/Program scheduling editor | define | SWD-181 | To Do | [SWD-191](https://marcusknielsen.atlassian.net/browse/SWD-191) |
 | 5 | Define library inspectability + generic PID (replace opaque level_pi/flow_pi) | define | SWD-182 | To Do | [SWD-180](https://marcusknielsen.atlassian.net/browse/SWD-180) |
 | 6 | Define integration multi-datablock tag mapping UI (mirrors Soft-PLC multi-model) | define | SWD-182 | To Do | [SWD-184](https://marcusknielsen.atlassian.net/browse/SWD-184) |
@@ -26,6 +26,7 @@ Soft-PLC App and thin HA integration expose an industrial-style engineering surf
 ## Cleared so far
 - [Research: industrial PLC program/UI capabilities](https://marcusknielsen.atlassian.net/browse/SWD-179) — multi-axis brief in `docs/RESEARCH.md`
 - [Soft-PLC program organization model](https://marcusknielsen.atlassian.net/browse/SWD-182) — SoftPlcProject/Task/ProjectLoader; App 0.1.32; PR #76
+- [App engineering surface](https://marcusknielsen.atlassian.net/browse/SWD-181) — Program cards + Diagram/Log/Settings; App 0.1.33; PR #77
 
 ## Not yet specified
 - How integration “datablocks” bind to Soft-PLC programs (1:1 vs many tags per program) — SWD-184
@@ -44,7 +45,7 @@ Soft-PLC App and thin HA integration expose an industrial-style engineering surf
 ## Tracker
 - Provider: jira
 - Story (map): [SWD-178](https://marcusknielsen.atlassian.net/browse/SWD-178)
-- Tasks: [SWD-179](https://marcusknielsen.atlassian.net/browse/SWD-179) (Done), [SWD-182](https://marcusknielsen.atlassian.net/browse/SWD-182) (Done), [SWD-181](https://marcusknielsen.atlassian.net/browse/SWD-181), [SWD-191](https://marcusknielsen.atlassian.net/browse/SWD-191), [SWD-180](https://marcusknielsen.atlassian.net/browse/SWD-180), [SWD-184](https://marcusknielsen.atlassian.net/browse/SWD-184), [SWD-183](https://marcusknielsen.atlassian.net/browse/SWD-183)
+- Tasks: [SWD-179](https://marcusknielsen.atlassian.net/browse/SWD-179) (Done), [SWD-182](https://marcusknielsen.atlassian.net/browse/SWD-182) (Done), [SWD-181](https://marcusknielsen.atlassian.net/browse/SWD-181) (Done), [SWD-191](https://marcusknielsen.atlassian.net/browse/SWD-191), [SWD-180](https://marcusknielsen.atlassian.net/browse/SWD-180), [SWD-184](https://marcusknielsen.atlassian.net/browse/SWD-184), [SWD-183](https://marcusknielsen.atlassian.net/browse/SWD-183)
 
 ## Next
-`/ship SWD-181` in progress — implement → review-fix → closeout
+`/define SWD-191` — Define Task/Program scheduling editor
