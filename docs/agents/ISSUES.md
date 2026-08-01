@@ -139,6 +139,8 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
+- 2026-08-01 — Implement SWD-223: Flow Manual drives CMD; Level CV=`SP_FLOW_AUTO` (App 0.1.43); 584 pytest green. Next `/review-fix SWD-223`.
+- 2026-08-01 — Iterate SWD-223: Level/Flow Manual SP does not drive CV; Relates SWD-222.
 - 2026-08-01 — Shipped SWD-222 via PR #85 (App 0.1.42); review-fix CLEAN; CI watchdog flake fixed; Task Done.
 - 2026-08-01 — review-fix SWD-222 CLEAN after 2 iters (PR #85). Next `/ship SWD-222`.
 - 2026-08-01 — Implement SWD-222: Start/cascade + plant load + PID mux/card (App 0.1.42); PR [#85](https://github.com/marcuskrogh/PLCAssistant/pull/85) → In Review. Next `/review-fix SWD-222`.
