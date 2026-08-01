@@ -43,6 +43,7 @@ setup crashes before entities load.
 - Task: [SWD-219](https://marcusknielsen.atlassian.net/browse/SWD-219)
 - Relates: SWD-183
 - Branch: `cursor/swd-219-integration-plcassistant-io-a52c`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/82
 
 ## Next
 `/review-fix SWD-219` — Review and auto-fix until clean
