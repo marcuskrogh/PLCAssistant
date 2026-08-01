@@ -41,6 +41,7 @@
 - Task: [SWD-222](https://marcusknielsen.atlassian.net/browse/SWD-222)
 - Relates: SWD-221
 - Branch: `cursor/swd-222-start-cascade-pid-a52c`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/85 (App 0.1.42)
 
 ## Next
 `/review-fix SWD-222` — Review and auto-fix until clean

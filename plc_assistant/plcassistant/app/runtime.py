@@ -7,7 +7,7 @@ import math
 import os
 import threading
 import time
-from typing import Any, Callable
+from typing import Any, Callable, Mapping
 
 from plcassistant.app.default_image import declare_default_image
 from plcassistant.app.server import AppState, run_app
@@ -21,7 +21,7 @@ from plcassistant.io.ha_config_bridge import (
 )
 from plcassistant.io.image import IoImage
 from plcassistant.io.mqtt_bridge import InMemoryMqttBus, MqttBus, MqttIoBridge
-from plcassistant.io.mqtt_topics import DEFAULT_INSTANCE_ID
+from plcassistant.io.mqtt_topics import DEFAULT_INSTANCE_ID, MqttTagPayload
 from plcassistant.io.quality import QualityStatus, ReasonCode
 
 
@@ -379,6 +379,66 @@ class MqttScanLoop:
             except Exception:  # noqa: BLE001 — best-effort IN hydrate
                 continue
 
+    def _reapply_fresher_operator_file(
+        self, mqtt_samples: Mapping[str, MqttTagPayload]
+    ) -> None:
+        """Re-apply operator file tags that are fresher than same-scan MQTT (SWD-222).
+
+        Stale broker retain (old/missing ``ts``) loses to HA ``inputs.json`` seed.
+        A live MQTT operator write with a newer ``ts`` is not stomped by file.
+        """
+        if not mqtt_samples:
+            return
+        snap = read_inputs()
+        if not snap:
+            return
+        tags = snap.get("tags") if isinstance(snap.get("tags"), dict) else {}
+        known = set(self.image.names())
+        for name, sample in mqtt_samples.items():
+            if name not in self._OPERATOR_FILE_TAGS or name not in known:
+                continue
+            body = tags.get(name)
+            if not isinstance(body, dict) or "value" not in body:
+                continue
+            try:
+                file_ts = float(body["ts"]) if body.get("ts") is not None else None
+            except (TypeError, ValueError):
+                file_ts = None
+            mqtt_ts = sample.ts
+            # Prefer file when MQTT has no ts (legacy retain) or file is newer.
+            if mqtt_ts is not None and file_ts is not None and file_ts < mqtt_ts:
+                continue
+            status_raw = str(body.get("status") or "GOOD").upper()
+            try:
+                status = QualityStatus[status_raw]
+            except KeyError:
+                status = QualityStatus.GOOD
+            reason = None
+            reason_raw = body.get("reason")
+            if reason_raw:
+                try:
+                    reason = ReasonCode(str(reason_raw))
+                except ValueError:
+                    try:
+                        reason = ReasonCode[str(reason_raw).upper()]
+                    except KeyError:
+                        reason = None
+            value: Any = body.get("value")
+            if status is QualityStatus.GOOD:
+                try:
+                    numeric = float(value)
+                    if not math.isfinite(numeric):
+                        raise ValueError("non-finite")
+                    value = numeric
+                except (TypeError, ValueError):
+                    status = QualityStatus.BAD
+                    reason = ReasonCode.FAULT
+                    value = None
+            try:
+                self.image.apply_input(name, value, status, reason)
+            except Exception:  # noqa: BLE001 — best-effort
+                continue
+
     def _apply_commands(self, cmds: tuple[str, ...]) -> None:
         """Enqueue Start/Stop/Reset only — no optimistic status (SWD-222).
 
@@ -434,10 +494,11 @@ class MqttScanLoop:
         # File IN tags (SP_LEVEL_REQ + plant PV fallback, SWD-141/171) when MQTT
         # is silent. Apply before MQTT so live plant MQTT still wins same-scan.
         self._apply_file_inputs()
+        mqtt_pending = self.bridge.pending_inputs
         self.bridge.apply_inputs(self.image, clear=True)
-        # Operator modes/SPs: file (HA seed / Number writes) beats stale MQTT
-        # retain that would leave FLOW_MODE=Manual and kill cascade (SWD-222).
-        self._apply_file_inputs(only_tags=self._OPERATOR_FILE_TAGS)
+        # Operator modes/SPs: fresher file (HA seed) beats stale MQTT retain
+        # without stomping a newer live MQTT operator write (SWD-222).
+        self._reapply_fresher_operator_file(mqtt_pending)
         drained = self.bridge.drain_commands()
         if drained:
             self._apply_commands(drained)

@@ -111,6 +111,19 @@ class PlcAssistantPidCard extends HTMLElement {
       const key = input.getAttribute("data-sp");
       if (key) this._drafts[key] = input.value;
     });
+    this._root.addEventListener("focusout", (ev) => {
+      const input = ev.target.closest("input[data-sp]");
+      if (!input) return;
+      const key = input.getAttribute("data-sp");
+      if (!key) return;
+      // Clear abandoned drafts after blur so live HA values can reappear.
+      // Keep draft only if focus moved to the matching Set button.
+      const next = ev.relatedTarget;
+      if (next && next.getAttribute && next.getAttribute("data-apply") === key) {
+        return;
+      }
+      delete this._drafts[key];
+    });
   }
 
   _render(forceRebuild) {

@@ -109,9 +109,9 @@ def test_unit_apply_sp_write_flip_rules() -> None:
         sp_auto=0.2,
         sp_rem=0.2,
     )
-    assert auto["mode"] == "manual"  # AUTO write does not flip
+    assert auto["mode"] == "automatic"  # SWD-222: Auto SP Set flips mode
     assert auto["sp_auto"] == pytest.approx(0.22)
-    assert auto["sp"] == pytest.approx(0.25)
+    assert auto["sp"] == pytest.approx(0.22)
 
 
 # --- integration ----------------------------------------------------------

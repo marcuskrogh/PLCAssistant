@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -29,6 +30,7 @@ def test_unit_operator_file_beats_stale_mqtt_retain(tmp_path: Path, monkeypatch)
     from plcassistant.io.ha_config_bridge import write_input_tags
     from plcassistant.io.mqtt_bridge import InMemoryMqttBus, MqttIoBridge
     from plcassistant.io.mqtt_topics import MqttTagPayload, cmd_topic, tag_in_topic
+    from plcassistant.io.quality import QualityStatus
 
     monkeypatch.setenv("PLCASSISTANT_HA_CONFIG", str(tmp_path))
     monkeypatch.setattr(MqttScanLoop, "FILE_BRIDGE_PERIOD_S", 0.0)
@@ -50,14 +52,19 @@ def test_unit_operator_file_beats_stale_mqtt_retain(tmp_path: Path, monkeypatch)
         },
         tmp_path,
     )
-    # Stale broker retain still says Flow Manual (kills cascade).
+    # Stale broker retain still says Flow Manual (old ts; kills cascade).
+    stale_ts = time.time() - 3600.0
     bus.publish(
         tag_in_topic("default", "FLOW_MODE"),
-        MqttTagPayload.now(0.0).encode(),
+        MqttTagPayload(
+            value=0.0, status=QualityStatus.GOOD, reason=None, ts=stale_ts
+        ).encode(),
     )
     bus.publish(
         tag_in_topic("default", "LEVEL_MODE"),
-        MqttTagPayload.now(0.0).encode(),
+        MqttTagPayload(
+            value=0.0, status=QualityStatus.GOOD, reason=None, ts=stale_ts
+        ).encode(),
     )
     bus.publish(cmd_topic("default", "start"), b"1")
     loop.scan_once()
@@ -69,6 +76,43 @@ def test_unit_operator_file_beats_stale_mqtt_retain(tmp_path: Path, monkeypatch)
         loop.scan_once()
     assert float(image.get_value("SP_FLOW")) > 0.0
     assert float(image.get_value("CMD_SPEED")) > 0.0
+
+
+def test_unit_fresher_mqtt_operator_beats_older_file(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Live MQTT operator write with newer ts must not be stomped by file."""
+    from plcassistant.app.runtime import MqttScanLoop, declare_default_image
+    from plcassistant.io.ha_config_bridge import write_input_tags
+    from plcassistant.io.mqtt_bridge import InMemoryMqttBus, MqttIoBridge
+    from plcassistant.io.mqtt_topics import MqttTagPayload, tag_in_topic
+    from plcassistant.io.quality import QualityStatus
+
+    monkeypatch.setenv("PLCASSISTANT_HA_CONFIG", str(tmp_path))
+    monkeypatch.setattr(MqttScanLoop, "FILE_BRIDGE_PERIOD_S", 0.0)
+    bus = InMemoryMqttBus()
+    image = declare_default_image()
+    bridge = MqttIoBridge(bus, instance_id="default")
+    loop = MqttScanLoop(bridge, image, period_s=0.05)
+    bridge.start()
+    assert write_input_tags({"FLOW_MODE": 1.0, "LEVEL_MODE": 0.0}, tmp_path)
+    # Make file timestamps old, then publish fresher MQTT Manual.
+    snap_path = tmp_path / "plcassistant" / "inputs.json"
+    body = json.loads(snap_path.read_text(encoding="utf-8"))
+    for tag in body.get("tags", {}).values():
+        tag["ts"] = time.time() - 120.0
+    snap_path.write_text(json.dumps(body), encoding="utf-8")
+    bus.publish(
+        tag_in_topic("default", "FLOW_MODE"),
+        MqttTagPayload(
+            value=0.0,
+            status=QualityStatus.GOOD,
+            reason=None,
+            ts=time.time(),
+        ).encode(),
+    )
+    loop.scan_once()
+    assert float(image.get_value("FLOW_MODE")) == pytest.approx(0.0)
 
 
 def test_system_defaults_start_cascade_inlet_rises() -> None:
@@ -162,6 +206,7 @@ def test_integration_seed_awaits_mqtt_qos1() -> None:
     assert "_bg_mqtt" not in seed
     assert '"qos": 1' in seed
     assert "blocking=True" in seed
+    assert "wait_for" in seed
     assert "retain" in seed
 
 
@@ -170,6 +215,9 @@ def test_integration_start_stop_blocking_qos1() -> None:
     pub = init.split("async def _publish_cmd", 1)[1].split("async def handle_start", 1)[0]
     assert '"qos": 1' in pub
     assert "blocking=True" in pub
+    assert "write_cmd" in pub
+    # File fallback must be queued before MQTT await (SWD-222 review-fix).
+    assert pub.index("write_cmd") < pub.index("blocking=True")
     button = (ROOT / "button.py").read_text(encoding="utf-8")
     assert "blocking=True" in button
 

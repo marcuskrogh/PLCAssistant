@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import math
@@ -280,18 +281,21 @@ async def async_seed_operator_defaults(
 
     for tag, payload in mqtt_batch:
         try:
-            await hass.services.async_call(
-                "mqtt",
-                "publish",
-                {
-                    "topic": tag_in_topic(instance_id, tag),
-                    "payload": payload,
-                    "qos": 1,
-                    "retain": True,
-                },
-                blocking=True,
+            await asyncio.wait_for(
+                hass.services.async_call(
+                    "mqtt",
+                    "publish",
+                    {
+                        "topic": tag_in_topic(instance_id, tag),
+                        "payload": payload,
+                        "qos": 1,
+                        "retain": True,
+                    },
+                    blocking=True,
+                ),
+                timeout=2.0,
             )
-        except Exception:  # noqa: BLE001 — keep seeding remaining tags
+        except Exception:  # noqa: BLE001 — file/cache already seeded
             _LOGGER.debug(
                 "PLCAssistant: operator IN seed MQTT failed for %s",
                 tag,
@@ -421,9 +425,14 @@ class PlcAssistantRequestNumber(NumberEntity):
             return False
 
     async def _publish_in_tag(self, tag: str, eng: float) -> None:
-        """Publish one Soft-PLC IN tag via MQTT (+ file-bridge for operator tags)."""
+        """Publish one Soft-PLC IN tag via file-bridge then MQTT (SWD-222)."""
         payload = json.dumps(
-            {"value": eng, "status": "GOOD", "reason": None, "ts": None}
+            {
+                "value": eng,
+                "status": "GOOD",
+                "reason": None,
+                "ts": time.time(),
+            }
         )
         store = self.hass.data.get(DOMAIN, {}).get(self._entry_id) or {}
         in_values = store.setdefault("in_values", {})
@@ -432,28 +441,36 @@ class PlcAssistantRequestNumber(NumberEntity):
             f"{DOMAIN}_tag_in",
             {"tag": tag, "payload": payload, "entry_id": self._entry_id},
         )
-        await self.hass.services.async_call(
-            "mqtt",
-            "publish",
-            {
-                "topic": tag_in_topic(self._instance_id, tag),
-                "payload": payload,
-                "qos": 1,
-                "retain": False,
-            },
-            blocking=False,
-        )
-        if tag not in _FILE_BRIDGE_IN_TAGS:
-            return
-        root = store.get("config_root")
-        if isinstance(root, Path):
-            await self.hass.async_add_executor_job(
-                write_input_tag,
+        # File first so Soft-PLC operator re-apply / silent path sees the write
+        # even when MQTT publish fails (SWD-222).
+        if tag in _FILE_BRIDGE_IN_TAGS:
+            root = store.get("config_root")
+            if isinstance(root, Path):
+                await self.hass.async_add_executor_job(
+                    write_input_tag,
+                    tag,
+                    eng,
+                    "GOOD",
+                    None,
+                    root,
+                )
+        try:
+            await self.hass.services.async_call(
+                "mqtt",
+                "publish",
+                {
+                    "topic": tag_in_topic(self._instance_id, tag),
+                    "payload": payload,
+                    "qos": 1,
+                    "retain": False,
+                },
+                blocking=False,
+            )
+        except Exception:  # noqa: BLE001 — cache/file already updated
+            _LOGGER.debug(
+                "PLCAssistant: MQTT IN publish failed for %s",
                 tag,
-                eng,
-                "GOOD",
-                None,
-                root,
+                exc_info=True,
             )
 
     async def async_set_native_value(self, value: float) -> None:
