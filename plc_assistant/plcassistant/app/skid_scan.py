@@ -63,11 +63,11 @@ def _resolve_flow_sp(image: IoImage, *, cascade_auto: float) -> float:
     auto = cascade_auto
     man = _tag_float(image, FLOW_LOOP.sp_man, auto)
     rem = _tag_float(image, FLOW_LOOP.sp_rem, auto)
-    mode_raw = image.get_value(FLOW_LOOP.mode) if FLOW_LOOP.mode in names else 0
+    mode_raw = image.get_value(FLOW_LOOP.mode) if FLOW_LOOP.mode in names else 1
     try:
         mode = SpSourceMode.parse(mode_raw)
     except ValueError:
-        mode = SpSourceMode.MANUAL
+        mode = SpSourceMode.AUTOMATIC
     return select_active_sp(mode, sp_man=man, sp_auto=auto, sp_rem=rem)
 
 

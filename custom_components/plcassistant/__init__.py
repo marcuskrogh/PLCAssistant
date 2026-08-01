@@ -121,20 +121,26 @@ async def _async_register_lovelace_cards(hass: HomeAssistant) -> None:
         except Exception:  # noqa: BLE001
             pass
 
+    ok = True
     for name in _FRONTEND_JS:
         base = f"{_STATIC_URL_PATH}/{name}"
-        await _async_register_frontend_card(hass, base, version)
-    domain_data["lovelace_cards_registered"] = True
+        if not await _async_register_frontend_card(hass, base, version):
+            ok = False
+    # Only latch success so a partial failure can retry on next async_setup.
+    if ok:
+        domain_data["lovelace_cards_registered"] = True
 
 
 async def _async_register_frontend_card(
     hass: HomeAssistant, base_url: str, version: str
-) -> None:
+) -> bool:
     """Register one card URL as a Lovelace resource, else frontend extra JS.
 
     Storage-mode dashboards must use Lovelace resources. Do **not** fall back to
     ``add_extra_js_url`` when storage mode is detected — that race is what produced
     Configuration error cards (SWD-220). YAML / unknown mode may use extra JS.
+
+    Returns True when the card URL was registered (resource or extra JS).
     """
     from homeassistant.components import frontend
 
@@ -154,7 +160,7 @@ async def _async_register_frontend_card(
                 "skipping card registration for %s (will need Core restart)",
                 base_url,
             )
-            return
+            return False
         try:
             if hasattr(resources, "async_load") and not getattr(
                 resources, "loaded", True
@@ -172,9 +178,9 @@ async def _async_register_frontend_card(
                     await resources.async_update_item(
                         item["id"], {"res_type": "module", "url": card_url}
                     )
-                return
+                return True
             await resources.async_create_item({"res_type": "module", "url": card_url})
-            return
+            return True
         except Exception:  # noqa: BLE001 — never block setup on card resources
             _LOGGER.warning(
                 "PLCAssistant: Lovelace resource registration failed for %s "
@@ -182,16 +188,19 @@ async def _async_register_frontend_card(
                 base_url,
                 exc_info=True,
             )
-            return
+            return False
 
     try:
         frontend.add_extra_js_url(hass, card_url)
+        return True
     except Exception:  # noqa: BLE001
         _LOGGER.debug(
             "PLCAssistant: frontend extra JS registration skipped for %s",
             base_url,
             exc_info=True,
         )
+        return False
+
 
 def _default_bindings() -> list[dict]:
     """Default mock bindings from demo Program Datablock access (SWD-184/219).
@@ -510,7 +519,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 config_root=config_root,
             )
         except Exception:  # noqa: BLE001 — never block setup on seed
-            _LOGGER.debug("PLCAssistant: operator IN seed failed", exc_info=True)
+            _LOGGER.warning("PLCAssistant: operator IN seed failed", exc_info=True)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 

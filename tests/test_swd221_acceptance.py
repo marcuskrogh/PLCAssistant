@@ -64,6 +64,9 @@ def test_system_setup_defers_plant_and_seeds() -> None:
     init = (ROOT / "__init__.py").read_text(encoding="utf-8")
     assert "async_seed_operator_defaults" in init
     assert "lovelace_cards_registered" in init
+    assert "if not await _async_register_frontend_card" in init or (
+        "if not await _async_register_frontend_card(hass, base, version)" in init
+    )
     # Plant start must come after forward_entry_setups.
     fwd = init.index("async_forward_entry_setups")
     start = init.index("await plant_sim.async_start()")

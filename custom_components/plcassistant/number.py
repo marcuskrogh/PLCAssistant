@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
 from pathlib import Path
 
@@ -16,6 +17,8 @@ from .const import CONF_BINDINGS, CONF_INSTANCE_ID, CONF_MOCK_MODE, DOMAIN
 from .entity_cleanup import expected_plant_number_unique_id
 from .ha_config_bridge import write_input_tag, write_input_tags
 from .mqtt_topics import tag_in_topic
+
+_LOGGER = logging.getLogger(__name__)
 
 # Friendly operator ranges for known IN tags (request SP + plant nudges + PID).
 _TAG_META: dict[str, dict] = {
@@ -278,8 +281,13 @@ async def async_seed_operator_defaults(
                     },
                     blocking=False,
                 )
-            except Exception:  # noqa: BLE001 — never abort setup on seed MQTT
-                return
+            except Exception:  # noqa: BLE001 — keep seeding remaining tags
+                _LOGGER.debug(
+                    "PLCAssistant: operator IN seed MQTT failed for %s",
+                    tag,
+                    exc_info=True,
+                )
+                continue
 
     if mqtt_batch:
         try:
@@ -524,15 +532,11 @@ class PlcAssistantRequestNumber(NumberEntity):
             return
         store = self.hass.data.get(DOMAIN, {}).get(self._entry_id) or {}
         cached = (store.get("in_values") or {}).get(str(self._tag).upper())
-        hydrated = False
         if cached and self._apply_payload(str(cached)):
             self.async_write_ha_state()
-            hydrated = True
-        # SWD-221: defaults are batch-seeded in async_setup_entry — do not
-        # per-entity MQTT/file publish here (that froze Core on cold start).
-        if not hydrated and self._attr_native_value is not None:
-            self.async_write_ha_state()
         else:
+            # SWD-221: defaults are batch-seeded in async_setup_entry — do not
+            # per-entity MQTT/file publish here (that froze Core on cold start).
             self.async_write_ha_state()
 
         async def _on_tag_in(event: Event) -> None:
