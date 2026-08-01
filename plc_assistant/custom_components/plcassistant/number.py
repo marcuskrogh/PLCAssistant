@@ -61,7 +61,7 @@ _TAG_META: dict[str, dict] = {
         "max": 2.0,
         "step": 1.0,
         "object_id": "plcassistant_level_mode",
-        "default": 1.0,
+        "default": 0.0,  # Manual (SWD-220)
     },
     "SP_FLOW_MAN": {
         "name": "PLCAssistant Flow SP (manual)",
@@ -87,7 +87,7 @@ _TAG_META: dict[str, dict] = {
         "max": 2.0,
         "step": 1.0,
         "object_id": "plcassistant_flow_mode",
-        "default": 1.0,
+        "default": 0.0,  # Manual (SWD-220)
     },
     "LEVEL_KP": {
         "name": "PLCAssistant Level Kp",
@@ -448,7 +448,13 @@ class PlcAssistantRequestNumber(NumberEntity):
             self.async_write_ha_state()
             hydrated = True
         if not hydrated and self._attr_native_value is not None:
-            await self.async_set_native_value(float(self._attr_native_value))
+            # Publish defaults without MAN/REM mode-flip (SWD-220): setup must
+            # not force Remote just because SP_*_REM is seeded.
+            eng = (float(self._attr_native_value) * self._scale) + self._offset
+            await self._publish_in_tag(self._tag, eng)
+            if self._tag == "SP_LEVEL_REQ":
+                await self._publish_in_tag("SP_LEVEL_AUTO", eng)
+            self.async_write_ha_state()
         else:
             self.async_write_ha_state()
 

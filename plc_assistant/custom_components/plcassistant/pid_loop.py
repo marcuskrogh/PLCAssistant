@@ -110,12 +110,12 @@ def _parse_mode(raw: Any) -> str:
         try:
             code = int(raw)
         except (TypeError, ValueError):
-            return "automatic"
-        return _MODE_NAMES.get(code, "automatic")
+            return "manual"
+        return _MODE_NAMES.get(code, "manual")
     key = str(raw or "").strip().lower()
-    # Unknown aliases fall back to automatic — Soft-PLC ``SpSourceMode.parse``
-    # raises ValueError and skid_scan resolves to AUTOMATIC the same way.
-    return _MODE_ALIASES.get(key, "automatic")
+    # Unknown aliases fall back to manual — Soft-PLC ``SpSourceMode.parse``
+    # raises ValueError and skid_scan resolves to MANUAL the same way (SWD-220).
+    return _MODE_ALIASES.get(key, "manual")
 
 
 def _select_sp(mode: str, man: float, auto: float, rem: float) -> float:
@@ -166,7 +166,7 @@ class PlcAssistantPidLoopSensor(SensorEntity):
         object_id = f"plcassistant_pid_{loop_id}"
         self._attr_suggested_object_id = object_id
         self.entity_id = f"sensor.{object_id}"
-        self._attr_native_value = "automatic"
+        self._attr_native_value = "manual"
         self._attr_extra_state_attributes = self._empty_attrs()
         self._watch_tags = frozenset(
             {

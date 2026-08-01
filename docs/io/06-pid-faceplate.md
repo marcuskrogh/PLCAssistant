@@ -66,6 +66,10 @@ Soft-PLC helpers live in
 | `custom:plcassistant-pid-card` | `{ entity: sensor.plcassistant_pid_level }` |
 | `custom:plcassistant-block-list-card` | `{ entity: <sensor>, include?: [...] }` |
 
-JS is served from `/plcassistant_static/` and registered via
-`frontend.add_extra_js_url` on integration setup. Fallback entity rows remain
-on the Operate board if custom cards are not loaded.
+JS is served from `/plcassistant_static/` and registered as Lovelace
+**resources** on integration setup (storage mode, with `?v=` cache-bust;
+YAML mode falls back to `frontend.add_extra_js_url`). Fallback entity rows
+remain on the Operate board if custom cards are not loaded.
+
+Default SP-source mode is **Manual** for both loops (SWD-220). Setup
+hydration of Man/Rem SP Numbers must not mode-flip.

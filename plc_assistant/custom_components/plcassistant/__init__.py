@@ -75,7 +75,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 
 async def _async_register_lovelace_cards(hass: HomeAssistant) -> None:
-    """Serve www/*.js and register Lovelace custom cards (SWD-183)."""
+    """Serve www/*.js and register Lovelace custom cards (SWD-183 / SWD-220).
+
+    Storage-mode dashboards await Lovelace *resources*; ``add_extra_js_url`` alone
+    races cold-start renders and surfaces Configuration error / missing custom
+    elements. Prefer resource registration with ``?v=`` cache-bust.
+    """
     www = Path(__file__).resolve().parent / "www"
     if not www.is_dir():
         return
@@ -93,13 +98,76 @@ async def _async_register_lovelace_cards(hass: HomeAssistant) -> None:
         except Exception:  # noqa: BLE001
             _LOGGER.debug("PLCAssistant: static path registration skipped", exc_info=True)
             return
-    try:
-        from homeassistant.components.frontend import add_extra_js_url
 
-        for name in _FRONTEND_JS:
-            add_extra_js_url(hass, f"{_STATIC_URL_PATH}/{name}")
-    except Exception:  # noqa: BLE001 — never block integration on card load
-        _LOGGER.debug("PLCAssistant: Lovelace card JS registration skipped", exc_info=True)
+    version = "0.0.0"
+    try:
+        from homeassistant.loader import async_get_integration
+
+        integration = await async_get_integration(hass, DOMAIN)
+        version = str(integration.version or version)
+    except Exception:  # noqa: BLE001
+        try:
+            import json as _json
+
+            manifest = _json.loads(
+                (Path(__file__).resolve().parent / "manifest.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            version = str(manifest.get("version") or version)
+        except Exception:  # noqa: BLE001
+            pass
+
+    for name in _FRONTEND_JS:
+        base = f"{_STATIC_URL_PATH}/{name}"
+        await _async_register_frontend_card(hass, base, version)
+
+
+async def _async_register_frontend_card(
+    hass: HomeAssistant, base_url: str, version: str
+) -> None:
+    """Register one card URL as a Lovelace resource, else frontend extra JS."""
+    from homeassistant.components import frontend
+
+    card_url = f"{base_url}?v={version}"
+    lovelace = hass.data.get("lovelace")
+    resources = getattr(lovelace, "resources", None) if lovelace is not None else None
+
+    if getattr(lovelace, "mode", None) == "storage" or (
+        getattr(lovelace, "resource_mode", None) == "storage" and resources is not None
+    ):
+        try:
+            if resources is not None:
+                if not getattr(resources, "loaded", True):
+                    await resources.async_get_info()
+                for item in resources.async_items():
+                    item_url = str(item.get("url") or "")
+                    if item_url.split("?", 1)[0] != base_url:
+                        continue
+                    if item_url != card_url:
+                        await resources.async_update_item(
+                            item["id"], {"res_type": "module", "url": card_url}
+                        )
+                    return
+                await resources.async_create_item(
+                    {"res_type": "module", "url": card_url}
+                )
+                return
+        except Exception:  # noqa: BLE001 — never block setup on card resources
+            _LOGGER.debug(
+                "PLCAssistant: Lovelace resource registration failed for %s",
+                base_url,
+                exc_info=True,
+            )
+
+    try:
+        frontend.add_extra_js_url(hass, card_url)
+    except Exception:  # noqa: BLE001
+        _LOGGER.debug(
+            "PLCAssistant: frontend extra JS registration skipped for %s",
+            base_url,
+            exc_info=True,
+        )
 
 def _default_bindings() -> list[dict]:
     """Default mock bindings from demo Program Datablock access (SWD-184/219).

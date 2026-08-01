@@ -99,11 +99,12 @@ class PlcAssistantBlockListCard extends HTMLElement {
   }
 }
 
-customElements.define("plcassistant-block-list-card", PlcAssistantBlockListCard);
-
-window.customCards = window.customCards || [];
-window.customCards.push({
-  type: "plcassistant-block-list-card",
-  name: "PLCAssistant Block List Card",
-  description: "Generic attribute list for a sensor entity (library/custom blocks)",
-});
+if (!customElements.get("plcassistant-block-list-card")) {
+  customElements.define("plcassistant-block-list-card", PlcAssistantBlockListCard);
+  window.customCards = window.customCards || [];
+  window.customCards.push({
+    type: "plcassistant-block-list-card",
+    name: "PLCAssistant Block List Card",
+    description: "Generic attribute list for a sensor entity (library/custom blocks)",
+  });
+}

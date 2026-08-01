@@ -6,10 +6,6 @@
  * Manual/Auto/Remote mode + SP sources via number.* entities.
  */
 class PlcAssistantPidCard extends HTMLElement {
-  static getConfigElement() {
-    return document.createElement("hui-generic-entity-row");
-  }
-
   static getStubConfig() {
     return { entity: "sensor.plcassistant_pid_level" };
   }
@@ -62,7 +58,7 @@ class PlcAssistantPidCard extends HTMLElement {
     if (!this._config) return;
     const hass = this._hass;
     const st = hass?.states?.[this._config.entity];
-    const mode = (st?.state || "automatic").toLowerCase();
+    const mode = (st?.state || "manual").toLowerCase();
     const loopId = this._attr(st, "loop_id", "loop");
     const title =
       this._config.title ||
@@ -200,11 +196,13 @@ class PlcAssistantPidCard extends HTMLElement {
   }
 }
 
-customElements.define("plcassistant-pid-card", PlcAssistantPidCard);
-
-window.customCards = window.customCards || [];
-window.customCards.push({
-  type: "plcassistant-pid-card",
-  name: "PLCAssistant PID Card",
-  description: "Faceplate for sensor.plcassistant_pid_* compound entities",
-});
+// Guard double-load (resource + extra_js, or upgrade re-exec).
+if (!customElements.get("plcassistant-pid-card")) {
+  customElements.define("plcassistant-pid-card", PlcAssistantPidCard);
+  window.customCards = window.customCards || [];
+  window.customCards.push({
+    type: "plcassistant-pid-card",
+    name: "PLCAssistant PID Card",
+    description: "Faceplate for sensor.plcassistant_pid_* compound entities",
+  });
+}
