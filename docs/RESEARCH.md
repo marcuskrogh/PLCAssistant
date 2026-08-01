@@ -181,7 +181,7 @@ Supportive context for `/explore SWD-178` and later `/define` on Soft-PLC App pr
 - Task: [SWD-179](https://marcusknielsen.atlassian.net/browse/SWD-179)
 - Artifact: `docs/RESEARCH.md`
 - Branch: `cursor/swd-179-plc-program-surface-research-a52c`
-- PR: *(opened with this commit)*
+- PR: [#75](https://github.com/marcuskrogh/PLCAssistant/pull/75)
 
 ## Next
 
