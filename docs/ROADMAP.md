@@ -21,7 +21,7 @@ Soft-PLC App and thin HA integration expose an industrial-style engineering surf
 | 4 | Task/Program scheduling editor | define→ship | SWD-181 | Done (App 0.1.34, PR #78) | [SWD-191](https://marcusknielsen.atlassian.net/browse/SWD-191) |
 | 5 | Library inspectability + generic PID | define→ship | SWD-182 | Done (App 0.1.35, PR #79) | [SWD-180](https://marcusknielsen.atlassian.net/browse/SWD-180) |
 | 6 | Integration Datablock tag mapping UI (mirrors Soft-PLC multi-model) | define→ship | SWD-182 | Done (App 0.1.36) | [SWD-184](https://marcusknielsen.atlassian.net/browse/SWD-184) · PR [#80](https://github.com/marcuskrogh/PLCAssistant/pull/80) |
-| 7 | Online / runtime visibility + PID HMI faceplates | define→ship | SWD-181 | To Do (defined) | [SWD-183](https://marcusknielsen.atlassian.net/browse/SWD-183) · PR [#81](https://github.com/marcuskrogh/PLCAssistant/pull/81) |
+| 7 | Online / runtime visibility + PID HMI faceplates | define→ship | SWD-181 | To Do (defined) | [SWD-183](https://marcusknielsen.atlassian.net/browse/SWD-183) · draft PR [#81](https://github.com/marcuskrogh/PLCAssistant/pull/81) |
 
 ## Cleared so far
 - [Research: industrial PLC program/UI capabilities](https://marcusknielsen.atlassian.net/browse/SWD-179) — multi-axis brief in `docs/RESEARCH.md`
