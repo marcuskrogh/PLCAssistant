@@ -1,13 +1,22 @@
 /**
- * PLCAssistant PID faceplate card (SWD-183).
+ * PLCAssistant PID faceplate card (SWD-183 / SWD-222).
  *
  * Config: { type: "custom:plcassistant-pid-card", entity: "sensor.plcassistant_pid_level" }
  * Reads climate-like attributes from the compound PID sensor and writes
  * Manual/Auto/Remote mode + SP sources via number.* entities.
+ *
+ * Drafts: typed SP inputs are preserved across hass updates so live PV/SP/CV
+ * refreshes do not stomp in-progress edits (SWD-222).
  */
 class PlcAssistantPidCard extends HTMLElement {
   static getStubConfig() {
     return { entity: "sensor.plcassistant_pid_level" };
+  }
+
+  constructor() {
+    super();
+    this._drafts = {};
+    this._bound = false;
   }
 
   setConfig(config) {
@@ -15,12 +24,13 @@ class PlcAssistantPidCard extends HTMLElement {
       throw new Error("plcassistant-pid-card requires `entity`");
     }
     this._config = config;
-    this._render();
+    this._drafts = {};
+    this._render(true);
   }
 
   set hass(hass) {
     this._hass = hass;
-    this._render();
+    this._render(false);
   }
 
   getCardSize() {
@@ -54,7 +64,56 @@ class PlcAssistantPidCard extends HTMLElement {
     await this._setNumber(modeEntity, code);
   }
 
-  _render() {
+  _inputValue(key, fallback) {
+    if (this._drafts[key] !== undefined) return this._drafts[key];
+    const n = Number(fallback);
+    return Number.isFinite(n) ? String(n) : "0";
+  }
+
+  _captureFocusedDrafts() {
+    if (!this._root) return;
+    for (const key of ["man", "auto", "rem"]) {
+      const input = this._root.querySelector(`input[data-sp="${key}"]`);
+      if (!input) continue;
+      if (document.activeElement === input) {
+        this._drafts[key] = input.value;
+      }
+    }
+  }
+
+  _bindEditors() {
+    if (!this._root || this._bound) return;
+    this._bound = true;
+    this._root.addEventListener("click", (ev) => {
+      const modeBtn = ev.target.closest("[data-mode]");
+      if (modeBtn) {
+        this._setMode(modeBtn.getAttribute("data-mode"));
+        return;
+      }
+      const applyBtn = ev.target.closest("[data-apply]");
+      if (!applyBtn || applyBtn.disabled) return;
+      const key = applyBtn.getAttribute("data-apply");
+      const input = this._root.querySelector(`input[data-sp="${key}"]`);
+      const st = this._hass?.states?.[this._config.entity];
+      const entityFor = {
+        man: this._attr(st, "sp_man_entity", ""),
+        auto: this._attr(st, "sp_auto_entity", ""),
+        rem: this._attr(st, "sp_rem_entity", ""),
+      };
+      const entity = entityFor[key];
+      if (!input || !entity || String(entity).startsWith("sensor.")) return;
+      delete this._drafts[key];
+      this._setNumber(entity, input.value);
+    });
+    this._root.addEventListener("input", (ev) => {
+      const input = ev.target.closest("input[data-sp]");
+      if (!input) return;
+      const key = input.getAttribute("data-sp");
+      if (key) this._drafts[key] = input.value;
+    });
+  }
+
+  _render(forceRebuild) {
     if (!this._config) return;
     const hass = this._hass;
     const st = hass?.states?.[this._config.entity];
@@ -72,17 +131,22 @@ class PlcAssistantPidCard extends HTMLElement {
     const spAuto = this._attr(st, "sp_auto", 0);
     const spRem = this._attr(st, "sp_rem", 0);
     const modeEntity = this._attr(st, "mode_entity", "");
-    const spManEntity = this._attr(st, "sp_man_entity", "");
     const spAutoEntity = this._attr(st, "sp_auto_entity", "");
-    const spRemEntity = this._attr(st, "sp_rem_entity", "");
+    const autoDisabled = String(spAutoEntity).startsWith("sensor.");
+    const unavailable = !st;
 
     if (!this._root) {
       this.innerHTML = "";
       this._root = document.createElement("ha-card");
       this.appendChild(this._root);
+      forceRebuild = true;
     }
-    const unavailable = !st;
-    this._root.innerHTML = `
+
+    this._captureFocusedDrafts();
+
+    if (forceRebuild || !this._root.querySelector(".pid-card")) {
+      this._bound = false;
+      this._root.innerHTML = `
       <style>
         .pid-card { padding: 14px 16px 16px; font-family: var(--paper-font-body1_-_font-family, Roboto, sans-serif); }
         .pid-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 10px; }
@@ -135,64 +199,91 @@ class PlcAssistantPidCard extends HTMLElement {
           ? `<div class="pid-missing">Entity ${this._config.entity} unavailable</div>`
           : `<div class="pid-card">
         <div class="pid-head">
-          <div class="pid-title">${title}</div>
-          <div class="pid-mode">${mode}</div>
+          <div class="pid-title"></div>
+          <div class="pid-mode"></div>
         </div>
         <div class="pid-grid">
-          <div class="pid-metric"><span>PV</span><strong>${this._fmt(pv)}</strong></div>
-          <div class="pid-metric"><span>SP</span><strong>${this._fmt(sp)}</strong></div>
-          <div class="pid-metric"><span>CV</span><strong>${this._fmt(cv, 2)}</strong></div>
+          <div class="pid-metric"><span>PV</span><strong data-metric="pv"></strong></div>
+          <div class="pid-metric"><span>SP</span><strong data-metric="sp"></strong></div>
+          <div class="pid-metric"><span>CV</span><strong data-metric="cv"></strong></div>
         </div>
         <div class="pid-modes">
-          <button data-mode="0" class="${mode === "manual" ? "active" : ""}">Man</button>
-          <button data-mode="1" class="${mode === "automatic" ? "active" : ""}">Auto</button>
-          <button data-mode="2" class="${mode === "remote" ? "active" : ""}">Rem</button>
+          <button data-mode="0">Man</button>
+          <button data-mode="1">Auto</button>
+          <button data-mode="2">Rem</button>
         </div>
         <div class="pid-editors">
           <div class="pid-row">
             <label>SP Man</label>
-            <input data-sp="man" type="number" step="any" value="${Number(spMan)}" />
+            <input data-sp="man" type="number" step="any" />
             <button data-apply="man">Set</button>
           </div>
           <div class="pid-row">
             <label>SP Auto</label>
-            <input data-sp="auto" type="number" step="any" value="${Number(spAuto)}" ${
-              String(spAutoEntity).startsWith("sensor.") ? "disabled" : ""
-            } />
-            <button data-apply="auto" ${
-              String(spAutoEntity).startsWith("sensor.") ? "disabled" : ""
-            }>Set</button>
+            <input data-sp="auto" type="number" step="any" />
+            <button data-apply="auto">Set</button>
           </div>
           <div class="pid-row">
             <label>SP Rem</label>
-            <input data-sp="rem" type="number" step="any" value="${Number(spRem)}" />
+            <input data-sp="rem" type="number" step="any" />
             <button data-apply="rem">Set</button>
           </div>
         </div>
-        <div class="pid-note">Mode via ${modeEntity || "—"}. Writing Man/Rem SP auto-flips mode.</div>
+        <div class="pid-note"></div>
       </div>`
       }
     `;
+      this._bindEditors();
+    }
 
-    if (unavailable) return;
+    if (unavailable) {
+      const missing = this._root.querySelector(".pid-missing");
+      if (missing) missing.textContent = `Entity ${this._config.entity} unavailable`;
+      return;
+    }
+
+    const titleEl = this._root.querySelector(".pid-title");
+    const modeEl = this._root.querySelector(".pid-mode");
+    if (titleEl) titleEl.textContent = title;
+    if (modeEl) modeEl.textContent = mode;
+
+    const pvEl = this._root.querySelector('[data-metric="pv"]');
+    const spEl = this._root.querySelector('[data-metric="sp"]');
+    const cvEl = this._root.querySelector('[data-metric="cv"]');
+    if (pvEl) pvEl.textContent = this._fmt(pv);
+    if (spEl) spEl.textContent = this._fmt(sp);
+    if (cvEl) cvEl.textContent = this._fmt(cv, 2);
 
     this._root.querySelectorAll("[data-mode]").forEach((btn) => {
-      btn.addEventListener("click", () => this._setMode(btn.getAttribute("data-mode")));
+      const code = btn.getAttribute("data-mode");
+      const active =
+        (code === "0" && mode === "manual") ||
+        (code === "1" && mode === "automatic") ||
+        (code === "2" && mode === "remote");
+      btn.classList.toggle("active", active);
     });
-    const entityFor = {
-      man: spManEntity,
-      auto: spAutoEntity,
-      rem: spRemEntity,
-    };
-    this._root.querySelectorAll("[data-apply]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const key = btn.getAttribute("data-apply");
-        const input = this._root.querySelector(`input[data-sp="${key}"]`);
-        const entity = entityFor[key];
-        if (!input || !entity || String(entity).startsWith("sensor.")) return;
-        this._setNumber(entity, input.value);
-      });
-    });
+
+    const values = { man: spMan, auto: spAuto, rem: spRem };
+    for (const key of ["man", "auto", "rem"]) {
+      const input = this._root.querySelector(`input[data-sp="${key}"]`);
+      if (!input) continue;
+      const focused = document.activeElement === input;
+      if (key === "auto") {
+        input.disabled = autoDisabled;
+        const apply = this._root.querySelector('[data-apply="auto"]');
+        if (apply) apply.disabled = autoDisabled;
+      }
+      if (!focused && this._drafts[key] === undefined) {
+        input.value = this._inputValue(key, values[key]);
+      } else if (!focused && this._drafts[key] !== undefined) {
+        input.value = this._drafts[key];
+      }
+    }
+
+    const note = this._root.querySelector(".pid-note");
+    if (note) {
+      note.textContent = `Mode via ${modeEntity || "—"}. Writing Man/Auto/Rem SP Set flips mode.`;
+    }
   }
 }
 

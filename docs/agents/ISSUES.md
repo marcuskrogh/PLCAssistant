@@ -93,6 +93,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-183 | Task | Online / runtime visibility + PID HMI faceplates | Done | Relates SWD-178; blocked by SWD-181 | docs/PLAN.md | Done — shipped PR [#81](https://github.com/marcuskrogh/PLCAssistant/pull/81) (App 0.1.38) |
 | SWD-219 | Bug | [Iterate] Integration setup fails: No module named plcassistant.io | Done | Relates SWD-183 | docs/ITERATE.md | Done — shipped PR [#82](https://github.com/marcuskrogh/PLCAssistant/pull/82) (App 0.1.39) |
 | SWD-221 | Bug | [Iterate] Cascade reliability: HA freeze, Start path, Level Man / Flow Auto defaults | Done | Relates SWD-220 | docs/ITERATE.md | Done — shipped PR [#84](https://github.com/marcuskrogh/PLCAssistant/pull/84) (App 0.1.41) |
+| SWD-222 | Bug | [Iterate] Start/cascade dead, Start–Stop unresponsive, PID setpoints, HA lockup | In Progress | Relates SWD-221 | docs/ITERATE.md | Implement complete — App 0.1.42; Next `/review-fix SWD-222` |
 | SWD-220 | Bug | [Iterate] PID cards Configuration error + default mode Remote (should be Manual) | Done | Relates SWD-219 | docs/ITERATE.md | Done — shipped PR [#83](https://github.com/marcuskrogh/PLCAssistant/pull/83) (App 0.1.40) |
 | SWD-217 | Subtask | SWD-183: PID SP-source mode logic + Datablock tag contract | Done | SWD-183 | docs/PLAN.md | — |
 | SWD-214 | Subtask | SWD-183: HA compound PID loop entity platform | Done | SWD-183 | docs/PLAN.md | — |
@@ -137,6 +138,8 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
+- 2026-08-01 — Implement SWD-222: Start/cascade + plant load + PID mux/card (App 0.1.42); 578 pytest green. Next `/review-fix SWD-222`.
+- 2026-08-01 — Iterate SWD-222: Start fails cascade, Start–Stop unresponsive, PID setpoints, HA lockup; Relates SWD-221.
 - 2026-08-01 — Shipped SWD-221 via PR #84 (App 0.1.41); review-fix CLEAN after 2 iters; Task Done.
 - 2026-08-01 — Implement SWD-221: cascade reliability Level Man / Flow Auto + no freeze (App 0.1.41); PR [#84](https://github.com/marcuskrogh/PLCAssistant/pull/84) → In Review. Next `/review-fix SWD-221`.
 - 2026-08-01 — Iterate SWD-221: HA freeze + Level Man / Flow Auto cascade defaults (App 0.1.41); Relates SWD-220.

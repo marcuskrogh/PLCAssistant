@@ -194,7 +194,9 @@ class MqttScanLoop:
     STATUS_HEARTBEAT_S = 2.0
     FILE_BRIDGE_PERIOD_S = 1.0
     # Operator request + plant IN fallback when MQTT plant→App is silent (SWD-171).
-    # Live MQTT still wins on the same scan (applied after file hydrate).
+    # Live MQTT still wins on the same scan for plant PVs (applied after file hydrate).
+    # Operator tags are re-applied from file after MQTT so HA seed beats stale retain
+    # (SWD-222).
     _FILE_INPUT_TAGS = frozenset(
         {
             "SP_LEVEL_REQ",
@@ -214,6 +216,24 @@ class MqttScanLoop:
             "LT_TANK",
             "LT_RES",
             "FT_INLET",
+        }
+    )
+    _OPERATOR_FILE_TAGS = frozenset(
+        {
+            "SP_LEVEL_REQ",
+            "SP_LEVEL_MAN",
+            "SP_LEVEL_AUTO",
+            "SP_LEVEL_REM",
+            "LEVEL_MODE",
+            "SP_FLOW_MAN",
+            "SP_FLOW_REM",
+            "FLOW_MODE",
+            "LEVEL_KP",
+            "LEVEL_KI",
+            "LEVEL_KD",
+            "FLOW_KP",
+            "FLOW_KI",
+            "FLOW_KD",
         }
     )
 
@@ -299,16 +319,21 @@ class MqttScanLoop:
         ):
             self._last_file_bridge = time.monotonic()
 
-    def _apply_file_inputs(self) -> None:
-        """Apply retained HA-config IN tags (SP_LEVEL_REQ + plant PVs) (SWD-141/171)."""
+    def _apply_file_inputs(self, *, only_tags: frozenset[str] | None = None) -> None:
+        """Apply retained HA-config IN tags (SP_LEVEL_REQ + plant PVs) (SWD-141/171).
+
+        ``only_tags`` restricts which file tags are applied (SWD-222 operator
+        re-apply after MQTT so seed/modes beat stale broker retain).
+        """
         snap = read_inputs()
         if not snap:
             return
         tags = snap.get("tags") if isinstance(snap.get("tags"), dict) else {}
+        allowed = self._FILE_INPUT_TAGS if only_tags is None else only_tags
         known = set(self.image.names())
         now = time.time()
         for name, body in tags.items():
-            if name not in self._FILE_INPUT_TAGS:
+            if name not in allowed:
                 continue
             if name not in known or not isinstance(body, dict) or "value" not in body:
                 continue
@@ -355,18 +380,18 @@ class MqttScanLoop:
                 continue
 
     def _apply_commands(self, cmds: tuple[str, ...]) -> None:
+        """Enqueue Start/Stop/Reset only — no optimistic status (SWD-222).
+
+        Publishing ``running`` before Skid ``PERM_OK`` accepts Start made the HMI
+        bounce and Start feel broken. ``scan_once`` aligns ``scanning`` + status
+        from Skid MODE after logic runs.
+        """
         enqueue = getattr(self.logic, "enqueue_operator", None)
         for name in cmds:
             with self._lock:
                 self.commands.append(name)
             if callable(enqueue):
                 enqueue(name)
-            if name == "start":
-                self.scanning = True
-                self._publish_scan_status("running")
-            elif name == "stop":
-                self.scanning = False
-                self._publish_scan_status("stopped")
             # reset: latch-clear only — do not publish a sticky "reset" state;
             # ``scan_once`` republishes running/stopped from Skid MODE after logic.
 
@@ -407,9 +432,12 @@ class MqttScanLoop:
         if file_cmd:
             self.bridge.enqueue_command(file_cmd)
         # File IN tags (SP_LEVEL_REQ + plant PV fallback, SWD-141/171) when MQTT
-        # is silent. Apply before MQTT so a live broker still wins on the same scan.
+        # is silent. Apply before MQTT so live plant MQTT still wins same-scan.
         self._apply_file_inputs()
         self.bridge.apply_inputs(self.image, clear=True)
+        # Operator modes/SPs: file (HA seed / Number writes) beats stale MQTT
+        # retain that would leave FLOW_MODE=Manual and kill cascade (SWD-222).
+        self._apply_file_inputs(only_tags=self._OPERATOR_FILE_TAGS)
         drained = self.bridge.drain_commands()
         if drained:
             self._apply_commands(drained)

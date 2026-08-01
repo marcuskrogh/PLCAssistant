@@ -322,7 +322,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 "qos": 1,
                 "retain": False,
             },
-            blocking=False,
+            blocking=True,
         )
         # Shared-config fallback when MQTT never reaches Soft-PLC (SWD-139).
         root = data.get("config_root")

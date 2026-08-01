@@ -89,6 +89,9 @@ class PlantSimulator:
         else:
             if prev in {"offline", "fault"} and state in {"running", "stopped"}:
                 self._runner.reset_timing()
+                # Soft-PLC was offline/fault — do not treat freeze duration as a
+                # CMD watchdog gap (that zeroed pump on thaw and killed cascade).
+                self._last_cmd_mono = time.monotonic()
             self.frozen = False
 
     def apply_cmd_speed(self, value: float, *, mono: float | None = None) -> None:
@@ -123,14 +126,16 @@ class PlantSimulator:
 
     def tick(self, wall_dt: float, *, mono: float | None = None) -> Mapping[str, float]:
         now = time.monotonic() if mono is None else float(mono)
+        if self.frozen:
+            # Pause CMD watchdog while frozen so offline→online thaw does not
+            # zero a still-valid Soft-PLC CMD (SWD-222).
+            return self.model.outputs()
         if (
             self._last_cmd_mono is not None
             and (now - self._last_cmd_mono) > self.cmd_watchdog_s
         ):
             if "cmd_speed" in self.model.spec.input_keys:
                 self.model.set_input("cmd_speed", 0.0)
-        if self.frozen:
-            return self.model.outputs()
         # Continue gravity drain while Soft-PLC is stopped (CMD may be 0).
         self._runner.advance(wall_dt)
         outs = self.model.outputs()

@@ -22,6 +22,8 @@ from .plant import PlantSimulator
 _LOGGER = logging.getLogger(__name__)
 
 _POLL_S = 0.1
+# Shared-config plant IN fallback — Soft-PLC only needs ~1 Hz freshness (SWD-222).
+_FILE_WRITE_PERIOD_S = 1.0
 
 
 class HassPlantSimulator:
@@ -48,6 +50,8 @@ class HassPlantSimulator:
         self._task: asyncio.Task[None] | None = None
         self._stop = asyncio.Event()
         self._last_mono: float | None = None
+        self._last_file_write_mono: float = 0.0
+        self._file_pending: dict[str, dict[str, Any]] = {}
 
     @property
     def preset(self) -> str:
@@ -112,12 +116,18 @@ class HassPlantSimulator:
         _LOGGER.info("Plant simulator stopped (instance_id=%s)", self._instance_id)
 
     async def _flush(self) -> None:
-        if not self._pending:
+        if not self._pending and not self._file_pending:
             return
         pending = dict(self._pending)
         self._pending.clear()
         file_tags: dict[str, dict[str, Any]] = {}
         config_root: Path | None = None
+        if self._entry_id is not None:
+            store = self.hass.data.get(DOMAIN, {}).get(self._entry_id)
+            if isinstance(store, dict):
+                root = store.get("config_root")
+                if isinstance(root, Path):
+                    config_root = root
         for tag, payload in pending.items():
             # SWD-169/170: HMI plant sensors/Numbers hydrate from this bus
             # (same-process); MQTT remains the Soft-PLC transport.
@@ -127,9 +137,6 @@ class HassPlantSimulator:
                 store = self.hass.data.get(DOMAIN, {}).get(self._entry_id)
                 if isinstance(store, dict):
                     store.setdefault("in_values", {})[tag_key] = payload
-                    root = store.get("config_root")
-                    if isinstance(root, Path):
-                        config_root = root
                 self.hass.bus.async_fire(
                     f"{DOMAIN}_plant_in",
                     {
@@ -143,11 +150,17 @@ class HassPlantSimulator:
             parsed = _parse_tag_payload(payload)
             if parsed is not None:
                 file_tags[tag_key] = parsed
-        # Write file fallback before MQTT so a publish failure cannot starve the
-        # silent Soft-PLC path.
-        if file_tags and config_root is not None:
+        if file_tags:
+            self._file_pending.update(file_tags)
+        # Rate-limit locked inputs.json writes (≤1 Hz) — 20 Hz writes froze HA (SWD-222).
+        now = time.monotonic()
+        due = (now - self._last_file_write_mono) >= _FILE_WRITE_PERIOD_S
+        if self._file_pending and config_root is not None and due:
+            batch = dict(self._file_pending)
+            self._file_pending.clear()
+            self._last_file_write_mono = now
             await self.hass.async_add_executor_job(
-                write_input_tags, file_tags, config_root
+                write_input_tags, batch, config_root
             )
         for tag, payload in pending.items():
             await self.hass.services.async_call(
@@ -171,8 +184,8 @@ class HassPlantSimulator:
                 self._last_mono = now
                 self._plant.tick(dt, mono=now)
                 await self._flush()
-                sleep_s = min(_POLL_S, max(0.01, self._plant.period_s / 2.0))
-                await asyncio.sleep(sleep_s)
+                # Cap at 10 Hz — do not sleep period/2 (that doubled load) (SWD-222).
+                await asyncio.sleep(_POLL_S)
         except asyncio.CancelledError:
             raise
 

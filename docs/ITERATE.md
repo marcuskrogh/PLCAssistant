@@ -1,45 +1,46 @@
-# Iterate: Cascade reliability — HA freeze, Start path, Level Man / Flow Auto
+# Iterate: Start/cascade dead, PID setpoints broken, HA lockup
 
 ## Prior work
-- Task: [SWD-220](https://marcusknielsen.atlassian.net/browse/SWD-220)
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/83 (App 0.1.40)
-- Spec context: `docs/io/06-pid-faceplate.md`, Operate Lovelace YAML
+- Task: [SWD-221](https://marcusknielsen.atlassian.net/browse/SWD-221)
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/84 (App 0.1.41)
+- Spec context: `docs/io/06-pid-faceplate.md`, Operate Lovelace, Soft-PLC runtime
 
 ## Problem
-1. After 0.1.40, HA Core tends to freeze / become unresponsive (cold-start Number hydrate publishes MQTT + locked file writes serially; plant sim ticks during setup).
-2. Hard to Start / cascade appears broken: Flow mode defaulted Manual so published `SP_FLOW=0` while Level Manual is correct.
-3. Operate primary control is Level REQ while default Level mode is Manual — writes do not move active SP. Level PID Auto row writes `SP_LEVEL_AUTO` but Soft-PLC mux prefers `SP_LEVEL_REQ`.
+1. HA Core still locks up occasionally under load.
+2. Start often fails to engage cascade — no inlet flow / pump motion.
+3. Start/Stop feel unresponsive.
+4. Defaults do not yield a working cascade on Start.
+5. PID card mode / setpoint Set appear broken.
 
 ## Clarifications
-- Cascade defaults must follow system semantics: **Level = Manual**, **Flow = Automatic**.
-- Start with defaults must run cascade (Level Man SP → flow Auto → CMD_SPEED).
-- Reliability/efficiency is in-scope; classic CV Manual remains out of scope.
+- Cascade defaults remain Level Manual / Flow Automatic.
+- Operator expectation: Man/Rem/Auto SP Set engages that source (flip mode on Auto SP write too).
 
 ## Acceptance criteria
-- [x] `LEVEL_MODE` default Manual (`0`); `FLOW_MODE` default Automatic (`1`) in Soft-PLC Datablock, HA catalog, Number meta
-- [x] Cold start: operator IN defaults seeded **once** (batched `in_values` + single file write); Numbers **do not** per-entity MQTT/file publish in `async_added_to_hass`
-- [x] Plant simulator starts **after** platform entity setup; tick period not tighter than scan period (≤10 Hz)
-- [x] Lovelace card resource registration is idempotent (once per Core process)
-- [x] Level PID `sp_auto_entity` writes `SP_LEVEL_REQ` (mux Automatic writer); Operate board primary SP is Level Man
-- [x] With defaults only: Start → RUNNING and Soft-PLC publishes non-zero cascade `SP_FLOW` / `CMD_SPEED` when level error exists (regression test)
-- [x] App/integration **0.1.41**; dashboard version bump; dual trees synced; tests green
+- [x] Soft-PLC operator IN: file seed wins over stale MQTT retain when file is newer (or MQTT re-applied after file for operator tags)
+- [x] HA seed MQTT awaited (qos≥1, retain) before platforms; FLOW_MODE=1 / LEVEL_MODE=0 land on broker
+- [x] No optimistic Soft-PLC `running` status before skid PERM_OK accepts Start
+- [x] Plant CMD watchdog does not zero cmd across frozen→unfrozen; plant file writes ≤1 Hz; plant sleep = `_POLL_S` (≤10 Hz)
+- [x] PID compound `sp` attribute = mux(mode, man, auto, rem), never stale OUT
+- [x] PID card preserves typed drafts / focused inputs across hass updates
+- [x] Writing Level Auto/REQ SP flips `LEVEL_MODE` to Automatic (parity with Man/Rem flips)
+- [x] System test: defaults → Start → RUNNING + SP_FLOW>0 + CMD_SPEED>0; plant FT_INLET rises when CMD applied
+- [x] App/integration **0.1.42**; dual trees synced; full pytest green
 
 ## Out of scope
-- Full output-manual / bumpless flow CV override
-- Redesigning the entire Operate UX beyond Start/wiring reliability
+- Full output-manual CV override
+- Redesigning Operate layout beyond Start/wiring reliability
 
 ## Work packages
-1. Cascade mode defaults (Level Man / Flow Auto)
-2. Cold-start seed batch + defer plant sim + Lovelace register once
-3. Faceplate / Operate wiring (REQ ↔ Auto, Man primary)
-4. Tests + version + docs
+1. Soft-PLC IN precedence + seed MQTT await — done
+2. Start status honesty + plant load/watchdog — done
+3. PID faceplate mux + card draft UX + Auto flip — done
+4. Tests + version + docs — done (`tests/test_swd222_acceptance.py`, 578 passed)
 
 ## Tracker
-- Task: [SWD-221](https://marcusknielsen.atlassian.net/browse/SWD-221)
-- Relates: SWD-220
-- Branch: `cursor/swd-221-cascade-reliability-a52c`
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/84 (App 0.1.41)
-- Review-fix: CLEAN after 2 iterations
+- Task: [SWD-222](https://marcusknielsen.atlassian.net/browse/SWD-222)
+- Relates: SWD-221
+- Branch: `cursor/swd-222-start-cascade-pid-a52c`
 
 ## Next
-Done — phase closed.
+`/review-fix SWD-222` — Review and auto-fix until clean
