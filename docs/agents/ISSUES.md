@@ -91,7 +91,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-173 | Bug | [Iterate] Soft-PLC stuck TRIPPED after settle — stale plant file LOS | Done | Relates SWD-171 | docs/ITERATE.md | Done — shipped PR #74 (App 0.1.31) |
 | SWD-178 | Story | Industrial-parity Soft-PLC programming surface (multi-program) | To Do | — | docs/ROADMAP.md, docs/RESEARCH.md, docs/PLAN.md | `/implement SWD-182` |
 | SWD-179 | Task | Research: industrial PLC program organization & engineering UI capabilities | Done | Relates SWD-178, SWD-173 | docs/RESEARCH.md | Done — PR [#75](https://github.com/marcuskrogh/PLCAssistant/pull/75) |
-| SWD-182 | Task | Soft-PLC program organization model (tasks → programs → instances) | To Do | Relates SWD-178; blocked by SWD-179 | docs/PLAN.md | `/implement SWD-182` |
+| SWD-182 | Task | Soft-PLC program organization model (tasks → programs → instances) | To Do | Relates SWD-178; blocked by SWD-179 | docs/PLAN.md | `/implement SWD-182` (PR [#76](https://github.com/marcuskrogh/PLCAssistant/pull/76)) |
 | SWD-187 | Sub-task | SWD-182: Schema + legacy Program migration | To Do | SWD-182 | docs/PLAN.md | — |
 | SWD-185 | Sub-task | SWD-182: Runtime Task passes + apply policy | To Do | SWD-182 | docs/PLAN.md | — |
 | SWD-188 | Sub-task | SWD-182: Wedge tank Program under Main Task | To Do | SWD-182 | docs/PLAN.md | — |

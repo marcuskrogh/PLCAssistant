@@ -94,7 +94,7 @@
   - [SWD-189](https://marcusknielsen.atlassian.net/browse/SWD-189) Minimal App/API project tree JSON
   - [SWD-186](https://marcusknielsen.atlassian.net/browse/SWD-186) Unit + integration + system tests (HA/App/MQTT)
 - Branch: `cursor/swd-182-softplc-program-model-a52c`
-- PR: *(opened with this commit)*
+- PR: [#76](https://github.com/marcuskrogh/PLCAssistant/pull/76)
 
 ## Next
 `/implement SWD-182` — Build per this plan (same branch/PR)
