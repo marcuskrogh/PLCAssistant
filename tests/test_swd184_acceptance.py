@@ -278,3 +278,6 @@ def test_system_editor_uses_callapi_pattern() -> None:
     )
     assert "async_reload" in api
     assert "CONF_BINDINGS" in api
+    assert "bindings_unchanged" in api
+    init = Path("custom_components/plcassistant/__init__.py").read_text(encoding="utf-8")
+    assert "if bindings is None" in init

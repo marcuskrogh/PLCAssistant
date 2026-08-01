@@ -260,9 +260,12 @@ class DatablockApplyView(HomeAssistantView):
             return _json_error("no PLCAssistant config entry", 404)
 
         new_data = {**dict(entry.data), CONF_BINDINGS: rows}
+        bindings_unchanged = entry.data.get(CONF_BINDINGS) == rows
         hass.config_entries.async_update_entry(entry, data=new_data)
-        # Always reload so platforms/MQTT rebuild from the new bindings.
-        await hass.config_entries.async_reload(entry.entry_id)
+        # Listener reloads when data changes; re-apply same bindings must still
+        # rebuild platforms from the updated store on disk (Dynamics pattern).
+        if bindings_unchanged:
+            await hass.config_entries.async_reload(entry.entry_id)
         return web.json_response(
             {"ok": True, "bindings": rows, "count": len(rows), "reloaded": True}
         )

@@ -130,7 +130,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
     instance_id = entry.data.get(CONF_INSTANCE_ID, DEFAULT_INSTANCE_ID)
     config_root = Path(hass.config.path())
-    bindings = entry.data.get(CONF_BINDINGS) or _default_bindings()
+    bindings = entry.data.get(CONF_BINDINGS)
+    if bindings is None:
+        bindings = _default_bindings()
     # Prefer Datablock store when load succeeds (SWD-184), including empty rows.
     try:
         from .datablocks.store import binding_rows_from_store, load_store
