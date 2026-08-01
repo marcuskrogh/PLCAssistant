@@ -346,6 +346,7 @@ def migrate_program_to_pid(program: Program) -> Program:
         wires=list(program.wires),
         execution_order=list(program.execution_order),
         user_templates=dict(program.user_templates),
+        datablocks=list(program.datablocks),
         version=program.version,
     )
 
@@ -399,6 +400,8 @@ def program_to_dict(program: Program) -> dict[str, Any]:
     }
     result["wires"] = [_wire_to_dict(w) for w in program.wires]
     result["execution_order"] = list(program.execution_order)
+    if program.datablocks:
+        result["datablocks"] = list(program.datablocks)
     return result
 
 
@@ -447,6 +450,11 @@ def program_from_dict(data: Mapping[str, Any]) -> Program:
             raise ValueError("'execution_order' must be a list")
         execution_order = [str(x) for x in raw_order]
 
+    raw_dbs = data.get("datablocks") or []
+    if not isinstance(raw_dbs, list):
+        raise ValueError("'datablocks' must be a list")
+    datablocks = [str(x) for x in raw_dbs]
+
     program = Program(
         name=name,
         description=description,
@@ -454,6 +462,7 @@ def program_from_dict(data: Mapping[str, Any]) -> Program:
         wires=wires,
         execution_order=execution_order,
         user_templates=user_templates,
+        datablocks=datablocks,
         version=version,
     )
     program = migrate_program_to_pid(program)

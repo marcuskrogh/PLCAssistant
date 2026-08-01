@@ -10,6 +10,10 @@ Define how Home Assistant entities **bind** to Soft-PLC image tags: direction, s
 
 Bindings sit between field samples and the I/O image. The Add-on still owns the live image; the thin integration owns tag declarations + this binding table (stub in SWD-99).
 
+Named **Datablocks** (SWD-184) group tags + bindings for Program access — see
+[`05-datablocks.md`](05-datablocks.md). Merged Datablocks still obey the
+uniqueness rules below.
+
 ## Directions (declared, never inferred)
 
 Every binding declares exactly one direction:
