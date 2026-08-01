@@ -71,17 +71,18 @@
 6. **Tests** — [SWD-211](https://marcusknielsen.atlassian.net/browse/SWD-211)
 
 ## Open items
-- Exact HA panel host API (custom panel vs sidebar) — choose in implement within Decision “real config panel”
-- Whether Soft-PLC App shows read-only Datablock access on Program Settings — optional, not required for Done
+- Whether Soft-PLC App shows read-only Datablock access on Program Settings — optional follow-on
+- Soft-PLC App sync of HA `program_access` → `Program.datablocks` (demo ships mirrored; documented dual SoT)
 
 ## Tracker
 - Provider: jira
 - Story: [SWD-178](https://marcusknielsen.atlassian.net/browse/SWD-178)
 - Task: [SWD-184](https://marcusknielsen.atlassian.net/browse/SWD-184)
-- Sub-tasks: SWD-209, SWD-208, SWD-210, SWD-207, SWD-212, SWD-211
+- Sub-tasks: SWD-209, SWD-208, SWD-210, SWD-207, SWD-212, SWD-211 (Done)
 - Branch: `cursor/swd-184-datablock-mapping-a52c`
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/80
-App: 0.1.36
+- App: 0.1.36
+- Status: **Shipped** (review-fix CLEAN)
 
 ## Next
-`/review-fix SWD-184` — Review and auto-fix until clean
+Done — phase closed.

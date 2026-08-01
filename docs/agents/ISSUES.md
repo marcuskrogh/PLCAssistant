@@ -89,7 +89,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-170 | Bug | [Iterate] Operate plant PVs still unavailable after 0.1.28 BOX hydrate | Done | Relates SWD-169 | docs/ITERATE.md | Done — shipped PR #72 (App 0.1.29) |
 | SWD-171 | Bug | [Iterate] Tank level settles away from setpoint (Soft-PLC plant IN silent) | Done | Relates SWD-170 | docs/ITERATE.md | Done — shipped PR #73 (App 0.1.30) |
 | SWD-173 | Bug | [Iterate] Soft-PLC stuck TRIPPED after settle — stale plant file LOS | Done | Relates SWD-171 | docs/ITERATE.md | Done — shipped PR #74 (App 0.1.31) |
-| SWD-178 | Story | Industrial-parity Soft-PLC programming surface (multi-program) | To Do | — | docs/ROADMAP.md, docs/RESEARCH.md, docs/PLAN.md | `/review-fix SWD-184` |
+| SWD-178 | Story | Industrial-parity Soft-PLC programming surface (multi-program) | To Do | — | docs/ROADMAP.md, docs/RESEARCH.md, docs/PLAN.md | `/define SWD-183` |
 | SWD-179 | Task | Research: industrial PLC program organization & engineering UI capabilities | Done | Relates SWD-178, SWD-173 | docs/RESEARCH.md | Done — PR [#75](https://github.com/marcuskrogh/PLCAssistant/pull/75) |
 | SWD-182 | Task | Soft-PLC program organization model (tasks → programs → instances) | Done | Relates SWD-178; blocked by SWD-179 | docs/PLAN.md | Done — shipped PR [#76](https://github.com/marcuskrogh/PLCAssistant/pull/76) (App 0.1.32) |
 | SWD-187 | Sub-task | SWD-182: Schema + legacy Program migration | Done | SWD-182 | docs/PLAN.md | — |
@@ -116,7 +116,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-206 | Subtask | SWD-180: Library editor UI + API | Done | SWD-180 | docs/PLAN.md | — |
 | SWD-201 | Subtask | SWD-180: Diagram instance equation editor | Done | SWD-180 | docs/PLAN.md | — |
 | SWD-204 | Subtask | SWD-180: unit + integration + system tests | Done | SWD-180 | docs/PLAN.md | — |
-| SWD-184 | Task | Integration Datablock tag mapping UI | In Review | Relates SWD-178; blocked by SWD-182 | docs/PLAN.md | `/review-fix SWD-184` — draft PR [#80](https://github.com/marcuskrogh/PLCAssistant/pull/80) |
+| SWD-184 | Task | Integration Datablock tag mapping UI | Done | Relates SWD-178; blocked by SWD-182 | docs/PLAN.md | Done — shipped PR [#80](https://github.com/marcuskrogh/PLCAssistant/pull/80) (App 0.1.36) |
 | SWD-209 | Subtask | SWD-184: Datablock model + schema | Done | SWD-184 | docs/PLAN.md | — |
 | SWD-208 | Subtask | SWD-184: Program ↔ Datablock access + tag visibility | Done | SWD-184 | docs/PLAN.md | — |
 | SWD-210 | Subtask | SWD-184: HA configuration panel (Datablock CRUD) | Done | SWD-184 | docs/PLAN.md | — |
@@ -127,6 +127,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
+- 2026-08-01 — Shipped SWD-184 via PR #80 (App 0.1.36); review-fix CLEAN after 2 iters; Task Done; Next `/define SWD-183`.
 - 2026-08-01 — Implement SWD-184: Datablock model/catalog, Program access, HA Datablocks panel + store, DB_Tank example, App 0.1.36; pytest 530 passed. Next `/review-fix SWD-184`.
 - 2026-08-01 — Define SWD-184 approved: PLAN.md; Sub-tasks SWD-209/208/210/207/212/211; branch `cursor/swd-184-datablock-mapping-a52c`. Next `/implement SWD-184`.
 - 2026-08-01 — Shipped SWD-180 via PR #79 (App 0.1.35); review-fix CLEAN after 2 iters; Task Done; Next `/define SWD-184`.
