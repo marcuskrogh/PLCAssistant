@@ -48,6 +48,7 @@ from plcassistant.surface.schema import (
     classify_project_apply,
     main_program,
     migrate_legacy_program_dict,
+    migrate_program_to_pid,
     program_to_dict,
     project_from_dict,
     scheduled_programs,
@@ -194,12 +195,20 @@ class ProgramLoader:
         return os.environ.get(_ENV_HOT_APPLY, "") == "1"
 
     def _prune_user_templates(self, new_program: Program) -> None:
-        """Remove user templates from the library that are absent from *new_program*."""
+        """Remove program-scoped user templates absent from *new_program*.
+
+        App-global ``library=="custom"`` templates are owned by the App layer
+        and must not be pruned here (SWD-180).
+        """
         new_ids = set(new_program.user_templates.keys())
         to_remove = [
             (tmpl.library, tmpl.template_id)
             for tmpl in self._library.all_templates()
-            if not tmpl.is_builtin and tmpl.template_id not in new_ids
+            if (
+                not tmpl.is_builtin
+                and tmpl.library != "custom"
+                and tmpl.template_id not in new_ids
+            )
         ]
         for lib, tid in to_remove:
             self._library.unregister(lib, tid)
@@ -316,6 +325,7 @@ class ProjectLoader:
         superuser: bool = False,
     ) -> None:
         """Swap the Main-task program (canvas / legacy Program apply path)."""
+        program = migrate_program_to_pid(program)
         proj = self._project
         if proj is None:
             self.load(
@@ -347,6 +357,7 @@ class ProjectLoader:
         superuser: bool = False,
     ) -> None:
         """Swap a selected Program in the active project."""
+        program = migrate_program_to_pid(program)
         proj = self._project
         if proj is None:
             if program_id in ("", self._main_program_id(SoftPlcProject())):
@@ -390,6 +401,17 @@ class ProjectLoader:
             return project_from_dict(
                 migrate_legacy_program_dict(program_to_dict(project))
             )
+        migrated_programs = {
+            pid: migrate_program_to_pid(prog)
+            for pid, prog in project.programs.items()
+        }
+        if any(migrated_programs[pid] is not project.programs[pid] for pid in project.programs):
+            return SoftPlcProject(
+                programs=migrated_programs,
+                tasks=list(project.tasks),
+                scan_period_s=project.scan_period_s,
+                version=project.version,
+            )
         return project
 
     def apply(
@@ -419,14 +441,18 @@ class ProjectLoader:
             self._runtime.tick(prog, context, dt)
 
     def _register_all_user_templates(self, project: SoftPlcProject) -> None:
-        """Prune stale user templates and register all programs' user templates."""
+        """Prune stale program user templates; keep App-global custom templates."""
         all_ids: set[str] = set()
         for prog in project.programs.values():
             all_ids.update(prog.user_templates.keys())
         to_remove = [
             (tmpl.library, tmpl.template_id)
             for tmpl in self._library.all_templates()
-            if not tmpl.is_builtin and tmpl.template_id not in all_ids
+            if (
+                not tmpl.is_builtin
+                and tmpl.library != "custom"
+                and tmpl.template_id not in all_ids
+            )
         ]
         for lib, tid in to_remove:
             self._library.unregister(lib, tid)

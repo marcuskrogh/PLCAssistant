@@ -89,7 +89,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-170 | Bug | [Iterate] Operate plant PVs still unavailable after 0.1.28 BOX hydrate | Done | Relates SWD-169 | docs/ITERATE.md | Done — shipped PR #72 (App 0.1.29) |
 | SWD-171 | Bug | [Iterate] Tank level settles away from setpoint (Soft-PLC plant IN silent) | Done | Relates SWD-170 | docs/ITERATE.md | Done — shipped PR #73 (App 0.1.30) |
 | SWD-173 | Bug | [Iterate] Soft-PLC stuck TRIPPED after settle — stale plant file LOS | Done | Relates SWD-171 | docs/ITERATE.md | Done — shipped PR #74 (App 0.1.31) |
-| SWD-178 | Story | Industrial-parity Soft-PLC programming surface (multi-program) | To Do | — | docs/ROADMAP.md, docs/RESEARCH.md, docs/PLAN.md | `/define SWD-180` |
+| SWD-178 | Story | Industrial-parity Soft-PLC programming surface (multi-program) | To Do | — | docs/ROADMAP.md, docs/RESEARCH.md, docs/PLAN.md | `/define SWD-184` |
 | SWD-179 | Task | Research: industrial PLC program organization & engineering UI capabilities | Done | Relates SWD-178, SWD-173 | docs/RESEARCH.md | Done — PR [#75](https://github.com/marcuskrogh/PLCAssistant/pull/75) |
 | SWD-182 | Task | Soft-PLC program organization model (tasks → programs → instances) | Done | Relates SWD-178; blocked by SWD-179 | docs/PLAN.md | Done — shipped PR [#76](https://github.com/marcuskrogh/PLCAssistant/pull/76) (App 0.1.32) |
 | SWD-187 | Sub-task | SWD-182: Schema + legacy Program migration | Done | SWD-182 | docs/PLAN.md | — |
@@ -109,12 +109,21 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-200 | Subtask | SWD-191: App UI top nav + Task editor | Done | SWD-191 | docs/PLAN.md | — |
 | SWD-197 | Subtask | SWD-191: Wire Program cards status after Apply | Done | SWD-191 | docs/PLAN.md | — |
 | SWD-198 | Subtask | SWD-191: unit + integration + system tests | Done | SWD-191 | docs/PLAN.md | — |
-| SWD-180 | Task | Define library inspectability + generic PID | To Do | Relates SWD-178; blocked by SWD-182 | docs/ROADMAP.md | `/define SWD-180` |
+| SWD-180 | Task | Library inspectability + generic PID | Done | Relates SWD-178; blocked by SWD-182 | docs/PLAN.md | Done — shipped PR [#79](https://github.com/marcuskrogh/PLCAssistant/pull/79) (App 0.1.35) |
+| SWD-203 | Subtask | SWD-180: Equation runtime + PID template | Done | SWD-180 | docs/PLAN.md | — |
+| SWD-202 | Subtask | SWD-180: Copy-on-place + instance equation storage | Done | SWD-180 | docs/PLAN.md | — |
+| SWD-205 | Subtask | SWD-180: Migrate level_pi/flow_pi to PID copies | Done | SWD-180 | docs/PLAN.md | — |
+| SWD-206 | Subtask | SWD-180: Library editor UI + API | Done | SWD-180 | docs/PLAN.md | — |
+| SWD-201 | Subtask | SWD-180: Diagram instance equation editor | Done | SWD-180 | docs/PLAN.md | — |
+| SWD-204 | Subtask | SWD-180: unit + integration + system tests | Done | SWD-180 | docs/PLAN.md | — |
 | SWD-184 | Task | Define integration multi-datablock tag mapping UI | To Do | Relates SWD-178; blocked by SWD-182 | docs/ROADMAP.md | `/define SWD-184` |
 | SWD-183 | Task | Define online / runtime visibility (loaded vs running) | To Do | Relates SWD-178; blocked by SWD-181 | docs/ROADMAP.md | `/define SWD-183` |
 
 ## Log
 
+- 2026-08-01 — Shipped SWD-180 via PR #79 (App 0.1.35); review-fix CLEAN after 2 iters; Task Done; Next `/define SWD-184`.
+- 2026-08-01 — Implement SWD-180: generic equation-driven PID, copy-on-place instances, library editor/API/persistence, migration, App 0.1.35; full pytest 521 passed. Next `/review-fix SWD-180`.
+- 2026-08-01 — Define SWD-180 approved + ship: PLAN.md; Sub-tasks SWD-203/202/205/206/201/204; branch `cursor/swd-180-library-pid-a52c`. Remaining: implement → review-fix → closeout.
 - 2026-08-01 — Shipped SWD-191 via PR #78 (App 0.1.34); review-fix CLEAN after 2 iters; Task Done; Next `/define SWD-180`.
 - 2026-08-01 — Define SWD-191 approved + ship: PLAN.md; Sub-tasks SWD-196/199/200/197/198; branch `cursor/swd-191-task-scheduling-editor-a52c`. Remaining: implement → review-fix → closeout.
 - 2026-08-01 — Shipped SWD-181 via PR #77 (App 0.1.33); review-fix CLEAN after 3 iters; Task Done; Next `/define SWD-191`.

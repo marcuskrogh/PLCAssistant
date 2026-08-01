@@ -1,166 +1,73 @@
-# Built-in Block Library (SWD-115)
+# Built-in Block Library (SWD-115 / SWD-180)
 
 ## Overview
 
-The built-in library ships read-only `BlockTemplate` objects and native
-Python callables registered in a `TemplateLibrary`. Blocks in this library
-carry `library="builtin"` and `is_builtin=True`; they cannot be edited
-in-place.
+The built-in library ships one generic **`PID`** template (`library="builtin"`,
+`is_builtin=True`). Placement copies the current library definition onto the
+instance (`equation` + `params`); library edits do not rewrite existing
+instances.
 
-Registration happens at startup via `register_builtins(library, runtime)`.
+Shipped templates may be overridden in the App **Library** editor (persist under
+JSON `library.shipped_overrides`); **Reset to factory** restores `pid_template()`.
+Global **custom** templates live under `library.custom` (`library="custom"`).
+
+Registration: `register_builtins(library, runtime)` registers the PID template
+only. Soft-PLC evaluates instance math equations each scan (see
+`plcassistant.surface.equations`).
 
 ---
 
 ## Blocks
 
-### `level_pi` — Level PI Controller
+### `PID` — Generic PID Controller
 
-Outer loop of the wedge cascade. Compares measured level (`pv`) to a level
-setpoint (`sp`) and outputs a flow setpoint (`cv`).
-
-| Pin | Direction | Type | Default | Notes |
-|---|---|---|---|---|
-| `pv` | IN | float | 0.0 | Measured tank level (m) |
-| `sp` | IN | float | 0.0 | Level setpoint (m) |
-| `running` | IN | bool | False | Pump permit; false → hold `cv`, reset integral |
-| `cv` | OUT | float | — | Flow setpoint (L/min, clamped to `[cv_min, cv_max]`) |
-
-| Param | Default | Notes |
-|---|---|---|
-| `kp` | 40.0 | Proportional gain (L/min per m error) |
-| `ki` | 5.0 | Integral gain (1/s) |
-| `cv_min` | 0.0 | Lower clamp for output (L/min) |
-| `cv_max` | 6.0 | Upper clamp for output (L/min) |
-
-**Behaviour:**
-
-- `running=True`: PI step with conditional anti-windup (same gains/clamps as
-  `CascadeController` defaults).
-- `running=False`: reset integral, hold last `cv`, bumpless flag cleared.
-- State: `integral` (float), `last_cv` (float), `bumpless_pending` (bool).
-
----
-
-### `flow_pi` — Flow PI Controller
-
-Inner loop of the wedge cascade. Compares measured flow (`pv`) to a flow
-setpoint (`sp`, normally wired from `level_pi.cv`) and outputs a speed
-command (`cv`).
+Full PID with optional D (`kd`/`td` = 0 → PI). Pins and params:
 
 | Pin | Direction | Type | Default | Notes |
 |---|---|---|---|---|
-| `pv` | IN | float | 0.0 | Measured flow (L/min) |
-| `sp` | IN | float | 0.0 | Flow setpoint (L/min) |
-| `running` | IN | bool | False | Pump permit; false → force `cv = 0`, reset integral |
-| `cv` | OUT | float | — | Speed command (%, clamped to `[cv_min, cv_max]`) |
+| `pv` | IN | float | 0.0 | Process value |
+| `sp` | IN | float | 0.0 | Setpoint |
+| `running` | IN | bool | False | When false: reset integral; hold or zero `cv` per `hold_when_stopped` |
+| `cv` | OUT | float | 0.0 | Manipulated variable (clamped) |
 
 | Param | Default | Notes |
 |---|---|---|
-| `kp` | 12.0 | Proportional gain (% per L/min error) |
-| `ki` | 2.0 | Integral gain (1/s) |
-| `cv_min` | 0.0 | Lower clamp (%) |
-| `cv_max` | 100.0 | Upper clamp (%) |
+| `kp` | 1.0 | Proportional gain |
+| `ki` | 0.0 | Integral gain (1/s) |
+| `kd` | 0.0 | Derivative gain |
+| `td` | 0.0 | Derivative time (combined with `kd`) |
+| `cv_min` / `cv_max` | 0 / 100 | Output clamps |
+| `hold_when_stopped` | false | true → hold last `cv` when stopped; false → `cv=0` |
 
-**Behaviour:**
-
-- `running=True`: PI step with conditional anti-windup.
-- `running=False`: reset integral, output `cv = 0.0` (pump off).
-- State: `integral` (float), `last_cv` (float).
+Default math equation: `PID_EQUATION` in `plcassistant.surface.builtin`.
 
 ---
 
-## PI math (shared)
+## Default tank cascade
 
-Both blocks use `_pi_step`:
+The wedge tank program places **two PID copies** at stable instance ids
+`level_pi` and `flow_pi` (tags stay stable; template id is `PID`):
 
-```
-error     = sp - pv
-raw_cv    = kp * error + ki * (integral + error * dt)
-cv        = clamp(raw_cv, cv_min, cv_max)
-```
+- `level_pi`: level loop (`hold_when_stopped=true`, cascade gains)
+- `flow_pi`: flow loop (`hold_when_stopped=false`)
+- Wire: `level_pi.cv → flow_pi.sp`
 
-**Conditional anti-windup:** update integral only when output is not
-saturated in the same direction as the error:
+Legacy YAML with `template_id: level_pi|flow_pi` is auto-migrated by
+`program_from_dict` / `ProjectLoader` to PID copies.
 
-```python
-if cv == raw_cv or (
-    (raw_cv > cv_max and error <= 0)
-    or (raw_cv < cv_min and error >= 0)
-):
-    integral += error * dt
-```
+Context tags (unchanged):
 
-This matches `CascadeController` exactly and enables cascade parity tests.
-
----
-
-## Registration
-
-```python
-from plcassistant.surface.model import TemplateLibrary
-from plcassistant.surface.runtime import BlockRuntime
-from plcassistant.surface.builtin import register_builtins
-
-library = TemplateLibrary()
-runtime = BlockRuntime(library)
-register_builtins(library, runtime)
-```
-
----
-
-## Cascade program factory
-
-`wedge_cascade_program(**gains)` returns a YAML-shaped `dict` (passable to
-`program_from_dict`) wiring `level_pi.cv → flow_pi.sp`:
-
-```yaml
-version: "1.0"
-instances:
-  level_pi:
-    template_id: level_pi
-    library: builtin
-    params: {kp: 40.0, ki: 5.0, cv_min: 0.0, cv_max: 6.0}
-  flow_pi:
-    template_id: flow_pi
-    library: builtin
-    params: {kp: 12.0, ki: 2.0, cv_min: 0.0, cv_max: 100.0}
-wires:
-  - {src_instance: level_pi, src_pin: cv,
-     dst_instance: flow_pi,  dst_pin: sp}
-execution_order: [level_pi, flow_pi]
-```
-
-Context tags consumed each tick:
-
-| Tag | Meaning |
+| Tag | Role |
 |---|---|
-| `level_pi.pv` | Measured tank level (LT_TANK) |
-| `level_pi.sp` | Level setpoint (SP_LEVEL) |
-| `level_pi.running` | Pump permit |
-| `flow_pi.pv` | Measured inlet flow (FT_INLET) |
-| `flow_pi.running` | Pump permit (same signal, set by caller) |
-
-Context tags written each tick:
-
-| Tag | Meaning |
-|---|---|
-| `level_pi.cv` | Flow setpoint (SP_FLOW) |
-| `flow_pi.cv` | Speed command (CMD_SPEED) |
+| `level_pi.pv` / `.sp` / `.running` | Level PV, SP, permit |
+| `flow_pi.pv` / `.running` | Flow PV, permit |
+| `level_pi.cv` | Flow setpoint |
+| `flow_pi.cv` | Speed command |
 
 ---
 
-## Cascade parity
+## App Library editor
 
-For the same gains and inputs, one `tick` of `[level_pi → flow_pi]` produces
-numerically identical outputs to one `CascadeController.step()` call.
-This is verified in `tests/test_surface_builtin.py`.
-
----
-
-## Seams
-
-| Future package | How it uses the library |
-|---|---|
-| SWD-116 Runtime | Calls `register_builtins` at startup; routes callables per template_id. |
-| SWD-121 Skid migration | Replaces `CascadeController.step()` with `runtime.tick` on cascade program. |
-| SWD-115 extension | Additional stock blocks (PID, On/Off, ramp) registered the same way. |
+Top nav **Library**: list shipped vs custom; edit equation/params; Reset factory
+for shipped; create/delete custom. Persist in App JSON `library` (outside the
+Soft-PLC project graph).

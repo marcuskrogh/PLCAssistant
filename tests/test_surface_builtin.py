@@ -89,23 +89,23 @@ def _cascade_context(
 
 def test_register_builtins_populates_library():
     lib, _ = _make_runtime()
-    assert ("builtin", "level_pi") in lib
-    assert ("builtin", "flow_pi") in lib
+    assert ("builtin", "PID") in lib
+    assert ("builtin", "level_pi") not in lib
+    assert ("builtin", "flow_pi") not in lib
 
 
 def test_register_builtins_templates_are_builtin():
     lib, _ = _make_runtime()
-    t_level = lib.get("builtin", "level_pi")
-    t_flow = lib.get("builtin", "flow_pi")
-    assert t_level is not None and t_level.is_builtin is True
-    assert t_flow is not None and t_flow.is_builtin is True
+    tmpl = lib.get("builtin", "PID")
+    assert tmpl is not None and tmpl.is_builtin is True
+    assert tmpl.body
 
 
 def test_register_builtins_templates_have_expected_pins():
     lib, _ = _make_runtime()
-    t_level = lib.get("builtin", "level_pi")
-    assert t_level is not None
-    pin_names = [p.name for p in t_level.pins]
+    tmpl = lib.get("builtin", "PID")
+    assert tmpl is not None
+    pin_names = [p.name for p in tmpl.pins]
     assert "pv" in pin_names
     assert "sp" in pin_names
     assert "running" in pin_names

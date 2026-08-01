@@ -16,6 +16,7 @@ from plcassistant.surface.model import (
     Program,
     TemplateLibrary,
 )
+from plcassistant.surface.equations import EquationError, evaluate_equation
 
 
 class TagContext(Protocol):
@@ -179,8 +180,16 @@ class BlockRuntime:
                 self._state[instance_id] = {}
             state = self._state[instance_id]
 
-            output_pins = self._execute(inst.library, inst.template_id, template,
-                                        input_pins, inst.params, state, dt)
+            output_pins = self._execute(
+                inst.library,
+                inst.template_id,
+                template,
+                input_pins,
+                inst.params,
+                state,
+                dt,
+                equation=inst.equation,
+            )
 
             # Write outputs to cache and context
             for pin_spec in template.pins:
@@ -219,12 +228,23 @@ class BlockRuntime:
         params: dict[str, Any],
         state: dict,
         dt: float,
+        *,
+        equation: str = "",
     ) -> dict[str, Any]:
+        if equation:
+            # Instance equations are always math — never fall back to Python exec
+            # (stock PID copies body into equation; exec would break on state()).
+            return evaluate_equation(equation, template, input_pins, params, state, dt)
         key = (library, template_id)
         if key in self._callables:
             return self._callables[key](input_pins, params, state, dt)
         if template.body:
-            return _exec_user_body(template, input_pins, params, state, dt)
+            try:
+                return evaluate_equation(template.body, template, input_pins, params, state, dt)
+            except EquationError:
+                # Legacy user templates authored before SWD-180 used a restricted
+                # Python body (empty instance equation + template.body only).
+                return _exec_user_body(template, input_pins, params, state, dt)
         raise ValueError(
             f"no callable registered and no body for {library!r}/{template_id!r}"
         )

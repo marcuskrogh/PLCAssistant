@@ -46,6 +46,8 @@ from the integration simulator (SWD-146+ / SWD-170); Numbers remain for nudges.
 
 ## Upgrading from App 0.1.10 / 0.1.19 / 0.1.28
 
+**0.1.35** adds the inspectable Library editor and generic PID block: shipped PID edits/reset, custom math-equation blocks, copy-on-place equations/params, and automatic `level_pi`/`flow_pi` migration.
+
 **0.1.34** adds the App Task scheduling editor: Task CRUD, ordered Program call lists, Save without live apply, and Apply (restart) for the saved schedule.
 
 **0.1.33** adds the App Program engineering surface: Program cards, create, Diagram/Log/Settings, and selected-Program canvas APIs.

@@ -71,8 +71,13 @@ tick(program, context, dt)
       fall back to `program.user_templates[template_id]` only when that
       template's `library` matches the instance; raise `ValueError` if absent.
    c. Dispatch execution:
-      - **Built-in**: call registered `BlockCallable(input_pins, params, state, dt)`.
-      - **User body**: `exec(body, namespace)` with input pins, params, `state`, `dt`.
+      - **Instance equation** (SWD-180): when `inst.equation` is non-empty, evaluate
+        with `plcassistant.surface.equations.evaluate_equation` (math assignments).
+        Failures raise `EquationError` (no Python `exec` fallback on this path).
+      - **Built-in callable**: registered `BlockCallable` when present.
+      - **Template body**: try math evaluation of `template.body`; legacy
+        user templates with empty instance equation may fall back to restricted
+        `exec(body)` only on that path.
    d. Write each **OUT pin** value to the per-tick pin cache and to
       `context.set("{instance_id}.{pin_name}", value)`.
 

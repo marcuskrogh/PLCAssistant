@@ -112,8 +112,8 @@ _HTML = r"""<!DOCTYPE html>
   }
   .page h1 { font-size: clamp(1.5rem, 9vw, 2.4rem); }
   .helper { color: var(--muted); font-size: 0.86rem; line-height: 1.5; }
-  .program-list, .task-list, .call-list { display: grid; grid-template-columns: 1fr; gap: 12px; }
-  .program-card, .task-card, .call-card {
+  .program-list, .task-list, .call-list, .library-list { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  .program-card, .task-card, .call-card, .library-card {
     background: var(--panel);
     border: 1px solid var(--line);
     border-radius: 14px;
@@ -183,6 +183,9 @@ _HTML = r"""<!DOCTYPE html>
   textarea { resize: vertical; min-height: 84px; }
   .form-row { display: flex; gap: 8px; flex-wrap: wrap; }
   .form-row > * { flex: 1 1 140px; }
+  .library-section { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .library-card h2 { font-family: var(--font-display); font-size: 1.25rem; }
+  .library-card.active { border-color: var(--teal); }
 
   #program-shell { flex: 1; display: none; min-height: 0; flex-direction: column; }
   .shell-bar {
@@ -341,6 +344,7 @@ _HTML = r"""<!DOCTYPE html>
   <nav id="top-nav" aria-label="Main">
     <a class="btn" id="nav-programs" href="#/programs">Programs</a>
     <a class="btn" id="nav-tasks" href="#/tasks">Tasks</a>
+    <a class="btn" id="nav-library" href="#/library">Library</a>
   </nav>
   <div id="msg-status" class="ok">Ready</div>
 </header>
@@ -442,6 +446,43 @@ _HTML = r"""<!DOCTYPE html>
   </section>
 </main>
 
+<main id="library-view" class="page" aria-label="Library" style="display:none">
+  <div class="page-head">
+    <div>
+      <h1>Library</h1>
+      <p class="helper">Shipped blocks and custom blocks are edited here. Placing a block copies its current equation and params onto the instance.</p>
+    </div>
+    <button class="btn primary" type="button" onclick="newCustomLibraryBlock()">Create Custom</button>
+  </div>
+  <section class="library-section">
+    <h2>Shipped</h2>
+    <div id="library-shipped" class="library-list"></div>
+  </section>
+  <section class="library-section">
+    <h2>Custom</h2>
+    <div id="library-custom" class="library-list"></div>
+  </section>
+  <form id="library-form" class="form-card" onsubmit="saveLibraryTemplate(event)">
+    <h2 id="library-form-title">Select a library block</h2>
+    <input type="hidden" id="lib-kind" />
+    <label for="lib-tid">Template ID</label>
+    <input id="lib-tid" autocomplete="off" />
+    <label for="lib-desc">Description</label>
+    <input id="lib-desc" autocomplete="off" />
+    <label for="lib-pins">Pins JSON (array of {name, direction, data_type?, default?})</label>
+    <textarea id="lib-pins" rows="4"></textarea>
+    <label for="lib-params">Default params JSON</label>
+    <textarea id="lib-params" rows="4"></textarea>
+    <label for="lib-body">Math equation</label>
+    <textarea id="lib-body" rows="12" spellcheck="false"></textarea>
+    <div class="form-row">
+      <button class="btn primary" type="submit">Save Library Block</button>
+      <button class="btn" type="button" onclick="resetShippedLibraryBlock()">Reset to factory</button>
+      <button class="btn danger" type="button" onclick="deleteCustomLibraryBlock()">Delete Custom</button>
+    </div>
+  </form>
+</main>
+
 <div id="program-shell" aria-label="Program shell">
   <div class="shell-bar">
     <a class="btn" href="#/programs">Back</a>
@@ -458,6 +499,7 @@ _HTML = r"""<!DOCTYPE html>
       <div id="editor-bar">
         <button class="btn" onclick="applyRestart()">Apply (restart)</button>
         <button class="btn" onclick="applyHot()">Hot Apply</button>
+        <button class="btn" onclick="editSelected()">Edit</button>
         <button class="btn danger" onclick="removeSelected()">Remove</button>
         <button type="button" class="panel-tog" onclick="togglePanel('sidebar')">Library</button>
         <button type="button" class="panel-tog" onclick="togglePanel('right')">JSON</button>
@@ -467,7 +509,7 @@ _HTML = r"""<!DOCTYPE html>
         <div id="sidebar">
           <h2>Block Library</h2>
           <div id="lib-list"></div>
-          <button class="btn" id="add-user-btn" onclick="openUserEditor(null)">+ New User Block</button>
+          <button class="btn" id="add-user-btn" onclick="openUserEditor(null)">+ Program Block</button>
         </div>
 
         <div id="canvas-wrap">
@@ -488,7 +530,7 @@ _HTML = r"""<!DOCTYPE html>
           <textarea id="yaml-area" spellcheck="false" oninput="onYamlEdit()"></textarea>
           <div class="panel-sep"></div>
           <div id="user-editor">
-            <h2 onclick="toggleUserEditor()">User Block Editor <span class="tog" id="ue-tog">▲</span></h2>
+            <h2 onclick="toggleUserEditor()">Program Block Editor <span class="tog" id="ue-tog">▲</span></h2>
             <div id="user-form">
               <label>Template ID</label>
               <input id="ue-tid" placeholder="my_block" />
@@ -498,7 +540,7 @@ _HTML = r"""<!DOCTYPE html>
               <textarea id="ue-pins" rows="3">[{"name":"x","direction":"IN","data_type":"float","default":0.0},{"name":"out","direction":"OUT","data_type":"float"}]</textarea>
               <label>Params JSON (dict of name to default_value)</label>
               <textarea id="ue-params" rows="2">{"gain": 1.0}</textarea>
-              <label>Python Body</label>
+              <label>Math equation</label>
               <textarea id="ue-body" rows="4" placeholder="out = x * gain"></textarea>
               <div class="row">
                 <button class="btn" onclick="saveUserBlock()">Save</button>
@@ -551,6 +593,7 @@ let selectedTaskId = null;
 let selectedProgramId = null;
 let currentTab = 'diagram';
 let library = [];
+let librarySelection = null;
 let selectedId = null;
 let dragging = null;
 let wiring = null;
@@ -597,12 +640,13 @@ async function apiFetch(path, opts = {}) {
 }
 
 function show(id) {
-  for (const elId of ['programs-view', 'create-view', 'tasks-view', 'task-create-view', 'task-detail-view', 'program-shell']) {
+  for (const elId of ['programs-view', 'create-view', 'tasks-view', 'task-create-view', 'task-detail-view', 'library-view', 'program-shell']) {
     const el = document.getElementById(elId);
     if (el) el.style.display = elId === id ? (id === 'program-shell' ? 'flex' : '') : 'none';
   }
   document.getElementById('nav-programs').classList.toggle('active', id === 'programs-view' || id === 'create-view' || id === 'program-shell');
   document.getElementById('nav-tasks').classList.toggle('active', id === 'tasks-view' || id === 'task-create-view' || id === 'task-detail-view');
+  document.getElementById('nav-library').classList.toggle('active', id === 'library-view');
 }
 
 function programUrl(id, tab) {
@@ -626,6 +670,21 @@ async function route() {
     selectedTaskId = null;
     show('tasks-view');
     await loadTasks();
+    return;
+  }
+  if (hash === '#/library') {
+    selectedProgramId = null;
+    selectedTaskId = null;
+    show('library-view');
+    await loadLibraryPage(null);
+    return;
+  }
+  const libMatch = hash.match(/^#\/library\/([^/]+)$/);
+  if (libMatch) {
+    selectedProgramId = null;
+    selectedTaskId = null;
+    show('library-view');
+    await loadLibraryPage(decodeURIComponent(libMatch[1]));
     return;
   }
   if (hash === '#/tasks/new') {
@@ -936,6 +995,123 @@ async function deleteProgram() {
 async function loadLibrary() {
   library = await apiFetch('api/library' + selectedQuery());
   renderLibrary();
+}
+
+function libraryDisplayId(t) {
+  return t.kind === 'custom' ? 'custom:' + t.template_id : t.template_id;
+}
+
+async function loadLibraryPage(selectId) {
+  library = await apiFetch('api/library');
+  renderLibraryPage();
+  const chosen = selectId
+    ? library.find(t => libraryDisplayId(t) === selectId || t.template_id === selectId)
+    : (library.find(t => t.kind === 'shipped') || library.find(t => t.kind === 'custom') || null);
+  if (chosen) openLibraryTemplate(chosen);
+  else newCustomLibraryBlock();
+  setStatus('Library loaded', true);
+}
+
+function renderLibraryPage() {
+  const shipped = document.getElementById('library-shipped');
+  const custom = document.getElementById('library-custom');
+  if (!shipped || !custom) return;
+  shipped.innerHTML = '';
+  custom.innerHTML = '';
+  const addCard = (container, t) => {
+    const card = document.createElement('article');
+    card.className = 'library-card' + (librarySelection && libraryDisplayId(t) === libraryDisplayId(librarySelection) ? ' active' : '');
+    card.innerHTML = `<h2>${esc(t.template_id)}</h2>
+      <p class="helper">${esc(t.description || 'No description')}</p>
+      <div class="card-row"><span class="chip">${esc(t.library)}</span><span class="chip">${esc(t.kind || '')}</span></div>
+      <div><button class="btn" type="button">Edit</button></div>`;
+    card.querySelector('button').onclick = () => openLibraryTemplate(t);
+    container.appendChild(card);
+  };
+  for (const t of library.filter(t => t.kind === 'shipped' || t.is_builtin)) addCard(shipped, t);
+  for (const t of library.filter(t => t.kind === 'custom')) addCard(custom, t);
+  if (!custom.children.length) {
+    custom.innerHTML = '<div class="library-card"><p class="helper">No custom blocks yet.</p></div>';
+  }
+}
+
+function openLibraryTemplate(t) {
+  librarySelection = JSON.parse(JSON.stringify(t));
+  document.getElementById('library-form-title').textContent = (t.kind === 'custom' ? 'Custom ' : 'Shipped ') + t.template_id;
+  document.getElementById('lib-kind').value = t.kind || (t.is_builtin ? 'shipped' : 'custom');
+  document.getElementById('lib-tid').value = t.template_id || '';
+  document.getElementById('lib-tid').disabled = (t.kind !== 'custom');
+  document.getElementById('lib-desc').value = t.description || '';
+  document.getElementById('lib-pins').value = JSON.stringify(t.pins || [], null, 2);
+  document.getElementById('lib-params').value = JSON.stringify(t.params || {}, null, 2);
+  document.getElementById('lib-body').value = t.body || '';
+  renderLibraryPage();
+}
+
+function newCustomLibraryBlock() {
+  const t = {
+    kind: 'custom',
+    library: 'custom',
+    template_id: '',
+    description: '',
+    pins: [{name:'x', direction:'IN', data_type:'float', default:0.0}, {name:'out', direction:'OUT', data_type:'float'}],
+    params: {gain: 1.0},
+    body: 'out = x * gain'
+  };
+  openLibraryTemplate(t);
+}
+
+async function saveLibraryTemplate(event) {
+  event.preventDefault();
+  const kind = document.getElementById('lib-kind').value || 'custom';
+  const tid = document.getElementById('lib-tid').value.trim();
+  if (!tid) { setStatus('Template ID required', false); return; }
+  let pins, params;
+  try { pins = JSON.parse(document.getElementById('lib-pins').value); }
+  catch(e) { setStatus('Pins JSON invalid: ' + e.message, false); return; }
+  try { params = JSON.parse(document.getElementById('lib-params').value); }
+  catch(e) { setStatus('Params JSON invalid: ' + e.message, false); return; }
+  const payload = {
+    template_id: tid,
+    description: document.getElementById('lib-desc').value,
+    pins,
+    params,
+    body: document.getElementById('lib-body').value
+  };
+  if (kind === 'shipped') {
+    await apiFetch('api/library/shipped/' + encodeURIComponent(tid), {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+  } else {
+    await apiFetch('api/library/custom', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+  }
+  await loadLibraryPage(kind === 'custom' ? 'custom:' + tid : tid);
+  setStatus('Saved library block ' + tid, true);
+}
+
+async function resetShippedLibraryBlock() {
+  const kind = document.getElementById('lib-kind').value;
+  const tid = document.getElementById('lib-tid').value.trim();
+  if (kind !== 'shipped' || !tid) { setStatus('Select a shipped block first', false); return; }
+  await apiFetch('api/library/shipped/' + encodeURIComponent(tid) + '/reset', {method: 'POST'});
+  await loadLibraryPage(tid);
+  setStatus('Reset ' + tid + ' to factory', true);
+}
+
+async function deleteCustomLibraryBlock() {
+  const kind = document.getElementById('lib-kind').value;
+  const tid = document.getElementById('lib-tid').value.trim();
+  if (kind !== 'custom' || !tid) { setStatus('Select a custom block first', false); return; }
+  if (!confirm('Delete custom library block ' + tid + '?')) return;
+  await apiFetch('api/library/custom/' + encodeURIComponent(tid), {method: 'DELETE'});
+  await loadLibraryPage(null);
+  setStatus('Deleted custom block ' + tid, true);
 }
 
 function selectedQuery() {
@@ -1263,14 +1439,23 @@ function openOverlay(iid) {
   document.getElementById('ov-title').textContent = `${inst.template_id} [${iid}]`;
   const fields = document.getElementById('ov-fields');
   fields.innerHTML = '';
+  const eqLabel = document.createElement('label'); eqLabel.textContent = 'Math equation';
+  const eq = document.createElement('textarea');
+  eq.id = 'ov_equation'; eq.rows = 10; eq.spellcheck = false; eq.value = inst.equation || '';
+  fields.appendChild(eqLabel); fields.appendChild(eq);
   for (const [k, v] of Object.entries(inst.params||{})) {
     const lbl = document.createElement('label'); lbl.textContent = k;
     const inp = document.createElement('input');
-    inp.id = 'ov_' + k; inp.value = v; inp.type = 'number'; inp.step = 'any';
+    inp.id = 'ov_' + k; inp.value = v; inp.type = typeof v === 'boolean' ? 'text' : 'number'; inp.step = 'any';
     fields.appendChild(lbl); fields.appendChild(inp);
   }
   document.getElementById('backdrop').style.display = '';
   document.getElementById('overlay').style.display = 'flex';
+}
+
+function editSelected() {
+  if (!selectedId) { setStatus('Select a block first', false); return; }
+  openOverlay(selectedId);
 }
 
 function closeOverlay() {
@@ -1282,9 +1467,26 @@ function closeOverlay() {
 async function applyOverlay() {
   if (!overlayInst) return;
   const inst = program.instances[overlayInst];
+  const eq = document.getElementById('ov_equation');
+  if (eq) inst.equation = eq.value;
   for (const k of Object.keys(inst.params||{})) {
     const el = document.getElementById('ov_' + k);
-    if (el) inst.params[k] = parseFloat(el.value);
+    if (!el) continue;
+    if (typeof inst.params[k] === 'boolean') {
+      const raw = String(el.value).trim().toLowerCase();
+      if (raw !== 'true' && raw !== 'false' && raw !== '1' && raw !== '0') {
+        setStatus('Invalid boolean for ' + k + ' (use true/false)', false);
+        return;
+      }
+      inst.params[k] = raw === 'true' || raw === '1';
+    } else {
+      const n = parseFloat(el.value);
+      if (!Number.isFinite(n)) {
+        setStatus('Invalid number for ' + k, false);
+        return;
+      }
+      inst.params[k] = n;
+    }
   }
   closeOverlay();
   await putProgram(program);
