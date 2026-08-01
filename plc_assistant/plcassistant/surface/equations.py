@@ -37,6 +37,8 @@ def clamp(value: Any, lo: Any, hi: Any) -> float:
     v = float(value)
     low = float(lo)
     high = float(hi)
+    if low > high:
+        low, high = high, low
     if v < low:
         return low
     if v > high:
@@ -126,8 +128,17 @@ def _check_expr(node: ast.AST) -> None:
 
 
 def _eval_expr(node: ast.AST, values: Mapping[str, Any]) -> Any:
+    try:
+        return _eval_expr_inner(node, values)
+    except EquationError:
+        raise
+    except (ArithmeticError, TypeError, ValueError, OverflowError) as exc:
+        raise EquationError(f"evaluation failed: {exc}") from exc
+
+
+def _eval_expr_inner(node: ast.AST, values: Mapping[str, Any]) -> Any:
     if isinstance(node, ast.Expression):
-        return _eval_expr(node.body, values)
+        return _eval_expr_inner(node.body, values)
     if isinstance(node, ast.Constant):
         return node.value
     if isinstance(node, ast.Name):
@@ -135,7 +146,7 @@ def _eval_expr(node: ast.AST, values: Mapping[str, Any]) -> Any:
             return values[node.id]
         raise EquationError(f"unknown name: {node.id!r}")
     if isinstance(node, ast.UnaryOp):
-        value = _eval_expr(node.operand, values)
+        value = _eval_expr_inner(node.operand, values)
         if isinstance(node.op, ast.UAdd):
             return +float(value)
         if isinstance(node.op, ast.USub):
@@ -143,8 +154,8 @@ def _eval_expr(node: ast.AST, values: Mapping[str, Any]) -> Any:
         if isinstance(node.op, ast.Not):
             return not bool(value)
     if isinstance(node, ast.BinOp):
-        left = _eval_expr(node.left, values)
-        right = _eval_expr(node.right, values)
+        left = _eval_expr_inner(node.left, values)
+        right = _eval_expr_inner(node.right, values)
         if isinstance(node.op, ast.Add):
             return float(left) + float(right)
         if isinstance(node.op, ast.Sub):
@@ -161,24 +172,24 @@ def _eval_expr(node: ast.AST, values: Mapping[str, Any]) -> Any:
         if isinstance(node.op, ast.And):
             result: Any = True
             for value in node.values:
-                result = _eval_expr(value, values)
+                result = _eval_expr_inner(value, values)
                 if not bool(result):
                     return result
             return result
         if isinstance(node.op, ast.Or):
             result = False
             for value in node.values:
-                result = _eval_expr(value, values)
+                result = _eval_expr_inner(value, values)
                 if bool(result):
                     return result
             return result
     if isinstance(node, ast.IfExp):
-        branch = node.body if bool(_eval_expr(node.test, values)) else node.orelse
-        return _eval_expr(branch, values)
+        branch = node.body if bool(_eval_expr_inner(node.test, values)) else node.orelse
+        return _eval_expr_inner(branch, values)
     if isinstance(node, ast.Compare):
-        left = _eval_expr(node.left, values)
+        left = _eval_expr_inner(node.left, values)
         for op, comparator in zip(node.ops, node.comparators):
-            right = _eval_expr(comparator, values)
+            right = _eval_expr_inner(comparator, values)
             if isinstance(op, ast.Eq):
                 ok = left == right
             elif isinstance(op, ast.NotEq):
@@ -202,8 +213,11 @@ def _eval_expr(node: ast.AST, values: Mapping[str, Any]) -> Any:
         fn = values.get(node.func.id)
         if fn is None:
             raise EquationError(f"function not allowed: {node.func.id!r}")
-        args = [_eval_expr(arg, values) for arg in node.args]
-        return fn(*args)
+        args = [_eval_expr_inner(arg, values) for arg in node.args]
+        try:
+            return fn(*args)
+        except (ArithmeticError, TypeError, ValueError, OverflowError) as exc:
+            raise EquationError(f"call {node.func.id} failed: {exc}") from exc
     raise EquationError(f"unsupported syntax: {type(node).__name__}")
 
 
@@ -253,6 +267,9 @@ def evaluate_equation(
         _check_expr(expr)
         values[target] = _eval_expr(expr, values)
         assigned.add(target)
+
+    if not assigned:
+        raise EquationError("equation has no assignments")
 
     output_names = {
         pin.name for pin in template.pins if pin.direction is PinDirection.OUT

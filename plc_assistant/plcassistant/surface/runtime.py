@@ -232,12 +232,9 @@ class BlockRuntime:
         equation: str = "",
     ) -> dict[str, Any]:
         if equation:
-            try:
-                return evaluate_equation(equation, template, input_pins, params, state, dt)
-            except EquationError:
-                if equation == template.body:
-                    return _exec_user_body(template, input_pins, params, state, dt)
-                raise
+            # Instance equations are always math — never fall back to Python exec
+            # (stock PID copies body into equation; exec would break on state()).
+            return evaluate_equation(equation, template, input_pins, params, state, dt)
         key = (library, template_id)
         if key in self._callables:
             return self._callables[key](input_pins, params, state, dt)
@@ -246,8 +243,7 @@ class BlockRuntime:
                 return evaluate_equation(template.body, template, input_pins, params, state, dt)
             except EquationError:
                 # Legacy user templates authored before SWD-180 used a restricted
-                # Python body. New placements copy template.body into
-                # BlockInstance.equation and therefore use the math evaluator.
+                # Python body (empty instance equation + template.body only).
                 return _exec_user_body(template, input_pins, params, state, dt)
         raise ValueError(
             f"no callable registered and no body for {library!r}/{template_id!r}"

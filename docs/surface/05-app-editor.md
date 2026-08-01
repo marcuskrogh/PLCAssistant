@@ -30,11 +30,24 @@ Open `http://localhost:8099` in any browser.
 - `#/tasks`: one-column Task schedule list with Save and Apply (restart).
 - `#/tasks/new`: create Task from id, priority, and optional description.
 - `#/tasks/<id>`: edit Task metadata, delete with confirmation, and manage the ordered Program call list.
+- `#/library`: Library editor (shipped vs custom). Edit math equation + params; Reset factory for shipped PID; create/delete custom blocks. Mobile-first one-column.
 
 Program cards show the live applied schedule status. When saved Task edits differ
 from the live project, cards also include `pending_schedule` and `saved_task_id`.
 
 ## HTTP API
+
+### Library (SWD-180)
+
+- `GET /api/library` — shipped + custom (+ optional program user templates)
+- `GET /api/library/shipped/<id>` / `PUT` — read/override shipped template (`PID`)
+- `POST /api/library/shipped/<id>/reset` — restore factory PID
+- `POST /api/library/custom` — create/update custom template
+- `DELETE /api/library/custom/<id>` — delete custom template
+
+Persistence: App JSON `library.shipped_overrides` + `library.custom` (outside the Soft-PLC project graph).
+
+Placed instances store their own `equation` + `params` copy; Diagram overlay edits the instance only.
 
 ### `GET /api/programs`
 

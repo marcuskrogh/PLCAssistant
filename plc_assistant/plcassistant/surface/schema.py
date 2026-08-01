@@ -42,6 +42,10 @@ def place_block(
     ``params`` (when supplied) are merged on top of a deep copy of
     ``template.params``; omitted keys retain template defaults.
     Mutating the returned instance never affects the template or other instances.
+
+    Math ``template.body`` is copied into ``equation``. Legacy Python bodies that
+    are not valid math equations leave ``equation`` empty so Soft-PLC can still
+    ``exec`` the template body.
     """
     merged: dict[str, Any] = copy.deepcopy(template.params)
     if params:
@@ -51,10 +55,33 @@ def place_block(
         template_id=template.template_id,
         library=template.library,
         params=merged,
-        equation=copy.deepcopy(template.body),
+        equation=_equation_copy_from_template(template, merged),
         x=x,
         y=y,
     )
+
+
+def _equation_copy_from_template(
+    template: BlockTemplate,
+    params: dict[str, Any],
+) -> str:
+    """Copy template.body into instance.equation only when it is valid math."""
+    body = str(template.body or "")
+    if not body.strip():
+        return ""
+    from plcassistant.surface.equations import EquationError, evaluate_equation
+    from plcassistant.surface.model import PinDirection
+
+    pins = {
+        pin.name: (pin.default if pin.default is not None else 0.0)
+        for pin in template.pins
+        if pin.direction is PinDirection.IN
+    }
+    try:
+        evaluate_equation(body, template, pins, params, {}, 0.1)
+    except EquationError:
+        return ""
+    return copy.deepcopy(body)
 
 
 def reset_instance(instance: BlockInstance, template: BlockTemplate) -> BlockInstance:
@@ -77,7 +104,7 @@ def reset_instance(instance: BlockInstance, template: BlockTemplate) -> BlockIns
         template_id=template.template_id,
         library=template.library,
         params=copy.deepcopy(template.params),
-        equation=copy.deepcopy(template.body),
+        equation=_equation_copy_from_template(template, template.params),
         x=instance.x,
         y=instance.y,
     )
@@ -273,7 +300,20 @@ def _migrate_instance_to_pid(inst: BlockInstance) -> BlockInstance:
         hold_when_stopped = True
     elif inst.template_id == "flow_pi":
         hold_when_stopped = False
-    elif inst.template_id != PID_TEMPLATE_ID:
+    elif inst.template_id == PID_TEMPLATE_ID:
+        # Already a PID copy — only fill missing equation on empty instances.
+        if inst.equation:
+            return inst
+        return BlockInstance(
+            instance_id=inst.instance_id,
+            template_id=PID_TEMPLATE_ID,
+            library="builtin",
+            params=dict(inst.params),
+            equation=PID_EQUATION,
+            x=inst.x,
+            y=inst.y,
+        )
+    else:
         return inst
 
     params = pid_default_params()

@@ -195,12 +195,20 @@ class ProgramLoader:
         return os.environ.get(_ENV_HOT_APPLY, "") == "1"
 
     def _prune_user_templates(self, new_program: Program) -> None:
-        """Remove user templates from the library that are absent from *new_program*."""
+        """Remove program-scoped user templates absent from *new_program*.
+
+        App-global ``library=="custom"`` templates are owned by the App layer
+        and must not be pruned here (SWD-180).
+        """
         new_ids = set(new_program.user_templates.keys())
         to_remove = [
             (tmpl.library, tmpl.template_id)
             for tmpl in self._library.all_templates()
-            if not tmpl.is_builtin and tmpl.template_id not in new_ids
+            if (
+                not tmpl.is_builtin
+                and tmpl.library != "custom"
+                and tmpl.template_id not in new_ids
+            )
         ]
         for lib, tid in to_remove:
             self._library.unregister(lib, tid)
@@ -433,14 +441,18 @@ class ProjectLoader:
             self._runtime.tick(prog, context, dt)
 
     def _register_all_user_templates(self, project: SoftPlcProject) -> None:
-        """Prune stale user templates and register all programs' user templates."""
+        """Prune stale program user templates; keep App-global custom templates."""
         all_ids: set[str] = set()
         for prog in project.programs.values():
             all_ids.update(prog.user_templates.keys())
         to_remove = [
             (tmpl.library, tmpl.template_id)
             for tmpl in self._library.all_templates()
-            if not tmpl.is_builtin and tmpl.template_id not in all_ids
+            if (
+                not tmpl.is_builtin
+                and tmpl.library != "custom"
+                and tmpl.template_id not in all_ids
+            )
         ]
         for lib, tid in to_remove:
             self._library.unregister(lib, tid)

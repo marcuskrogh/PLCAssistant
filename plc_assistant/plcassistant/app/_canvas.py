@@ -1471,9 +1471,21 @@ async function applyOverlay() {
   if (eq) inst.equation = eq.value;
   for (const k of Object.keys(inst.params||{})) {
     const el = document.getElementById('ov_' + k);
-    if (el) {
-      if (typeof inst.params[k] === 'boolean') inst.params[k] = String(el.value).toLowerCase() === 'true';
-      else inst.params[k] = parseFloat(el.value);
+    if (!el) continue;
+    if (typeof inst.params[k] === 'boolean') {
+      const raw = String(el.value).trim().toLowerCase();
+      if (raw !== 'true' && raw !== 'false' && raw !== '1' && raw !== '0') {
+        setStatus('Invalid boolean for ' + k + ' (use true/false)', false);
+        return;
+      }
+      inst.params[k] = raw === 'true' || raw === '1';
+    } else {
+      const n = parseFloat(el.value);
+      if (!Number.isFinite(n)) {
+        setStatus('Invalid number for ' + k, false);
+        return;
+      }
+      inst.params[k] = n;
     }
   }
   closeOverlay();

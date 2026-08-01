@@ -224,7 +224,10 @@ class AppState:
         if loaded is None:
             loaded = default_project
         if isinstance(loaded.get("library"), Mapping):
-            self._load_library_state(loaded["library"])
+            try:
+                self._load_library_state(loaded["library"])
+            except (ValueError, KeyError, TypeError):
+                self.library_state = {"shipped_overrides": {}, "custom": {}}
         try:
             saved_project, applied_project = _load_project_pair(loaded)
         except (ValueError, KeyError, TypeError):
@@ -232,6 +235,7 @@ class AppState:
             applied_project = _clone_project(saved_project)
         self.saved_project = _clone_project(saved_project)
         self.loader.load(_clone_project(applied_project))
+        self._reapply_library_state()
         self._ensure_program_logs()
         if "tank" in self.program_logs and not self.program_logs["tank"]:
             self.append_log("tank", "info", "Program Tank loaded")
@@ -244,25 +248,88 @@ class AppState:
         for tid, payload in shipped.items():
             if not isinstance(payload, Mapping):
                 continue
-            tmpl = _template_from_payload(
-                payload,
-                template_id=str(tid),
-                library="builtin",
-                is_builtin=True,
-            )
+            try:
+                tmpl = _template_from_payload(
+                    payload,
+                    template_id=str(tid),
+                    library="builtin",
+                    is_builtin=True,
+                )
+            except (ValueError, KeyError, TypeError):
+                continue
             self.library_state["shipped_overrides"][tmpl.template_id] = _template_payload(tmpl)
             self.library.register(tmpl)
         for tid, payload in custom.items():
             if not isinstance(payload, Mapping):
                 continue
+            try:
+                tmpl = _template_from_payload(
+                    payload,
+                    template_id=str(tid),
+                    library="custom",
+                    is_builtin=False,
+                )
+            except (ValueError, KeyError, TypeError):
+                continue
+            self.library_state["custom"][tmpl.template_id] = _template_payload(tmpl)
+            self.library.register(tmpl)
+
+    def _reapply_library_state(self) -> None:
+        """Re-register App-owned library entries after Soft-PLC load/apply prune."""
+        self._register_library_into(self.library)
+        live = self._live_skid_loader()
+        if live is not None:
+            self._register_library_into(live._library)
+
+    def _register_library_into(self, library: Any) -> None:
+        for payload in self.library_state["shipped_overrides"].values():
             tmpl = _template_from_payload(
                 payload,
-                template_id=str(tid),
+                template_id=str(payload.get("template_id", "")),
+                library="builtin",
+                is_builtin=True,
+            )
+            library.register(tmpl)
+        for payload in self.library_state["custom"].values():
+            tmpl = _template_from_payload(
+                payload,
+                template_id=str(payload.get("template_id", "")),
                 library="custom",
                 is_builtin=False,
             )
-            self.library_state["custom"][tmpl.template_id] = _template_payload(tmpl)
-            self.library.register(tmpl)
+            library.register(tmpl)
+
+    def _dry_run_equation(
+        self,
+        equation: str,
+        template: Any,
+        params: Mapping[str, Any],
+    ) -> None:
+        """Validate math equation with defaults; raise ValueError on failure."""
+        from plcassistant.surface.equations import EquationError, evaluate_equation
+        from plcassistant.surface.model import PinDirection
+
+        text = str(equation or "").strip()
+        if not text:
+            return
+        pins = {
+            pin.name: (pin.default if pin.default is not None else 0.0)
+            for pin in template.pins
+            if pin.direction is PinDirection.IN
+        }
+        try:
+            evaluate_equation(text, template, pins, dict(params), {}, 0.1)
+        except EquationError as exc:
+            raise ValueError(f"invalid equation: {exc}") from exc
+
+    def _validate_program_equations(self, program: Program) -> None:
+        for inst in program.instances.values():
+            tmpl = self.library.get(inst.library, inst.template_id)
+            if tmpl is None:
+                tmpl = (program.user_templates or {}).get(inst.template_id)
+            if tmpl is None or not inst.equation:
+                continue
+            self._dry_run_equation(inst.equation, tmpl, inst.params)
 
     def _sync_scan_period_to_runtime(self) -> None:
         """Propagate project ``scan_period_s`` into the live MQTT scan loop."""
@@ -289,6 +356,7 @@ class AppState:
         if live is None or applied is None:
             return
         live.restart_apply(_clone_project(applied))
+        self._register_library_into(live._library)
 
     @property
     def instance_id(self) -> str:
@@ -385,6 +453,7 @@ class AppState:
             return
         live_program = _clone_project(self.saved_project).programs[program_id]
         self.loader.replace_program(program_id, live_program, restart=True)
+        self._reapply_library_state()
 
     def _ensure_program_logs(self) -> None:
         for pid in self.saved_project.programs:
@@ -467,6 +536,7 @@ class AppState:
         )
         self.saved_project = new_project
         self.loader.restart_apply(_clone_project(new_project))
+        self._reapply_library_state()
         self._ensure_program_logs()
         self.append_log(pid, "info", f"Program {clean_name} created")
         self.persist_program()
@@ -513,11 +583,16 @@ class AppState:
 
     def library_payload(self, program_id: str | None = None) -> list[dict[str, Any]]:
         """Shipped templates, global custom, and selected Program user templates."""
+        self._reapply_library_state()
         builtins = [t for t in self.library.all_templates() if t.is_builtin]
         custom = [
-            t
-            for t in self.library.all_templates()
-            if not t.is_builtin and t.library == "custom"
+            _template_from_payload(
+                payload,
+                template_id=str(payload.get("template_id", "")),
+                library="custom",
+                is_builtin=False,
+            )
+            for payload in self.library_state["custom"].values()
         ]
         prog = self.program_for_id(program_id)
         user = list((prog.user_templates or {}).values()) if prog is not None else []
@@ -543,6 +618,7 @@ class AppState:
             library="builtin",
             is_builtin=True,
         )
+        self._dry_run_equation(tmpl.body, tmpl, tmpl.params)
         self.library.register(tmpl)
         self.library_state["shipped_overrides"][template_id] = _template_payload(tmpl)
         self.persist_program()
@@ -559,6 +635,7 @@ class AppState:
 
     def save_custom_template(self, data: Mapping[str, Any]) -> dict[str, Any]:
         tmpl = _template_from_payload(data, library="custom", is_builtin=False)
+        self._dry_run_equation(tmpl.body, tmpl, tmpl.params)
         self.library.register(tmpl)
         self.library_state["custom"][tmpl.template_id] = _template_payload(tmpl)
         self.persist_program()
@@ -594,6 +671,7 @@ class AppState:
         )
         self.saved_project = new_project
         self.loader.restart_apply(_clone_project(new_project))
+        self._reapply_library_state()
         self.program_logs.pop(program_id, None)
         self._ensure_program_logs()
         self.persist_program()
@@ -729,6 +807,7 @@ class AppState:
 
     def apply_saved_schedule(self) -> dict[str, Any]:
         self.loader.restart_apply(_clone_project(self.saved_project))
+        self._reapply_library_state()
         self._sync_applied_project_to_runtime()
         self._sync_scan_period_to_runtime()
         self._ensure_program_logs()
@@ -858,6 +937,11 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
                 if path == "/api/program":
                     data = self._read_json()
                     new_prog = program_from_dict(data)
+                    try:
+                        state._validate_program_equations(new_prog)
+                    except ValueError as exc:
+                        self._send_error_json(str(exc), 400)
+                        return
                     pid = self._program_id_from(data)
                     state._set_program(pid, new_prog)
                     state.persist_program()
@@ -865,6 +949,11 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
                 elif (parts := self._program_path_parts()) and len(parts) == 1:
                     data = self._read_json()
                     new_prog = program_from_dict(data)
+                    try:
+                        state._validate_program_equations(new_prog)
+                    except ValueError as exc:
+                        self._send_error_json(str(exc), 400)
+                        return
                     state._set_program(parts[0], new_prog)
                     state.persist_program()
                     self._send_json(state.program_dict_for(parts[0]))
@@ -891,6 +980,7 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
                         )
                     else:
                         state.loader.restart_apply(new_project)
+                    state._reapply_library_state()
                     state.saved_project = _clone_project(new_project)
                     state.persist_program()
                     state._sync_scan_period_to_runtime()
@@ -1083,6 +1173,9 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
             if tmpl is None:
                 self._send_error_json(f"Template {tlib!r}/{tid!r} not found", 404)
                 return
+            if iid in prog.instances:
+                self._send_error_json(f"Instance {iid!r} already exists", 409)
+                return
             inst = place_block(tmpl, iid, x=x, y=y)
             prog.instances[iid] = inst
             if iid not in prog.execution_order:
@@ -1125,11 +1218,13 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
             proj = _clone_project(state.saved_project)
             if mode == "restart":
                 state.loader.restart_apply(proj)
+                state._reapply_library_state()
                 state.persist_program()
                 state.append_log(pid, "info", "Applied with restart")
                 self._send_json({"applied": "restart"})
             elif mode == "hot":
                 state.loader.hot_apply(proj, superuser=state.superuser_hot_apply)
+                state._reapply_library_state()
                 state.persist_program()
                 state.append_log(pid, "info", "Hot apply succeeded")
                 self._send_json({"applied": "hot"})

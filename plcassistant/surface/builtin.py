@@ -43,137 +43,14 @@ cv = clamped_cv if running_flag else stopped_cv
 can_integrate = running_flag and (clamped_cv == raw_cv or ((raw_cv > cv_max and error <= 0.0) or (raw_cv < cv_min and error >= 0.0)))
 integral = tentative_i if can_integrate else integral
 bumpless_pending = False
-last_error = error
+last_error = error if running_flag else state("last_error", error)
 last_cv = cv
 """
 
 
 # ---------------------------------------------------------------------------
-# Shared PI helpers
+# Shared helpers (removed native PI callables — equation-driven PID only)
 # ---------------------------------------------------------------------------
-
-
-def _clamp(value: float, lo: float, hi: float) -> float:
-    if value < lo:
-        return lo
-    if value > hi:
-        return hi
-    return float(value)
-
-
-def _pi_step(
-    pv: float,
-    sp: float,
-    kp: float,
-    ki: float,
-    cv_min: float,
-    cv_max: float,
-    state: dict,
-    dt: float,
-) -> float:
-    """One PI step with conditional anti-windup.
-
-    State keys consumed/updated:
-        ``integral``       — accumulated integral term (float, default 0.0)
-        ``bumpless_pending`` — skip I advance on this scan (bool, default False)
-
-    Returns the clamped CV.  Updates ``state`` in-place.
-    """
-    integral: float = state.get("integral", 0.0)
-    bumpless_pending: bool = state.get("bumpless_pending", False)
-
-    error = sp - pv
-    raw_p = kp * error
-    if bumpless_pending:
-        tentative_i = integral
-    else:
-        tentative_i = integral + error * dt
-
-    raw_cv = raw_p + ki * tentative_i
-    cv = _clamp(raw_cv, cv_min, cv_max)
-
-    # Conditional anti-windup: accumulate only when not pushing further into
-    # saturation (matches CascadeController exactly).
-    if cv == raw_cv or (
-        (raw_cv > cv_max and error <= 0) or (raw_cv < cv_min and error >= 0)
-    ):
-        state["integral"] = tentative_i
-
-    state["bumpless_pending"] = False
-    return cv
-
-
-# ---------------------------------------------------------------------------
-# LevelPI callable
-# ---------------------------------------------------------------------------
-
-
-def _level_pi_fn(
-    pins: dict[str, Any],
-    params: dict[str, Any],
-    state: dict,
-    dt: float,
-) -> dict[str, Any]:
-    """Level PI controller callable.
-
-    Not running → reset integral, hold last ``cv`` (preserves SP_FLOW).
-    Running     → PI step with conditional anti-windup.
-    """
-    running: bool = bool(pins.get("running", False))
-    pv: float = float(pins.get("pv", 0.0))
-    sp: float = float(pins.get("sp", 0.0))
-
-    kp: float = float(params.get("kp", 40.0))
-    ki: float = float(params.get("ki", 5.0))
-    cv_min: float = float(params.get("cv_min", 0.0))
-    cv_max: float = float(params.get("cv_max", 6.0))
-
-    last_cv: float = state.get("last_cv", 0.0)
-
-    if not running:
-        state["integral"] = 0.0
-        state["bumpless_pending"] = False
-        return {"cv": last_cv}
-
-    cv = _pi_step(pv, sp, kp, ki, cv_min, cv_max, state, dt)
-    state["last_cv"] = cv
-    return {"cv": cv}
-
-
-# ---------------------------------------------------------------------------
-# FlowPI callable
-# ---------------------------------------------------------------------------
-
-
-def _flow_pi_fn(
-    pins: dict[str, Any],
-    params: dict[str, Any],
-    state: dict,
-    dt: float,
-) -> dict[str, Any]:
-    """Flow PI controller callable.
-
-    Not running → reset integral, force ``cv = 0`` (CMD_SPEED = 0).
-    Running     → PI step with conditional anti-windup.
-    """
-    running: bool = bool(pins.get("running", False))
-    pv: float = float(pins.get("pv", 0.0))
-    sp: float = float(pins.get("sp", 0.0))
-
-    kp: float = float(params.get("kp", 12.0))
-    ki: float = float(params.get("ki", 2.0))
-    cv_min: float = float(params.get("cv_min", 0.0))
-    cv_max: float = float(params.get("cv_max", 100.0))
-
-    if not running:
-        state["integral"] = 0.0
-        state["bumpless_pending"] = False
-        state["last_cv"] = 0.0
-        return {"cv": 0.0}
-
-    cv = _pi_step(pv, sp, kp, ki, cv_min, cv_max, state, dt)
-    state["last_cv"] = cv
-    return {"cv": cv}
 
 
 def pid_template() -> BlockTemplate:
@@ -231,26 +108,6 @@ def pid_params_for_pi(
         }
     )
     return params
-
-
-# Legacy template objects are retained only for tests/docs that import module
-# internals on older branches; register_builtins no longer exposes them.
-_LEVEL_PI_TEMPLATE = BlockTemplate(
-    template_id=PID_TEMPLATE_ID,
-    library="builtin",
-    description=(
-        "PID controller. Full PID with kp/ki/kd/td; set kd=0 and td=0 for PI."
-    ),
-    pins=[
-        PinSpec("pv", PinDirection.IN, "float", 0.0),
-        PinSpec("sp", PinDirection.IN, "float", 0.0),
-        PinSpec("running", PinDirection.IN, "bool", False),
-        PinSpec("cv", PinDirection.OUT, "float", 0.0),
-    ],
-    params=pid_default_params(),
-    body=PID_EQUATION,
-    is_builtin=True,
-)
 
 
 # ---------------------------------------------------------------------------

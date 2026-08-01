@@ -158,10 +158,63 @@ def test_http_place_and_edit_instance_equation() -> None:
         )
         assert status == 200
         assert prog["instances"]["pid_x"]["equation"] == PID_EQUATION
+        lib_before = state.library_template("builtin", PID_TEMPLATE_ID)["body"]
+        sibling_eq = prog["instances"]["level_pi"]["equation"]
         prog["instances"]["pid_x"]["equation"] = "cv = 42.0"
         status, saved = _json_request(srv.base + "/api/program", "PUT", prog)
         assert status == 200
         assert saved["instances"]["pid_x"]["equation"] == "cv = 42.0"
+        assert saved["instances"]["level_pi"]["equation"] == sibling_eq
+        assert state.library_template("builtin", PID_TEMPLATE_ID)["body"] == lib_before
+        status, _ = _json_request(
+            srv.base + "/api/place",
+            "POST",
+            {"template_id": "PID", "library": "builtin", "instance_id": "pid_x"},
+        )
+        assert status == 409
+
+
+def test_custom_library_survives_apply_and_restart(tmp_path) -> None:
+    path = tmp_path / "program.json"
+    state = AppState(initial_project=wedge_softplc_project(), program_path=str(path))
+    custom = {
+        "template_id": "gain",
+        "description": "P gain",
+        "pins": [
+            {"name": "pv", "direction": "IN", "data_type": "float", "default": 0.0},
+            {"name": "cv", "direction": "OUT", "data_type": "float", "default": 0.0},
+        ],
+        "params": {"kp": 2.0},
+        "body": "cv = pv * kp",
+    }
+    with _Server(state) as srv:
+        status, saved = _json_request(srv.base + "/api/library/custom", "POST", custom)
+        assert status == 200
+        assert saved["template_id"] == "gain"
+        status, _ = _json_request(srv.base + "/api/apply", "POST", {"mode": "restart"})
+        assert status == 200
+        ids = {item["template_id"] for item in state.library_payload() if item.get("kind") == "custom"}
+        assert "gain" in ids
+        assert state.library.get("custom", "gain") is not None
+
+    restarted = AppState(program_path=str(path))
+    assert restarted.library.get("custom", "gain") is not None
+    assert any(
+        item["template_id"] == "gain" and item.get("kind") == "custom"
+        for item in restarted.library_payload()
+    )
+
+
+def test_equation_errors_are_equation_error_not_raw() -> None:
+    from plcassistant.surface.builtin import pid_template
+    from plcassistant.surface.equations import EquationError, evaluate_equation
+
+    tmpl = pid_template()
+    pins = {"pv": 1.0, "sp": 0.0, "running": True}
+    with pytest.raises(EquationError):
+        evaluate_equation("cv = 1 / 0", tmpl, pins, tmpl.params, {}, 0.1)
+    with pytest.raises(EquationError):
+        evaluate_equation("# only comments", tmpl, pins, tmpl.params, {}, 0.1)
 
 
 def test_system_migrated_tank_runs_two_pid_instances_under_mqtt() -> None:

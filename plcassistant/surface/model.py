@@ -30,10 +30,12 @@ class PinSpec:
 
 @dataclass
 class BlockTemplate:
-    """Library-held definition; built-ins (is_builtin=True) must not be mutated.
+    """Library-held definition.
 
-    User templates live in Program.user_templates and are round-tripped via YAML.
-    Built-in templates are registered in a TemplateLibrary at startup by SWD-115.
+    Shipped templates (``is_builtin=True``, ``library="builtin"``) may be
+    overridden via the App Library editor; Reset restores the factory copy.
+    Custom templates use ``library="custom"``.  ``body`` holds the math
+    equation text; placements copy it into ``BlockInstance.equation``.
     """
 
     template_id: str
