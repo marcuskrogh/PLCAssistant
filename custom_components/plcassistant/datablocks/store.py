@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from plcassistant.io.datablock import (
+from .catalog import (
     DatablockCatalog,
     binding_rows_from_table,
     default_program_datablock_access,

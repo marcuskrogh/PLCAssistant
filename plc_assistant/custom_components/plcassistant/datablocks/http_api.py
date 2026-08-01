@@ -15,7 +15,7 @@ from homeassistant.components.http import HomeAssistantView
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from plcassistant.io.datablock import (
+from .catalog import (
     datablock_from_dict,
     datablock_to_dict,
     program_accessible_tags,

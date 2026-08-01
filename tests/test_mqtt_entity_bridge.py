@@ -49,12 +49,10 @@ def test_entity_bridge_roundtrip_with_skid_logic():
 
 
 def test_ha_default_bindings_match_app_wedge_config():
-    """HA thin-integration defaults must equal App packaging bindings (SWD-131/184)."""
-    import importlib.util
+    """HA thin-integration defaults must equal App packaging bindings (SWD-131/184/219)."""
     import pathlib
 
     init_path = pathlib.Path("custom_components/plcassistant/__init__.py")
-    # Load only the helper by exec'ing a stub-free fragment via catalog.
     from plcassistant.io.datablock import (
         binding_rows_from_table,
         default_program_datablock_access,
@@ -65,16 +63,17 @@ def test_ha_default_bindings_match_app_wedge_config():
     table = default_tank_datablock_catalog().binding_table_for(
         union_program_access_ids(default_program_datablock_access())
     )
-    ha_bindings = binding_rows_from_table(table)
-    # Confirm __init__ still builds defaults from the Datablock catalog.
+    soft_bindings = binding_rows_from_table(table)
+    # Confirm __init__ builds defaults from the HA-local Datablock catalog.
     text = init_path.read_text(encoding="utf-8")
-    assert "default_tank_datablock_catalog" in text
+    assert "datablocks.catalog" in text
     assert "_default_bindings" in text
     assert "binding_rows_from_table" in text
+    assert "from plcassistant.io.datablock" not in text
 
     app_bindings = default_wedge_binding_config()["bindings"]
-    assert ha_bindings == app_bindings
-    assert {b["tag"] for b in ha_bindings} >= {
+    assert soft_bindings == app_bindings
+    assert {b["tag"] for b in soft_bindings} >= {
         "LT_TANK",
         "LT_RES",
         "FT_INLET",
@@ -91,7 +90,7 @@ def test_ha_default_bindings_match_app_wedge_config():
         "PERM_OK",
         "TRIP_ACTIVE",
     }
-    by_tag = {b["tag"]: b for b in ha_bindings}
+    by_tag = {b["tag"]: b for b in soft_bindings}
     assert by_tag["SP_LEVEL_REQ"]["direction"] == "IN"
     assert by_tag["LT_TANK"]["direction"] == "IN"
     assert by_tag["LT_RES"]["direction"] == "IN"
