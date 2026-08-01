@@ -48,6 +48,13 @@ from the integration simulator (SWD-146+ / SWD-170); Numbers remain for nudges.
 
 Entity IDs changed in **0.1.11** (OUT tags became sensors; setpoint request renamed),
 again in **0.1.20** (plant PVs flipped back to Soft-PLC IN Numbers), and in
+**0.1.32** (Soft-PLC project organization: Tasks → Programs; legacy flat program auto-migrates):
+
+| Area | Behavior |
+|------|----------|
+| App `/api/project` | GET/PUT Soft-PLC Task + Program tree |
+| Canvas `/api/program` | Main Task program (unchanged editor path) |
+
 **0.1.31** (no LOS latch from settled/stale plant file timestamps):
 
 | Tag | Behavior |

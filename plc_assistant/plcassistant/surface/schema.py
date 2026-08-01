@@ -13,9 +13,13 @@ from typing import Any, Mapping
 from plcassistant.surface.model import (
     BlockInstance,
     BlockTemplate,
+    DEFAULT_LEGACY_PROGRAM_ID,
+    MAIN_TASK_ID,
     PinDirection,
     PinSpec,
     Program,
+    SoftPlcProject,
+    Task,
     Wire,
 )
 
@@ -350,10 +354,215 @@ def program_from_dict(data: Mapping[str, Any]) -> Program:
     return program
 
 
+# ---------------------------------------------------------------------------
+# Soft-PLC project (SWD-182): tasks, programs, legacy migration
+# ---------------------------------------------------------------------------
+
+
+def is_legacy_program_dict(data: Mapping[str, Any]) -> bool:
+    """Return True when *data* is a flat v1 Program dict (no project envelope)."""
+    if not isinstance(data, Mapping):
+        return False
+    if "tasks" in data or "programs" in data:
+        return False
+    return "instances" in data or data.get("version", "1.0") == "1.0"
+
+
+def migrate_legacy_program_dict(
+    data: Mapping[str, Any],
+    *,
+    program_id: str = DEFAULT_LEGACY_PROGRAM_ID,
+    task_id: str = MAIN_TASK_ID,
+    priority: int = 1,
+) -> dict[str, Any]:
+    """Wrap a flat Program dict in a Soft-PLC project with one Main Task."""
+    program = program_from_dict(data)
+    return {
+        "version": "2.0",
+        "scan_period_s": 0.1,
+        "programs": {program_id: program_to_dict(program)},
+        "tasks": [{"id": task_id, "priority": priority, "programs": [program_id]}],
+    }
+
+
+def validate_project(project: SoftPlcProject) -> None:
+    """Validate project structure.
+
+    Raises ``ValueError`` on:
+
+    * Unknown program ids referenced by Tasks.
+    * A Program scheduled on more than one Task.
+    * Duplicate Task ids or invalid Task fields.
+    """
+    if project.scan_period_s <= 0:
+        raise ValueError("scan_period_s must be positive")
+
+    seen_tasks: set[str] = set()
+    program_to_task: dict[str, str] = {}
+
+    for task in project.tasks:
+        if not task.task_id:
+            raise ValueError("task id must be non-empty")
+        if task.task_id in seen_tasks:
+            raise ValueError(f"duplicate task id {task.task_id!r}")
+        seen_tasks.add(task.task_id)
+
+        for prog_id in task.programs:
+            if not prog_id:
+                raise ValueError(f"task {task.task_id!r} has empty program id")
+            if prog_id not in project.programs:
+                raise ValueError(
+                    f"task {task.task_id!r} references unknown program {prog_id!r}"
+                )
+            if prog_id in program_to_task:
+                raise ValueError(
+                    f"program {prog_id!r} is scheduled on tasks "
+                    f"{program_to_task[prog_id]!r} and {task.task_id!r}"
+                )
+            program_to_task[prog_id] = task.task_id
+
+    for prog_id, prog in project.programs.items():
+        if not prog_id:
+            raise ValueError("program id must be non-empty")
+        validate_program(prog)
+
+
+def project_to_dict(project: SoftPlcProject) -> dict[str, Any]:
+    """Serialise *project* to a YAML/JSON-shaped dict."""
+    return {
+        "version": project.version,
+        "scan_period_s": project.scan_period_s,
+        "programs": {
+            pid: program_to_dict(prog) for pid, prog in project.programs.items()
+        },
+        "tasks": [
+            {
+                "id": task.task_id,
+                "priority": task.priority,
+                "programs": list(task.programs),
+            }
+            for task in project.tasks
+        ],
+    }
+
+
+def project_from_dict(data: Mapping[str, Any]) -> SoftPlcProject:
+    """Load a SoftPlcProject, auto-migrating legacy flat Program YAML."""
+    if not isinstance(data, Mapping):
+        raise ValueError("project data must be a mapping")
+
+    if is_legacy_program_dict(data):
+        data = migrate_legacy_program_dict(data)
+
+    version = str(data.get("version", "2.0"))
+    scan_period_s = float(data.get("scan_period_s", 0.1))
+
+    raw_programs = data.get("programs") or {}
+    if not isinstance(raw_programs, Mapping):
+        raise ValueError("'programs' must be a mapping")
+    programs: dict[str, Program] = {}
+    for pid, pdata in raw_programs.items():
+        if not isinstance(pdata, Mapping):
+            raise ValueError(f"programs[{pid!r}] must be a mapping")
+        programs[str(pid)] = program_from_dict(pdata)
+
+    raw_tasks = data.get("tasks") or []
+    if not isinstance(raw_tasks, list):
+        raise ValueError("'tasks' must be a list")
+    tasks: list[Task] = []
+    for idx, tdata in enumerate(raw_tasks):
+        if not isinstance(tdata, Mapping):
+            raise ValueError(f"tasks[{idx}] must be a mapping")
+        for key in ("id", "priority"):
+            if key not in tdata:
+                raise ValueError(f"tasks[{idx}] missing required key {key!r}")
+        raw_progs = tdata.get("programs") or []
+        if not isinstance(raw_progs, list):
+            raise ValueError(f"tasks[{idx}] 'programs' must be a list")
+        tasks.append(
+            Task(
+                task_id=str(tdata["id"]),
+                priority=int(tdata["priority"]),
+                programs=[str(p) for p in raw_progs],
+            )
+        )
+
+    project = SoftPlcProject(
+        programs=programs,
+        tasks=tasks,
+        scan_period_s=scan_period_s,
+        version=version,
+    )
+    validate_project(project)
+    return project
+
+
+def project_structure_signature(project: SoftPlcProject) -> tuple:
+    """Hashable signature of Task/Program membership (structure-only)."""
+    task_sig = tuple(
+        sorted(
+            (t.task_id, t.priority, tuple(t.programs)) for t in project.tasks
+        )
+    )
+    return (tuple(sorted(project.programs.keys())), task_sig)
+
+
+def classify_project_apply(
+    old: SoftPlcProject | None,
+    new: SoftPlcProject,
+) -> str:
+    """Classify apply mode: ``restart`` for structure changes, else ``hot``.
+
+    Structure covers Task ids/priorities/call lists and the set of program ids.
+    Program body changes (instances, wires, params) within unchanged structure
+    qualify for ``hot``.
+    """
+    if old is None:
+        return "restart"
+    if project_structure_signature(old) != project_structure_signature(new):
+        return "restart"
+    return "hot"
+
+
+def main_program(project: SoftPlcProject) -> Program | None:
+    """Return the Program on ``MAIN_TASK_ID``, or the first scheduled Program."""
+    for task in project.tasks:
+        if task.task_id == MAIN_TASK_ID and task.programs:
+            return project.programs.get(task.programs[0])
+    for task in sorted(project.tasks, key=lambda t: t.priority):
+        for prog_id in task.programs:
+            prog = project.programs.get(prog_id)
+            if prog is not None:
+                return prog
+    return None
+
+
+def scheduled_programs(
+    project: SoftPlcProject,
+) -> list[tuple[Task, str, Program]]:
+    """Programs to execute this scan: Tasks by priority, programs in call order."""
+    result: list[tuple[Task, str, Program]] = []
+    for task in sorted(project.tasks, key=lambda t: (t.priority, t.task_id)):
+        for prog_id in task.programs:
+            prog = project.programs.get(prog_id)
+            if prog is not None:
+                result.append((task, prog_id, prog))
+    return result
+
+
 __all__ = [
+    "classify_project_apply",
+    "is_legacy_program_dict",
+    "main_program",
+    "migrate_legacy_program_dict",
     "place_block",
     "program_from_dict",
     "program_to_dict",
+    "project_from_dict",
+    "project_structure_signature",
+    "project_to_dict",
     "reset_instance",
+    "scheduled_programs",
     "validate_program",
+    "validate_project",
 ]

@@ -225,9 +225,17 @@ class MqttScanLoop:
         self.bridge.on_command("start", lambda: None)
         self.bridge.on_command("stop", lambda: None)
         self.bridge.on_command("reset", lambda: None)
+    def _scan_period_s(self) -> float:
+        """Configured period — prefer active project on the skid loader."""
+        logic = self.logic
+        skid = getattr(logic, "skid", None)
+        if skid is not None:
+            return float(skid.config.scan.scan_period_s)
+        return float(self.period_s)
+
     def _status_extras(self) -> dict[str, Any]:
         """MODE / scan period extras for the retained status topic (HMI / SWD-145)."""
-        extra: dict[str, Any] = {"scan_period_s": float(self.period_s)}
+        extra: dict[str, Any] = {"scan_period_s": self._scan_period_s()}
         mode = getattr(self.logic, "mode", None)
         if mode is not None:
             value = getattr(mode, "value", mode)
@@ -412,6 +420,20 @@ class MqttScanLoop:
             self._write_ha_config_runtime()
             self._last_file_bridge = now
 
+    def set_scan_period_s(self, period_s: float) -> None:
+        """Align scan sleep, tick ``dt``, and MQTT status with project rate."""
+        if period_s <= 0:
+            raise ValueError("scan_period_s must be positive")
+        self.period_s = period_s
+        logic = self.logic
+        if hasattr(logic, "set_scan_period_s"):
+            logic.set_scan_period_s(period_s)
+        else:
+            logic.period_s = period_s
+        # Republish retained status so observers see the new rate immediately.
+        self._publish_scan_status("running" if self.scanning else "stopped")
+        self._last_status_heartbeat = time.monotonic()
+
     def issue_command(self, name: str) -> None:
         """Enqueue an operator command for the scan thread (same as MQTT cmds)."""
         self.bridge.enqueue_command(str(name).lower())
@@ -429,7 +451,7 @@ class MqttScanLoop:
                 self._publish_scan_status("fault", error=str(exc)[:200])
                 self._last_status_heartbeat = time.monotonic()
             elapsed = time.monotonic() - t0
-            time.sleep(max(0.0, self.period_s - elapsed))
+            time.sleep(max(0.0, self._scan_period_s() - elapsed))
 
 
 def _mqtt_supervisor(
@@ -544,10 +566,21 @@ def run_ha_runtime(
     )
     state = AppState(program_path=program_path)
     state.instance_id = instance_id
+    period_s = (
+        state.loader.project.scan_period_s
+        if state.loader.project is not None
+        else 0.1
+    )
     # Bind the editor first so Ingress / host port respond even if MQTT is slow.
     server = run_app(host=host, port=port, state=state)
 
-    lifecycle = _mqtt_supervisor(options, instance_id, bus=bus, ha_runtime=True)
+    lifecycle = _mqtt_supervisor(
+        options,
+        instance_id,
+        bus=bus,
+        period_s=period_s,
+        ha_runtime=True,
+    )
     state.attach_runtime(lifecycle)
 
     if serve_forever:

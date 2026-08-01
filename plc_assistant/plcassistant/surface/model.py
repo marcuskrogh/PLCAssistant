@@ -71,6 +71,45 @@ class Wire:
     dst_pin: str
 
 
+MAIN_TASK_ID = "main"
+"""Canvas / API default task id for the primary scheduled program."""
+
+DEFAULT_LEGACY_PROGRAM_ID = "main"
+"""Program id assigned when auto-migrating a flat legacy Program YAML."""
+
+DEFAULT_WEDGE_PROGRAM_ID = "tank"
+"""Default wedge cascade program id under ``MAIN_TASK_ID``."""
+
+
+@dataclass
+class Task:
+    """Soft-PLC scan task: priority-ordered pass that calls Programs in sequence.
+
+    Lower ``priority`` values run earlier within one scan.  Tasks carry no
+    per-Task interval — ``SoftPlcProject.scan_period_s`` drives ``dt``.
+    """
+
+    task_id: str
+    priority: int
+    programs: list[str] = field(default_factory=list)
+
+
+@dataclass
+class SoftPlcProject:
+    """Soft-PLC project organization: Tasks schedule Programs of block instances.
+
+    * ``programs`` — all defined Programs (scheduled or not).
+    * ``tasks`` — priority-ordered Task passes; each lists program ids to call.
+    * Each Program may appear on **at most one** Task; unscheduled Programs are
+      defined but not executed.
+    """
+
+    programs: dict[str, Program] = field(default_factory=dict)
+    tasks: list[Task] = field(default_factory=list)
+    scan_period_s: float = 0.1
+    version: str = "2.0"
+
+
 @dataclass
 class Program:
     """Complete block program: placed instances, wiring, deterministic execution order.
@@ -140,9 +179,14 @@ class TemplateLibrary:
 __all__ = [
     "BlockInstance",
     "BlockTemplate",
+    "DEFAULT_LEGACY_PROGRAM_ID",
+    "DEFAULT_WEDGE_PROGRAM_ID",
+    "MAIN_TASK_ID",
     "PinDirection",
     "PinSpec",
     "Program",
+    "SoftPlcProject",
+    "Task",
     "TemplateLibrary",
     "Wire",
 ]
