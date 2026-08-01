@@ -90,6 +90,10 @@ If personal boards still show unavailable plant Numbers, delete stale unavailabl
 entities in the entity registry (or remove/re-add the integration). Update any
 personal dashboards that still reference plant Numbers for Process display.
 
+**0.1.40** registers PID Lovelace cards as dashboard resources (fixes Configuration error),
+defaults SP-source mode to **Manual**, and avoids mode-flip on Number setup hydration.
+Stock Lovelace refreshes to dashboard version **19**.
+
 **0.1.39** fixes HA Core integration setup: Datablock catalog is HA-local (no Soft-PLC
 ``plcassistant.io`` import on Core). Stock Lovelace still refreshes to dashboard version **18**.
 

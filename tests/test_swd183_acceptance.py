@@ -37,7 +37,7 @@ def test_unit_ha_parse_mode_aliases_match_sp_source_mode() -> None:
     """HA _parse_mode valid aliases must match Soft-PLC SpSourceMode.parse."""
     text = Path("custom_components/plcassistant/pid_loop.py").read_text(encoding="utf-8")
     assert "_parse_mode" in text
-    assert "SpSourceMode.parse" in text or "fall back to automatic" in text
+    assert "SpSourceMode.parse" in text or "fall back to manual" in text
     for alias, expected in (
         ("manual", SpSourceMode.MANUAL),
         ("man", SpSourceMode.MANUAL),
@@ -308,7 +308,7 @@ def test_system_lovelace_operate_has_block_list_card() -> None:
     text = Path("custom_components/plcassistant/lovelace/plcassistant.yaml").read_text(
         encoding="utf-8"
     )
-    assert "plcassistant_dashboard_version: 18" in text
+    assert "plcassistant_dashboard_version: 19" in text
     assert "custom:plcassistant-block-list-card" in text
 
 

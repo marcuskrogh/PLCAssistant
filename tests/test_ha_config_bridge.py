@@ -12,6 +12,7 @@ from plcassistant.io.ha_config_bridge import (
     read_runtime_snapshot,
     write_cmd,
     write_input_tag,
+    write_input_tags,
     write_runtime_snapshot,
 )
 
@@ -81,6 +82,11 @@ def test_scan_loop_drains_file_cmd_and_writes_runtime(tmp_path: Path, monkeypatc
     bridge = MqttIoBridge(bus, instance_id="default")
     loop = MqttScanLoop(bridge, image, period_s=0.05)
     bridge.start()
+    # Automatic modes so published SP_FLOW follows cascade (SWD-220 Manual defaults).
+    assert write_input_tags(
+        {"LEVEL_MODE": 1.0, "FLOW_MODE": 1.0},
+        root=tmp_path,
+    )
     assert write_cmd("start", root=tmp_path)
     loop.scan_once()
     assert loop.scanning is True
@@ -122,6 +128,7 @@ def test_file_sp_level_req_updates_active_level_sp(tmp_path: Path, monkeypatch) 
     loop = MqttScanLoop(bridge, image, period_s=0.05)
     bridge.start()
     assert write_input_tag("SP_LEVEL_REQ", 0.30, root=tmp_path)
+    assert write_input_tag("LEVEL_MODE", 1.0, root=tmp_path)
     assert write_cmd("start", root=tmp_path)
     loop.scan_once()
     assert loop.scanning is True

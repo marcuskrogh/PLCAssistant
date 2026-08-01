@@ -183,7 +183,7 @@ def faceplate_from_image_tags(
     values: Mapping[str, Any],
 ) -> dict[str, Any]:
     """Build a climate-like faceplate dict from a tag value map."""
-    mode = SpSourceMode.parse(values.get(tags.mode, SpSourceMode.AUTOMATIC))
+    mode = SpSourceMode.parse(values.get(tags.mode, SpSourceMode.MANUAL))
     man = float(values.get(tags.sp_man, 0.0) or 0.0)
     auto = float(values.get(tags.sp_auto, 0.0) or 0.0)
     rem = float(values.get(tags.sp_rem, 0.0) or 0.0)
