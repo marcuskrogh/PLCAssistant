@@ -1,46 +1,48 @@
-# Iterate: Soft-PLC stuck TRIPPED after settle — stale plant file LOS
+# Iterate: Integration setup fails — No module named plcassistant.io
 
 ## Prior work
-- Task: [SWD-171](https://marcusknielsen.atlassian.net/browse/SWD-171)
-- PR: [#73](https://github.com/marcuskrogh/PLCAssistant/pull/73) (merged, App **0.1.30**)
-- Spec context: prior `docs/ITERATE.md` (SWD-171 plant IN file-bridge + stale demotion)
+- Task: [SWD-183](https://marcusknielsen.atlassian.net/browse/SWD-183)
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/81 (merged, App 0.1.38)
+- Spec context: `docs/PLAN.md` (SWD-183/184 Datablock defaults), `docs/packaging/01-shape.md`
 
 ## Problem
-After App **0.1.30**, Soft-PLC shows **MODE=TRIPPED**, **Trip active=On**, **Start ready=Off**. Operator cannot Reset or Start — process stuck.
+HA Core fails to set up the thin integration after App 0.1.38:
+
+```text
+ModuleNotFoundError: No module named 'plcassistant.io'
+  File ".../custom_components/plcassistant/__init__.py", line 106, in _default_bindings
+    from plcassistant.io.datablock import (...)
+```
+
+Thin integration runs in HA Core (`/config/custom_components/…`). Soft-PLC
+`plcassistant` is installed only inside the App container. SWD-184/183 wired
+default bindings / Datablock store / HTTP API to Soft-PLC imports, so Core
+setup crashes before entities load.
 
 ## Clarifications
-- Soft-PLC stays mock-unaware (`HeldProcess`).
-- Root cause: SWD-171 demotes plant file tags to BAD/UNAVAILABLE after 5 s without a fresh `ts`. Plant **coalesces unchanged GOOD publishes**, so once levels settle the file timestamps stop refreshing → Soft-PLC latches `LOS_LT_*` / `LOS_FT_INLET`. Reset fails while those conditions remain “bad”.
-- Real LOS (explicit BAD/FAULT from the plant) must still trip.
+- None — traceback + packaging shape are sufficient.
 
 ## Acceptance criteria
-- [x] Settled plant (unchanged PVs for >5 s) must **not** latch LOS from file age alone
-- [x] Stale/missing plant file `ts`: hold last good (skip apply); do **not** force BAD/UNAVAILABLE
-- [x] Plant publishes a file/MQTT heartbeat for plant tags even when value coalesce would skip
-- [x] After a real LOS clears, Reset → STOP → Start works
-- [x] Regression tests: settle-without-LOS + Reset recovery; update prior stale-demote expectation
-- [x] App + integration **0.1.31**; dual trees synced
+- [ ] `_default_bindings()` and Datablock store/API import only HA-local modules
+- [ ] Integration setup path works with Soft-PLC absent from `sys.path`
+- [ ] Default tank bindings stay parity-checked against Soft-PLC `default_tank_datablock_catalog`
+- [ ] Regression test fails if thin-integration setup reintroduces `from plcassistant…` for datablocks
+- [ ] App/integration version bumped; dual trees synced
 
 ## Out of scope
-- Changing trip thresholds / cascade tuning
-- Lovelace trip-code display redesign
+- Changing Soft-PLC Datablock ownership / MQTT contracts
+- Classic PID output Manual
+- Installing Soft-PLC into HA Core
 
 ## Work packages
-1. Soft-PLC: stop demoting stale plant file tags to LOS
-2. PlantSimulator: heartbeat publish for settled PVs
-3. Tests + version bump
+1. Vendor HA-local Datablock binding types + catalog (no Soft-PLC deps)
+2. Retarget `__init__` / `datablocks.store` / `datablocks.http_api` (+ number flip already has Soft-PLC fallback)
+3. Tests + version bump + dual-tree sync
 
 ## Tracker
-- Task: [SWD-173](https://marcusknielsen.atlassian.net/browse/SWD-173)
-- Relates: [SWD-171](https://marcusknielsen.atlassian.net/browse/SWD-171)
-- Branch: `cursor/swd-173-trip-stale-los-b0f4`
-- PR: [#74](https://github.com/marcuskrogh/PLCAssistant/pull/74) (merged)
-
-## Shipped
-- Soft-PLC holds last good on stale/missing **GOOD** plant file `ts` (no BAD demote)
-- Explicit non-GOOD plant file status still applies (real LOS)
-- PlantSimulator per-tag heartbeat + status-transition republish
-- App + integration **0.1.31**
+- Task: [SWD-219](https://marcusknielsen.atlassian.net/browse/SWD-219)
+- Relates: SWD-183
+- Branch: `cursor/swd-219-integration-plcassistant-io-a52c`
 
 ## Next
-Done — phase closed.
+`/review-fix SWD-219` — Review and auto-fix until clean

@@ -21,13 +21,41 @@ from plcassistant.surface.schema import program_from_dict, project_from_dict
 
 
 def _load_store_mod():
+    """Load HA datablocks.store with its HA-local catalog package (SWD-219)."""
     import importlib.util
+    import sys
+    import types
+
+    pkg_name = "ha_datablocks_pkg"
+    pkg = types.ModuleType(pkg_name)
+    pkg.__path__ = [str(Path("custom_components/plcassistant/datablocks").resolve())]
+    sys.modules[pkg_name] = pkg
+
+    binding_path = Path("custom_components/plcassistant/datablocks/binding_types.py")
+    spec_b = importlib.util.spec_from_file_location(
+        f"{pkg_name}.binding_types", binding_path
+    )
+    assert spec_b and spec_b.loader
+    mod_b = importlib.util.module_from_spec(spec_b)
+    sys.modules[f"{pkg_name}.binding_types"] = mod_b
+    spec_b.loader.exec_module(mod_b)
+
+    catalog_path = Path("custom_components/plcassistant/datablocks/catalog.py")
+    catalog_src = catalog_path.read_text(encoding="utf-8").replace(
+        "from .binding_types import Binding, BindingTable, TagDecl",
+        f"from {pkg_name}.binding_types import Binding, BindingTable, TagDecl",
+    )
+    mod_c = types.ModuleType(f"{pkg_name}.catalog")
+    sys.modules[f"{pkg_name}.catalog"] = mod_c
+    exec(compile(catalog_src, str(catalog_path), "exec"), mod_c.__dict__)
 
     store_path = Path("custom_components/plcassistant/datablocks/store.py")
-    spec = importlib.util.spec_from_file_location("datablock_store", store_path)
-    assert spec and spec.loader
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
+    store_src = store_path.read_text(encoding="utf-8").replace(
+        "from .catalog import (",
+        f"from {pkg_name}.catalog import (",
+    )
+    mod = types.ModuleType("datablock_store")
+    exec(compile(store_src, str(store_path), "exec"), mod.__dict__)
     return mod
 
 

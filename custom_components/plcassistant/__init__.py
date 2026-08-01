@@ -102,8 +102,11 @@ async def _async_register_lovelace_cards(hass: HomeAssistant) -> None:
         _LOGGER.debug("PLCAssistant: Lovelace card JS registration skipped", exc_info=True)
 
 def _default_bindings() -> list[dict]:
-    """Default mock bindings from demo Program Datablock access (SWD-184)."""
-    from plcassistant.io.datablock import (
+    """Default mock bindings from demo Program Datablock access (SWD-184/219).
+
+    Uses HA-local Datablock catalog — Soft-PLC is not on HA Core's sys.path.
+    """
+    from .datablocks.catalog import (
         binding_rows_from_table,
         default_program_datablock_access,
         default_tank_datablock_catalog,

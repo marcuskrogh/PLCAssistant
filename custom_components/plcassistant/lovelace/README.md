@@ -90,6 +90,9 @@ If personal boards still show unavailable plant Numbers, delete stale unavailabl
 entities in the entity registry (or remove/re-add the integration). Update any
 personal dashboards that still reference plant Numbers for Process display.
 
+**0.1.39** fixes HA Core integration setup: Datablock catalog is HA-local (no Soft-PLC
+``plcassistant.io`` import on Core). Stock Lovelace still refreshes to dashboard version **18**.
+
 **0.1.38** ships review-fix for PID faceplates: REQ remains Automatic writer,
 Datablock Kp/Ki applied into Soft-PLC cascade each scan, KD bindings, Operate
 board includes the generic block-list card, App online strip shows schedule
