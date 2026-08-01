@@ -296,7 +296,46 @@ def wedge_cascade_program(
     }
 
 
+def wedge_softplc_project(
+    *,
+    level_kp: float = 40.0,
+    level_ki: float = 5.0,
+    flow_kp: float = 12.0,
+    flow_ki: float = 2.0,
+    sp_flow_min: float = 0.0,
+    sp_flow_max: float = 6.0,
+    cmd_speed_min: float = 0.0,
+    cmd_speed_max: float = 100.0,
+    scan_period_s: float = 0.1,
+    program_id: str = "tank",
+    task_id: str = "main",
+) -> dict:
+    """Return a YAML-shaped Soft-PLC project with one tank Program under Main Task."""
+    from plcassistant.surface.model import DEFAULT_WEDGE_PROGRAM_ID, MAIN_TASK_ID
+
+    pid = program_id or DEFAULT_WEDGE_PROGRAM_ID
+    tid = task_id or MAIN_TASK_ID
+    return {
+        "version": "2.0",
+        "scan_period_s": scan_period_s,
+        "programs": {
+            pid: wedge_cascade_program(
+                level_kp=level_kp,
+                level_ki=level_ki,
+                flow_kp=flow_kp,
+                flow_ki=flow_ki,
+                sp_flow_min=sp_flow_min,
+                sp_flow_max=sp_flow_max,
+                cmd_speed_min=cmd_speed_min,
+                cmd_speed_max=cmd_speed_max,
+            ),
+        },
+        "tasks": [{"id": tid, "priority": 1, "programs": [pid]}],
+    }
+
+
 __all__ = [
     "register_builtins",
     "wedge_cascade_program",
+    "wedge_softplc_project",
 ]

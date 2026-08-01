@@ -113,6 +113,28 @@ continuity.
 
 ---
 
+## Soft-PLC project organization (SWD-182)
+
+`ProjectLoader` (`plcassistant/surface/apply.py`) owns a `SoftPlcProject`:
+Tasks schedule Programs; each scan runs Tasks by priority (lower number first),
+calling each Task's Programs in order.  Unscheduled Programs are defined but not
+executed.
+
+| Change | Apply mode |
+|---|---|
+| Task ids, priorities, program call lists | `restart_apply` |
+| Program ids added/removed from project | `restart_apply` |
+| Program instances, wires, params (structure unchanged) | `hot_apply` (superuser) |
+
+`classify_project_apply(old, new)` returns `"restart"` or `"hot"`.  The App
+exposes the tree at `GET`/`PUT /api/project`; the canvas still edits the Main
+Task program via `GET`/`PUT /api/program`.
+
+Legacy flat Program YAML (v1.0 with top-level `instances`) auto-migrates to a
+project with one Main Task calling program id `"main"`.
+
+---
+
 ## Properties
 
 | Property | Type | Meaning |
