@@ -86,7 +86,7 @@
 - Task: [SWD-183](https://marcusknielsen.atlassian.net/browse/SWD-183)
 - Sub-tasks: SWD-217, SWD-214, SWD-215, SWD-213, SWD-218, SWD-216
 - Branch: `cursor/swd-183-online-visibility-a52c`
-- PR: *(draft — filled after open)*
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/81
 
 ## Next
 `/implement SWD-183` — Build per this plan on the same branch/PR  

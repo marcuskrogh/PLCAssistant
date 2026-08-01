@@ -131,10 +131,10 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-207 | Subtask | SWD-184: Rebuild example Datablock + demo Program | Done | SWD-184 | docs/PLAN.md | — |
 | SWD-212 | Subtask | SWD-184: Persistence + apply/reload into MQTT/image path | Done | SWD-184 | docs/PLAN.md | — |
 | SWD-211 | Subtask | SWD-184: unit + integration + system tests | Done | SWD-184 | docs/PLAN.md | — |
-| SWD-183 | Task | Define online / runtime visibility (loaded vs running) | To Do | Relates SWD-178; blocked by SWD-181 | docs/ROADMAP.md | `/define SWD-183` |
 
 ## Log
 
+- 2026-08-01 — Define SWD-183 approved: PLAN.md; Sub-tasks SWD-217/214/215/213/218/216; branch `cursor/swd-183-online-visibility-a52c`. Next `/implement SWD-183`.
 - 2026-08-01 — Shipped SWD-184 via PR #80 (App 0.1.36); review-fix CLEAN after 2 iters; Task Done; Next `/define SWD-183`.
 - 2026-08-01 — Implement SWD-184: Datablock model/catalog, Program access, HA Datablocks panel + store, DB_Tank example, App 0.1.36; pytest 530 passed. Next `/review-fix SWD-184`.
 - 2026-08-01 — Define SWD-184 approved: PLAN.md; Sub-tasks SWD-209/208/210/207/212/211; branch `cursor/swd-184-datablock-mapping-a52c`. Next `/implement SWD-184`.
