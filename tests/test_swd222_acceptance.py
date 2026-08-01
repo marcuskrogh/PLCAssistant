@@ -166,29 +166,25 @@ def test_unit_plant_watchdog_paused_while_frozen() -> None:
 
     plant = PlantSimulator.for_preset(publish)
     plant.apply_status_payload({"state": "running", "scan_period_s": 0.1})
-    plant.apply_cmd_speed(40.0, mono=100.0)
+    plant.apply_cmd_speed(60.0, mono=100.0)
+    plant.tick(0.1, mono=100.1)
+    assert plant.model._inputs["cmd_speed"] == pytest.approx(60.0)
+
     plant.apply_status_payload({"state": "offline", "scan_period_s": 0.1})
     assert plant.frozen is True
-    # Offline zeros cmd by design; re-apply after thaw path:
-    plant.apply_status_payload({"state": "stopped", "scan_period_s": 0.1})
-    plant.apply_cmd_speed(40.0, mono=200.0)
-    plant.apply_status_payload({"state": "offline", "scan_period_s": 0.1})
-    # While frozen, advance wall clock far past watchdog without zeroing via tick.
-    # (offline already zeroed cmd_speed — restore after we prove thaw reset)
+    assert plant.model._inputs["cmd_speed"] == pytest.approx(0.0)
+    # Long freeze — watchdog must not run while frozen.
+    plant.tick(0.1, mono=200.0)
+
     plant.apply_status_payload({"state": "running", "scan_period_s": 0.1})
-    plant.apply_cmd_speed(55.0, mono=300.0)
-    plant.apply_status_payload({"state": "fault", "scan_period_s": 0.1})
-    plant.tick(0.1, mono=310.0)  # frozen — watchdog must not run
-    plant.apply_status_payload({"state": "running", "scan_period_s": 0.1})
-    # Thaw resets watchdog clock; cmd from last apply_cmd before fault was zeroed
-    # by fault handler — set again and ensure long freeze gap does not clear it.
-    plant.apply_cmd_speed(60.0, mono=400.0)
-    plant.apply_status_payload({"state": "offline", "scan_period_s": 0.1})
-    plant.tick(0.1, mono=500.0)
-    plant.apply_cmd_speed(60.0, mono=500.0)  # operator/Soft-PLC still commanding
-    plant.apply_status_payload({"state": "running", "scan_period_s": 0.1})
-    plant.tick(0.1, mono=500.5)
+    assert plant.frozen is False
+    # Soft-PLC republishes CMD after thaw; freeze gap must not zero it.
+    plant.apply_cmd_speed(60.0, mono=200.0)
+    plant.tick(0.1, mono=200.5)
     assert plant.model._inputs["cmd_speed"] == pytest.approx(60.0)
+    # Watchdog still engages once unfrozen after cmd_watchdog_s silence.
+    plant.tick(0.1, mono=203.0)
+    assert plant.model._inputs["cmd_speed"] == pytest.approx(0.0)
 
 
 def test_unit_plant_simulator_rate_limits_file_writes() -> None:

@@ -89,9 +89,11 @@ class PlantSimulator:
         else:
             if prev in {"offline", "fault"} and state in {"running", "stopped"}:
                 self._runner.reset_timing()
-                # Soft-PLC was offline/fault — do not treat freeze duration as a
-                # CMD watchdog gap (that zeroed pump on thaw and killed cascade).
-                self._last_cmd_mono = time.monotonic()
+                # Soft-PLC was offline/fault — freeze duration must not count as a
+                # CMD watchdog gap. Clear until the next CMD sample (Soft-PLC
+                # republishes when running). Do not stamp wall-clock mono here:
+                # plant ticks often use synthetic ``mono`` (tests / HA loop).
+                self._last_cmd_mono = None
             self.frozen = False
 
     def apply_cmd_speed(self, value: float, *, mono: float | None = None) -> None:
