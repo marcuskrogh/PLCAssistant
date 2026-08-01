@@ -6,7 +6,7 @@
 - Picker only offers **unscheduled** Programs; one Program stays on at most one Task.
 - Delete Task (with confirm) **unschedules** its Programs.
 - Soft-PLC may have **zero Tasks**.
-- **Save** persists schedule edits (survives navigation, reload, App restart); **Apply (restart)** commits to the live Soft-PLC.
+- **Save** persists schedule edits (survives navigation, reload, App restart); **Apply (restart)** commits to the live Soft-PLC (including scan-loop Skid loader).
 - Extend Task model with optional **description**.
 - Acceptance: **unit**, **integration**, **system**.
 
@@ -20,7 +20,7 @@
 - Delete Task with **Are you sure?** → Programs on that Task become unscheduled
 - Allow empty Soft-PLC (no Tasks)
 - **Save** = persist project schedule to project-of-record (disk / App state) without requiring live apply
-- **Apply (restart)** = restart-apply schedule into running Soft-PLC (SWD-182 structure rule)
+- **Apply (restart)** = restart-apply schedule into running Soft-PLC + live Skid loader
 - Unsaved-vs-saved-vs-applied UX clear enough that Save then leave/reload keeps the saved schedule ready to Apply
 - Mobile-first, one-column layout
 - API/schema: Task `description`; schedule mutate + persist + apply endpoints as needed
@@ -58,35 +58,36 @@
 - `docs/surface/04-apply-policy.md`
 
 ## Acceptance criteria
-- [ ] Top nav opens Task editor from main; mobile one-column usable
-- [ ] Create Task with id, priority, optional description; list/select Tasks
-- [ ] Add only unscheduled Programs; remove; reorder call list
-- [ ] Delete Task with confirm unschedules its Programs; Soft-PLC may have zero Tasks
-- [ ] Save persists schedule across navigation, reload, and App restart without Apply
-- [ ] Apply (restart) loads saved schedule into live Soft-PLC; card status reflects scheduled vs unscheduled after apply
-- [ ] Program still on at most one Task (picker + validation)
-- [ ] **Unit** tests for Task description, picker eligibility, delete→unschedule, save-vs-apply separation
-- [ ] **Integration** tests for Task CRUD + call-list HTTP/API + persist round-trip
-- [ ] **System** test: HA + App path save schedule, reload App, then Apply; tank under Main (or equivalent) runs when applied
+- [x] Top nav opens Task editor from main; mobile one-column usable
+- [x] Create Task with id, priority, optional description; list/select Tasks
+- [x] Add only unscheduled Programs; remove; reorder call list
+- [x] Delete Task with confirm unschedules its Programs; Soft-PLC may have zero Tasks
+- [x] Save persists schedule across navigation, reload, and App restart without Apply
+- [x] Apply (restart) loads saved schedule into live Soft-PLC; card status reflects scheduled vs unscheduled after apply
+- [x] Program still on at most one Task (picker + validation)
+- [x] **Unit** tests for Task description, picker eligibility, delete→unschedule, save-vs-apply separation
+- [x] **Integration** tests for Task CRUD + call-list HTTP/API + persist round-trip
+- [x] **System** test: HA + App path save schedule, reload App, then Apply; tank under Main (or equivalent) runs when applied
 
 ## Work packages
-1. **Schema + persist/apply split** — Task `description`; saved project-of-record vs live applied project — [SWD-196](https://marcusknielsen.atlassian.net/browse/SWD-196)
-2. **Task editor API** — CRUD Tasks, mutate call lists, Save, Apply (restart) — [SWD-199](https://marcusknielsen.atlassian.net/browse/SWD-199)
-3. **App UI** — top nav + Task editor (list, create, call list, reorder, delete confirm); mobile-first — [SWD-200](https://marcusknielsen.atlassian.net/browse/SWD-200)
-4. **Wire Program cards** — status updates after Apply; unscheduled after Task delete — [SWD-197](https://marcusknielsen.atlassian.net/browse/SWD-197)
-5. **Tests** — unit + integration + system — [SWD-198](https://marcusknielsen.atlassian.net/browse/SWD-198)
+1. **Schema + persist/apply split** — Done (SWD-196)
+2. **Task editor API** — Done (SWD-199)
+3. **App UI** — Done (SWD-200)
+4. **Wire Program cards** — Done (SWD-197)
+5. **Tests** — Done (SWD-198)
 
-## Open items
-- Exact persistence mechanism (same `program_path` JSON with a pending flag vs dual snapshot) — implement chooses simplest honest seam that meets Save-survives-reload + Apply-restarts-live
+## Shipped
+- App **0.1.34**
+- Task editor + Save/Apply split; live Skid loader sync on Apply
+- PR [#78](https://github.com/marcuskrogh/PLCAssistant/pull/78)
 
 ## Tracker
 - Provider: jira
 - Story: [SWD-178](https://marcusknielsen.atlassian.net/browse/SWD-178)
 - Task: [SWD-191](https://marcusknielsen.atlassian.net/browse/SWD-191)
-- Sub-tasks: SWD-196, SWD-199, SWD-200, SWD-197, SWD-198
+- Sub-tasks: SWD-196, SWD-199, SWD-200, SWD-197, SWD-198 (Done)
 - Branch: `cursor/swd-191-task-scheduling-editor-a52c`
 - PR: [#78](https://github.com/marcuskrogh/PLCAssistant/pull/78)
 
 ## Next
-`/review-fix SWD-191` — Review and auto-fix until clean
-(or `/ship SWD-191` to finish remaining through Done)
+Done — phase closed.
