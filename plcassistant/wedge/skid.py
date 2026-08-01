@@ -506,17 +506,28 @@ class Skid:
     # On-apply hook (registered with ProgramLoader on default path)
     # ------------------------------------------------------------------
 
+    def apply_scan_period_s(self, scan_period_s: float) -> None:
+        """Propagate project scan rate into shell config and overrun threshold."""
+        if scan_period_s <= 0:
+            raise ValueError("scan_period_s must be positive")
+        self.config.scan.scan_period_s = scan_period_s
+        self.scan_shell.config.scan_period_s = scan_period_s
+
     def _on_program_apply(self, is_restart: bool) -> None:
-        """Called by ProgramLoader after each apply.
+        """Called by ProjectLoader after each apply.
 
         Clears the scan context so stale CV / pin values from the previous
         program cannot bleed into the new program's first tick.  On restart
         also resets ``_was_running`` so bumpless prep fires correctly on the
-        first RUNNING scan of the new program.
+        first RUNNING scan of the new program.  Always syncs ``scan_period_s``
+        from the active project.
         """
         self._block_context = DictContext()
         if is_restart:
             self._was_running = False
+        proj = self._loader.project
+        if proj is not None:
+            self.apply_scan_period_s(proj.scan_period_s)
 
     # ------------------------------------------------------------------
     # Block-runtime accessors (public, only set on default path)

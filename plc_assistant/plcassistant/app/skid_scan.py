@@ -26,7 +26,19 @@ class SkidImageLogic:
     def __init__(self, *, period_s: float = 0.1, skid: Skid | None = None) -> None:
         self.period_s = period_s
         self.skid = skid or Skid(process=HeldProcess())
+        self.skid.apply_scan_period_s(period_s)
         self._pending: list[OperatorCommand] = []
+
+    def set_scan_period_s(self, period_s: float) -> None:
+        """Align tick ``dt`` with Soft-PLC project ``scan_period_s``."""
+        if period_s <= 0:
+            raise ValueError("scan_period_s must be positive")
+        self.period_s = period_s
+        self.skid.apply_scan_period_s(period_s)
+
+    def _scan_dt(self) -> float:
+        """Sample time for this scan — follows active project on the skid loader."""
+        return float(self.skid.config.scan.scan_period_s)
 
     def enqueue_operator(self, name: str) -> None:
         key = str(name).lower().strip()
@@ -85,13 +97,14 @@ class SkidImageLogic:
         pending = self._pending
         self._pending = []
         snap = None
+        dt = self._scan_dt()
         if not pending:
-            snap = self.skid.step(self.period_s, OperatorCommand.NONE)
+            snap = self.skid.step(dt, OperatorCommand.NONE)
         else:
             for i, cmd in enumerate(pending):
                 # Burn dt on the last pulse so control integrates once per scan.
-                dt = self.period_s if i == len(pending) - 1 else 0.0
-                snap = self.skid.step(dt, cmd)
+                step_dt = dt if i == len(pending) - 1 else 0.0
+                snap = self.skid.step(step_dt, cmd)
         assert snap is not None
         _set = image.set_output
         if "SP_LEVEL" in names:

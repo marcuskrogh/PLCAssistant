@@ -18,8 +18,8 @@ POST /api/apply             Apply program; body = {mode: "restart"|"hot"}
 GET  /api/runtime           Live Soft-PLC status + tag snapshot
 POST /api/cmd               Operator command; body = {name: "start"|"stop"|"reset"}
 
-The server holds an in-memory program and a ProgramLoader.  No file persistence
-by default; callers may pass an initial program dict.
+The server holds an in-memory project and a ProjectLoader.  No file persistence
+by default; callers may pass an initial project or legacy program dict.
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ from plcassistant.app.operator_runtime import OperatorRuntime
 from plcassistant.io.mqtt_topics import DEFAULT_INSTANCE_ID
 from plcassistant.surface.apply import ProjectLoader
 from plcassistant.surface.builtin import register_builtins, wedge_softplc_project
-from plcassistant.surface.model import MAIN_TASK_ID, Program, Task, TemplateLibrary
+from plcassistant.surface.model import Program, TemplateLibrary
 from plcassistant.surface.runtime import BlockRuntime
 from plcassistant.surface.schema import (
     classify_project_apply,
@@ -97,6 +97,15 @@ class AppState:
         else:
             self.loader.load(project_from_dict(default_project))
 
+    def _sync_scan_period_to_runtime(self) -> None:
+        """Propagate project ``scan_period_s`` into the live MQTT scan loop."""
+        proj = self.loader.project
+        if proj is None:
+            return
+        loop = self.operator._scan_loop()
+        if loop is not None and hasattr(loop, "set_scan_period_s"):
+            loop.set_scan_period_s(proj.scan_period_s)
+
     @property
     def instance_id(self) -> str:
         return self.operator.instance_id
@@ -108,6 +117,11 @@ class AppState:
     def attach_runtime(self, lifecycle: Any) -> None:
         """Attach MQTT scan lifecycle so the UI can read tags and issue cmds."""
         self.operator.attach(lifecycle)
+        loop = self.operator._scan_loop()
+        if loop is not None:
+            self._sync_scan_period_to_runtime()
+        elif hasattr(lifecycle, "set_on_attach"):
+            lifecycle.set_on_attach(lambda _loop: self._sync_scan_period_to_runtime())
 
     def runtime_snapshot(self) -> dict[str, Any]:
         """JSON-serialisable Soft-PLC status for the operator dashboard."""
@@ -138,26 +152,7 @@ class AppState:
 
     def _set_main_program(self, new_prog: Program) -> None:
         """Replace the Main-task program in the active project."""
-        proj = self.loader.project
-        if proj is None:
-            raise ValueError("no project loaded")
-        main_prog_id: str | None = None
-        for task in proj.tasks:
-            if task.task_id == MAIN_TASK_ID and task.programs:
-                main_prog_id = task.programs[0]
-                break
-        if main_prog_id is None:
-            for task in sorted(proj.tasks, key=lambda t: t.priority):
-                if task.programs:
-                    main_prog_id = task.programs[0]
-                    break
-        if main_prog_id is None:
-            main_prog_id = "main"
-            proj.tasks.append(
-                Task(task_id=MAIN_TASK_ID, priority=1, programs=[main_prog_id])
-            )
-        proj.programs[main_prog_id] = new_prog
-        self.loader.restart_apply(proj)
+        self.loader.replace_main_program(new_prog, restart=True)
 
     def persist_program(self) -> None:
         """Write project-of-record to ``program_path`` when configured."""
@@ -267,9 +262,12 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
                     else:
                         state.loader.restart_apply(new_project)
                     state.persist_program()
+                    state._sync_scan_period_to_runtime()
                     self._send_json(state.project_dict)
                 else:
                     self._send_error_json("Not found", 404)
+            except PermissionError as exc:
+                self._send_error_json(str(exc), 403)
             except (ValueError, KeyError) as exc:
                 self._send_error_json(str(exc))
             except Exception as exc:
