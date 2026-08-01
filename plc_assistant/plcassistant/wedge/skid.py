@@ -29,11 +29,11 @@ from plcassistant.control.scan import (
     ScanShell,
 )
 from plcassistant.io.quality import QualityStatus, ReasonCode, TagQuality, is_good
-from plcassistant.surface.apply import ProgramLoader
-from plcassistant.surface.builtin import register_builtins, wedge_cascade_program
+from plcassistant.surface.apply import ProjectLoader
+from plcassistant.surface.builtin import register_builtins, wedge_softplc_project
 from plcassistant.surface.model import TemplateLibrary
 from plcassistant.surface.runtime import BlockRuntime, DictContext
-from plcassistant.surface.schema import program_from_dict
+from plcassistant.surface.schema import project_from_dict
 from plcassistant.wedge.control import CascadeConfig, CascadeController, CascadeOutputs
 from plcassistant.wedge.process import MockProcess, ProcessConfig, ProcessPort, ProcessState
 from plcassistant.wedge.quality import resolve_tag_quality
@@ -198,14 +198,15 @@ class Skid:
             _lib = TemplateLibrary()
             self._block_runtime = BlockRuntime(_lib)
             register_builtins(_lib, self._block_runtime)
-            self._loader = ProgramLoader(_lib, self._block_runtime)
+            self._loader = ProjectLoader(_lib, self._block_runtime)
             # Create context before initial load so the on-apply hook can clear it.
             self._block_context = DictContext()
             self._loader.add_on_apply_hook(self._on_program_apply)
             cfg = self.config.cascade
+            scan_s = self.config.scan.scan_period_s
             self._loader.load(
-                program_from_dict(
-                    wedge_cascade_program(
+                project_from_dict(
+                    wedge_softplc_project(
                         level_kp=cfg.level_kp,
                         level_ki=cfg.level_ki,
                         flow_kp=cfg.flow_kp,
@@ -214,6 +215,7 @@ class Skid:
                         sp_flow_max=cfg.sp_flow_max,
                         cmd_speed_min=cfg.cmd_speed_min,
                         cmd_speed_max=cfg.cmd_speed_max,
+                        scan_period_s=scan_s,
                     )
                 )
             )
@@ -403,7 +405,7 @@ class Skid:
                 ctx["flow_pi.running"] = running
 
                 assert self._loader.program is not None
-                self._block_runtime.tick(self._loader.program, ctx, dt)
+                self._loader.tick(ctx, dt)
 
                 sp_flow = float(ctx.get("level_pi.cv") or 0.0)
                 cmd_speed_raw = float(ctx.get("flow_pi.cv") or 0.0)
@@ -526,8 +528,8 @@ class Skid:
         return getattr(self, "_block_runtime", None)
 
     @property
-    def program_loader(self) -> ProgramLoader | None:
-        """``ProgramLoader`` when using the default block path; ``None`` if fallback."""
+    def program_loader(self) -> ProjectLoader | None:
+        """``ProjectLoader`` when using the default block path; ``None`` if fallback."""
         return getattr(self, "_loader", None)
 
     @property

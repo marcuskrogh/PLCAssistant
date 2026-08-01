@@ -3,8 +3,10 @@
 Endpoints
 ---------
 GET  /                      Operator dashboard + program editor (HTML/JS)
-GET  /api/program           Current program as JSON dict
-PUT  /api/program           Replace program; body = JSON dict; returns new program dict
+GET  /api/program           Main scheduled program as JSON dict (canvas)
+PUT  /api/program           Replace Main program; body = JSON dict
+GET  /api/project           Soft-PLC project tree (Tasks + Programs)
+PUT  /api/project           Replace project tree; structure → restart apply
 GET  /api/library           All templates (builtin + user) as JSON list
 POST /api/library/user      Create/update a user template; body = template JSON
 DELETE /api/library/user/<tid>  Delete a user template
@@ -31,14 +33,18 @@ from urllib.parse import urlparse
 from plcassistant.app._canvas import get_canvas_html
 from plcassistant.app.operator_runtime import OperatorRuntime
 from plcassistant.io.mqtt_topics import DEFAULT_INSTANCE_ID
-from plcassistant.surface.apply import ProgramLoader
-from plcassistant.surface.builtin import register_builtins
-from plcassistant.surface.model import TemplateLibrary
+from plcassistant.surface.apply import ProjectLoader
+from plcassistant.surface.builtin import register_builtins, wedge_softplc_project
+from plcassistant.surface.model import MAIN_TASK_ID, Program, Task, TemplateLibrary
 from plcassistant.surface.runtime import BlockRuntime
 from plcassistant.surface.schema import (
+    classify_project_apply,
+    main_program,
     place_block,
     program_from_dict,
     program_to_dict,
+    project_from_dict,
+    project_to_dict,
     reset_instance,
 )
 from plcassistant.surface.user_library import (
@@ -48,11 +54,11 @@ from plcassistant.surface.user_library import (
 )
 
 
-def _make_loader() -> tuple[ProgramLoader, TemplateLibrary, BlockRuntime]:
+def _make_loader() -> tuple[ProjectLoader, TemplateLibrary, BlockRuntime]:
     library = TemplateLibrary()
     runtime = BlockRuntime(library)
     register_builtins(library, runtime)
-    loader = ProgramLoader(library, runtime)
+    loader = ProjectLoader(library, runtime)
     return loader, library, runtime
 
 
@@ -66,13 +72,14 @@ class AppState:
         self,
         initial_program: dict[str, Any] | None = None,
         *,
+        initial_project: dict[str, Any] | None = None,
         program_path: str | None = None,
     ) -> None:
         self.loader, self.library, self.runtime = _make_loader()
         self.superuser_hot_apply: bool = os.environ.get(_ENV_HOT_APPLY, "") == "1"
         self.program_path = program_path
         self.operator = OperatorRuntime()
-        loaded: dict[str, Any] | None = initial_program
+        loaded: dict[str, Any] | None = initial_project or initial_program
         if loaded is None and program_path and os.path.isfile(program_path):
             try:
                 with open(program_path, encoding="utf-8") as fh:
@@ -81,19 +88,14 @@ class AppState:
                     loaded = None
             except (OSError, json.JSONDecodeError, UnicodeDecodeError):
                 loaded = None
-        empty = {
-            "version": "1.0",
-            "instances": {},
-            "wires": [],
-            "execution_order": [],
-        }
+        default_project = wedge_softplc_project()
         if loaded is not None:
             try:
-                self.loader.load(program_from_dict(loaded))
+                self.loader.load(project_from_dict(loaded))
             except (ValueError, KeyError, TypeError):
-                self.loader.load(program_from_dict(empty))
+                self.loader.load(project_from_dict(default_project))
         else:
-            self.loader.load(program_from_dict(empty))
+            self.loader.load(project_from_dict(default_project))
 
     @property
     def instance_id(self) -> str:
@@ -116,6 +118,13 @@ class AppState:
         return self.operator.issue_cmd(name)
 
     @property
+    def project_dict(self) -> dict[str, Any]:
+        proj = self.loader.project
+        if proj is None:
+            return project_to_dict(project_from_dict(wedge_softplc_project()))
+        return project_to_dict(proj)
+
+    @property
     def program_dict(self) -> dict[str, Any]:
         prog = self.loader.program
         if prog is None:
@@ -127,8 +136,31 @@ class AppState:
             }
         return program_to_dict(prog)
 
+    def _set_main_program(self, new_prog: Program) -> None:
+        """Replace the Main-task program in the active project."""
+        proj = self.loader.project
+        if proj is None:
+            raise ValueError("no project loaded")
+        main_prog_id: str | None = None
+        for task in proj.tasks:
+            if task.task_id == MAIN_TASK_ID and task.programs:
+                main_prog_id = task.programs[0]
+                break
+        if main_prog_id is None:
+            for task in sorted(proj.tasks, key=lambda t: t.priority):
+                if task.programs:
+                    main_prog_id = task.programs[0]
+                    break
+        if main_prog_id is None:
+            main_prog_id = "main"
+            proj.tasks.append(
+                Task(task_id=MAIN_TASK_ID, priority=1, programs=[main_prog_id])
+            )
+        proj.programs[main_prog_id] = new_prog
+        self.loader.restart_apply(proj)
+
     def persist_program(self) -> None:
-        """Write program-of-record to ``program_path`` when configured."""
+        """Write project-of-record to ``program_path`` when configured."""
         if not self.program_path:
             return
         parent = os.path.dirname(self.program_path)
@@ -136,7 +168,7 @@ class AppState:
             os.makedirs(parent, exist_ok=True)
         tmp_path = f"{self.program_path}.tmp"
         with open(tmp_path, "w", encoding="utf-8") as fh:
-            json.dump(self.program_dict, fh, indent=2)
+            json.dump(self.project_dict, fh, indent=2)
             fh.write("\n")
         os.replace(tmp_path, self.program_path)
 
@@ -178,6 +210,8 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
                     self._send_html(get_canvas_html())
                 elif path == "/api/program":
                     self._send_json(state.program_dict)
+                elif path == "/api/project":
+                    self._send_json(state.project_dict)
                 elif path == "/api/library":
                     templates = state.library.all_templates()
                     self._send_json(
@@ -219,9 +253,21 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
                 if path == "/api/program":
                     data = self._read_json()
                     new_prog = program_from_dict(data)
-                    state.loader.restart_apply(new_prog)
+                    state._set_main_program(new_prog)
                     state.persist_program()
                     self._send_json(state.program_dict)
+                elif path == "/api/project":
+                    data = self._read_json()
+                    new_project = project_from_dict(data)
+                    mode = classify_project_apply(state.loader.project, new_project)
+                    if mode == "hot":
+                        state.loader.hot_apply(
+                            new_project, superuser=state.superuser_hot_apply
+                        )
+                    else:
+                        state.loader.restart_apply(new_project)
+                    state.persist_program()
+                    self._send_json(state.project_dict)
                 else:
                     self._send_error_json("Not found", 404)
             except (ValueError, KeyError) as exc:
@@ -356,16 +402,16 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
         def _handle_post_apply(self) -> None:
             data = self._read_json()
             mode = str(data.get("mode", "restart")).lower()
-            prog = state.loader.program
-            if prog is None:
-                self._send_error_json("No program loaded", 400)
+            proj = state.loader.project
+            if proj is None:
+                self._send_error_json("No project loaded", 400)
                 return
             if mode == "restart":
-                state.loader.restart_apply(prog)
+                state.loader.restart_apply(proj)
                 state.persist_program()
                 self._send_json({"applied": "restart"})
             elif mode == "hot":
-                state.loader.hot_apply(prog, superuser=state.superuser_hot_apply)
+                state.loader.hot_apply(proj, superuser=state.superuser_hot_apply)
                 state.persist_program()
                 self._send_json({"applied": "hot"})
             else:

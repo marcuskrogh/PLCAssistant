@@ -1,7 +1,8 @@
-"""Apply policy for block programs (SWD-117).
+"""Apply policy for block programs (SWD-117) and Soft-PLC projects (SWD-182).
 
-``ProgramLoader`` holds the active Program and BlockRuntime.  Two apply modes
-are supported:
+``ProgramLoader`` holds the active Program and BlockRuntime.  ``ProjectLoader``
+extends that model to a Soft-PLC project (Tasks → Programs) with priority-ordered
+scan passes and structure vs logic apply classification.
 
 restart_apply (default)
     Swap the program **and** clear all runtime state (integrals, flags, cached
@@ -12,6 +13,9 @@ hot_apply (superuser only)
     Swap the program without clearing runtime state.  Useful during
     development to apply incremental changes without losing controller
     wind-up.  Requires *superuser* authorisation (see below).
+
+Project structure (Tasks, program membership) always requires ``restart_apply``.
+Program logic/params within unchanged structure may use ``hot_apply``.
 
 Superuser authorisation
 -----------------------
@@ -36,10 +40,18 @@ No Home Assistant dependency; no hard-wired I/O.
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
-from plcassistant.surface.model import Program, TemplateLibrary
+from plcassistant.surface.model import Program, SoftPlcProject, TemplateLibrary
 from plcassistant.surface.runtime import BlockRuntime
+from plcassistant.surface.schema import (
+    classify_project_apply,
+    main_program,
+    migrate_legacy_program_dict,
+    program_to_dict,
+    project_from_dict,
+    scheduled_programs,
+)
 from plcassistant.surface.user_library import register_user_templates
 
 if TYPE_CHECKING:
@@ -216,6 +228,203 @@ class ProgramLoader:
                     self._runtime.reset_state(inst_id)
 
 
+class ProjectLoader:
+    """Hold and manage an active SoftPlcProject + BlockRuntime (SWD-182).
+
+  Typical usage::
+
+        library = TemplateLibrary()
+        runtime = BlockRuntime(library)
+        register_builtins(library, runtime)
+
+        loader = ProjectLoader(library, runtime)
+        loader.load(project_from_dict(yaml_dict))
+
+        # inside on_control:
+        loader.tick(context, dt)
+    """
+
+    def __init__(self, library: TemplateLibrary, runtime: BlockRuntime) -> None:
+        self._library = library
+        self._runtime = runtime
+        self._project: SoftPlcProject | None = None
+        self._on_apply_hooks: list[Callable[[bool], None]] = []
+
+    @property
+    def project(self) -> SoftPlcProject | None:
+        """Currently active project, or ``None`` before first load."""
+        return self._project
+
+    @property
+    def program(self) -> Program | None:
+        """Main / canvas program (first program on ``MAIN_TASK_ID``)."""
+        if self._project is None:
+            return None
+        return main_program(self._project)
+
+    @property
+    def runtime(self) -> BlockRuntime:
+        return self._runtime
+
+    def add_on_apply_hook(self, fn: Callable[[bool], None]) -> None:
+        self._on_apply_hooks.append(fn)
+
+    def _fire_hooks(self, is_restart: bool) -> None:
+        for fn in self._on_apply_hooks:
+            fn(is_restart)
+
+    def load(self, project: SoftPlcProject | Program) -> None:
+        """Load *project* with restart semantics."""
+        project = self._coerce_project(project)
+        self._register_all_user_templates(project)
+        self._runtime.reset_state()
+        self._project = project
+        self._fire_hooks(is_restart=True)
+
+    def restart_apply(self, project: SoftPlcProject | Program) -> None:
+        if isinstance(project, Program):
+            self.replace_main_program(project, restart=True)
+            return
+        self.load(project)
+
+    def hot_apply(
+        self, project: SoftPlcProject | Program, *, superuser: bool = False
+    ) -> None:
+        if isinstance(project, Program):
+            self.replace_main_program(project, restart=False, superuser=superuser)
+            return
+        if not ProgramLoader._is_superuser(superuser=superuser):
+            raise PermissionError(
+                "hot_apply requires superuser authorisation: pass superuser=True "
+                f"or set {_ENV_HOT_APPLY}=1"
+            )
+        if classify_project_apply(self._project, project) != "hot":
+            raise ValueError(
+                "hot_apply rejected: project structure changed; use restart_apply"
+            )
+        old_project = self._project
+        self._register_all_user_templates(project)
+        self._prune_runtime_state(old_project, project)
+        self._project = project
+        self._fire_hooks(is_restart=False)
+
+    def replace_main_program(
+        self,
+        program: Program,
+        *,
+        restart: bool = True,
+        superuser: bool = False,
+    ) -> None:
+        """Swap the Main-task program (canvas / legacy Program apply path)."""
+        proj = self._project
+        if proj is None:
+            self.load(
+                project_from_dict(
+                    migrate_legacy_program_dict(program_to_dict(program))
+                )
+            )
+            return
+        main_id = self._main_program_id(proj)
+        new_programs = dict(proj.programs)
+        new_programs[main_id] = program
+        new_project = SoftPlcProject(
+            programs=new_programs,
+            tasks=list(proj.tasks),
+            scan_period_s=proj.scan_period_s,
+            version=proj.version,
+        )
+        if restart:
+            self.restart_apply(new_project)
+        else:
+            self.hot_apply(new_project, superuser=superuser)
+
+    @staticmethod
+    def _main_program_id(project: SoftPlcProject) -> str:
+        from plcassistant.surface.model import MAIN_TASK_ID
+
+        for task in project.tasks:
+            if task.task_id == MAIN_TASK_ID and task.programs:
+                return task.programs[0]
+        for task in sorted(project.tasks, key=lambda t: t.priority):
+            if task.programs:
+                return task.programs[0]
+        return "main"
+
+    @staticmethod
+    def _coerce_project(project: SoftPlcProject | Program) -> SoftPlcProject:
+        if isinstance(project, Program):
+            return project_from_dict(
+                migrate_legacy_program_dict(program_to_dict(project))
+            )
+        return project
+
+    def apply(
+        self,
+        project: SoftPlcProject,
+        *,
+        mode: str = "auto",
+        superuser: bool = False,
+    ) -> str:
+        """Apply *project* using ``mode`` of ``auto``, ``restart``, or ``hot``.
+
+        Returns the mode actually used (``restart`` or ``hot``).
+        """
+        if mode == "auto":
+            mode = classify_project_apply(self._project, project)
+        if mode == "hot":
+            self.hot_apply(project, superuser=superuser)
+        else:
+            self.restart_apply(project)
+        return mode
+
+    def tick(self, context: Any, dt: float) -> None:
+        """Run all scheduled Programs: Tasks by priority, programs in call order."""
+        if self._project is None:
+            return
+        for _task, _prog_id, prog in scheduled_programs(self._project):
+            self._runtime.tick(prog, context, dt)
+
+    def _register_all_user_templates(self, project: SoftPlcProject) -> None:
+        """Prune stale user templates and register all programs' user templates."""
+        all_ids: set[str] = set()
+        for prog in project.programs.values():
+            all_ids.update(prog.user_templates.keys())
+        to_remove = [
+            (tmpl.library, tmpl.template_id)
+            for tmpl in self._library.all_templates()
+            if not tmpl.is_builtin and tmpl.template_id not in all_ids
+        ]
+        for lib, tid in to_remove:
+            self._library.unregister(lib, tid)
+        for prog in project.programs.values():
+            register_user_templates(self._library, prog)
+
+    def _prune_runtime_state(
+        self,
+        old_project: SoftPlcProject | None,
+        new_project: SoftPlcProject,
+    ) -> None:
+        """Drop or reset runtime state when program topology changes on hot apply."""
+        if old_project is None:
+            return
+        new_instance_ids: set[str] = set()
+        old_by_inst: dict[str, tuple[str, str]] = {}
+        for _t, _pid, prog in scheduled_programs(old_project):
+            for iid, inst in prog.instances.items():
+                old_by_inst[iid] = (inst.library, inst.template_id)
+        for _t, _pid, prog in scheduled_programs(new_project):
+            new_instance_ids.update(prog.instances.keys())
+            for iid, inst in prog.instances.items():
+                if iid not in old_by_inst:
+                    continue
+                if old_by_inst[iid] != (inst.library, inst.template_id):
+                    self._runtime.reset_state(iid)
+        for inst_id in list(self._runtime.state.keys()):
+            if inst_id not in new_instance_ids:
+                self._runtime.reset_state(inst_id)
+
+
 __all__ = [
     "ProgramLoader",
+    "ProjectLoader",
 ]
