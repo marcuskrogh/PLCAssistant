@@ -244,6 +244,11 @@ def test_encoded_program_id_and_scoped_user_templates(tmp_path) -> None:
         assert resolved_a is not None and resolved_b is not None
         assert resolved_a.description == "A"
         assert resolved_b.description == "B"
+        # Cross-program: B must not resolve A's user template via global registry alone
+        assert state.resolve_template(b["id"], "user", "missing") is None
+        prog_b.user_templates.pop("calc", None)
+        assert state.resolve_template(b["id"], "user", "calc") is None
+        assert state.resolve_template(a["id"], "user", "calc") is not None
 
         status, lib_a = _json_get(srv.base + f"/api/library?id={a['id']}")
         assert status == 200

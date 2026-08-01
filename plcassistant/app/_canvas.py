@@ -552,6 +552,7 @@ async function route() {
     await loadProgramMeta(selectedProgramId);
     setShellTab(currentTab);
     if (currentTab === 'diagram') {
+      await loadLibrary();
       await loadProgram();
     } else if (currentTab === 'log') {
       await loadLog();
@@ -660,7 +661,7 @@ async function deleteProgram() {
 }
 
 async function loadLibrary() {
-  library = await apiFetch('api/library');
+  library = await apiFetch('api/library' + selectedQuery());
   renderLibrary();
 }
 

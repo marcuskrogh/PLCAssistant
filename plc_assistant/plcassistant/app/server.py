@@ -286,12 +286,16 @@ class AppState:
         return self.program_card(program_id)
 
     def resolve_template(self, program_id: str | None, library: str, template_id: str):
-        """Resolve a template for *program_id*, preferring that Program's user templates."""
+        """Resolve a template for *program_id*.
+
+        User templates are Program-scoped — never fall back to another Program's
+        globally registered user template.
+        """
         prog = self.program_for_id(program_id)
-        if library == "user" and prog is not None:
-            tmpl = (prog.user_templates or {}).get(template_id)
-            if tmpl is not None:
-                return tmpl
+        if library == "user":
+            if prog is None:
+                return None
+            return (prog.user_templates or {}).get(template_id)
         tmpl = self.library.get(library, template_id)
         if tmpl is not None:
             return tmpl
