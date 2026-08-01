@@ -89,9 +89,18 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-170 | Bug | [Iterate] Operate plant PVs still unavailable after 0.1.28 BOX hydrate | Done | Relates SWD-169 | docs/ITERATE.md | Done — shipped PR #72 (App 0.1.29) |
 | SWD-171 | Bug | [Iterate] Tank level settles away from setpoint (Soft-PLC plant IN silent) | Done | Relates SWD-170 | docs/ITERATE.md | Done — shipped PR #73 (App 0.1.30) |
 | SWD-173 | Bug | [Iterate] Soft-PLC stuck TRIPPED after settle — stale plant file LOS | Done | Relates SWD-171 | docs/ITERATE.md | Done — shipped PR #74 (App 0.1.31) |
+| SWD-178 | Story | Industrial-parity Soft-PLC programming surface (multi-program) | To Do | — | docs/ROADMAP.md, docs/RESEARCH.md | `/define SWD-182` |
+| SWD-179 | Task | Research: industrial PLC program organization & engineering UI capabilities | Done | Relates SWD-178, SWD-173 | docs/RESEARCH.md | Done — PR [#75](https://github.com/marcuskrogh/PLCAssistant/pull/75) |
+| SWD-182 | Task | Define Soft-PLC program organization model (tasks → programs → instances) | To Do | Relates SWD-178; blocked by SWD-179 | docs/ROADMAP.md, docs/PLAN.md (pending) | `/define SWD-182` |
+| SWD-181 | Task | Define App engineering surface (navigator + defined/active programs) | To Do | Relates SWD-178; blocked by SWD-182 | docs/ROADMAP.md | blocked — after SWD-182 |
+| SWD-180 | Task | Define library inspectability + generic PID | To Do | Relates SWD-178; blocked by SWD-182 | docs/ROADMAP.md | blocked — after SWD-182 |
+| SWD-184 | Task | Define integration multi-datablock tag mapping UI | To Do | Relates SWD-178; blocked by SWD-182 | docs/ROADMAP.md | blocked — after SWD-182 |
+| SWD-183 | Task | Define online / runtime visibility (loaded vs running) | To Do | Relates SWD-178; blocked by SWD-181 | docs/ROADMAP.md | blocked — after SWD-181 |
 
 ## Log
 
+- 2026-08-01 — Explore SWD-178 charted: route SWD-179→182→{181,180,184}; 181→183; frontier `/define SWD-182`.
+- 2026-08-01 — Research SWD-179: industrial PLC program/UI capabilities → `docs/RESEARCH.md`; Story SWD-178; draft PR [#75](https://github.com/marcuskrogh/PLCAssistant/pull/75). Next `/explore SWD-178`.
 - 2026-07-30 — Shipped SWD-173 via PR #74 (App 0.1.31); review-fix CLEAN after 3 iters; Task Done.
 - 2026-07-30 — review-fix SWD-173 CLEAN after 3 iterations (iter1: 2SF heartbeat/PyYAML; iter2: 1B+2SF aged-BAD/status-flip/tests; iter3: 0); closeout.
 - 2026-07-30 — Implement SWD-173: App 0.1.31; hold last-good on stale plant file + plant heartbeat; PR [#74](https://github.com/marcuskrogh/PLCAssistant/pull/74) → In Review. Next `/review-fix SWD-173`.
