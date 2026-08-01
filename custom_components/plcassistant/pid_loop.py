@@ -217,8 +217,9 @@ class PlcAssistantPidLoopSensor(SensorEntity):
         man = _as_float(_cache_value(store, spec["sp_man"]))
         auto = _as_float(_cache_value(store, spec["sp_auto"]))
         rem = _as_float(_cache_value(store, spec["sp_rem"]))
-        sp_active = _cache_value(store, spec["sp"])
-        sp = _as_float(sp_active, _select_sp(mode, man, auto, rem))
+        # Always mux from mode + sources — never prefer stale Soft-PLC SP_* OUT
+        # (that made faceplate Set look broken when OUT lagged) (SWD-222).
+        sp = _select_sp(mode, man, auto, rem)
         attrs = self._empty_attrs()
         attrs.update(
             {

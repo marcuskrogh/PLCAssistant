@@ -57,17 +57,21 @@ def test_unit_ha_parse_mode_aliases_match_sp_source_mode() -> None:
 
 
 def test_unit_sp_mode_flip_map_publishes_level_mode() -> None:
-    """Manual/Remote SP writes flip LEVEL_MODE / FLOW_MODE via SpSourceMode codes."""
+    """Manual/Remote/Auto SP writes flip LEVEL_MODE / FLOW_MODE via SpSourceMode codes."""
     text = Path("custom_components/plcassistant/number.py").read_text(encoding="utf-8")
     assert "_sp_mode_flip_map" in text
     assert "SpSourceMode.MANUAL.code" in text
+    assert "SpSourceMode.AUTOMATIC.code" in text
     flip = {
         "SP_LEVEL_MAN": ("LEVEL_MODE", float(SpSourceMode.MANUAL.code)),
+        "SP_LEVEL_AUTO": ("LEVEL_MODE", float(SpSourceMode.AUTOMATIC.code)),
+        "SP_LEVEL_REQ": ("LEVEL_MODE", float(SpSourceMode.AUTOMATIC.code)),
         "SP_LEVEL_REM": ("LEVEL_MODE", float(SpSourceMode.REMOTE.code)),
         "SP_FLOW_MAN": ("FLOW_MODE", float(SpSourceMode.MANUAL.code)),
         "SP_FLOW_REM": ("FLOW_MODE", float(SpSourceMode.REMOTE.code)),
     }
     assert flip["SP_LEVEL_MAN"] == ("LEVEL_MODE", 0.0)
+    assert flip["SP_LEVEL_AUTO"] == ("LEVEL_MODE", 1.0)
     assert flip["SP_LEVEL_REM"] == ("LEVEL_MODE", 2.0)
     for tag in flip:
         assert tag in text
@@ -105,9 +109,9 @@ def test_unit_apply_sp_write_flip_rules() -> None:
         sp_auto=0.2,
         sp_rem=0.2,
     )
-    assert auto["mode"] == "manual"  # AUTO write does not flip
+    assert auto["mode"] == "automatic"  # SWD-222: Auto SP Set flips mode
     assert auto["sp_auto"] == pytest.approx(0.22)
-    assert auto["sp"] == pytest.approx(0.25)
+    assert auto["sp"] == pytest.approx(0.22)
 
 
 # --- integration ----------------------------------------------------------
@@ -308,7 +312,7 @@ def test_system_lovelace_operate_has_block_list_card() -> None:
     text = Path("custom_components/plcassistant/lovelace/plcassistant.yaml").read_text(
         encoding="utf-8"
     )
-    assert "plcassistant_dashboard_version: 20" in text
+    assert "plcassistant_dashboard_version: 21" in text
     assert "custom:plcassistant-block-list-card" in text
 
 

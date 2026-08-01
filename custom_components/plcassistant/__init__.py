@@ -313,21 +313,29 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if data is None:
             return
         topic = cmd_topic(data[CONF_INSTANCE_ID], name)
-        await hass.services.async_call(
-            "mqtt",
-            "publish",
-            {
-                "topic": topic,
-                "payload": call.data.get("payload", "1"),
-                "qos": 1,
-                "retain": False,
-            },
-            blocking=False,
-        )
-        # Shared-config fallback when MQTT never reaches Soft-PLC (SWD-139).
+        # File fallback first so a hung/failed MQTT publish cannot starve Start
+        # (SWD-222 review-fix).
         root = data.get("config_root")
         if isinstance(root, Path):
             await hass.async_add_executor_job(write_cmd, name, root)
+        try:
+            await hass.services.async_call(
+                "mqtt",
+                "publish",
+                {
+                    "topic": topic,
+                    "payload": call.data.get("payload", "1"),
+                    "qos": 1,
+                    "retain": False,
+                },
+                blocking=True,
+            )
+        except Exception:  # noqa: BLE001 — file cmd already queued
+            _LOGGER.warning(
+                "PLCAssistant: MQTT cmd publish failed for %s (file fallback written)",
+                name,
+                exc_info=True,
+            )
 
     async def handle_start(call: ServiceCall) -> None:
         await _publish_cmd(SERVICE_START, call)

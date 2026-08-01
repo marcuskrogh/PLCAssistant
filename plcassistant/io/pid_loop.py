@@ -127,15 +127,10 @@ def mode_after_sp_source_write(
 ) -> SpSourceMode:
     """Mode after an HMI/entity write to a source SP tag.
 
-    Manual or Remote writes auto-flip to that mode. Automatic SP writes do
-    **not** change mode (Auto must be set explicitly).
+    Writing Man / Auto / Rem SP auto-flips to that source mode (SWD-183 / SWD-222).
     """
     del current_mode  # reserved for future bumpless / tracking rules
-    resolved = SpSourceMode.parse(source)
-    if resolved is SpSourceMode.AUTOMATIC:
-        # Writing the AUTO source does not flip mode.
-        raise ValueError("writing automatic SP does not change mode; set mode explicitly")
-    return resolved
+    return SpSourceMode.parse(source)
 
 
 def apply_explicit_mode(mode: SpSourceMode | str) -> SpSourceMode:
@@ -152,7 +147,7 @@ def apply_sp_write(
     sp_auto: float,
     sp_rem: float,
 ) -> dict[str, Any]:
-    """Apply a source-SP write; auto-flip mode for MAN/REM.
+    """Apply a source-SP write; auto-flip mode for Man/Auto/Rem (SWD-222).
 
     Returns updated ``mode``, source SPs, and selected ``sp``.
     """
@@ -167,7 +162,7 @@ def apply_sp_write(
         mode = SpSourceMode.REMOTE
     else:
         auto = float(value)
-        # mode unchanged
+        mode = SpSourceMode.AUTOMATIC
     sp = select_active_sp(mode, sp_man=man, sp_auto=auto, sp_rem=rem)
     return {
         "mode": mode.value,

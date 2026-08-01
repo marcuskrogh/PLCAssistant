@@ -88,7 +88,7 @@ def test_system_lovelace_resource_registration() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
     assert '"after_dependencies"' in manifest
     assert '"lovelace"' in manifest
-    assert '"0.1.41"' in manifest
+    assert '"0.1.42"' in manifest
 
     pid = (ROOT / "www" / "pid-loop-card.js").read_text(encoding="utf-8")
     assert 'customElements.get("plcassistant-pid-card")' in pid
@@ -99,7 +99,7 @@ def test_system_lovelace_resource_registration() -> None:
     assert 'customElements.get("plcassistant-block-list-card")' in block
 
     dash = (ROOT / "lovelace" / "plcassistant.yaml").read_text(encoding="utf-8")
-    assert "plcassistant_dashboard_version: 20" in dash
+    assert "plcassistant_dashboard_version: 21" in dash
 
 
 def test_integration_ha_catalog_mode_default_parity() -> None:

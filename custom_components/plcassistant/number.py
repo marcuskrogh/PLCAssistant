@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import math
+import time
 from pathlib import Path
 
 from homeassistant.components.mqtt import async_subscribe
@@ -171,9 +173,11 @@ _TAG_META: dict[str, dict] = {
 
 _PLANT_IN_TAGS = frozenset({"LT_TANK", "LT_RES", "FT_INLET"})
 
-# Writing Manual/Remote SP auto-flips the faceplate mode (SWD-183).
+# Writing SP Set on the faceplate auto-flips mode (SWD-183 / SWD-222 Auto too).
 _SP_MODE_FLIP: dict[str, tuple[str, float]] = {
     "SP_LEVEL_MAN": ("LEVEL_MODE", 0.0),
+    "SP_LEVEL_AUTO": ("LEVEL_MODE", 1.0),
+    "SP_LEVEL_REQ": ("LEVEL_MODE", 1.0),
     "SP_LEVEL_REM": ("LEVEL_MODE", 2.0),
     "SP_FLOW_MAN": ("FLOW_MODE", 0.0),
     "SP_FLOW_REM": ("FLOW_MODE", 2.0),
@@ -187,6 +191,8 @@ def _sp_mode_flip_map() -> dict[str, tuple[str, float]]:
 
         return {
             "SP_LEVEL_MAN": ("LEVEL_MODE", float(SpSourceMode.MANUAL.code)),
+            "SP_LEVEL_AUTO": ("LEVEL_MODE", float(SpSourceMode.AUTOMATIC.code)),
+            "SP_LEVEL_REQ": ("LEVEL_MODE", float(SpSourceMode.AUTOMATIC.code)),
             "SP_LEVEL_REM": ("LEVEL_MODE", float(SpSourceMode.REMOTE.code)),
             "SP_FLOW_MAN": ("FLOW_MODE", float(SpSourceMode.MANUAL.code)),
             "SP_FLOW_REM": ("FLOW_MODE", float(SpSourceMode.REMOTE.code)),
@@ -217,7 +223,12 @@ _FILE_BRIDGE_IN_TAGS = frozenset(
 
 def _eng_payload(eng: float) -> str:
     return json.dumps(
-        {"value": float(eng), "status": "GOOD", "reason": None, "ts": None}
+        {
+            "value": float(eng),
+            "status": "GOOD",
+            "reason": None,
+            "ts": time.time(),
+        }
     )
 
 
@@ -243,10 +254,11 @@ async def async_seed_operator_defaults(
     instance_id: str,
     config_root: Path | None,
 ) -> None:
-    """Batch-seed operator IN cache (+ one file write) before entity platforms.
+    """Batch-seed operator IN cache + file + awaited MQTT before platforms.
 
-    Avoids SWD-220 cold-start freeze: per-Number MQTT + locked ``inputs.json``
-    publishes inside ``async_added_to_hass``. MQTT burst is backgrounded.
+    Avoids SWD-220 cold-start freeze (per-Number MQTT/file storm). SWD-222:
+    MQTT seed is awaited at qos≥1 retain so Soft-PLC does not keep stale
+    FLOW_MODE=Manual retain that kills cascade on Start.
     """
     store = hass.data.get(DOMAIN, {}).get(entry_id)
     if not isinstance(store, dict):
@@ -267,35 +279,29 @@ async def async_seed_operator_defaults(
     if file_batch and isinstance(config_root, Path):
         await hass.async_add_executor_job(write_input_tags, file_batch, config_root)
 
-    async def _bg_mqtt() -> None:
-        for tag, payload in mqtt_batch:
-            try:
-                await hass.services.async_call(
+    for tag, payload in mqtt_batch:
+        try:
+            await asyncio.wait_for(
+                hass.services.async_call(
                     "mqtt",
                     "publish",
                     {
                         "topic": tag_in_topic(instance_id, tag),
                         "payload": payload,
-                        "qos": 0,
+                        "qos": 1,
                         "retain": True,
                     },
-                    blocking=False,
-                )
-            except Exception:  # noqa: BLE001 — keep seeding remaining tags
-                _LOGGER.debug(
-                    "PLCAssistant: operator IN seed MQTT failed for %s",
-                    tag,
-                    exc_info=True,
-                )
-                continue
-
-    if mqtt_batch:
-        try:
-            hass.async_create_background_task(
-                _bg_mqtt(), name=f"{DOMAIN}_seed_mqtt_{entry_id}"
+                    blocking=True,
+                ),
+                timeout=2.0,
             )
-        except AttributeError:
-            hass.async_create_task(_bg_mqtt())
+        except Exception:  # noqa: BLE001 — file/cache already seeded
+            _LOGGER.debug(
+                "PLCAssistant: operator IN seed MQTT failed for %s",
+                tag,
+                exc_info=True,
+            )
+            continue
 
 
 def _object_id_from_entity(entity: str, fallback: str) -> str:
@@ -419,9 +425,14 @@ class PlcAssistantRequestNumber(NumberEntity):
             return False
 
     async def _publish_in_tag(self, tag: str, eng: float) -> None:
-        """Publish one Soft-PLC IN tag via MQTT (+ file-bridge for operator tags)."""
+        """Publish one Soft-PLC IN tag via file-bridge then MQTT (SWD-222)."""
         payload = json.dumps(
-            {"value": eng, "status": "GOOD", "reason": None, "ts": None}
+            {
+                "value": eng,
+                "status": "GOOD",
+                "reason": None,
+                "ts": time.time(),
+            }
         )
         store = self.hass.data.get(DOMAIN, {}).get(self._entry_id) or {}
         in_values = store.setdefault("in_values", {})
@@ -430,28 +441,36 @@ class PlcAssistantRequestNumber(NumberEntity):
             f"{DOMAIN}_tag_in",
             {"tag": tag, "payload": payload, "entry_id": self._entry_id},
         )
-        await self.hass.services.async_call(
-            "mqtt",
-            "publish",
-            {
-                "topic": tag_in_topic(self._instance_id, tag),
-                "payload": payload,
-                "qos": 1,
-                "retain": False,
-            },
-            blocking=False,
-        )
-        if tag not in _FILE_BRIDGE_IN_TAGS:
-            return
-        root = store.get("config_root")
-        if isinstance(root, Path):
-            await self.hass.async_add_executor_job(
-                write_input_tag,
+        # File first so Soft-PLC operator re-apply / silent path sees the write
+        # even when MQTT publish fails (SWD-222).
+        if tag in _FILE_BRIDGE_IN_TAGS:
+            root = store.get("config_root")
+            if isinstance(root, Path):
+                await self.hass.async_add_executor_job(
+                    write_input_tag,
+                    tag,
+                    eng,
+                    "GOOD",
+                    None,
+                    root,
+                )
+        try:
+            await self.hass.services.async_call(
+                "mqtt",
+                "publish",
+                {
+                    "topic": tag_in_topic(self._instance_id, tag),
+                    "payload": payload,
+                    "qos": 1,
+                    "retain": False,
+                },
+                blocking=False,
+            )
+        except Exception:  # noqa: BLE001 — cache/file already updated
+            _LOGGER.debug(
+                "PLCAssistant: MQTT IN publish failed for %s",
                 tag,
-                eng,
-                "GOOD",
-                None,
-                root,
+                exc_info=True,
             )
 
     async def async_set_native_value(self, value: float) -> None:
@@ -463,7 +482,7 @@ class PlcAssistantRequestNumber(NumberEntity):
             self.async_write_ha_state()
             return
         await self._publish_in_tag(self._tag, eng)
-        # SWD-183: writing Manual/Remote SP also flips LEVEL_MODE / FLOW_MODE.
+        # SWD-183/222: writing Man/Auto/Rem SP also flips LEVEL_MODE / FLOW_MODE.
         flip = _sp_mode_flip_map().get(self._tag)
         if flip is not None:
             mode_tag, mode_code = flip

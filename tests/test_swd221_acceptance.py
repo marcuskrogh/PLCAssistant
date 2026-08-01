@@ -87,11 +87,11 @@ def test_integration_level_faceplate_auto_writes_req() -> None:
 
 def test_system_operate_board_man_primary() -> None:
     dash = (ROOT / "lovelace" / "plcassistant.yaml").read_text(encoding="utf-8")
-    assert "plcassistant_dashboard_version: 20" in dash
+    assert "plcassistant_dashboard_version: 21" in dash
     assert "Level SP Man (default)" in dash
     assert "Level SP Auto (request)" in dash
     # Man appears in Operate before REQ.
     operate = dash.split("title: Operate", 1)[1].split("title: Level PID", 1)[0]
     assert operate.index("sp_level_man") < operate.index("sp_level_req")
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.41"' in manifest
+    assert '"0.1.42"' in manifest

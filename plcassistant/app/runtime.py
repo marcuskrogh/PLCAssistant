@@ -7,7 +7,7 @@ import math
 import os
 import threading
 import time
-from typing import Any, Callable
+from typing import Any, Callable, Mapping
 
 from plcassistant.app.default_image import declare_default_image
 from plcassistant.app.server import AppState, run_app
@@ -21,7 +21,7 @@ from plcassistant.io.ha_config_bridge import (
 )
 from plcassistant.io.image import IoImage
 from plcassistant.io.mqtt_bridge import InMemoryMqttBus, MqttBus, MqttIoBridge
-from plcassistant.io.mqtt_topics import DEFAULT_INSTANCE_ID
+from plcassistant.io.mqtt_topics import DEFAULT_INSTANCE_ID, MqttTagPayload
 from plcassistant.io.quality import QualityStatus, ReasonCode
 
 
@@ -194,7 +194,9 @@ class MqttScanLoop:
     STATUS_HEARTBEAT_S = 2.0
     FILE_BRIDGE_PERIOD_S = 1.0
     # Operator request + plant IN fallback when MQTT plant→App is silent (SWD-171).
-    # Live MQTT still wins on the same scan (applied after file hydrate).
+    # Live MQTT still wins on the same scan for plant PVs (applied after file hydrate).
+    # Operator tags are re-applied from file after MQTT so HA seed beats stale retain
+    # (SWD-222).
     _FILE_INPUT_TAGS = frozenset(
         {
             "SP_LEVEL_REQ",
@@ -214,6 +216,24 @@ class MqttScanLoop:
             "LT_TANK",
             "LT_RES",
             "FT_INLET",
+        }
+    )
+    _OPERATOR_FILE_TAGS = frozenset(
+        {
+            "SP_LEVEL_REQ",
+            "SP_LEVEL_MAN",
+            "SP_LEVEL_AUTO",
+            "SP_LEVEL_REM",
+            "LEVEL_MODE",
+            "SP_FLOW_MAN",
+            "SP_FLOW_REM",
+            "FLOW_MODE",
+            "LEVEL_KP",
+            "LEVEL_KI",
+            "LEVEL_KD",
+            "FLOW_KP",
+            "FLOW_KI",
+            "FLOW_KD",
         }
     )
 
@@ -299,16 +319,21 @@ class MqttScanLoop:
         ):
             self._last_file_bridge = time.monotonic()
 
-    def _apply_file_inputs(self) -> None:
-        """Apply retained HA-config IN tags (SP_LEVEL_REQ + plant PVs) (SWD-141/171)."""
+    def _apply_file_inputs(self, *, only_tags: frozenset[str] | None = None) -> None:
+        """Apply retained HA-config IN tags (SP_LEVEL_REQ + plant PVs) (SWD-141/171).
+
+        ``only_tags`` restricts which file tags are applied (SWD-222 operator
+        re-apply after MQTT so seed/modes beat stale broker retain).
+        """
         snap = read_inputs()
         if not snap:
             return
         tags = snap.get("tags") if isinstance(snap.get("tags"), dict) else {}
+        allowed = self._FILE_INPUT_TAGS if only_tags is None else only_tags
         known = set(self.image.names())
         now = time.time()
         for name, body in tags.items():
-            if name not in self._FILE_INPUT_TAGS:
+            if name not in allowed:
                 continue
             if name not in known or not isinstance(body, dict) or "value" not in body:
                 continue
@@ -354,19 +379,79 @@ class MqttScanLoop:
             except Exception:  # noqa: BLE001 — best-effort IN hydrate
                 continue
 
+    def _reapply_fresher_operator_file(
+        self, mqtt_samples: Mapping[str, MqttTagPayload]
+    ) -> None:
+        """Re-apply operator file tags that are fresher than same-scan MQTT (SWD-222).
+
+        Stale broker retain (old/missing ``ts``) loses to HA ``inputs.json`` seed.
+        A live MQTT operator write with a newer ``ts`` is not stomped by file.
+        """
+        if not mqtt_samples:
+            return
+        snap = read_inputs()
+        if not snap:
+            return
+        tags = snap.get("tags") if isinstance(snap.get("tags"), dict) else {}
+        known = set(self.image.names())
+        for name, sample in mqtt_samples.items():
+            if name not in self._OPERATOR_FILE_TAGS or name not in known:
+                continue
+            body = tags.get(name)
+            if not isinstance(body, dict) or "value" not in body:
+                continue
+            try:
+                file_ts = float(body["ts"]) if body.get("ts") is not None else None
+            except (TypeError, ValueError):
+                file_ts = None
+            mqtt_ts = sample.ts
+            # Prefer file when MQTT has no ts (legacy retain) or file is newer.
+            if mqtt_ts is not None and file_ts is not None and file_ts < mqtt_ts:
+                continue
+            status_raw = str(body.get("status") or "GOOD").upper()
+            try:
+                status = QualityStatus[status_raw]
+            except KeyError:
+                status = QualityStatus.GOOD
+            reason = None
+            reason_raw = body.get("reason")
+            if reason_raw:
+                try:
+                    reason = ReasonCode(str(reason_raw))
+                except ValueError:
+                    try:
+                        reason = ReasonCode[str(reason_raw).upper()]
+                    except KeyError:
+                        reason = None
+            value: Any = body.get("value")
+            if status is QualityStatus.GOOD:
+                try:
+                    numeric = float(value)
+                    if not math.isfinite(numeric):
+                        raise ValueError("non-finite")
+                    value = numeric
+                except (TypeError, ValueError):
+                    status = QualityStatus.BAD
+                    reason = ReasonCode.FAULT
+                    value = None
+            try:
+                self.image.apply_input(name, value, status, reason)
+            except Exception:  # noqa: BLE001 — best-effort
+                continue
+
     def _apply_commands(self, cmds: tuple[str, ...]) -> None:
+        """Enqueue Start/Stop/Reset only — no optimistic status (SWD-222).
+
+        Publishing ``running`` before Skid ``PERM_OK`` accepts Start made the HMI
+        bounce and Start feel broken. ``scan_once`` aligns ``scanning`` + status
+        from Skid MODE after logic runs.
+        """
         enqueue = getattr(self.logic, "enqueue_operator", None)
         for name in cmds:
             with self._lock:
                 self.commands.append(name)
             if callable(enqueue):
                 enqueue(name)
-            if name == "start":
-                self.scanning = True
-                self._publish_scan_status("running")
-            elif name == "stop":
-                self.scanning = False
-                self._publish_scan_status("stopped")
             # reset: latch-clear only — do not publish a sticky "reset" state;
             # ``scan_once`` republishes running/stopped from Skid MODE after logic.
 
@@ -407,9 +492,13 @@ class MqttScanLoop:
         if file_cmd:
             self.bridge.enqueue_command(file_cmd)
         # File IN tags (SP_LEVEL_REQ + plant PV fallback, SWD-141/171) when MQTT
-        # is silent. Apply before MQTT so a live broker still wins on the same scan.
+        # is silent. Apply before MQTT so live plant MQTT still wins same-scan.
         self._apply_file_inputs()
+        mqtt_pending = self.bridge.pending_inputs
         self.bridge.apply_inputs(self.image, clear=True)
+        # Operator modes/SPs: fresher file (HA seed) beats stale MQTT retain
+        # without stomping a newer live MQTT operator write (SWD-222).
+        self._reapply_fresher_operator_file(mqtt_pending)
         drained = self.bridge.drain_commands()
         if drained:
             self._apply_commands(drained)

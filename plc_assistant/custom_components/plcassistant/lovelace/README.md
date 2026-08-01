@@ -90,6 +90,12 @@ If personal boards still show unavailable plant Numbers, delete stale unavailabl
 entities in the entity registry (or remove/re-add the integration). Update any
 personal dashboards that still reference plant Numbers for Process display.
 
+**0.1.42** Start/cascade reliability: file seed beats stale MQTT retain, awaited
+qos1 Start/Stop + operator seed, honest Soft-PLC status (no optimistic running),
+plant file writes ≤1 Hz + CMD watchdog pause while frozen, PID mux + Auto SP
+mode flip + card draft preserve. Stock Lovelace refreshes to dashboard version
+**21**.
+
 **0.1.41** cascade defaults Level Manual / Flow Automatic, batch-seeds operator
 IN (no cold-start Number publish storm), defers plant sim until after entity
 setup, Level PID Auto writes ``SP_LEVEL_REQ``. Stock Lovelace refreshes to

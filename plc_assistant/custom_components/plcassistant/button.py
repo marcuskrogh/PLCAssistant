@@ -66,11 +66,10 @@ class PlcAssistantCmdButton(ButtonEntity):
         self._attr_icon = icons.get(cmd, "mdi:gesture-tap-button")
 
     async def async_press(self) -> None:
-        # Use domain services so Start/Stop/Reset share one publish path with
-        # Developer Tools / automations (instance_id targeting included).
+        # Blocking so Start/Stop wait for MQTT qos1 + file cmd (SWD-222).
         await self.hass.services.async_call(
             DOMAIN,
             self._cmd,
             {CONF_INSTANCE_ID: self._instance_id},
-            blocking=False,
+            blocking=True,
         )
