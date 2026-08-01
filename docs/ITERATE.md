@@ -34,6 +34,8 @@
 - Task: [SWD-220](https://marcusknielsen.atlassian.net/browse/SWD-220)
 - Relates: SWD-219
 - Branch: `cursor/swd-220-pid-cards-manual-default-a52c`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/83 (App 0.1.40)
+- Review-fix: CLEAN after 2 iterations
 
 ## Next
-`/review-fix SWD-220` — Review and auto-fix until clean
+Done — phase closed.
