@@ -81,6 +81,7 @@ _HTML = r"""<!DOCTYPE html>
     color: var(--ink);
   }
   #app-header .subtitle { font-size: 0.82rem; font-weight: 500; color: var(--muted); }
+  #top-nav { display: flex; gap: 6px; flex-wrap: wrap; margin-left: 4px; }
   #msg-status { margin-left: auto; font-size: 0.72rem; color: var(--muted); }
   #msg-status.ok { color: var(--teal); }
   #msg-status.err { color: var(--bad); }
@@ -111,8 +112,8 @@ _HTML = r"""<!DOCTYPE html>
   }
   .page h1 { font-size: clamp(1.5rem, 9vw, 2.4rem); }
   .helper { color: var(--muted); font-size: 0.86rem; line-height: 1.5; }
-  .program-list { display: grid; grid-template-columns: 1fr; gap: 12px; }
-  .program-card {
+  .program-list, .task-list, .call-list { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  .program-card, .task-card, .call-card {
     background: var(--panel);
     border: 1px solid var(--line);
     border-radius: 14px;
@@ -123,7 +124,7 @@ _HTML = r"""<!DOCTYPE html>
     box-shadow: 0 10px 26px rgba(18, 32, 51, 0.08);
   }
   .program-card h2 { font-family: var(--font-display); font-size: 1.35rem; letter-spacing: -0.02em; }
-  .program-card .desc { color: var(--ink-soft); font-size: 0.86rem; min-height: 1.2em; }
+  .program-card .desc, .task-card .desc { color: var(--ink-soft); font-size: 0.86rem; min-height: 1.2em; }
   .card-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .chip {
     border: 1px solid var(--line);
@@ -169,7 +170,7 @@ _HTML = r"""<!DOCTYPE html>
     gap: 10px;
   }
   label { font-size: 0.75rem; color: var(--muted); font-weight: 600; }
-  input, textarea {
+  input, textarea, select {
     background: #fff;
     border: 1px solid var(--line);
     color: var(--ink);
@@ -181,6 +182,7 @@ _HTML = r"""<!DOCTYPE html>
   }
   textarea { resize: vertical; min-height: 84px; }
   .form-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .form-row > * { flex: 1 1 140px; }
 
   #program-shell { flex: 1; display: none; min-height: 0; flex-direction: column; }
   .shell-bar {
@@ -336,6 +338,10 @@ _HTML = r"""<!DOCTYPE html>
 <header id="app-header">
   <div class="mark">PLCAssistant</div>
   <div class="subtitle">Program engineering</div>
+  <nav id="top-nav" aria-label="Main">
+    <a class="btn" id="nav-programs" href="#/programs">Programs</a>
+    <a class="btn" id="nav-tasks" href="#/tasks">Tasks</a>
+  </nav>
   <div id="msg-status" class="ok">Ready</div>
 </header>
 <p class="hmi-banner">Operator HMI is in Home Assistant Lovelace — this App is the Soft-PLC Program editor.</p>
@@ -344,7 +350,7 @@ _HTML = r"""<!DOCTYPE html>
   <div class="page-head">
     <div>
       <h1>Programs</h1>
-      <p class="helper">One Program card per Soft-PLC Program. Scheduling edits are handled later.</p>
+      <p class="helper">One Program card per Soft-PLC Program. Status reflects the live applied schedule.</p>
     </div>
     <a class="btn primary" href="#/programs/new" data-route="#/programs/new">Create Program</a>
   </div>
@@ -366,6 +372,74 @@ _HTML = r"""<!DOCTYPE html>
     <textarea id="new-description" name="description" placeholder="What this Program owns"></textarea>
     <div class="form-row"><button class="btn primary" type="submit">Save</button></div>
   </form>
+</main>
+
+<main id="tasks-view" class="page" aria-label="Tasks" style="display:none">
+  <div class="page-head">
+    <div>
+      <h1>Tasks</h1>
+      <p class="helper" id="schedule-helper">Edit the saved schedule, then Save or Apply (restart) to the live Soft-PLC.</p>
+    </div>
+    <div class="form-row">
+      <a class="btn primary" href="#/tasks/new">Create Task</a>
+      <button class="btn" type="button" onclick="saveSchedule()">Save</button>
+      <button class="btn primary" type="button" onclick="applySchedule()">Apply (restart)</button>
+    </div>
+  </div>
+  <div id="task-list" class="task-list" data-testid="task-list"></div>
+</main>
+
+<main id="task-create-view" class="page" aria-label="Create Task" style="display:none">
+  <div class="page-head">
+    <div>
+      <h1>Create Task</h1>
+      <p class="helper">Tasks run Programs in priority order; lower priority numbers run first.</p>
+    </div>
+    <a class="btn" href="#/tasks">Back</a>
+  </div>
+  <form id="task-create-form" class="form-card" onsubmit="createTask(event)">
+    <label for="task-new-id">Task id</label>
+    <input id="task-new-id" required autocomplete="off" placeholder="main" />
+    <label for="task-new-priority">Priority</label>
+    <input id="task-new-priority" type="number" required value="1" />
+    <label for="task-new-description">Description (optional)</label>
+    <textarea id="task-new-description" placeholder="What this Task calls"></textarea>
+    <div class="form-row"><button class="btn primary" type="submit">Create</button></div>
+  </form>
+</main>
+
+<main id="task-detail-view" class="page" aria-label="Task editor" style="display:none">
+  <div class="page-head">
+    <div>
+      <h1 id="task-editor-title">Task</h1>
+      <p class="helper">The call list accepts unscheduled Programs, or Programs already on this Task.</p>
+    </div>
+    <div class="form-row">
+      <a class="btn" href="#/tasks">Back</a>
+      <button class="btn" type="button" onclick="saveSchedule()">Save</button>
+      <button class="btn primary" type="button" onclick="applySchedule()">Apply (restart)</button>
+    </div>
+  </div>
+  <form id="task-meta-form" class="form-card" onsubmit="saveTaskMeta(event)">
+    <label for="task-id">Task id</label>
+    <input id="task-id" required autocomplete="off" />
+    <label for="task-priority">Priority</label>
+    <input id="task-priority" type="number" required />
+    <label for="task-description">Description (optional)</label>
+    <textarea id="task-description"></textarea>
+    <div class="form-row">
+      <button class="btn primary" type="submit">Save Task</button>
+      <button class="btn danger" type="button" onclick="deleteTask()">Delete Task</button>
+    </div>
+  </form>
+  <section class="form-card">
+    <h2>Program call list</h2>
+    <div id="task-programs" class="call-list"></div>
+    <div class="form-row">
+      <select id="unscheduled-picker" aria-label="Unscheduled Programs"></select>
+      <button class="btn" type="button" onclick="addProgramToTask()">Add Program</button>
+    </div>
+  </section>
 </main>
 
 <div id="program-shell" aria-label="Program shell">
@@ -472,6 +546,8 @@ _HTML = r"""<!DOCTYPE html>
 let program = { version: "1.0", instances: {}, wires: [], execution_order: [] };
 let programMeta = null;
 let programs = [];
+let tasks = [];
+let selectedTaskId = null;
 let selectedProgramId = null;
 let currentTab = 'diagram';
 let library = [];
@@ -521,10 +597,12 @@ async function apiFetch(path, opts = {}) {
 }
 
 function show(id) {
-  for (const elId of ['programs-view', 'create-view', 'program-shell']) {
+  for (const elId of ['programs-view', 'create-view', 'tasks-view', 'task-create-view', 'task-detail-view', 'program-shell']) {
     const el = document.getElementById(elId);
     if (el) el.style.display = elId === id ? (id === 'program-shell' ? 'flex' : '') : 'none';
   }
+  document.getElementById('nav-programs').classList.toggle('active', id === 'programs-view' || id === 'create-view' || id === 'program-shell');
+  document.getElementById('nav-tasks').classList.toggle('active', id === 'tasks-view' || id === 'task-create-view' || id === 'task-detail-view');
 }
 
 function programUrl(id, tab) {
@@ -542,6 +620,24 @@ async function route() {
   if (hash === '#/programs/new') {
     selectedProgramId = null;
     show('create-view');
+    return;
+  }
+  if (hash === '#/tasks') {
+    selectedTaskId = null;
+    show('tasks-view');
+    await loadTasks();
+    return;
+  }
+  if (hash === '#/tasks/new') {
+    selectedTaskId = null;
+    show('task-create-view');
+    return;
+  }
+  const taskMatch = hash.match(/^#\/tasks\/([^/]+)$/);
+  if (taskMatch) {
+    selectedTaskId = decodeURIComponent(taskMatch[1]);
+    show('task-detail-view');
+    await loadTaskEditor(selectedTaskId);
     return;
   }
   const match = hash.match(/^#\/programs\/([^/]+)\/(diagram|log|settings)$/);
@@ -587,6 +683,183 @@ async function loadPrograms() {
     list.appendChild(card);
   }
   setStatus('Programs loaded', true);
+}
+
+async function loadTasks() {
+  tasks = await apiFetch('api/tasks');
+  const status = await apiFetch('api/schedule/status');
+  const helper = document.getElementById('schedule-helper');
+  if (helper) helper.textContent = status.saved_applied
+    ? 'Saved schedule is applied to the live Soft-PLC.'
+    : 'Saved schedule has pending changes. Apply (restart) to update live Soft-PLC.';
+  const list = document.getElementById('task-list');
+  list.innerHTML = '';
+  if (!tasks.length) {
+    list.innerHTML = '<div class="task-card"><p class="helper">No Tasks. The Soft-PLC schedule is empty until you add one.</p></div>';
+    setStatus('Tasks loaded', true);
+    return;
+  }
+  for (const t of tasks) {
+    const card = document.createElement('article');
+    card.className = 'task-card';
+    card.innerHTML = `<h2>${esc(t.id)}</h2>
+      <p class="desc">${esc(t.description || 'No description')}</p>
+      <div class="card-row">
+        <span class="chip">priority ${esc(t.priority)}</span>
+        <span class="chip">${(t.programs || []).length} Program(s)</span>
+      </div>
+      <div><a class="btn primary" href="#/tasks/${encodeURIComponent(t.id)}">Edit Task</a></div>`;
+    list.appendChild(card);
+  }
+  setStatus('Tasks loaded', true);
+}
+
+async function createTask(event) {
+  event.preventDefault();
+  const id = document.getElementById('task-new-id').value.trim();
+  const priority = parseInt(document.getElementById('task-new-priority').value, 10);
+  const description = document.getElementById('task-new-description').value;
+  const task = await apiFetch('api/tasks', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({id, priority, description})
+  });
+  document.getElementById('task-create-form').reset();
+  window.location.hash = '#/tasks/' + encodeURIComponent(task.id);
+}
+
+async function loadTaskEditor(id) {
+  tasks = await apiFetch('api/tasks');
+  const task = tasks.find(t => t.id === id);
+  if (!task) {
+    setStatus('Task not found', false);
+    window.location.hash = '#/tasks';
+    return;
+  }
+  selectedTaskId = task.id;
+  document.getElementById('task-editor-title').textContent = 'Task ' + task.id;
+  document.getElementById('task-id').value = task.id;
+  document.getElementById('task-priority').value = task.priority;
+  document.getElementById('task-description').value = task.description || '';
+  renderTaskPrograms(task);
+  await loadUnscheduledPicker();
+}
+
+function currentTask() {
+  return tasks.find(t => t.id === selectedTaskId) || null;
+}
+
+function renderTaskPrograms(task) {
+  const el = document.getElementById('task-programs');
+  el.innerHTML = '';
+  const ids = task.programs || [];
+  if (!ids.length) {
+    el.innerHTML = '<p class="helper">No Programs scheduled on this Task.</p>';
+    return;
+  }
+  ids.forEach((pid, idx) => {
+    const row = document.createElement('div');
+    row.className = 'call-card';
+    row.innerHTML = `<strong>${esc(pid)}</strong>
+      <div class="form-row">
+        <button class="btn" type="button" ${idx === 0 ? 'disabled' : ''} onclick="moveTaskProgram(${idx}, -1)">Up</button>
+        <button class="btn" type="button" ${idx === ids.length - 1 ? 'disabled' : ''} onclick="moveTaskProgram(${idx}, 1)">Down</button>
+        <button class="btn danger" type="button" onclick="removeProgramFromTask(${idx})">Remove</button>
+      </div>`;
+    el.appendChild(row);
+  });
+}
+
+async function loadUnscheduledPicker() {
+  const picker = document.getElementById('unscheduled-picker');
+  const task = currentTask();
+  const unscheduled = await apiFetch('api/programs/unscheduled');
+  picker.innerHTML = '';
+  for (const p of unscheduled) {
+    const opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.name ? `${p.name} (${p.id})` : p.id;
+    picker.appendChild(opt);
+  }
+  if (!picker.options.length) {
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = task ? 'No unscheduled Programs available' : 'Select a Task first';
+    picker.appendChild(opt);
+  }
+}
+
+async function saveTaskMeta(event) {
+  event.preventDefault();
+  const id = document.getElementById('task-id').value.trim();
+  const priority = parseInt(document.getElementById('task-priority').value, 10);
+  const description = document.getElementById('task-description').value;
+  const task = await apiFetch('api/tasks/' + encodeURIComponent(selectedTaskId), {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({id, priority, description})
+  });
+  selectedTaskId = task.id;
+  setStatus('Task updated; Save to persist', true);
+  window.location.hash = '#/tasks/' + encodeURIComponent(task.id);
+}
+
+async function setCurrentTaskPrograms(programIds) {
+  const task = await apiFetch('api/tasks/' + encodeURIComponent(selectedTaskId) + '/programs', {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({programs: programIds})
+  });
+  tasks = tasks.map(t => t.id === task.id ? task : t);
+  renderTaskPrograms(task);
+  await loadUnscheduledPicker();
+  setStatus('Task call list updated; Save to persist', true);
+}
+
+async function addProgramToTask() {
+  const picker = document.getElementById('unscheduled-picker');
+  const pid = picker.value;
+  const task = currentTask();
+  if (!pid || !task) return;
+  await setCurrentTaskPrograms([...(task.programs || []), pid]);
+}
+
+async function removeProgramFromTask(index) {
+  const task = currentTask();
+  if (!task) return;
+  const ids = [...(task.programs || [])];
+  ids.splice(index, 1);
+  await setCurrentTaskPrograms(ids);
+}
+
+async function moveTaskProgram(index, delta) {
+  const task = currentTask();
+  if (!task) return;
+  const ids = [...(task.programs || [])];
+  const next = index + delta;
+  if (next < 0 || next >= ids.length) return;
+  [ids[index], ids[next]] = [ids[next], ids[index]];
+  await setCurrentTaskPrograms(ids);
+}
+
+async function deleteTask() {
+  if (!selectedTaskId) return;
+  if (!confirm('Are you sure you want to delete this Task? Programs on it become unscheduled.')) return;
+  await apiFetch('api/tasks/' + encodeURIComponent(selectedTaskId), {method: 'DELETE'});
+  setStatus('Task deleted; Save to persist', true);
+  window.location.hash = '#/tasks';
+}
+
+async function saveSchedule() {
+  const status = await apiFetch('api/schedule/save', {method: 'POST'});
+  setStatus(status.saved_applied ? 'Saved and applied' : 'Saved; pending apply', true);
+  if ((window.location.hash || '').startsWith('#/tasks')) await loadTasks();
+}
+
+async function applySchedule() {
+  await apiFetch('api/schedule/apply', {method: 'POST'});
+  setStatus('Applied saved schedule with restart', true);
+  if ((window.location.hash || '').startsWith('#/tasks')) await loadTasks();
 }
 
 async function createProgram(event) {

@@ -92,6 +92,7 @@ class Task:
     task_id: str
     priority: int
     programs: list[str] = field(default_factory=list)
+    description: str = ""
 
 
 @dataclass

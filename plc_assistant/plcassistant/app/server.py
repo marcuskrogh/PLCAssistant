@@ -7,6 +7,15 @@ GET  /api/program           Main scheduled program as JSON dict (canvas)
 PUT  /api/program           Replace Main program; body = JSON dict
 GET  /api/project           Soft-PLC project tree (Tasks + Programs)
 PUT  /api/project           Replace project tree; structure → restart apply
+GET  /api/tasks             Saved schedule Tasks (draft project)
+POST /api/tasks             Create Task in saved schedule draft
+PUT  /api/tasks/<id>        Update Task metadata in saved schedule draft
+DELETE /api/tasks/<id>      Delete Task; its Programs become unscheduled in draft
+PUT  /api/tasks/<id>/programs  Replace ordered Program call list in draft
+GET  /api/programs/unscheduled  Programs not assigned in saved schedule draft
+POST /api/schedule/save     Persist saved project without touching live Soft-PLC
+POST /api/schedule/apply    Restart-apply saved project into live Soft-PLC
+GET  /api/schedule/status   Saved/applied signature comparison
 GET  /api/library           All templates (builtin + user) as JSON list
 POST /api/library/user      Create/update a user template; body = template JSON
 DELETE /api/library/user/<tid>  Delete a user template
@@ -18,8 +27,10 @@ POST /api/apply             Apply program; body = {mode: "restart"|"hot"}
 GET  /api/runtime           Live Soft-PLC status + tag snapshot
 POST /api/cmd               Operator command; body = {name: "start"|"stop"|"reset"}
 
-The server holds an in-memory project and a ProjectLoader.  No file persistence
-by default; callers may pass an initial project or legacy program dict.
+The server holds a saved project draft plus a live ProjectLoader project.  Schedule
+edits update the saved draft; Save persists it; Apply restart-loads it into live.
+No file persistence by default; callers may pass an initial project or legacy
+program dict.
 """
 
 from __future__ import annotations
@@ -31,6 +42,7 @@ from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
+from collections.abc import Mapping
 
 from plcassistant.app._canvas import get_canvas_html
 from plcassistant.app.operator_runtime import OperatorRuntime
@@ -76,6 +88,22 @@ def _slugify_program_id(name: str) -> str:
     return slug or "program"
 
 
+def _clone_project(project: SoftPlcProject) -> SoftPlcProject:
+    return project_from_dict(project_to_dict(project))
+
+
+def _load_project_pair(data: Mapping[str, Any]) -> tuple[SoftPlcProject, SoftPlcProject]:
+    if isinstance(data.get("project"), Mapping):
+        saved_raw = data["project"]
+        applied_raw = data.get("applied_project") or saved_raw
+    else:
+        saved_raw = data
+        applied_raw = data
+    saved = project_from_dict(saved_raw)
+    applied = project_from_dict(applied_raw)
+    return saved, applied
+
+
 class AppState:
     """Mutable shared state for one App server instance."""
 
@@ -101,13 +129,15 @@ class AppState:
             except (OSError, json.JSONDecodeError, UnicodeDecodeError):
                 loaded = None
         default_project = wedge_softplc_project()
-        if loaded is not None:
-            try:
-                self.loader.load(project_from_dict(loaded))
-            except (ValueError, KeyError, TypeError):
-                self.loader.load(project_from_dict(default_project))
-        else:
-            self.loader.load(project_from_dict(default_project))
+        if loaded is None:
+            loaded = default_project
+        try:
+            saved_project, applied_project = _load_project_pair(loaded)
+        except (ValueError, KeyError, TypeError):
+            saved_project = project_from_dict(default_project)
+            applied_project = _clone_project(saved_project)
+        self.saved_project = _clone_project(saved_project)
+        self.loader.load(_clone_project(applied_project))
         self._ensure_program_logs()
         if "tank" in self.program_logs and not self.program_logs["tank"]:
             self.append_log("tank", "info", "Program Tank loaded")
@@ -121,6 +151,23 @@ class AppState:
         if loop is not None and hasattr(loop, "set_scan_period_s"):
             loop.set_scan_period_s(proj.scan_period_s)
 
+    def _live_skid_loader(self) -> Any | None:
+        """ProjectLoader owned by the attached MQTT scan loop Skid, if any."""
+        loop = self.operator._scan_loop()
+        if loop is None:
+            return None
+        logic = getattr(loop, "logic", None)
+        skid = getattr(logic, "skid", None)
+        return getattr(skid, "program_loader", None) if skid is not None else None
+
+    def _sync_applied_project_to_runtime(self) -> None:
+        """Push the live applied project into the scan-loop Skid loader."""
+        live = self._live_skid_loader()
+        applied = self.loader.project
+        if live is None or applied is None:
+            return
+        live.restart_apply(_clone_project(applied))
+
     @property
     def instance_id(self) -> str:
         return self.operator.instance_id
@@ -132,11 +179,16 @@ class AppState:
     def attach_runtime(self, lifecycle: Any) -> None:
         """Attach MQTT scan lifecycle so the UI can read tags and issue cmds."""
         self.operator.attach(lifecycle)
+
+        def _on_attach(_loop: Any) -> None:
+            self._sync_applied_project_to_runtime()
+            self._sync_scan_period_to_runtime()
+
         loop = self.operator._scan_loop()
         if loop is not None:
-            self._sync_scan_period_to_runtime()
+            _on_attach(loop)
         elif hasattr(lifecycle, "set_on_attach"):
-            lifecycle.set_on_attach(lambda _loop: self._sync_scan_period_to_runtime())
+            lifecycle.set_on_attach(_on_attach)
 
     def runtime_snapshot(self) -> dict[str, Any]:
         """JSON-serialisable Soft-PLC status for the operator dashboard."""
@@ -148,29 +200,35 @@ class AppState:
 
     @property
     def project_dict(self) -> dict[str, Any]:
+        return project_to_dict(self.saved_project)
+
+    @property
+    def applied_project_dict(self) -> dict[str, Any]:
         proj = self.loader.project
         if proj is None:
-            return project_to_dict(project_from_dict(wedge_softplc_project()))
+            return project_to_dict(self.saved_project)
         return project_to_dict(proj)
+
+    @property
+    def persistence_dict(self) -> dict[str, Any]:
+        return {
+            "version": "2.0",
+            "project": self.project_dict,
+            "applied_project": self.applied_project_dict,
+        }
 
     @property
     def program_dict(self) -> dict[str, Any]:
         return self.program_dict_for(None)
 
     def main_program_id(self) -> str:
-        proj = self.loader.project
-        if proj is None:
-            return "main"
-        return self.loader._main_program_id(proj)
+        return self.loader._main_program_id(self.saved_project)
 
     def program_for_id(self, program_id: str | None) -> Program | None:
-        proj = self.loader.project
-        if proj is None:
-            return None
         pid = program_id or self.main_program_id()
-        if pid not in proj.programs:
+        if pid not in self.saved_project.programs:
             raise KeyError(f"Program {pid!r} not found")
-        return proj.programs[pid]
+        return self.saved_project.programs[pid]
 
     def program_dict_for(self, program_id: str | None) -> dict[str, Any]:
         prog = self.program_for_id(program_id)
@@ -184,18 +242,32 @@ class AppState:
         return program_to_dict(prog)
 
     def _set_program(self, program_id: str | None, new_prog: Program) -> None:
-        """Replace the selected program in the active project."""
+        """Replace the selected program in saved and live projects."""
         pid = program_id or self.main_program_id()
-        self.loader.replace_program(pid, new_prog, restart=True)
+        if pid not in self.saved_project.programs:
+            raise KeyError(f"Program {pid!r} not found")
+        saved_programs = dict(self.saved_project.programs)
+        saved_programs[pid] = new_prog
+        self.saved_project = SoftPlcProject(
+            programs=saved_programs,
+            tasks=list(self.saved_project.tasks),
+            scan_period_s=self.saved_project.scan_period_s,
+            version=self.saved_project.version,
+        )
+        self._sync_program_to_live(pid)
+
+    def _sync_program_to_live(self, program_id: str) -> None:
+        """Apply one saved Program body without changing the live Task schedule."""
+        if self.loader.project is None or program_id not in self.loader.project.programs:
+            return
+        live_program = _clone_project(self.saved_project).programs[program_id]
+        self.loader.replace_program(program_id, live_program, restart=True)
 
     def _ensure_program_logs(self) -> None:
-        proj = self.loader.project
-        if proj is None:
-            return
-        for pid in proj.programs:
+        for pid in self.saved_project.programs:
             self.program_logs.setdefault(pid, [])
         for pid in list(self.program_logs):
-            if pid not in proj.programs:
+            if pid not in self.saved_project.programs:
                 self.program_logs.pop(pid, None)
 
     def append_log(self, program_id: str, level: str, message: str) -> None:
@@ -205,7 +277,7 @@ class AppState:
 
     def program_logs_for(self, program_id: str) -> list[dict[str, str]]:
         self._ensure_program_logs()
-        if self.loader.project is None or program_id not in self.loader.project.programs:
+        if program_id not in self.saved_project.programs:
             raise KeyError(f"Program {program_id!r} not found")
         return list(self.program_logs.get(program_id, []))
 
@@ -225,48 +297,53 @@ class AppState:
         return None
 
     def program_card(self, program_id: str) -> dict[str, Any]:
-        proj = self.loader.project
-        if proj is None or program_id not in proj.programs:
+        saved = self.saved_project
+        applied = self.loader.project
+        if program_id not in saved.programs:
             raise KeyError(f"Program {program_id!r} not found")
-        prog = proj.programs[program_id]
+        prog = saved.programs[program_id]
         logs = self.program_logs.get(program_id, [])
-        task_id = self._task_id_for_program(proj, program_id)
+        task_id = self._task_id_for_program(applied, program_id) if applied else None
+        saved_task_id = self._task_id_for_program(saved, program_id)
+        if applied is not None and program_id in applied.programs:
+            status = program_run_status(applied, program_id, self._softplc_running())
+        else:
+            status = "unscheduled"
         return {
             "id": program_id,
             "name": prog.name or program_id,
             "description": prog.description,
-            "status": program_run_status(proj, program_id, self._softplc_running()),
+            "status": status,
             "health": health_from_log(logs),
             "task_id": task_id,
+            "saved_task_id": saved_task_id,
+            "pending_schedule": saved_task_id != task_id,
         }
 
     def program_cards(self) -> list[dict[str, Any]]:
         self._ensure_program_logs()
-        proj = self.loader.project
-        if proj is None:
-            return []
-        return [self.program_card(pid) for pid in proj.programs]
+        return [self.program_card(pid) for pid in self.saved_project.programs]
 
     def create_program(self, name: str, description: str = "") -> dict[str, Any]:
         clean_name = str(name).strip()
         if not clean_name:
             raise ValueError("name required")
-        proj = self.loader.project or project_from_dict(wedge_softplc_project())
         base = _slugify_program_id(clean_name)
         pid = base
         suffix = 2
-        while pid in proj.programs:
+        while pid in self.saved_project.programs:
             pid = f"{base}-{suffix}"
             suffix += 1
-        programs = dict(proj.programs)
+        programs = dict(self.saved_project.programs)
         programs[pid] = Program(name=clean_name, description=str(description or ""))
         new_project = SoftPlcProject(
             programs=programs,
-            tasks=list(proj.tasks),
-            scan_period_s=proj.scan_period_s,
-            version=proj.version,
+            tasks=list(self.saved_project.tasks),
+            scan_period_s=self.saved_project.scan_period_s,
+            version=self.saved_project.version,
         )
-        self.loader.restart_apply(new_project)
+        self.saved_project = new_project
+        self.loader.restart_apply(_clone_project(new_project))
         self._ensure_program_logs()
         self.append_log(pid, "info", f"Program {clean_name} created")
         self.persist_program()
@@ -281,6 +358,7 @@ class AppState:
             raise ValueError("name required")
         prog.name = clean_name
         prog.description = str(description or "")
+        self._sync_program_to_live(program_id)
         self.persist_program()
         self.append_log(program_id, "info", "Program settings saved")
         return self.program_card(program_id)
@@ -331,26 +409,167 @@ class AppState:
         ]
 
     def delete_program(self, program_id: str) -> dict[str, Any]:
-        proj = self.loader.project
-        if proj is None or program_id not in proj.programs:
+        if program_id not in self.saved_project.programs:
             raise KeyError(f"Program {program_id!r} not found")
-        programs = dict(proj.programs)
+        programs = dict(self.saved_project.programs)
         programs.pop(program_id)
         tasks = [
-            Task(task.task_id, task.priority, [pid for pid in task.programs if pid != program_id])
-            for task in proj.tasks
+            Task(
+                task.task_id,
+                task.priority,
+                [pid for pid in task.programs if pid != program_id],
+                task.description,
+            )
+            for task in self.saved_project.tasks
         ]
         new_project = SoftPlcProject(
             programs=programs,
             tasks=tasks,
-            scan_period_s=proj.scan_period_s,
-            version=proj.version,
+            scan_period_s=self.saved_project.scan_period_s,
+            version=self.saved_project.version,
         )
-        self.loader.restart_apply(new_project)
+        self.saved_project = new_project
+        self.loader.restart_apply(_clone_project(new_project))
         self.program_logs.pop(program_id, None)
         self._ensure_program_logs()
         self.persist_program()
         return {"deleted": program_id}
+
+    def tasks_payload(self) -> list[dict[str, Any]]:
+        return [
+            {
+                "id": task.task_id,
+                "priority": task.priority,
+                "description": task.description,
+                "programs": list(task.programs),
+            }
+            for task in sorted(self.saved_project.tasks, key=lambda t: (t.priority, t.task_id))
+        ]
+
+    def _find_task(self, task_id: str) -> Task:
+        for task in self.saved_project.tasks:
+            if task.task_id == task_id:
+                return task
+        raise KeyError(f"Task {task_id!r} not found")
+
+    def _replace_saved_tasks(self, tasks: list[Task]) -> None:
+        new_project = SoftPlcProject(
+            programs=dict(self.saved_project.programs),
+            tasks=tasks,
+            scan_period_s=self.saved_project.scan_period_s,
+            version=self.saved_project.version,
+        )
+        self.saved_project = project_from_dict(project_to_dict(new_project))
+
+    def _task_payload(self, task: Task) -> dict[str, Any]:
+        return {
+            "id": task.task_id,
+            "priority": task.priority,
+            "description": task.description,
+            "programs": list(task.programs),
+        }
+
+    def create_task(
+        self, task_id: str, priority: int, description: str = ""
+    ) -> dict[str, Any]:
+        clean_id = str(task_id).strip()
+        if not clean_id:
+            raise ValueError("task id required")
+        if any(task.task_id == clean_id for task in self.saved_project.tasks):
+            raise ValueError(f"Task {clean_id!r} already exists")
+        task = Task(clean_id, int(priority), [], str(description or ""))
+        self._replace_saved_tasks(list(self.saved_project.tasks) + [task])
+        return self._task_payload(task)
+
+    def update_task_meta(
+        self,
+        task_id: str,
+        *,
+        new_id: str | None = None,
+        priority: int | None = None,
+        description: str | None = None,
+    ) -> dict[str, Any]:
+        task = self._find_task(task_id)
+        clean_id = str(new_id if new_id is not None else task.task_id).strip()
+        if not clean_id:
+            raise ValueError("task id required")
+        if clean_id != task.task_id and any(
+            other.task_id == clean_id for other in self.saved_project.tasks
+        ):
+            raise ValueError(f"Task {clean_id!r} already exists")
+        updated = Task(
+            clean_id,
+            int(priority if priority is not None else task.priority),
+            list(task.programs),
+            str(description if description is not None else task.description),
+        )
+        tasks = [
+            updated if existing.task_id == task_id else existing
+            for existing in self.saved_project.tasks
+        ]
+        self._replace_saved_tasks(tasks)
+        return self._task_payload(updated)
+
+    def delete_task(self, task_id: str) -> dict[str, Any]:
+        self._find_task(task_id)
+        tasks = [task for task in self.saved_project.tasks if task.task_id != task_id]
+        self._replace_saved_tasks(tasks)
+        return {"deleted": task_id}
+
+    def unscheduled_programs(self) -> list[dict[str, Any]]:
+        assigned = {pid for task in self.saved_project.tasks for pid in task.programs}
+        result: list[dict[str, Any]] = []
+        for pid, prog in self.saved_project.programs.items():
+            if pid in assigned:
+                continue
+            result.append(
+                {
+                    "id": pid,
+                    "name": prog.name or pid,
+                    "description": prog.description,
+                }
+            )
+        return result
+
+    def set_task_programs(self, task_id: str, program_ids: list[str]) -> dict[str, Any]:
+        task = self._find_task(task_id)
+        ordered = [str(pid) for pid in program_ids]
+        if len(set(ordered)) != len(ordered):
+            raise ValueError("program list contains duplicates")
+        for pid in ordered:
+            if pid not in self.saved_project.programs:
+                raise ValueError(f"Program {pid!r} not found")
+            owner = self._task_id_for_program(self.saved_project, pid)
+            if owner is not None and owner != task_id:
+                raise ValueError(f"Program {pid!r} is already scheduled on Task {owner!r}")
+        updated = Task(task.task_id, task.priority, ordered, task.description)
+        tasks = [
+            updated if existing.task_id == task_id else existing
+            for existing in self.saved_project.tasks
+        ]
+        self._replace_saved_tasks(tasks)
+        return self._task_payload(updated)
+
+    def schedule_status(self) -> dict[str, Any]:
+        saved = self.project_dict
+        applied = self.applied_project_dict
+        return {
+            "saved_applied": saved == applied,
+            "saved_signature": saved.get("tasks", []),
+            "applied_signature": applied.get("tasks", []),
+        }
+
+    def save_schedule(self) -> dict[str, Any]:
+        self.persist_program()
+        return {"saved": True, **self.schedule_status()}
+
+    def apply_saved_schedule(self) -> dict[str, Any]:
+        self.loader.restart_apply(_clone_project(self.saved_project))
+        self._sync_applied_project_to_runtime()
+        self._sync_scan_period_to_runtime()
+        self._ensure_program_logs()
+        self.persist_program()
+        return {"applied": "restart", **self.schedule_status()}
 
     def persist_program(self) -> None:
         """Write project-of-record to ``program_path`` when configured."""
@@ -361,7 +580,7 @@ class AppState:
             os.makedirs(parent, exist_ok=True)
         tmp_path = f"{self.program_path}.tmp"
         with open(tmp_path, "w", encoding="utf-8") as fh:
-            json.dump(self.project_dict, fh, indent=2)
+            json.dump(self.persistence_dict, fh, indent=2)
             fh.write("\n")
         os.replace(tmp_path, self.program_path)
 
@@ -416,6 +635,15 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
                 return []
             return [unquote(part) for part in suffix.split("/")]
 
+        def _task_path_parts(self) -> list[str] | None:
+            path = urlparse(self.path).path.rstrip("/") or "/"
+            if not path.startswith("/api/tasks"):
+                return None
+            suffix = path[len("/api/tasks") :].strip("/")
+            if not suffix:
+                return []
+            return [unquote(part) for part in suffix.split("/")]
+
         def do_GET(self) -> None:
             path = urlparse(self.path).path.rstrip("/") or "/"
             try:
@@ -425,6 +653,12 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
                     self._send_json(state.program_dict_for(self._program_id_from()))
                 elif path == "/api/programs":
                     self._send_json(state.program_cards())
+                elif path == "/api/programs/unscheduled":
+                    self._send_json(state.unscheduled_programs())
+                elif path == "/api/tasks":
+                    self._send_json(state.tasks_payload())
+                elif path == "/api/schedule/status":
+                    self._send_json(state.schedule_status())
                 elif (parts := self._program_path_parts()) and len(parts) == 1:
                     self._send_json(state.program_dict_for(parts[0]))
                 elif (parts := self._program_path_parts()) and len(parts) == 2 and parts[1] == "log":
@@ -481,9 +715,32 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
                         )
                     else:
                         state.loader.restart_apply(new_project)
+                    state.saved_project = _clone_project(new_project)
                     state.persist_program()
                     state._sync_scan_period_to_runtime()
                     self._send_json(state.project_dict)
+                elif (parts := self._task_path_parts()) and len(parts) == 1:
+                    data = self._read_json()
+                    self._send_json(
+                        state.update_task_meta(
+                            parts[0],
+                            new_id=data.get("id"),
+                            priority=(
+                                int(data["priority"]) if "priority" in data else None
+                            ),
+                            description=(
+                                str(data["description"])
+                                if "description" in data
+                                else None
+                            ),
+                        )
+                    )
+                elif (parts := self._task_path_parts()) and len(parts) == 2 and parts[1] == "programs":
+                    data = self._read_json()
+                    raw_programs = data.get("programs", data)
+                    if not isinstance(raw_programs, list):
+                        raise ValueError("programs must be a list")
+                    self._send_json(state.set_task_programs(parts[0], raw_programs))
                 else:
                     self._send_error_json("Not found", 404)
             except PermissionError as exc:
@@ -513,8 +770,13 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
                         return
                     remove_user_template(prog, tid)
                     state.library.unregister("user", tid)
+                    if pid is None:
+                        pid = state.main_program_id()
+                    state._sync_program_to_live(pid)
                     state.persist_program()
                     self._send_json({"deleted": tid})
+                elif (parts := self._task_path_parts()) and len(parts) == 1:
+                    self._send_json(state.delete_task(parts[0]))
                 elif (parts := self._program_path_parts()) and len(parts) == 1:
                     self._send_json(state.delete_program(parts[0]))
                 else:
@@ -536,6 +798,20 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
                         ),
                         status=201,
                     )
+                elif path == "/api/tasks":
+                    data = self._read_json()
+                    self._send_json(
+                        state.create_task(
+                            str(data.get("id", "")),
+                            int(data.get("priority", 1)),
+                            str(data.get("description", "")),
+                        ),
+                        status=201,
+                    )
+                elif path == "/api/schedule/save":
+                    self._send_json(state.save_schedule())
+                elif path == "/api/schedule/apply":
+                    self._send_json(state.apply_saved_schedule())
                 elif path == "/api/library/user":
                     self._handle_post_user_template()
                 elif path == "/api/place":
@@ -588,6 +864,9 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
                 return
             add_user_template(prog, tmpl)
             state.library.register(tmpl)
+            if pid is None:
+                pid = state.main_program_id()
+            state._sync_program_to_live(pid)
             state.persist_program()
             self._send_json(
                 {"template_id": tmpl.template_id, "library": tmpl.library}
@@ -616,6 +895,9 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
             prog.instances[iid] = inst
             if iid not in prog.execution_order:
                 prog.execution_order.append(iid)
+            if pid is None:
+                pid = state.main_program_id()
+            state._sync_program_to_live(pid)
             state.persist_program()
             self._send_json(program_to_dict(prog))
 
@@ -638,6 +920,9 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
                 )
                 return
             prog.instances[iid] = reset_instance(inst, tmpl)
+            if pid is None:
+                pid = state.main_program_id()
+            state._sync_program_to_live(pid)
             state.persist_program()
             self._send_json(program_to_dict(prog))
 
@@ -645,10 +930,7 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
             data = self._read_json()
             pid = self._program_id_from(data) or state.main_program_id()
             mode = str(data.get("mode", "restart")).lower()
-            proj = state.loader.project
-            if proj is None:
-                self._send_error_json("No project loaded", 400)
-                return
+            proj = _clone_project(state.saved_project)
             if mode == "restart":
                 state.loader.restart_apply(proj)
                 state.persist_program()
