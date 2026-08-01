@@ -245,7 +245,7 @@ def test_run_sh_refreshes_stock_missing_status_not_custom() -> None:
     assert "sensor.plcassistant_status" in text
     assert "button.plcassistant_start" in text
     assert "seeded default" in text or "mqtt_broker=core-mosquitto" in text
-    # Explicit old versions only — refresh 1–17 stock boards to v18 (SWD-183).
+    # Explicit old versions only — refresh 1–18 stock boards to v19 (SWD-220).
     assert "plcassistant_dashboard_version:[[:space:]]*([1-9]|1[0-8])" in text
     assert "request_core_restart_after_sync" in text
     assert "supervisor/core/restart" in text
