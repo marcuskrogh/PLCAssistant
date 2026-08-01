@@ -89,21 +89,23 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-170 | Bug | [Iterate] Operate plant PVs still unavailable after 0.1.28 BOX hydrate | Done | Relates SWD-169 | docs/ITERATE.md | Done — shipped PR #72 (App 0.1.29) |
 | SWD-171 | Bug | [Iterate] Tank level settles away from setpoint (Soft-PLC plant IN silent) | Done | Relates SWD-170 | docs/ITERATE.md | Done — shipped PR #73 (App 0.1.30) |
 | SWD-173 | Bug | [Iterate] Soft-PLC stuck TRIPPED after settle — stale plant file LOS | Done | Relates SWD-171 | docs/ITERATE.md | Done — shipped PR #74 (App 0.1.31) |
-| SWD-178 | Story | Industrial-parity Soft-PLC programming surface (multi-program) | To Do | — | docs/ROADMAP.md, docs/RESEARCH.md, docs/PLAN.md | `/implement SWD-182` |
+| SWD-178 | Story | Industrial-parity Soft-PLC programming surface (multi-program) | To Do | — | docs/ROADMAP.md, docs/RESEARCH.md, docs/PLAN.md | `/define SWD-181` |
 | SWD-179 | Task | Research: industrial PLC program organization & engineering UI capabilities | Done | Relates SWD-178, SWD-173 | docs/RESEARCH.md | Done — PR [#75](https://github.com/marcuskrogh/PLCAssistant/pull/75) |
-| SWD-182 | Task | Soft-PLC program organization model (tasks → programs → instances) | To Do | Relates SWD-178; blocked by SWD-179 | docs/PLAN.md | `/implement SWD-182` (PR [#76](https://github.com/marcuskrogh/PLCAssistant/pull/76)) |
-| SWD-187 | Sub-task | SWD-182: Schema + legacy Program migration | To Do | SWD-182 | docs/PLAN.md | — |
-| SWD-185 | Sub-task | SWD-182: Runtime Task passes + apply policy | To Do | SWD-182 | docs/PLAN.md | — |
-| SWD-188 | Sub-task | SWD-182: Wedge tank Program under Main Task | To Do | SWD-182 | docs/PLAN.md | — |
-| SWD-189 | Sub-task | SWD-182: Minimal App/API project tree JSON | To Do | SWD-182 | docs/PLAN.md | — |
-| SWD-186 | Sub-task | SWD-182: Unit + integration + system tests (HA/App/MQTT) | To Do | SWD-182 | docs/PLAN.md | — |
-| SWD-181 | Task | Define App engineering surface (navigator + defined/active programs) | To Do | Relates SWD-178; blocked by SWD-182 | docs/ROADMAP.md | blocked — after SWD-182 |
-| SWD-180 | Task | Define library inspectability + generic PID | To Do | Relates SWD-178; blocked by SWD-182 | docs/ROADMAP.md | blocked — after SWD-182 |
-| SWD-184 | Task | Define integration multi-datablock tag mapping UI | To Do | Relates SWD-178; blocked by SWD-182 | docs/ROADMAP.md | blocked — after SWD-182 |
+| SWD-182 | Task | Soft-PLC program organization model (tasks → programs → instances) | Done | Relates SWD-178; blocked by SWD-179 | docs/PLAN.md | Done — shipped PR [#76](https://github.com/marcuskrogh/PLCAssistant/pull/76) (App 0.1.32) |
+| SWD-187 | Sub-task | SWD-182: Schema + legacy Program migration | Done | SWD-182 | docs/PLAN.md | — |
+| SWD-185 | Sub-task | SWD-182: Runtime Task passes + apply policy | Done | SWD-182 | docs/PLAN.md | — |
+| SWD-188 | Sub-task | SWD-182: Wedge tank Program under Main Task | Done | SWD-182 | docs/PLAN.md | — |
+| SWD-189 | Sub-task | SWD-182: Minimal App/API project tree JSON | Done | SWD-182 | docs/PLAN.md | — |
+| SWD-186 | Sub-task | SWD-182: Unit + integration + system tests (HA/App/MQTT) | Done | SWD-182 | docs/PLAN.md | — |
+| SWD-181 | Task | Define App engineering surface (navigator + defined/active programs) | To Do | Relates SWD-178; blocked by SWD-182 | docs/ROADMAP.md | `/define SWD-181` |
+| SWD-180 | Task | Define library inspectability + generic PID | To Do | Relates SWD-178; blocked by SWD-182 | docs/ROADMAP.md | `/define SWD-180` (parallel after SWD-182) |
+| SWD-184 | Task | Define integration multi-datablock tag mapping UI | To Do | Relates SWD-178; blocked by SWD-182 | docs/ROADMAP.md | `/define SWD-184` (parallel after SWD-182) |
 | SWD-183 | Task | Define online / runtime visibility (loaded vs running) | To Do | Relates SWD-178; blocked by SWD-181 | docs/ROADMAP.md | blocked — after SWD-181 |
 
 ## Log
 
+- 2026-08-01 — Shipped SWD-182 via PR #76 (App 0.1.32); review-fix CLEAN after 2 iters; Task Done; Next `/define SWD-181`.
+- 2026-08-01 — review-fix SWD-182 CLEAN after 2 iterations (iter1: 4SF scan_period/MQTT/system/403; iter2: 0); closeout.
 - 2026-08-01 — Define SWD-182 approved: PLAN.md + Sub-tasks SWD-187/185/188/189/186; branch `cursor/swd-182-softplc-program-model-a52c`. Next `/implement SWD-182`.
 - 2026-08-01 — Explore SWD-178 charted: route SWD-179→182→{181,180,184}; 181→183; frontier `/define SWD-182`.
 - 2026-08-01 — Research SWD-179: industrial PLC program/UI capabilities → `docs/RESEARCH.md`; Story SWD-178; draft PR [#75](https://github.com/marcuskrogh/PLCAssistant/pull/75). Next `/explore SWD-178`.

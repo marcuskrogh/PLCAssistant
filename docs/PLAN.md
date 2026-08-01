@@ -60,41 +60,38 @@
 - Existing: `docs/surface/01-block-model.md`, `04-apply-policy.md`, `scan_period_s` MQTT (SWD-145)
 
 ## Acceptance criteria
-- [ ] Project schema loads Soft-PLC with ≥1 Task and ≥0 Programs; validates “Program on at most one Task”
-- [ ] Legacy flat Program YAML migrates to Soft-PLC + Main Task + that Program without manual edit
-- [ ] Shipped tank example is one Program under Main; additional empty Tasks can be declared
-- [ ] Scan executes Tasks by priority; unscheduled Programs do not run; `dt` from Soft-PLC `scan_period_s`
-- [ ] MQTT status still publishes `scan_period_s`; mock steps using it (regression)
-- [ ] Restart apply required for Task/Program structure changes; Hot Apply allowed for Program logic/params
-- [ ] App/API returns/accepts Soft-PLC → Tasks → Programs JSON (minimal; no navigator UI required)
-- [ ] **Unit** tests cover schema, migration, scheduling rules, apply classification
-- [ ] **Integration** tests cover loader/runtime + MQTT `scan_period_s` with mock consumer
-- [ ] **System** test: HA + App + MQTT path loads migrated tank project and runs Main Task successfully
+- [x] Project schema loads Soft-PLC with ≥1 Task and ≥0 Programs; validates “Program on at most one Task”
+- [x] Legacy flat Program YAML migrates to Soft-PLC + Main Task + that Program without manual edit
+- [x] Shipped tank example is one Program under Main; additional empty Tasks can be declared
+- [x] Scan executes Tasks by priority; unscheduled Programs do not run; `dt` from Soft-PLC `scan_period_s`
+- [x] MQTT status still publishes `scan_period_s`; mock steps using it (regression)
+- [x] Restart apply required for Task/Program structure changes; Hot Apply allowed for Program logic/params
+- [x] App/API returns/accepts Soft-PLC → Tasks → Programs JSON (minimal; no navigator UI required)
+- [x] **Unit** tests cover schema, migration, scheduling rules, apply classification
+- [x] **Integration** tests cover loader/runtime + MQTT `scan_period_s` with mock consumer
+- [x] **System** test: HA + App + MQTT path loads migrated tank project and runs Main Task successfully
 
 ## Work packages
-1. **Schema + migration** — Soft-PLC project model; legacy Program auto-wrap; validation (one Task per Program)
-2. **Runtime + apply** — priority Task passes in one scan; restart vs hot classification for structure vs logic
-3. **Wedge content** — ship single tank Program under Main Task; allow extra empty Tasks in schema
-4. **Minimal App/API** — get/put project tree JSON; keep canvas behavior compatible (single Program view OK)
-5. **Tests** — unit + integration + system (HA + App + MQTT) for setup/load/run of organized project
+1. **Schema + migration** — Soft-PLC project model; legacy Program auto-wrap; validation (one Task per Program) — Done (SWD-187)
+2. **Runtime + apply** — priority Task passes in one scan; restart vs hot classification for structure vs logic — Done (SWD-185)
+3. **Wedge content** — ship single tank Program under Main Task; allow extra empty Tasks in schema — Done (SWD-188)
+4. **Minimal App/API** — get/put project tree JSON; keep canvas behavior compatible (single Program view OK) — Done (SWD-189)
+5. **Tests** — unit + integration + system (HA + App + MQTT) for setup/load/run of organized project — Done (SWD-186)
 
-## Open items
-- Exact JSON/YAML field names (`softplc` vs `project`, Task id conventions) — implementer default OK if documented
-- Whether empty extra Tasks ship in the default wedge file or only via schema capability — prefer schema capability + tests; wedge file stays Main + tank only unless needed for demos
-- System-test harness details (compose vs existing CI patterns) — follow repo conventions; must be full HA+App+MQTT
+## Shipped
+- App **0.1.32**
+- SoftPlcProject / Task / ProjectLoader; GET/PUT `/api/project`
+- Legacy Program auto-migration; tank under Main
+- `scan_period_s` propagates project → skid → MQTT
+- PR [#76](https://github.com/marcuskrogh/PLCAssistant/pull/76)
 
 ## Tracker
 - Provider: jira
 - Story: [SWD-178](https://marcusknielsen.atlassian.net/browse/SWD-178)
 - Task: [SWD-182](https://marcusknielsen.atlassian.net/browse/SWD-182)
-- Sub-tasks:
-  - [SWD-187](https://marcusknielsen.atlassian.net/browse/SWD-187) Schema + legacy Program migration
-  - [SWD-185](https://marcusknielsen.atlassian.net/browse/SWD-185) Runtime Task passes + apply policy
-  - [SWD-188](https://marcusknielsen.atlassian.net/browse/SWD-188) Wedge tank Program under Main Task
-  - [SWD-189](https://marcusknielsen.atlassian.net/browse/SWD-189) Minimal App/API project tree JSON
-  - [SWD-186](https://marcusknielsen.atlassian.net/browse/SWD-186) Unit + integration + system tests (HA/App/MQTT)
+- Sub-tasks: SWD-187, SWD-185, SWD-188, SWD-189, SWD-186 (Done)
 - Branch: `cursor/swd-182-softplc-program-model-a52c`
 - PR: [#76](https://github.com/marcuskrogh/PLCAssistant/pull/76)
 
 ## Next
-`/implement SWD-182` — Build per this plan (same branch/PR)
+Done — phase closed.
