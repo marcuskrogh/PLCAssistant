@@ -675,11 +675,21 @@ function renderOnlineStrip() {
   soft.textContent = 'Soft-PLC: ' + status;
   soft.className = 'chip ' + (status === 'running' ? 'ok' : status === 'fault' ? 'error' : '');
   const applied = scheduleSnap.saved_applied;
+  const savedTasks = Array.isArray(scheduleSnap.saved_signature)
+    ? scheduleSnap.saved_signature
+    : [];
+  const progCount = savedTasks.reduce(
+    (n, t) => n + (Array.isArray(t.programs) ? t.programs.length : 0),
+    0
+  );
+  const schedDetail = savedTasks.length
+    ? `${savedTasks.length} task${savedTasks.length === 1 ? '' : 's'}, ${progCount} program${progCount === 1 ? '' : 's'}`
+    : 'no tasks';
   sched.textContent = applied === true
-    ? 'Schedule: saved=applied'
+    ? `Schedule: applied (${schedDetail})`
     : applied === false
-      ? 'Schedule: pending apply'
-      : 'Schedule: …';
+      ? `Schedule: pending apply (${schedDetail})`
+      : `Schedule: ${schedDetail}`;
   sched.className = 'chip ' + (applied === true ? 'ok' : applied === false ? 'warning' : '');
   const tags = runtimeSnap.tags && typeof runtimeSnap.tags === 'object' ? runtimeSnap.tags : {};
   tagsEl.textContent = 'Tags: ' + Object.keys(tags).length;

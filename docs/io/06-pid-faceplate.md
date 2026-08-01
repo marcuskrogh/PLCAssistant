@@ -28,8 +28,27 @@ Writing Automatic SP does **not** change mode.
 | Level | `LEVEL_MODE` | `SP_LEVEL_MAN` / `SP_LEVEL_AUTO` / `SP_LEVEL_REM` | `SP_LEVEL` | `LT_TANK` | `SP_FLOW` (cascade) |
 | Flow | `FLOW_MODE` | `SP_FLOW_MAN` / `SP_FLOW_AUTO` / `SP_FLOW_REM` | `SP_FLOW` | `FT_INLET` | `CMD_SPEED` |
 
-Legacy `SP_LEVEL_REQ` remains the Automatic writer for level when
-`SP_LEVEL_AUTO` is unset. Soft-PLC helpers live in
+Legacy `SP_LEVEL_REQ` is the **Automatic writer** for the level loop when
+declared on the Datablock — it feeds the Automatic SP source even when
+`SP_LEVEL_AUTO` also has a retained sample. When REQ is absent, Automatic
+uses `SP_LEVEL_AUTO`. Writing REQ from the HMI also mirrors into
+`SP_LEVEL_AUTO` (retained IN sync).
+
+### Flow MAN/REM demo approximation
+
+When flow SP-source mode is Manual or Remote, Soft-PLC publishes the muxed
+`SP_FLOW` override for the faceplate, but `CMD_SPEED` for that scan still
+comes from the cascade PI using the level loop CV as Automatic flow SP.
+Full output-manual / bumpless flow override is deferred.
+
+### Tunings
+
+`LEVEL_KP`, `LEVEL_KI`, `FLOW_KP`, and `FLOW_KI` IN tags (defaults aligned
+with `CascadeConfig`: 40 / 5 / 12 / 2) are applied into the live Soft-PLC
+`Skid` cascade each scan when bound. `LEVEL_KD` / `FLOW_KD` are declared for
+faceplate parity; the wedge cascade PI does not use D terms yet.
+
+Soft-PLC helpers live in
 `plcassistant.io.pid_loop` (`select_active_sp`, `apply_sp_write`,
 `faceplate_from_image_tags`).
 

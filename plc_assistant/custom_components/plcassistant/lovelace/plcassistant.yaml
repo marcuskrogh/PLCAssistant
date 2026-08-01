@@ -1,4 +1,4 @@
-# plcassistant_dashboard_version: 17
+# plcassistant_dashboard_version: 18
 title: PLCAssistant
 views:
   - title: Operate
@@ -21,7 +21,7 @@ views:
             name: Trip active
       - type: markdown
         content: |
-          **PLCAssistant** — Soft-PLC skid HMI (**Operate**). Soft-PLC must show **stopped** (not offline) before Start works. Open the **Dynamics** tab to edit unit-op / ODE **state equations** and Soft-PLC **measurement equations** (App **0.1.26+**). Soft-PLC stays mock-unaware (`HeldProcess`). Process rows are live plant **sensors** (App **0.1.29+**); Numbers remain available for plant nudges. **0.1.37+** adds PID faceplates (Manual / Automatic / Remote SP sources). Update App, wait for Core reload, then reopen this board. Confirm Mosquitto + matching `instance_id` if still offline. Change the **Level setpoint**, press **Start**, then watch levels, inlet flow, and pump speed.
+          **PLCAssistant** — Soft-PLC skid HMI (**Operate**). Soft-PLC must show **stopped** (not offline) before Start works. Open the **Dynamics** tab to edit unit-op / ODE **state equations** and Soft-PLC **measurement equations** (App **0.1.26+**). Soft-PLC stays mock-unaware (`HeldProcess`). Process rows are live plant **sensors** (App **0.1.29+**); Numbers remain available for plant nudges. **0.1.38+** adds PID faceplates (Manual / Automatic / Remote SP sources). Update App, wait for Core reload, then reopen this board. Confirm Mosquitto + matching `instance_id` if still offline. Change the **Level setpoint**, press **Start**, then watch levels, inlet flow, and pump speed.
       - type: entities
         title: Operate
         show_header_toggle: false
@@ -40,6 +40,9 @@ views:
       - type: custom:plcassistant-pid-card
         entity: sensor.plcassistant_pid_flow
         title: Flow PID
+      - type: custom:plcassistant-block-list-card
+        entity: sensor.plcassistant_pid_level
+        title: Level blocks
       - type: entities
         title: PID loops (fallback entities)
         show_header_toggle: false

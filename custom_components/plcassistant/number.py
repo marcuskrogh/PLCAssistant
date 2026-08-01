@@ -95,7 +95,7 @@ _TAG_META: dict[str, dict] = {
         "max": 100.0,
         "step": 0.1,
         "object_id": "plcassistant_level_kp",
-        "default": 8.0,
+        "default": 40.0,
     },
     "LEVEL_KI": {
         "name": "PLCAssistant Level Ki",
@@ -103,7 +103,15 @@ _TAG_META: dict[str, dict] = {
         "max": 100.0,
         "step": 0.01,
         "object_id": "plcassistant_level_ki",
-        "default": 0.4,
+        "default": 5.0,
+    },
+    "LEVEL_KD": {
+        "name": "PLCAssistant Level Kd",
+        "min": 0.0,
+        "max": 100.0,
+        "step": 0.01,
+        "object_id": "plcassistant_level_kd",
+        "default": 0.0,
     },
     "FLOW_KP": {
         "name": "PLCAssistant Flow Kp",
@@ -111,7 +119,7 @@ _TAG_META: dict[str, dict] = {
         "max": 100.0,
         "step": 0.1,
         "object_id": "plcassistant_flow_kp",
-        "default": 1.2,
+        "default": 12.0,
     },
     "FLOW_KI": {
         "name": "PLCAssistant Flow Ki",
@@ -119,7 +127,15 @@ _TAG_META: dict[str, dict] = {
         "max": 100.0,
         "step": 0.01,
         "object_id": "plcassistant_flow_ki",
-        "default": 0.8,
+        "default": 2.0,
+    },
+    "FLOW_KD": {
+        "name": "PLCAssistant Flow Kd",
+        "min": 0.0,
+        "max": 100.0,
+        "step": 0.01,
+        "object_id": "plcassistant_flow_kd",
+        "default": 0.0,
     },
     "LT_TANK": {
         "name": "PLCAssistant Tank level (IN)",
@@ -160,6 +176,21 @@ _SP_MODE_FLIP: dict[str, tuple[str, float]] = {
     "SP_FLOW_REM": ("FLOW_MODE", 2.0),
 }
 
+
+def _sp_mode_flip_map() -> dict[str, tuple[str, float]]:
+    """Mode flip targets — prefer Soft-PLC SpSourceMode codes when importable."""
+    try:
+        from plcassistant.io.pid_loop import SpSourceMode
+
+        return {
+            "SP_LEVEL_MAN": ("LEVEL_MODE", float(SpSourceMode.MANUAL.code)),
+            "SP_LEVEL_REM": ("LEVEL_MODE", float(SpSourceMode.REMOTE.code)),
+            "SP_FLOW_MAN": ("FLOW_MODE", float(SpSourceMode.MANUAL.code)),
+            "SP_FLOW_REM": ("FLOW_MODE", float(SpSourceMode.REMOTE.code)),
+        }
+    except ImportError:
+        return _SP_MODE_FLIP
+
 # Operator request / PID faceplate tags that also write the file-bridge fallback.
 _FILE_BRIDGE_IN_TAGS = frozenset(
     {
@@ -173,8 +204,10 @@ _FILE_BRIDGE_IN_TAGS = frozenset(
         "FLOW_MODE",
         "LEVEL_KP",
         "LEVEL_KI",
+        "LEVEL_KD",
         "FLOW_KP",
         "FLOW_KI",
+        "FLOW_KD",
     }
 )
 
@@ -345,7 +378,7 @@ class PlcAssistantRequestNumber(NumberEntity):
             return
         await self._publish_in_tag(self._tag, eng)
         # SWD-183: writing Manual/Remote SP also flips LEVEL_MODE / FLOW_MODE.
-        flip = _SP_MODE_FLIP.get(self._tag)
+        flip = _sp_mode_flip_map().get(self._tag)
         if flip is not None:
             mode_tag, mode_code = flip
             await self._publish_in_tag(mode_tag, float(mode_code))
@@ -408,8 +441,28 @@ class PlcAssistantRequestNumber(NumberEntity):
                 qos=0,
             )
             return
-        if self._attr_native_value is not None:
+        store = self.hass.data.get(DOMAIN, {}).get(self._entry_id) or {}
+        cached = (store.get("in_values") or {}).get(str(self._tag).upper())
+        hydrated = False
+        if cached and self._apply_payload(str(cached)):
+            self.async_write_ha_state()
+            hydrated = True
+        if not hydrated and self._attr_native_value is not None:
             await self.async_set_native_value(float(self._attr_native_value))
+        else:
+            self.async_write_ha_state()
+
+        async def _on_tag_in(event: Event) -> None:
+            if event.data.get("entry_id") != self._entry_id:
+                return
+            if str(event.data.get("tag") or "").upper() != str(self._tag).upper():
+                return
+            if self._apply_payload(str(event.data.get("payload") or "")):
+                self.async_write_ha_state()
+
+        self.async_on_remove(
+            self.hass.bus.async_listen(f"{DOMAIN}_tag_in", _on_tag_in)
+        )
 
     async def async_will_remove_from_hass(self) -> None:
         if self._unsub is not None:

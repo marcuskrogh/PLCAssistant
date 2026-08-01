@@ -113,6 +113,8 @@ def _parse_mode(raw: Any) -> str:
             return "automatic"
         return _MODE_NAMES.get(code, "automatic")
     key = str(raw or "").strip().lower()
+    # Unknown aliases fall back to automatic — Soft-PLC ``SpSourceMode.parse``
+    # raises ValueError and skid_scan resolves to AUTOMATIC the same way.
     return _MODE_ALIASES.get(key, "automatic")
 
 
