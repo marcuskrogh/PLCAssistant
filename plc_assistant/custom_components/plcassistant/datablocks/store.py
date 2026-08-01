@@ -62,8 +62,8 @@ def catalog_from_store(payload: dict[str, Any]) -> DatablockCatalog:
 def accessible_datablock_ids(payload: dict[str, Any]) -> list[str]:
     """Datablock ids the HA MQTT/image path should wire.
 
-    Uses the union of ``program_access`` when any Program has access entries;
-    otherwise all catalog Datablock ids (empty access map → no tags).
+    Returns the ordered union of ``program_access`` values. An empty access map
+    yields no ids (no tags wired).
     """
     access = payload.get("program_access") or {}
     if not isinstance(access, dict):
