@@ -80,7 +80,7 @@
 - Task: [SWD-184](https://marcusknielsen.atlassian.net/browse/SWD-184)
 - Sub-tasks: SWD-209, SWD-208, SWD-210, SWD-207, SWD-212, SWD-211
 - Branch: `cursor/swd-184-datablock-mapping-a52c`
-- PR: pending after push
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/80
 
 ## Next
 `/implement SWD-184` — Build per this plan (same branch/PR)
