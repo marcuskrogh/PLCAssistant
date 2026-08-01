@@ -38,7 +38,10 @@ from the integration simulator (SWD-146+ / SWD-170); Numbers remain for nudges.
 
 | Entity | Role |
 |--------|------|
-| `number.plcassistant_sp_level_req` | Operator **level setpoint request** (writable) |
+| `number.plcassistant_sp_level_req` | Operator **level setpoint request** (writable; Automatic source) |
+| `number.plcassistant_sp_level_man` / `_rem` / `level_mode` | Level PID Manual/Remote SP + mode (0/1/2) |
+| `number.plcassistant_sp_flow_man` / `_rem` / `flow_mode` | Flow PID Manual/Remote SP + mode |
+| `sensor.plcassistant_pid_level` / `_pid_flow` | Compound PID faceplate (mode + attributes) |
 | `sensor.plcassistant_lt_tank_in` / `_lt_res_in` / `_ft_inlet_in` | Plant PVs as Soft-PLC **IN** (Operate Process display) |
 | `number.plcassistant_lt_tank_in` / `_lt_res_in` / `_ft_inlet_in` | Plant PV **nudges** (writable; same tags) |
 | `button.plcassistant_start` / `_stop` / `_reset` | Operator commands |
@@ -86,5 +89,16 @@ After App Update + Core restart: stock Lovelace refreshes to dashboard version *
 If personal boards still show unavailable plant Numbers, delete stale unavailable
 entities in the entity registry (or remove/re-add the integration). Update any
 personal dashboards that still reference plant Numbers for Process display.
+
+**0.1.38** ships review-fix for PID faceplates: REQ remains Automatic writer,
+Datablock Kp/Ki applied into Soft-PLC cascade each scan, KD bindings, Operate
+board includes the generic block-list card, App online strip shows schedule
+task/program counts. Stock Lovelace refreshes to dashboard version **18**.
+
+**0.1.37** adds PID faceplates: Manual / Automatic / Remote SP sources,
+`sensor.plcassistant_pid_level` / `_pid_flow`, Lovelace
+`custom:plcassistant-pid-card` + `custom:plcassistant-block-list-card`, and Soft-PLC
+App online strip (runtime + schedule status). Stock Lovelace refreshes to
+dashboard version **17**.
 
 **0.1.36** adds Datablock tag mapping: HA Datablocks configuration panel, `DB_Tank` example, Program↔Datablock access, store at `config/plcassistant/datablocks.json`.

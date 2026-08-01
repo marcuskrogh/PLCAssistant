@@ -54,7 +54,8 @@ program ids. The packaging image declares only tags from the demo access map.
 
 The rebuilt demo uses `DB_Tank` and `tank` Program access. Flat
 `default_wedge_binding_config()` is now a view of that access union for legacy
-callers.
+callers. PID faceplate tags (SP-source modes) are documented in
+[`06-pid-faceplate.md`](06-pid-faceplate.md).
 
 ## Panel
 

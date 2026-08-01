@@ -196,7 +196,25 @@ class MqttScanLoop:
     # Operator request + plant IN fallback when MQTT plant→App is silent (SWD-171).
     # Live MQTT still wins on the same scan (applied after file hydrate).
     _FILE_INPUT_TAGS = frozenset(
-        {"SP_LEVEL_REQ", "LT_TANK", "LT_RES", "FT_INLET"}
+        {
+            "SP_LEVEL_REQ",
+            "SP_LEVEL_MAN",
+            "SP_LEVEL_AUTO",
+            "SP_LEVEL_REM",
+            "LEVEL_MODE",
+            "SP_FLOW_MAN",
+            "SP_FLOW_REM",
+            "FLOW_MODE",
+            "LEVEL_KP",
+            "LEVEL_KI",
+            "LEVEL_KD",
+            "FLOW_KP",
+            "FLOW_KI",
+            "FLOW_KD",
+            "LT_TANK",
+            "LT_RES",
+            "FT_INLET",
+        }
     )
 
     def __init__(

@@ -1,4 +1,4 @@
-# plcassistant_dashboard_version: 16
+# plcassistant_dashboard_version: 18
 title: PLCAssistant
 views:
   - title: Operate
@@ -21,7 +21,7 @@ views:
             name: Trip active
       - type: markdown
         content: |
-          **PLCAssistant** — Soft-PLC skid HMI (**Operate**). Soft-PLC must show **stopped** (not offline) before Start works. Open the **Dynamics** tab to edit unit-op / ODE **state equations** and Soft-PLC **measurement equations** (App **0.1.26+**). Soft-PLC stays mock-unaware (`HeldProcess`). Process rows are live plant **sensors** (App **0.1.29+**); Numbers remain available for plant nudges. Update App, wait for Core reload, then reopen this board. Confirm Mosquitto + matching `instance_id` if still offline. Change the **Level setpoint**, press **Start**, then watch levels, inlet flow, and pump speed.
+          **PLCAssistant** — Soft-PLC skid HMI (**Operate**). Soft-PLC must show **stopped** (not offline) before Start works. Open the **Dynamics** tab to edit unit-op / ODE **state equations** and Soft-PLC **measurement equations** (App **0.1.26+**). Soft-PLC stays mock-unaware (`HeldProcess`). Process rows are live plant **sensors** (App **0.1.29+**); Numbers remain available for plant nudges. **0.1.38+** adds PID faceplates (Manual / Automatic / Remote SP sources). Update App, wait for Core reload, then reopen this board. Confirm Mosquitto + matching `instance_id` if still offline. Change the **Level setpoint**, press **Start**, then watch levels, inlet flow, and pump speed.
       - type: entities
         title: Operate
         show_header_toggle: false
@@ -34,6 +34,35 @@ views:
             name: Reset
           - entity: number.plcassistant_sp_level_req
             name: Level setpoint (request)
+      - type: custom:plcassistant-pid-card
+        entity: sensor.plcassistant_pid_level
+        title: Level PID
+      - type: custom:plcassistant-pid-card
+        entity: sensor.plcassistant_pid_flow
+        title: Flow PID
+      - type: custom:plcassistant-block-list-card
+        entity: sensor.plcassistant_pid_level
+        title: Level blocks
+      - type: entities
+        title: PID loops (fallback entities)
+        show_header_toggle: false
+        entities:
+          - entity: sensor.plcassistant_pid_level
+            name: Level loop mode
+          - entity: number.plcassistant_sp_level_man
+            name: Level SP Man
+          - entity: number.plcassistant_sp_level_rem
+            name: Level SP Rem
+          - entity: number.plcassistant_level_mode
+            name: Level mode (0 Man / 1 Auto / 2 Rem)
+          - entity: sensor.plcassistant_pid_flow
+            name: Flow loop mode
+          - entity: number.plcassistant_sp_flow_man
+            name: Flow SP Man
+          - entity: number.plcassistant_sp_flow_rem
+            name: Flow SP Rem
+          - entity: number.plcassistant_flow_mode
+            name: Flow mode (0 Man / 1 Auto / 2 Rem)
       - type: entities
         title: Process (IN — live simulator)
         show_header_toggle: false
@@ -54,6 +83,8 @@ views:
             name: Active level SP
           - entity: sensor.plcassistant_sp_flow
             name: Active flow SP
+          - entity: sensor.plcassistant_sp_flow_auto
+            name: Flow SP Auto (cascade)
       - type: history-graph
         title: Levels, speed & setpoints
         hours_to_show: 1

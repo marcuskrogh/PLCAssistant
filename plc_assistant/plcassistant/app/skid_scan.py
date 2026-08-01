@@ -1,14 +1,17 @@
-"""Map wedge ``Skid`` onto the Soft-PLC ``IoImage`` (SWD-145).
+"""Map wedge ``Skid`` onto the Soft-PLC ``IoImage`` (SWD-145 / SWD-183).
 
 Live App path is **mock-unaware**: plant PVs arrive as MQTT IN, control/safety
 still run on ``Skid``, and Soft-PLC publishes CVs/status as OUT. Plant physics
 live in the thin integration simulator (SWD-146 skid preset). ``MockProcess``
 remains for offline / unit tests only — not constructed here.
+
+SWD-183: SP-source mode mux selects Manual / Automatic / Remote into active SP.
 """
 
 from __future__ import annotations
 
 from plcassistant.io.image import IoImage
+from plcassistant.io.pid_loop import FLOW_LOOP, LEVEL_LOOP, SpSourceMode, select_active_sp
 from plcassistant.io.quality import QualityStatus, ReasonCode
 from plcassistant.wedge.process import HeldProcess
 from plcassistant.wedge.skid import Mode, OperatorCommand, Skid
@@ -18,6 +21,54 @@ _PLANT_TAGS = (
     ("LT_RES", "lt_res"),
     ("FT_INLET", "ft_inlet"),
 )
+
+
+def _tag_float(image: IoImage, name: str, default: float = 0.0) -> float:
+    names = image.names()
+    if name not in names:
+        return default
+    try:
+        return float(image.get_value(name))
+    except (TypeError, ValueError):
+        return default
+
+
+def _resolve_level_sp(image: IoImage) -> float:
+    """Select active level SP from SP-source mode (SWD-183).
+
+    ``SP_LEVEL_REQ`` is the Automatic writer when declared (SWD-141). When REQ
+    is absent, fall back to ``SP_LEVEL_AUTO`` (never prefer AUTO over REQ
+    merely because AUTO has ``last_good``).
+    """
+    names = image.names()
+    if "SP_LEVEL_REQ" in names:
+        auto = _tag_float(image, "SP_LEVEL_REQ", 0.20)
+    elif LEVEL_LOOP.sp_auto in names:
+        auto = _tag_float(image, LEVEL_LOOP.sp_auto, 0.20)
+    else:
+        auto = 0.20
+    man = _tag_float(image, LEVEL_LOOP.sp_man, auto)
+    rem = _tag_float(image, LEVEL_LOOP.sp_rem, auto)
+    mode_raw = image.get_value(LEVEL_LOOP.mode) if LEVEL_LOOP.mode in names else 1
+    try:
+        mode = SpSourceMode.parse(mode_raw)
+    except ValueError:
+        mode = SpSourceMode.AUTOMATIC
+    return select_active_sp(mode, sp_man=man, sp_auto=auto, sp_rem=rem)
+
+
+def _resolve_flow_sp(image: IoImage, *, cascade_auto: float) -> float:
+    """Select active flow SP; Automatic source is the cascade (level CV)."""
+    names = image.names()
+    auto = cascade_auto
+    man = _tag_float(image, FLOW_LOOP.sp_man, auto)
+    rem = _tag_float(image, FLOW_LOOP.sp_rem, auto)
+    mode_raw = image.get_value(FLOW_LOOP.mode) if FLOW_LOOP.mode in names else 1
+    try:
+        mode = SpSourceMode.parse(mode_raw)
+    except ValueError:
+        mode = SpSourceMode.AUTOMATIC
+    return select_active_sp(mode, sp_man=man, sp_auto=auto, sp_rem=rem)
 
 
 class SkidImageLogic:
@@ -71,7 +122,7 @@ class SkidImageLogic:
             value, quality = image.get(tag)
             slot = snaps[tag]
             # Declared-but-never-sampled tags are BAD/unavailable with no
-            # last_good — keep HeldProcess healthy hold so Start works before
+            # last-good — keep HeldProcess healthy hold so Start works before
             # plant MQTT arrives. After any sample, propagate quality so real
             # LOS (BAD/unavailable) trips correctly.
             if (
@@ -88,11 +139,16 @@ class SkidImageLogic:
 
     def __call__(self, image: IoImage) -> None:
         names = image.names()
-        if "SP_LEVEL_REQ" in names:
-            try:
-                self.skid.sp_level = float(image.get_value("SP_LEVEL_REQ"))
-            except (TypeError, ValueError):
-                pass
+        cascade = self.skid.config.cascade
+        if LEVEL_LOOP.kp in names:
+            cascade.level_kp = _tag_float(image, LEVEL_LOOP.kp, cascade.level_kp)
+        if LEVEL_LOOP.ki in names:
+            cascade.level_ki = _tag_float(image, LEVEL_LOOP.ki, cascade.level_ki)
+        if FLOW_LOOP.kp in names:
+            cascade.flow_kp = _tag_float(image, FLOW_LOOP.kp, cascade.flow_kp)
+        if FLOW_LOOP.ki in names:
+            cascade.flow_ki = _tag_float(image, FLOW_LOOP.ki, cascade.flow_ki)
+        self.skid.sp_level = _resolve_level_sp(image)
         self._feed_plant_from_image(image)
         pending = self._pending
         self._pending = []
@@ -106,11 +162,18 @@ class SkidImageLogic:
                 step_dt = dt if i == len(pending) - 1 else 0.0
                 snap = self.skid.step(step_dt, cmd)
         assert snap is not None
+        # Cascade: level CV becomes flow Automatic SP source; mux → active SP_FLOW.
+        flow_sp = _resolve_flow_sp(image, cascade_auto=float(snap.sp_flow))
+        # Re-apply flow SP into skid if mode is not Automatic (Skid already used
+        # cascade SP_FLOW). For MAN/REM we override published SP_FLOW only —
+        # CMD_SPEED still comes from this scan's cascade PI (demo approximation).
         _set = image.set_output
         if "SP_LEVEL" in names:
             _set("SP_LEVEL", float(snap.sp_level))
         if "SP_FLOW" in names:
-            _set("SP_FLOW", float(snap.sp_flow))
+            _set("SP_FLOW", float(flow_sp))
+        if FLOW_LOOP.sp_auto in names:
+            _set(FLOW_LOOP.sp_auto, float(snap.sp_flow))
         if "CMD_SPEED" in names:
             _set("CMD_SPEED", float(snap.cmd_speed))
         # Plant PVs are Soft-PLC IN only (SWD-145) — never synthesize as OUT.

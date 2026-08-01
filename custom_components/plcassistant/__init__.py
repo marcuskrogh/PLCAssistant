@@ -58,13 +58,48 @@ _HMI_TAGS = (
     "CMD_SPEED",
     "SP_LEVEL",
     "SP_FLOW",
+    "SP_FLOW_AUTO",
 )
+
+_FRONTEND_JS = (
+    "pid-loop-card.js",
+    "block-list-card.js",
+)
+_STATIC_URL_PATH = f"/{DOMAIN}_static"
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     hass.data.setdefault(DOMAIN, {})
+    await _async_register_lovelace_cards(hass)
     return True
 
+
+async def _async_register_lovelace_cards(hass: HomeAssistant) -> None:
+    """Serve www/*.js and register Lovelace custom cards (SWD-183)."""
+    www = Path(__file__).resolve().parent / "www"
+    if not www.is_dir():
+        return
+    try:
+        from homeassistant.components.http import StaticPathConfig
+
+        await hass.http.async_register_static_paths(
+            [
+                StaticPathConfig(_STATIC_URL_PATH, str(www), False),
+            ]
+        )
+    except Exception:  # noqa: BLE001 — older Core may lack StaticPathConfig
+        try:
+            hass.http.register_static_path(_STATIC_URL_PATH, str(www), False)
+        except Exception:  # noqa: BLE001
+            _LOGGER.debug("PLCAssistant: static path registration skipped", exc_info=True)
+            return
+    try:
+        from homeassistant.components.frontend import add_extra_js_url
+
+        for name in _FRONTEND_JS:
+            add_extra_js_url(hass, f"{_STATIC_URL_PATH}/{name}")
+    except Exception:  # noqa: BLE001 — never block integration on card load
+        _LOGGER.debug("PLCAssistant: Lovelace card JS registration skipped", exc_info=True)
 
 def _default_bindings() -> list[dict]:
     """Default mock bindings from demo Program Datablock access (SWD-184)."""

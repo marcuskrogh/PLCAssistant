@@ -40,6 +40,12 @@ _TAG_META: dict[str, dict] = {
         "object_id": "plcassistant_sp_flow",
         "kind": "number",
     },
+    "SP_FLOW_AUTO": {
+        "name": "PLCAssistant Flow SP (automatic / cascade)",
+        "unit": "L/min",
+        "object_id": "plcassistant_sp_flow_auto",
+        "kind": "number",
+    },
     "MODE": {
         "name": "PLCAssistant Mode",
         "object_id": "plcassistant_mode",
@@ -169,6 +175,10 @@ async def async_setup_entry(
             )
         )
     async_add_entities(entities)
+    # SWD-183: compound PID faceplate sensors (level + flow).
+    from .pid_loop import async_setup_pid_loop_sensors
+
+    await async_setup_pid_loop_sensors(hass, entry, async_add_entities)
 
 
 class PlcAssistantStatusSensor(SensorEntity):

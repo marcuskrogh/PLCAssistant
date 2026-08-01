@@ -120,7 +120,7 @@ def test_options_flow_and_service_surface_in_integration_sources() -> None:
 
 def test_lovelace_documents_preset_chooser() -> None:
     text = (CC / "lovelace" / "plcassistant.yaml").read_text(encoding="utf-8")
-    assert "plcassistant_dashboard_version: 16" in text
+    assert "plcassistant_dashboard_version: 18" in text
     assert "sensor.plcassistant_dynamics_preset" in text
     assert "path: dynamics" in text
     assert "/api/plcassistant/dynamics/ui" in text
