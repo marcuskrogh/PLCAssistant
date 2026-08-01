@@ -1,97 +1,94 @@
-# Implementation plan: Soft-PLC program organization model (SWD-182)
+# Implementation plan: App engineering surface (SWD-181)
 
 ## Summary
-- Introduce Soft-PLC **project organization**: Soft-PLC → **Task(s)** → **Program(s)** → blocks.
-- Ship the **single tank example Program** under one default **Main** Task; the model **allows several Tasks**.
-- Preserve Soft-PLC **`scan_period_s`** as the single scan rate (MQTT status → integration mock).
-- Apply policy follows industrial practice: **Hot Apply** for Program logic/params; **Apply (restart)** for Task/Program structure.
-- Minimal App/API JSON exposure of the tree; visual navigator deferred to SWD-181.
-- Acceptance at **unit**, **integration**, and **system** (full HA + App + MQTT) levels.
+- Replace the empty/library-first App entry with a **mobile-first main page** of **Program cards**.
+- Open a Program into **Diagram | Log | Settings** (+ **Back** to main).
+- **Create** via a separate page → land on that Program’s **Diagram**; new Programs are **empty + unscheduled**.
+- Keep today’s Diagram **edit + Hot Apply / Apply restart**.
+- Scheduling UI deferred to [SWD-191](https://marcusknielsen.atlassian.net/browse/SWD-191); library-on-main / richer online stay on SWD-180 / SWD-183 / SWD-184.
+- Acceptance: **unit**, **integration**, **system**.
 
 ## Scope
 
 ### In
-- Naming/metaphor: Soft-PLC → Task → Program → blocks (hide Configuration/Resource; avoid “Application”)
-- Schema + persistence for project organization (versioned); **legacy flat Program YAML auto-migrates** to Soft-PLC + Main Task calling that Program
-- Runtime: one shared scan; Tasks run as **ordered priority passes**; each Task’s Program call list executes in order
-- Each Program on **at most one** Task; Programs on no Task remain **defined but unscheduled**
-- Tasks carry **priority + Program call order** only (no per-Task interval driving the scheduler)
-- Default wedge content: **one** tank Program + **one** Main Task that calls it; additional Tasks allowed (empty until filled)
-- Apply: structure changes → restart apply; Program body/params/wires → hot apply (existing hot-apply auth rules)
-- Soft-PLC continues exposing **`scan_period_s`** on MQTT; mock continues to apply it
-- Minimal HTTP/JSON API so App can get/put the Soft-PLC project tree (no full navigator UI)
-- Tests: unit + integration + **system** (HA + App + MQTT)
+- Main page: **one-column** Program cards (all viewports; mobile-first on every page)
+- Card primary: **Program name**; secondary: unified status **running | not running | unscheduled**; **health** symbol **ok | warning | error**; tertiary richer KPIs only if cheap/present
+- Always show the Program set (one card if only one Program)
+- Create Program: **separate page** (name + optional description) → Save/Create → **that Program’s Diagram**
+- New Programs: **empty**, **unscheduled** by default
+- Program shell: top bar **Diagram | Log | Settings** + **Back** to main
+- **Log**: chronological info/warn/error list for that Program
+- **Settings**: same fields as create; Save keeps blocks; **Delete** with **Are you sure?** confirm
+- Diagram: existing canvas editing + **Hot Apply** / Apply restart for the selected Program
+- Wire UI to Soft-PLC **project API** (list/create/update/delete Programs; load selected Program body)
+- Tests: unit + integration + system for load/navigate/create/settings/diagram/log paths
 
-### Out (later route Tasks / explicit defer)
-- Visual App navigator / canvas multi-program UI → SWD-181
-- Library inspectability + generic PID → SWD-180
-- Integration multi-datablock tag mapping UI → SWD-184
-- Online live-value / force UI → SWD-183
-- True multi-rate / preemptive Task intervals
-- Per-Task interval as scan driver
-- Same Program on multiple Tasks
-- IEC LD/ST languages; full vendor IDE clone
+### Out (extend roadmap — small Tasks, not this mammoth)
+- **Task/Program scheduling editor** → [SWD-191](https://marcusknielsen.atlassian.net/browse/SWD-191)
+- Library define/edit hosted on main page → **SWD-180**
+- Integration tag/datablock mapping → **SWD-184**
+- Rich live values / force / deep online → **SWD-183**
+- True multi-rate Task intervals; vendor IDE clone
 
 ## Decisions
 | Topic | Decision |
 |-------|----------|
-| Hierarchy naming | Soft-PLC → Task → Program → blocks |
-| Shipped example | One tank Program |
-| Multi-Task | Allowed; default one Main Task calling the tank Program |
-| Scan rate | Soft-PLC `scan_period_s` only; MQTT → mock |
-| Multi-Task semantics | One scan; priority-ordered Task passes |
-| Task fields (v1) | Priority + Program call list (no scheduling interval) |
-| Unscheduled Programs | Defined, not executed |
-| Program↔Task | At most one Task per Program |
-| Legacy YAML | Auto-wrap into Soft-PLC + Main + that Program |
-| Hot vs restart | Industrial: logic/params hot; structure restart |
-| App in this slice | Minimal API/JSON tree only |
-| System tests | Full HA + App + MQTT |
+| Entry UX | Always Program-cards main page (not auto-skip to single diagram) |
+| Naming | **Program** (not Application); Soft-PLC → Task → Program → blocks |
+| Status chip | One chip: running \| not running \| unscheduled |
+| Health | ok / warning / error symbol; details via Log inside Program |
+| Create | Separate page; then open new Program Diagram |
+| New Program | Empty + unscheduled |
+| Schedule | Deferred — SWD-191 |
+| Edit logic | Inside Diagram (Hot Apply kept) |
+| Rename/delete | Settings page; delete confirmed |
+| Create/Settings fields | Name + optional description (same set) |
+| Layout | One-column cards; mobile-first all pages |
+| Main page | Navigate + create (not in-place diagram edit) |
 
 ## Constraints
-- Soft-PLC remains mock-unaware (SWD-145); plant dynamics stay integration-owned
-- Existing apply auth: hot apply still superuser; restart always available
-- Dual trees (`plcassistant/` and packaged App) stay version-synced when shipping
-- Do not invent visual navigator scope here
+- Dual trees (`plcassistant/` ↔ packaged App) stay synced when shipping
+- Preserve SWD-182 project model and apply policy
+- Hot apply auth unchanged (superuser); restart always available
+- Soft-PLC remains mock-unaware
 
-## Inputs (supportive — not substitutes for decisions above)
-- Research: `docs/RESEARCH.md` (SWD-179)
-- Roadmap: `docs/ROADMAP.md` (SWD-178)
-- Existing: `docs/surface/01-block-model.md`, `04-apply-policy.md`, `scan_period_s` MQTT (SWD-145)
+## Inputs (supportive)
+- `docs/ROADMAP.md` (SWD-178), `docs/RESEARCH.md` (SWD-179), shipped SWD-182 (`/api/project`, Main + tank Program)
+- `docs/surface/05-app-editor.md`
 
 ## Acceptance criteria
-- [x] Project schema loads Soft-PLC with ≥1 Task and ≥0 Programs; validates “Program on at most one Task”
-- [x] Legacy flat Program YAML migrates to Soft-PLC + Main Task + that Program without manual edit
-- [x] Shipped tank example is one Program under Main; additional empty Tasks can be declared
-- [x] Scan executes Tasks by priority; unscheduled Programs do not run; `dt` from Soft-PLC `scan_period_s`
-- [x] MQTT status still publishes `scan_period_s`; mock steps using it (regression)
-- [x] Restart apply required for Task/Program structure changes; Hot Apply allowed for Program logic/params
-- [x] App/API returns/accepts Soft-PLC → Tasks → Programs JSON (minimal; no navigator UI required)
-- [x] **Unit** tests cover schema, migration, scheduling rules, apply classification
-- [x] **Integration** tests cover loader/runtime + MQTT `scan_period_s` with mock consumer
-- [x] **System** test: HA + App + MQTT path loads migrated tank project and runs Main Task successfully
+- [ ] App load shows main Program cards (including unscheduled); name is the dominant card label
+- [ ] Each card shows status (running / not running / unscheduled) and health (ok / warning / error)
+- [ ] Create Program → create page → Save → Diagram of new empty unscheduled Program; card appears on main after Back
+- [ ] Program top bar: Diagram | Log | Settings + Back to main
+- [ ] Log shows chronological info/warn/error entries (empty list OK)
+- [ ] Settings can rename/description-save without losing blocks; delete requires confirm and removes Program
+- [ ] Diagram retains edit + Hot Apply / Apply restart for the selected Program
+- [ ] Mobile: one-column cards; Diagram/Log/Settings/Create usable on narrow viewports
+- [ ] **Unit** tests for Program list/create/settings/delete and status/health derivation helpers
+- [ ] **Integration** tests for App HTTP + project API round-trips (create → get → settings → delete)
+- [ ] **System** test: HA + App path loads project, shows cards, opens tank Program diagram
 
 ## Work packages
-1. **Schema + migration** — Soft-PLC project model; legacy Program auto-wrap; validation (one Task per Program) — Done (SWD-187)
-2. **Runtime + apply** — priority Task passes in one scan; restart vs hot classification for structure vs logic — Done (SWD-185)
-3. **Wedge content** — ship single tank Program under Main Task; allow extra empty Tasks in schema — Done (SWD-188)
-4. **Minimal App/API** — get/put project tree JSON; keep canvas behavior compatible (single Program view OK) — Done (SWD-189)
-5. **Tests** — unit + integration + system (HA + App + MQTT) for setup/load/run of organized project — Done (SWD-186)
+1. **Main Program cards** — one-column overview; status + health; open Program — [SWD-190](https://marcusknielsen.atlassian.net/browse/SWD-190)
+2. **Program shell** — Diagram | Log | Settings + Back; mobile-first chrome — [SWD-192](https://marcusknielsen.atlassian.net/browse/SWD-192)
+3. **Create + Settings** — shared name/description form; create→Diagram; delete confirm; API wiring — [SWD-194](https://marcusknielsen.atlassian.net/browse/SWD-194)
+4. **Diagram binding** — selected Program canvas + Hot Apply / restart against project model — [SWD-195](https://marcusknielsen.atlassian.net/browse/SWD-195)
+5. **Tests** — unit + integration + system for the flows above — [SWD-193](https://marcusknielsen.atlassian.net/browse/SWD-193)
+6. **Roadmap extend** — scheduling editor Task [SWD-191](https://marcusknielsen.atlassian.net/browse/SWD-191); library-on-main stays SWD-180
 
-## Shipped
-- App **0.1.32**
-- SoftPlcProject / Task / ProjectLoader; GET/PUT `/api/project`
-- Legacy Program auto-migration; tank under Main
-- `scan_period_s` propagates project → skid → MQTT
-- PR [#76](https://github.com/marcuskrogh/PLCAssistant/pull/76)
+## Open items
+- Exact running/health signals available from today’s runtime vs thin stubs until SWD-183 deepens them (implement may stub honestly with clear semantics)
 
 ## Tracker
 - Provider: jira
 - Story: [SWD-178](https://marcusknielsen.atlassian.net/browse/SWD-178)
-- Task: [SWD-182](https://marcusknielsen.atlassian.net/browse/SWD-182)
-- Sub-tasks: SWD-187, SWD-185, SWD-188, SWD-189, SWD-186 (Done)
-- Branch: `cursor/swd-182-softplc-program-model-a52c`
-- PR: [#76](https://github.com/marcuskrogh/PLCAssistant/pull/76)
+- Task: [SWD-181](https://marcusknielsen.atlassian.net/browse/SWD-181)
+- Sub-tasks: SWD-190, SWD-192, SWD-194, SWD-195, SWD-193
+- Follow-on Task: [SWD-191](https://marcusknielsen.atlassian.net/browse/SWD-191) (scheduling editor)
+- Branch: `cursor/swd-181-app-engineering-surface-a52c`
+- PR: [#77](https://github.com/marcuskrogh/PLCAssistant/pull/77)
 
 ## Next
-Done — phase closed.
+`/review-fix SWD-181` — Review and auto-fix until clean
+(or `/ship SWD-181` to finish remaining through Done)

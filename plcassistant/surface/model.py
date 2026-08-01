@@ -123,6 +123,8 @@ class Program:
     * SWD-117 (apply policy): call program_from_dict on restart or hot-apply.
     """
 
+    name: str = ""
+    description: str = ""
     instances: dict[str, BlockInstance] = field(default_factory=dict)
     wires: list[Wire] = field(default_factory=list)
     execution_order: list[str] = field(default_factory=list)
