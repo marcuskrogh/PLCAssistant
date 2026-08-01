@@ -1,40 +1,44 @@
-# Iterate: PID cards Configuration error + default mode Remote
+# Iterate: Cascade reliability — HA freeze, Start path, Level Man / Flow Auto
 
 ## Prior work
-- Task: [SWD-219](https://marcusknielsen.atlassian.net/browse/SWD-219) (Relates SWD-183)
-- PRs: #82 (0.1.39), #81 (0.1.38)
+- Task: [SWD-220](https://marcusknielsen.atlassian.net/browse/SWD-220)
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/83 (App 0.1.40)
 - Spec context: `docs/io/06-pid-faceplate.md`, Operate Lovelace YAML
 
 ## Problem
-1. Operate dashboard shows **Configuration error** for PID / block-list custom cards.
-2. Level loop mode boots as **remote**; skid does not follow Manual/Auto operator path. Default must be **Manual**.
+1. After 0.1.40, HA Core tends to freeze / become unresponsive (cold-start Number hydrate publishes MQTT + locked file writes serially; plant sim ticks during setup).
+2. Hard to Start / cascade appears broken: Flow mode defaulted Manual so published `SP_FLOW=0` while Level Manual is correct.
+3. Operate primary control is Level REQ while default Level mode is Manual — writes do not move active SP. Level PID Auto row writes `SP_LEVEL_AUTO` but Soft-PLC mux prefers `SP_LEVEL_REQ`.
 
 ## Clarifications
-- Screenshot: fallback entities show Level loop mode = remote; three Configuration error cards above Process.
+- Cascade defaults must follow system semantics: **Level = Manual**, **Flow = Automatic**.
+- Start with defaults must run cascade (Level Man SP → flow Auto → CMD_SPEED).
+- Reliability/efficiency is in-scope; classic CV Manual remains out of scope.
 
 ## Acceptance criteria
-- [x] Lovelace PID + block-list cards register as storage-mode Lovelace resources (`?v=` cache-bust); YAML mode falls back to `add_extra_js_url`
-- [x] Card JS guards `customElements.define`; remove broken `getConfigElement` that returns a row element
-- [x] Default `LEVEL_MODE` / `FLOW_MODE` = Manual (`0`) in Soft-PLC Datablock, HA catalog, Number meta, Soft-PLC mux fallback, compound sensor initial state
-- [x] Number entity setup/hydration must not mode-flip when publishing default MAN/REM SP values
-- [x] Stock Operate dashboard version bumped so App refresh picks up card registration notes
-- [x] Tests cover defaults, no-flip-on-hydrate, and resource-registration source contract
-- [x] App/integration **0.1.40**; dual trees synced
+- [x] `LEVEL_MODE` default Manual (`0`); `FLOW_MODE` default Automatic (`1`) in Soft-PLC Datablock, HA catalog, Number meta
+- [x] Cold start: operator IN defaults seeded **once** (batched `in_values` + single file write); Numbers **do not** per-entity MQTT/file publish in `async_added_to_hass`
+- [x] Plant simulator starts **after** platform entity setup; tick period not tighter than scan period (≤10 Hz)
+- [x] Lovelace card resource registration is idempotent (once per Core process)
+- [x] Level PID `sp_auto_entity` writes `SP_LEVEL_REQ` (mux Automatic writer); Operate board primary SP is Level Man
+- [x] With defaults only: Start → RUNNING and Soft-PLC publishes non-zero cascade `SP_FLOW` / `CMD_SPEED` when level error exists (regression test)
+- [x] App/integration **0.1.41**; dashboard version bump; dual trees synced; tests green
 
 ## Out of scope
-- Classic CV Manual / output Manual
-- Redesigning faceplate UX beyond making cards work + Manual default
+- Full output-manual / bumpless flow CV override
+- Redesigning the entire Operate UX beyond Start/wiring reliability
 
 ## Work packages
-1. Lovelace resource registration + card JS hardening
-2. Manual default + no mode-flip on hydrate
-3. Tests + version + docs
+1. Cascade mode defaults (Level Man / Flow Auto)
+2. Cold-start seed batch + defer plant sim + Lovelace register once
+3. Faceplate / Operate wiring (REQ ↔ Auto, Man primary)
+4. Tests + version + docs
 
 ## Tracker
-- Task: [SWD-220](https://marcusknielsen.atlassian.net/browse/SWD-220)
-- Relates: SWD-219
-- Branch: `cursor/swd-220-pid-cards-manual-default-a52c`
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/83 (App 0.1.40)
+- Task: [SWD-221](https://marcusknielsen.atlassian.net/browse/SWD-221)
+- Relates: SWD-220
+- Branch: `cursor/swd-221-cascade-reliability-a52c`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/84 (App 0.1.41)
 - Review-fix: CLEAN after 2 iterations
 
 ## Next

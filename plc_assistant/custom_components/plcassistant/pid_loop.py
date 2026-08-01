@@ -24,7 +24,7 @@ _LEVEL = {
     "pv": "LT_TANK",
     "sp": "SP_LEVEL",
     "sp_man": "SP_LEVEL_MAN",
-    "sp_auto": "SP_LEVEL_AUTO",
+    "sp_auto": "SP_LEVEL_REQ",
     "sp_rem": "SP_LEVEL_REM",
     "mode": "LEVEL_MODE",
     "cv": "SP_FLOW",
@@ -34,7 +34,7 @@ _LEVEL = {
     "pv_entity": "sensor.plcassistant_lt_tank_in",
     "sp_entity": "sensor.plcassistant_sp_level",
     "sp_man_entity": "number.plcassistant_sp_level_man",
-    "sp_auto_entity": "number.plcassistant_sp_level_auto",
+    "sp_auto_entity": "number.plcassistant_sp_level_req",
     "sp_rem_entity": "number.plcassistant_sp_level_rem",
     "mode_entity": "number.plcassistant_level_mode",
     "cv_entity": "sensor.plcassistant_sp_flow",
@@ -166,7 +166,10 @@ class PlcAssistantPidLoopSensor(SensorEntity):
         object_id = f"plcassistant_pid_{loop_id}"
         self._attr_suggested_object_id = object_id
         self.entity_id = f"sensor.{object_id}"
-        self._attr_native_value = "manual"
+        # Cascade demo: level Manual, flow Automatic until store hydrate.
+        self._attr_native_value = (
+            "automatic" if loop_id == "flow" else "manual"
+        )
         self._attr_extra_state_attributes = self._empty_attrs()
         self._watch_tags = frozenset(
             {

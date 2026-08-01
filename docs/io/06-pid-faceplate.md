@@ -71,5 +71,7 @@ JS is served from `/plcassistant_static/` and registered as Lovelace
 YAML mode falls back to `frontend.add_extra_js_url`). Fallback entity rows
 remain on the Operate board if custom cards are not loaded.
 
-Default SP-source mode is **Manual** for both loops (SWD-220). Setup
-hydration of Man/Rem SP Numbers must not mode-flip.
+Cascade demo defaults (SWD-221): Level **Manual**, Flow **Automatic**.
+Operator IN defaults are batch-seeded once at setup (no per-Number MQTT/file
+storm). Level faceplate Automatic writes ``SP_LEVEL_REQ`` (the mux Automatic
+writer). Setup hydration of Man/Rem SP Numbers must not mode-flip.

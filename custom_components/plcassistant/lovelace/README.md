@@ -90,6 +90,11 @@ If personal boards still show unavailable plant Numbers, delete stale unavailabl
 entities in the entity registry (or remove/re-add the integration). Update any
 personal dashboards that still reference plant Numbers for Process display.
 
+**0.1.41** cascade defaults Level Manual / Flow Automatic, batch-seeds operator
+IN (no cold-start Number publish storm), defers plant sim until after entity
+setup, Level PID Auto writes ``SP_LEVEL_REQ``. Stock Lovelace refreshes to
+dashboard version **20**.
+
 **0.1.40** registers PID Lovelace cards as dashboard resources (fixes Configuration error),
 defaults SP-source mode to **Manual**, and avoids mode-flip on Number setup hydration.
 Stock Lovelace refreshes to dashboard version **19**.

@@ -21,7 +21,7 @@ from .plant import PlantSimulator
 
 _LOGGER = logging.getLogger(__name__)
 
-_POLL_S = 0.05
+_POLL_S = 0.1
 
 
 class HassPlantSimulator:
