@@ -81,6 +81,9 @@ async def _async_register_lovelace_cards(hass: HomeAssistant) -> None:
     races cold-start renders and surfaces Configuration error / missing custom
     elements. Prefer resource registration with ``?v=`` cache-bust.
     """
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    if domain_data.get("lovelace_cards_registered"):
+        return
     www = Path(__file__).resolve().parent / "www"
     if not www.is_dir():
         return
@@ -107,11 +110,11 @@ async def _async_register_lovelace_cards(hass: HomeAssistant) -> None:
         version = str(integration.version or version)
     except Exception:  # noqa: BLE001
         try:
-            import json as _json
-
-            manifest = _json.loads(
-                (Path(__file__).resolve().parent / "manifest.json").read_text(
-                    encoding="utf-8"
+            manifest = await hass.async_add_executor_job(
+                lambda: json.loads(
+                    (Path(__file__).resolve().parent / "manifest.json").read_text(
+                        encoding="utf-8"
+                    )
                 )
             )
             version = str(manifest.get("version") or version)
@@ -121,6 +124,7 @@ async def _async_register_lovelace_cards(hass: HomeAssistant) -> None:
     for name in _FRONTEND_JS:
         base = f"{_STATIC_URL_PATH}/{name}"
         await _async_register_frontend_card(hass, base, version)
+    domain_data["lovelace_cards_registered"] = True
 
 
 async def _async_register_frontend_card(
@@ -448,6 +452,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         _LOGGER.exception("PLCAssistant: Datablock API setup failed")
 
     # SWD-146/143: integration-owned plant simulator (mock_mode only).
+    # Construct early so Numbers/Sensors can resolve ownership, but start the
+    # tick loop *after* platform setup (SWD-221 — avoid competing with entity add).
+    plant_sim = None
     if mock_mode:
         from .dynamics.options import resolve_dynamics_options, validate_preset
         from .dynamics.simulator import HassPlantSimulator
@@ -477,7 +484,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         cached_cmd = (store.get("out_values") or {}).get("CMD_SPEED")
         if cached_cmd is not None:
             plant_sim.apply_cmd_from_payload(cached_cmd)
-        await plant_sim.async_start()
 
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
 
@@ -491,6 +497,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             _LOGGER.debug(
                 "PLCAssistant: plant Number registry cleanup failed", exc_info=True
             )
+
+    # SWD-221: one batch seed into in_values (+ file) before Numbers add.
+    if mock_mode:
+        try:
+            from .number import async_seed_operator_defaults
+
+            await async_seed_operator_defaults(
+                hass,
+                entry.entry_id,
+                instance_id=instance_id,
+                config_root=config_root,
+            )
+        except Exception:  # noqa: BLE001 — never block setup on seed
+            _LOGGER.debug("PLCAssistant: operator IN seed failed", exc_info=True)
+
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    if plant_sim is not None:
+        await plant_sim.async_start()
 
     async def _poll_file_bridge() -> None:
         entry_id = entry.entry_id
@@ -528,8 +553,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     except AttributeError:
         poll_task = hass.async_create_task(_poll_file_bridge())
     hass.data[DOMAIN][entry.entry_id]["poll_task"] = poll_task
-
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     # Default Lovelace board in the HA sidebar (SWD-134) — no copy/paste.
     try:

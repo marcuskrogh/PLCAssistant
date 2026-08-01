@@ -14,7 +14,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import CONF_BINDINGS, CONF_INSTANCE_ID, CONF_MOCK_MODE, DOMAIN
 from .entity_cleanup import expected_plant_number_unique_id
-from .ha_config_bridge import write_input_tag
+from .ha_config_bridge import write_input_tag, write_input_tags
 from .mqtt_topics import tag_in_topic
 
 # Friendly operator ranges for known IN tags (request SP + plant nudges + PID).
@@ -61,7 +61,7 @@ _TAG_META: dict[str, dict] = {
         "max": 2.0,
         "step": 1.0,
         "object_id": "plcassistant_level_mode",
-        "default": 0.0,  # Manual (SWD-220)
+        "default": 0.0,  # Manual — cascade primary (SWD-221)
     },
     "SP_FLOW_MAN": {
         "name": "PLCAssistant Flow SP (manual)",
@@ -87,7 +87,7 @@ _TAG_META: dict[str, dict] = {
         "max": 2.0,
         "step": 1.0,
         "object_id": "plcassistant_flow_mode",
-        "default": 0.0,  # Manual (SWD-220)
+        "default": 1.0,  # Automatic — cascade slave (SWD-221)
     },
     "LEVEL_KP": {
         "name": "PLCAssistant Level Kp",
@@ -210,6 +210,84 @@ _FILE_BRIDGE_IN_TAGS = frozenset(
         "FLOW_KD",
     }
 )
+
+
+def _eng_payload(eng: float) -> str:
+    return json.dumps(
+        {"value": float(eng), "status": "GOOD", "reason": None, "ts": None}
+    )
+
+
+def default_operator_in_seeds() -> dict[str, float]:
+    """Engineering defaults for non-plant operator Numbers (no mode-flip)."""
+    seeds: dict[str, float] = {}
+    for tag, meta in _TAG_META.items():
+        if tag in _PLANT_IN_TAGS:
+            continue
+        if "default" not in meta:
+            continue
+        seeds[tag] = float(meta["default"])
+    # Keep Automatic writer + AUTO tag aligned for faceplate/mux.
+    if "SP_LEVEL_REQ" in seeds and "SP_LEVEL_AUTO" in seeds:
+        seeds["SP_LEVEL_AUTO"] = seeds["SP_LEVEL_REQ"]
+    return seeds
+
+
+async def async_seed_operator_defaults(
+    hass: HomeAssistant,
+    entry_id: str,
+    *,
+    instance_id: str,
+    config_root: Path | None,
+) -> None:
+    """Batch-seed operator IN cache (+ one file write) before entity platforms.
+
+    Avoids SWD-220 cold-start freeze: per-Number MQTT + locked ``inputs.json``
+    publishes inside ``async_added_to_hass``. MQTT burst is backgrounded.
+    """
+    store = hass.data.get(DOMAIN, {}).get(entry_id)
+    if not isinstance(store, dict):
+        return
+    in_values = store.setdefault("in_values", {})
+    seeds = default_operator_in_seeds()
+    file_batch: dict[str, float] = {}
+    mqtt_batch: list[tuple[str, str]] = []
+    for tag, eng in seeds.items():
+        key = str(tag).upper()
+        if key in in_values:
+            continue
+        payload = _eng_payload(eng)
+        in_values[key] = payload
+        mqtt_batch.append((key, payload))
+        if key in _FILE_BRIDGE_IN_TAGS:
+            file_batch[key] = eng
+    if file_batch and isinstance(config_root, Path):
+        await hass.async_add_executor_job(write_input_tags, file_batch, config_root)
+
+    async def _bg_mqtt() -> None:
+        for tag, payload in mqtt_batch:
+            try:
+                await hass.services.async_call(
+                    "mqtt",
+                    "publish",
+                    {
+                        "topic": tag_in_topic(instance_id, tag),
+                        "payload": payload,
+                        "qos": 0,
+                        "retain": True,
+                    },
+                    blocking=False,
+                )
+            except Exception:  # noqa: BLE001 — never abort setup on seed MQTT
+                return
+
+    if mqtt_batch:
+        try:
+            hass.async_create_background_task(
+                _bg_mqtt(), name=f"{DOMAIN}_seed_mqtt_{entry_id}"
+            )
+        except AttributeError:
+            hass.async_create_task(_bg_mqtt())
 
 
 def _object_id_from_entity(entity: str, fallback: str) -> str:
@@ -385,6 +463,9 @@ class PlcAssistantRequestNumber(NumberEntity):
         # Keep Automatic source in sync when the legacy request SP is written.
         if self._tag == "SP_LEVEL_REQ":
             await self._publish_in_tag("SP_LEVEL_AUTO", eng)
+        elif self._tag == "SP_LEVEL_AUTO":
+            # Faceplate Auto and REQ are the same Automatic writer for the demo.
+            await self._publish_in_tag("SP_LEVEL_REQ", eng)
         self.async_write_ha_state()
 
     async def async_added_to_hass(self) -> None:
@@ -447,13 +528,9 @@ class PlcAssistantRequestNumber(NumberEntity):
         if cached and self._apply_payload(str(cached)):
             self.async_write_ha_state()
             hydrated = True
+        # SWD-221: defaults are batch-seeded in async_setup_entry — do not
+        # per-entity MQTT/file publish here (that froze Core on cold start).
         if not hydrated and self._attr_native_value is not None:
-            # Publish defaults without MAN/REM mode-flip (SWD-220): setup must
-            # not force Remote just because SP_*_REM is seeded.
-            eng = (float(self._attr_native_value) * self._scale) + self._offset
-            await self._publish_in_tag(self._tag, eng)
-            if self._tag == "SP_LEVEL_REQ":
-                await self._publish_in_tag("SP_LEVEL_AUTO", eng)
             self.async_write_ha_state()
         else:
             self.async_write_ha_state()

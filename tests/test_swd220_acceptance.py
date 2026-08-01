@@ -1,4 +1,4 @@
-"""SWD-220: PID cards resource registration + Manual SP-source default."""
+"""SWD-220: PID cards resource registration + Manual level default (updated SWD-221)."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ def test_unit_mode_defaults_are_manual() -> None:
     block = default_tank_datablock_catalog().get("DB_Tank")
     assert block is not None
     assert float(block.tags["LEVEL_MODE"].default) == pytest.approx(0.0)
-    assert float(block.tags["FLOW_MODE"].default) == pytest.approx(0.0)
+    assert float(block.tags["FLOW_MODE"].default) == pytest.approx(1.0)  # cascade slave (SWD-221)
 
     meta = (ROOT / "number.py").read_text(encoding="utf-8")
     assert '"object_id": "plcassistant_level_mode"' in meta
@@ -23,7 +23,7 @@ def test_unit_mode_defaults_are_manual() -> None:
     level_block = meta.split('"LEVEL_MODE":', 1)[1].split('"SP_FLOW_MAN"', 1)[0]
     assert '"default": 0.0' in level_block
     flow_block = meta.split('"FLOW_MODE":', 1)[1].split('"LEVEL_KP"', 1)[0]
-    assert '"default": 0.0' in flow_block
+    assert '"default": 1.0' in flow_block
 
 
 def test_unit_skid_missing_mode_defaults_manual() -> None:
@@ -60,16 +60,14 @@ def test_unit_skid_missing_mode_defaults_manual() -> None:
 
 
 def test_integration_hydrate_publish_does_not_reference_flip_path() -> None:
-    """Setup seed path must call _publish_in_tag, not async_set_native_value (no flip)."""
+    """Setup must not mode-flip: batch seed + hydrate-only async_added_to_hass."""
     text = (ROOT / "number.py").read_text(encoding="utf-8")
-    # Isolate the non-simulator async_added_to_hass seed branch.
+    assert "async def async_seed_operator_defaults" in text
     added = text.split("async def async_added_to_hass", 1)[1]
     seed = added.split("async def _on_tag_in", 1)[0]
-    assert "await self._publish_in_tag(self._tag, eng)" in seed
+    assert "await self._publish_in_tag(self._tag, eng)" not in seed
     assert "async_set_native_value" not in seed
     assert "_sp_mode_flip_map" not in seed
-    # Flip remains only on explicit operator writes.
-    assert "async def async_set_native_value" in text
     set_fn = text.split("async def async_set_native_value", 1)[1].split(
         "async def async_added_to_hass", 1
     )[0]
@@ -90,7 +88,7 @@ def test_system_lovelace_resource_registration() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
     assert '"after_dependencies"' in manifest
     assert '"lovelace"' in manifest
-    assert '"0.1.40"' in manifest
+    assert '"0.1.41"' in manifest
 
     pid = (ROOT / "www" / "pid-loop-card.js").read_text(encoding="utf-8")
     assert 'customElements.get("plcassistant-pid-card")' in pid
@@ -101,7 +99,7 @@ def test_system_lovelace_resource_registration() -> None:
     assert 'customElements.get("plcassistant-block-list-card")' in block
 
     dash = (ROOT / "lovelace" / "plcassistant.yaml").read_text(encoding="utf-8")
-    assert "plcassistant_dashboard_version: 19" in dash
+    assert "plcassistant_dashboard_version: 20" in dash
 
 
 def test_integration_ha_catalog_mode_default_parity() -> None:
@@ -132,3 +130,6 @@ def test_integration_ha_catalog_mode_default_parity() -> None:
     assert float(soft_block.tags["LEVEL_MODE"].default) == float(
         ha_block.tags["LEVEL_MODE"].default
     ) == pytest.approx(0.0)
+    assert float(soft_block.tags["FLOW_MODE"].default) == float(
+        ha_block.tags["FLOW_MODE"].default
+    ) == pytest.approx(1.0)

@@ -1,4 +1,4 @@
-# plcassistant_dashboard_version: 19
+# plcassistant_dashboard_version: 20
 title: PLCAssistant
 views:
   - title: Operate
@@ -21,7 +21,7 @@ views:
             name: Trip active
       - type: markdown
         content: |
-          **PLCAssistant** — Soft-PLC skid HMI (**Operate**). Soft-PLC must show **stopped** (not offline) before Start works. Open the **Dynamics** tab to edit unit-op / ODE **state equations** and Soft-PLC **measurement equations** (App **0.1.26+**). Soft-PLC stays mock-unaware (`HeldProcess`). Process rows are live plant **sensors** (App **0.1.29+**); Numbers remain available for plant nudges. **0.1.40+** PID faceplates default to **Manual** SP source; Lovelace cards register as dashboard resources. Update App, wait for Core reload, then hard-refresh this board. Confirm Mosquitto + matching `instance_id` if still offline. Change the **Level SP Man**, press **Start**, then watch levels, inlet flow, and pump speed.
+          **PLCAssistant** — Soft-PLC skid HMI (**Operate**). Soft-PLC must show **stopped** (not offline) before Start works. Open the **Dynamics** tab to edit unit-op / ODE **state equations** and Soft-PLC **measurement equations** (App **0.1.26+**). Soft-PLC stays mock-unaware (`HeldProcess`). Process rows are live plant **sensors** (App **0.1.29+**); Numbers remain available for plant nudges. **0.1.41+** cascade defaults: Level **Manual**, Flow **Automatic**. Cold-start no longer storms MQTT/file from every Number. Soft-PLC must show **stopped** before Start. Change **Level SP Man**, press **Start**, then watch Active flow SP / pump speed. Level Automatic uses the request SP (faceplate Auto).
       - type: entities
         title: Operate
         show_header_toggle: false
@@ -32,8 +32,10 @@ views:
             name: Stop
           - entity: button.plcassistant_reset
             name: Reset
+          - entity: number.plcassistant_sp_level_man
+            name: Level SP Man (default)
           - entity: number.plcassistant_sp_level_req
-            name: Level setpoint (request)
+            name: Level SP Auto (request)
       - type: custom:plcassistant-pid-card
         entity: sensor.plcassistant_pid_level
         title: Level PID
@@ -62,7 +64,7 @@ views:
           - entity: number.plcassistant_sp_flow_rem
             name: Flow SP Rem
           - entity: number.plcassistant_flow_mode
-            name: Flow mode (0 Man / 1 Auto / 2 Rem)
+            name: Flow mode (default Auto cascade)
       - type: entities
         title: Process (IN — live simulator)
         show_header_toggle: false

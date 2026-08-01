@@ -92,6 +92,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-178 | Story | Industrial-parity Soft-PLC programming surface (multi-program) | Done | — | docs/ROADMAP.md, docs/RESEARCH.md, docs/PLAN.md | Done — initiative complete |
 | SWD-183 | Task | Online / runtime visibility + PID HMI faceplates | Done | Relates SWD-178; blocked by SWD-181 | docs/PLAN.md | Done — shipped PR [#81](https://github.com/marcuskrogh/PLCAssistant/pull/81) (App 0.1.38) |
 | SWD-219 | Bug | [Iterate] Integration setup fails: No module named plcassistant.io | Done | Relates SWD-183 | docs/ITERATE.md | Done — shipped PR [#82](https://github.com/marcuskrogh/PLCAssistant/pull/82) (App 0.1.39) |
+| SWD-221 | Bug | [Iterate] Cascade reliability: HA freeze, Start path, Level Man / Flow Auto defaults | In Progress | Relates SWD-220 | docs/ITERATE.md | `/review-fix SWD-221` |
 | SWD-220 | Bug | [Iterate] PID cards Configuration error + default mode Remote (should be Manual) | Done | Relates SWD-219 | docs/ITERATE.md | Done — shipped PR [#83](https://github.com/marcuskrogh/PLCAssistant/pull/83) (App 0.1.40) |
 | SWD-217 | Subtask | SWD-183: PID SP-source mode logic + Datablock tag contract | Done | SWD-183 | docs/PLAN.md | — |
 | SWD-214 | Subtask | SWD-183: HA compound PID loop entity platform | Done | SWD-183 | docs/PLAN.md | — |
@@ -136,6 +137,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
+- 2026-08-01 — Iterate SWD-221: HA freeze + Level Man / Flow Auto cascade defaults (App 0.1.41); Relates SWD-220.
 - 2026-08-01 — Shipped SWD-220 via PR #83 (App 0.1.40); review-fix CLEAN after 2 iters; Task Done.
 - 2026-08-01 — Implement SWD-220: Lovelace resource registration + Manual SP-source default (App 0.1.40); PR [#83](https://github.com/marcuskrogh/PLCAssistant/pull/83) → In Review. Next `/review-fix SWD-220`.
 - 2026-08-01 — Iterate SWD-220: PID cards Configuration error + mode Remote by default; Relates SWD-219; App 0.1.40.
