@@ -187,6 +187,8 @@ def test_ensure_refreshes_stock_board_old_dashboard_version(tmp_path) -> None:
     assert "plcassistant_dashboard_version: 16" in text
     assert "path: dynamics" in text
     assert "/api/plcassistant/dynamics/ui" in text
+    assert "path: datablocks" in text
+    assert "/api/plcassistant/datablocks/ui" in text
     assert "sensor.plcassistant_lt_tank_in" in text
     assert "entity: number.plcassistant_lt_tank_in" not in text
     assert "0.1.29" in text or "sensors" in text.lower()

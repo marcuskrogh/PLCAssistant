@@ -6,18 +6,29 @@ constructor without an import cycle.
 
 from __future__ import annotations
 
+from plcassistant.io.datablock import (
+    default_program_datablock_access,
+    default_tank_datablock_catalog,
+    program_accessible_tags,
+    union_program_access_ids,
+)
 from plcassistant.io.image import IoImage
-from plcassistant.io.mqtt_entity_bridge import default_wedge_binding_config
 
 
 def declare_default_image(image: IoImage | None = None) -> IoImage:
-    """Declare default packaging tags on an image."""
+    """Declare tags from Programs' Datablock access (demo: tank → DB_Tank)."""
     if image is None:
         image = IoImage()
-    cfg = default_wedge_binding_config()
-    for name, meta in cfg["tags"].items():
+    catalog = default_tank_datablock_catalog()
+    access_ids = union_program_access_ids(default_program_datablock_access())
+    table = catalog.binding_table_for(access_ids)
+    # Soft-PLC visibility = tags from accessible Datablocks only.
+    allowed = program_accessible_tags(catalog, access_ids)
+    for name, decl in table.tags.items():
+        if name not in allowed:
+            continue
         if name not in image.names():
-            image.declare(name, default=meta.get("default", 0.0))
+            image.declare(name, default=decl.default)
     return image
 
 

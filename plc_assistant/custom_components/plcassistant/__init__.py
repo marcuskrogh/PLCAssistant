@@ -67,20 +67,19 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 
 def _default_bindings() -> list[dict]:
-    """Default mock bindings from the rebuilt ``DB_Tank`` Datablock (SWD-184)."""
-    from plcassistant.io.datablock import default_tank_datablock_catalog
+    """Default mock bindings from demo Program Datablock access (SWD-184)."""
+    from plcassistant.io.datablock import (
+        binding_rows_from_table,
+        default_program_datablock_access,
+        default_tank_datablock_catalog,
+        union_program_access_ids,
+    )
 
-    table = default_tank_datablock_catalog().binding_table_for(["DB_Tank"])
-    return [
-        {
-            "tag": b.tag,
-            "entity": b.entity,
-            "direction": b.direction.value,
-            "scale": b.scale,
-            "offset": b.offset,
-        }
-        for b in table.bindings
-    ]
+    catalog = default_tank_datablock_catalog()
+    table = catalog.binding_table_for(
+        union_program_access_ids(default_program_datablock_access())
+    )
+    return binding_rows_from_table(table)
 
 
 def _apply_file_runtime(hass: HomeAssistant, entry_id: str, snap: dict) -> None:
@@ -132,17 +131,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     instance_id = entry.data.get(CONF_INSTANCE_ID, DEFAULT_INSTANCE_ID)
     config_root = Path(hass.config.path())
     bindings = entry.data.get(CONF_BINDINGS) or _default_bindings()
-    # Prefer Datablock store when present (SWD-184).
+    # Prefer Datablock store when load succeeds (SWD-184), including empty rows.
     try:
         from .datablocks.store import binding_rows_from_store, load_store
 
         store_payload = await hass.async_add_executor_job(load_store, config_root)
         store_rows = binding_rows_from_store(store_payload)
-        if store_rows:
-            bindings = store_rows
-            hass.data[DOMAIN]["datablock_store"] = store_payload
-            hass.data[DOMAIN]["datablock_bindings"] = store_rows
-    except Exception:  # noqa: BLE001 — fall back to entry/default bindings
+        bindings = store_rows
+        hass.data[DOMAIN]["datablock_store"] = store_payload
+        hass.data[DOMAIN]["datablock_bindings"] = store_rows
+    except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError):
         _LOGGER.exception("PLCAssistant: Datablock store load failed; using entry bindings")
     mock_mode = entry.data.get(CONF_MOCK_MODE, True)
 

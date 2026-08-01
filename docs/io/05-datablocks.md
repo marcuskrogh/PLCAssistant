@@ -29,7 +29,20 @@ they can access and only see those tags.
 ```
 
 Persisted under `config/plcassistant/datablocks.json`. Binding uniqueness rules
-from the binding model still apply when Datablocks are merged for a Program.
+from the [binding model](02-binding-model.md) still apply when Datablocks are
+merged for accessible Programs.
+
+## Ownership
+
+| Concern | Owner |
+|---------|-------|
+| Datablock CRUD + bindings | HA integration store + panel |
+| Program ↔ Datablock assignment | HA `program_access` (source of truth for wiring) |
+| Soft-PLC tag visibility | Soft-PLC `Program.datablocks` (demo mirrors HA access) |
+| Apply into MQTT / entities | HA `POST …/apply` updates entry `bindings` and reloads |
+
+Keep Soft-PLC `Program.datablocks` aligned with HA `program_access` for the same
+program ids. The packaging image declares only tags from the demo access map.
 
 ## Soft-PLC
 
@@ -37,13 +50,16 @@ from the binding model still apply when Datablocks are merged for a Program.
 
 - `plcassistant.io.datablock.DatablockCatalog`
 - `program_accessible_tags(catalog, program.datablocks)`
+- `declare_default_image()` — declares tags from demo Program access only
 
 The rebuilt demo uses `DB_Tank` and `tank` Program access. Flat
-`default_wedge_binding_config()` is now a view of `DB_Tank` for legacy callers.
+`default_wedge_binding_config()` is now a view of that access union for legacy
+callers.
 
 ## Panel
 
-Lovelace **Datablocks** tab embeds `/api/plcassistant/datablocks/ui`. APIs:
+Lovelace **Datablocks** tab embeds `/api/plcassistant/datablocks/ui`. The SPA
+prefers `hass.callApi` (same pattern as Dynamics). APIs:
 
 | Method | Path | Role |
 |--------|------|------|
@@ -51,4 +67,4 @@ Lovelace **Datablocks** tab embeds `/api/plcassistant/datablocks/ui`. APIs:
 | POST | `/api/plcassistant/datablocks` | Create |
 | PUT/DELETE | `/api/plcassistant/datablocks/{id}` | Update/delete |
 | GET/PUT | `/api/plcassistant/datablocks/access` | Program access |
-| POST | `/api/plcassistant/datablocks/apply` | Flatten into runtime binding cache |
+| POST | `/api/plcassistant/datablocks/apply` | Write accessible bindings into entry + reload |

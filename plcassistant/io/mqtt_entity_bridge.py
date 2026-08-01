@@ -116,30 +116,29 @@ class MqttEntityBridge:
 
 
 def default_wedge_binding_config() -> dict[str, Any]:
-    """Demo process I/O bindings from the rebuilt ``DB_Tank`` Datablock (SWD-184).
+    """Demo process I/O bindings from Programs' Datablock access (SWD-184).
 
     Prefer ``default_tank_datablock_catalog`` for Datablock-aware callers.
     This helper remains for BindingTable consumers and returns the merged
-    flat tags+bindings view of ``DB_Tank``.
+    flat tags+bindings view for the demo Program access map.
     """
-    from plcassistant.io.datablock import default_tank_datablock_catalog
+    from plcassistant.io.datablock import (
+        binding_rows_from_table,
+        default_program_datablock_access,
+        default_tank_datablock_catalog,
+        union_program_access_ids,
+    )
 
-    table = default_tank_datablock_catalog().binding_table_for(["DB_Tank"])
+    catalog = default_tank_datablock_catalog()
+    table = catalog.binding_table_for(
+        union_program_access_ids(default_program_datablock_access())
+    )
     return {
         "tags": {
             name: {"default": decl.default, "unit": decl.unit}
             for name, decl in table.tags.items()
         },
-        "bindings": [
-            {
-                "tag": b.tag,
-                "entity": b.entity,
-                "direction": b.direction.value,
-                "scale": b.scale,
-                "offset": b.offset,
-            }
-            for b in table.bindings
-        ],
+        "bindings": binding_rows_from_table(table),
     }
 
 

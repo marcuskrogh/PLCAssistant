@@ -55,23 +55,22 @@ def test_ha_default_bindings_match_app_wedge_config():
 
     init_path = pathlib.Path("custom_components/plcassistant/__init__.py")
     # Load only the helper by exec'ing a stub-free fragment via catalog.
-    from plcassistant.io.datablock import default_tank_datablock_catalog
+    from plcassistant.io.datablock import (
+        binding_rows_from_table,
+        default_program_datablock_access,
+        default_tank_datablock_catalog,
+        union_program_access_ids,
+    )
 
-    table = default_tank_datablock_catalog().binding_table_for(["DB_Tank"])
-    ha_bindings = [
-        {
-            "tag": b.tag,
-            "entity": b.entity,
-            "direction": b.direction.value,
-            "scale": b.scale,
-            "offset": b.offset,
-        }
-        for b in table.bindings
-    ]
+    table = default_tank_datablock_catalog().binding_table_for(
+        union_program_access_ids(default_program_datablock_access())
+    )
+    ha_bindings = binding_rows_from_table(table)
     # Confirm __init__ still builds defaults from the Datablock catalog.
     text = init_path.read_text(encoding="utf-8")
     assert "default_tank_datablock_catalog" in text
     assert "_default_bindings" in text
+    assert "binding_rows_from_table" in text
 
     app_bindings = default_wedge_binding_config()["bindings"]
     assert ha_bindings == app_bindings

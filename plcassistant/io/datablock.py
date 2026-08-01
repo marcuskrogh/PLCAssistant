@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Mapping
 
-from plcassistant.io.binding import Binding, BindingTable, Direction, TagDecl, _parse_direction
+from plcassistant.io.binding import Binding, BindingTable, TagDecl
 
 
 @dataclass
@@ -102,6 +102,8 @@ class DatablockCatalog:
             if not isinstance(payload, Mapping):
                 raise ValueError(f"datablock {db_id!r} must be a mapping")
             block = datablock_from_dict(payload, datablock_id=str(db_id))
+            # Validate BindingTable rules per block on load.
+            block.binding_table()
             blocks[block.datablock_id] = block
         return cls(blocks)
 
@@ -137,46 +139,17 @@ def datablock_from_dict(
     db_id = str(datablock_id or data.get("id") or "").strip()
     if not db_id:
         raise ValueError("datablock id required")
-    raw_tags = data.get("tags") or {}
-    if not isinstance(raw_tags, Mapping):
-        raise ValueError("datablock 'tags' must be a mapping")
-    tags: dict[str, TagDecl] = {}
-    for name, spec in raw_tags.items():
-        if not isinstance(spec, Mapping):
-            raise ValueError(f"tag {name!r} spec must be a mapping")
-        if "default" not in spec:
-            raise ValueError(f"tag {name!r} requires 'default'")
-        tags[str(name)] = TagDecl(
-            name=str(name),
-            default=spec["default"],
-            unit=spec.get("unit"),
-        )
-    raw_bindings = data.get("bindings") or []
-    if not isinstance(raw_bindings, list):
-        raise ValueError("datablock 'bindings' must be a list")
-    bindings: list[Binding] = []
-    for i, item in enumerate(raw_bindings):
-        if not isinstance(item, Mapping):
-            raise ValueError(f"bindings[{i}] must be a mapping")
-        for key in ("tag", "entity", "direction"):
-            if key not in item:
-                raise ValueError(f"bindings[{i}] missing required key {key!r}")
-        bindings.append(
-            Binding(
-                tag=str(item["tag"]),
-                entity=str(item["entity"]),
-                direction=_parse_direction(item["direction"]),
-                scale=float(item.get("scale", 1.0)),
-                offset=float(item.get("offset", 0.0)),
-                entity_unit=item.get("entity_unit"),
-                treat_uncertain_as_good=bool(item.get("treat_uncertain_as_good", False)),
-            )
-        )
+    table = BindingTable.from_config(
+        {
+            "tags": data.get("tags") or {},
+            "bindings": data.get("bindings") or [],
+        }
+    )
     return Datablock(
         datablock_id=db_id,
         description=str(data.get("description") or ""),
-        tags=tags,
-        bindings=bindings,
+        tags=dict(table.tags),
+        bindings=list(table.bindings),
     )
 
 
@@ -188,37 +161,110 @@ def program_accessible_tags(
     return catalog.tag_names_for(list(datablock_ids or ()))
 
 
+def union_program_access_ids(
+    program_access: Mapping[str, Any] | None,
+) -> list[str]:
+    """Ordered unique Datablock ids from a program_access map."""
+    ordered: list[str] = []
+    seen: set[str] = set()
+    for dbs in (program_access or {}).values():
+        if not isinstance(dbs, list):
+            continue
+        for db_id in dbs:
+            key = str(db_id)
+            if key and key not in seen:
+                seen.add(key)
+                ordered.append(key)
+    return ordered
+
+
+def binding_rows_from_table(table: BindingTable) -> list[dict[str, Any]]:
+    """Serialize a BindingTable to HA platform binding rows."""
+    return [
+        {
+            "tag": b.tag,
+            "entity": b.entity,
+            "direction": b.direction.value,
+            "scale": b.scale,
+            "offset": b.offset,
+            "entity_unit": b.entity_unit,
+            "treat_uncertain_as_good": b.treat_uncertain_as_good,
+        }
+        for b in table.bindings
+    ]
+
+
 def default_tank_datablock() -> Datablock:
     """Fully defined demo Datablock for the tank example (SWD-184)."""
-    tags = {
-        "LT_TANK": TagDecl("LT_TANK", 0.15, "m"),
-        "LT_RES": TagDecl("LT_RES", 0.20, "m"),
-        "FT_INLET": TagDecl("FT_INLET", 0.0, "L/min"),
-        "SP_LEVEL_REQ": TagDecl("SP_LEVEL_REQ", 0.20, "m"),
-        "SP_LEVEL": TagDecl("SP_LEVEL", 0.20, "m"),
-        "SP_FLOW": TagDecl("SP_FLOW", 0.0, "L/min"),
-        "CMD_SPEED": TagDecl("CMD_SPEED", 0.0, "pct"),
-        "MODE": TagDecl("MODE", "STOP", None),
-        "PERM_OK": TagDecl("PERM_OK", False, None),
-        "TRIP_ACTIVE": TagDecl("TRIP_ACTIVE", False, None),
-    }
-    bindings = [
-        Binding("SP_LEVEL_REQ", "number.plcassistant_sp_level_req", Direction.IN),
-        Binding("LT_TANK", "number.plcassistant_lt_tank_in", Direction.IN),
-        Binding("LT_RES", "number.plcassistant_lt_res_in", Direction.IN),
-        Binding("FT_INLET", "number.plcassistant_ft_inlet_in", Direction.IN),
-        Binding("CMD_SPEED", "sensor.plcassistant_cmd_speed", Direction.OUT),
-        Binding("SP_LEVEL", "sensor.plcassistant_sp_level", Direction.OUT),
-        Binding("SP_FLOW", "sensor.plcassistant_sp_flow", Direction.OUT),
-        Binding("MODE", "sensor.plcassistant_mode", Direction.OUT),
-        Binding("PERM_OK", "sensor.plcassistant_perm_ok", Direction.OUT),
-        Binding("TRIP_ACTIVE", "sensor.plcassistant_trip_active", Direction.OUT),
-    ]
-    return Datablock(
-        datablock_id="DB_Tank",
-        description="Tank level/flow cascade process I/O (demo).",
-        tags=tags,
-        bindings=bindings,
+    return datablock_from_dict(
+        {
+            "id": "DB_Tank",
+            "description": "Tank level/flow cascade process I/O (demo).",
+            "tags": {
+                "LT_TANK": {"default": 0.15, "unit": "m"},
+                "LT_RES": {"default": 0.20, "unit": "m"},
+                "FT_INLET": {"default": 0.0, "unit": "L/min"},
+                "SP_LEVEL_REQ": {"default": 0.20, "unit": "m"},
+                "SP_LEVEL": {"default": 0.20, "unit": "m"},
+                "SP_FLOW": {"default": 0.0, "unit": "L/min"},
+                "CMD_SPEED": {"default": 0.0, "unit": "pct"},
+                "MODE": {"default": "STOP", "unit": None},
+                "PERM_OK": {"default": False, "unit": None},
+                "TRIP_ACTIVE": {"default": False, "unit": None},
+            },
+            "bindings": [
+                {
+                    "tag": "SP_LEVEL_REQ",
+                    "entity": "number.plcassistant_sp_level_req",
+                    "direction": "IN",
+                },
+                {
+                    "tag": "LT_TANK",
+                    "entity": "number.plcassistant_lt_tank_in",
+                    "direction": "IN",
+                },
+                {
+                    "tag": "LT_RES",
+                    "entity": "number.plcassistant_lt_res_in",
+                    "direction": "IN",
+                },
+                {
+                    "tag": "FT_INLET",
+                    "entity": "number.plcassistant_ft_inlet_in",
+                    "direction": "IN",
+                },
+                {
+                    "tag": "CMD_SPEED",
+                    "entity": "sensor.plcassistant_cmd_speed",
+                    "direction": "OUT",
+                },
+                {
+                    "tag": "SP_LEVEL",
+                    "entity": "sensor.plcassistant_sp_level",
+                    "direction": "OUT",
+                },
+                {
+                    "tag": "SP_FLOW",
+                    "entity": "sensor.plcassistant_sp_flow",
+                    "direction": "OUT",
+                },
+                {
+                    "tag": "MODE",
+                    "entity": "sensor.plcassistant_mode",
+                    "direction": "OUT",
+                },
+                {
+                    "tag": "PERM_OK",
+                    "entity": "sensor.plcassistant_perm_ok",
+                    "direction": "OUT",
+                },
+                {
+                    "tag": "TRIP_ACTIVE",
+                    "entity": "sensor.plcassistant_trip_active",
+                    "direction": "OUT",
+                },
+            ],
+        }
     )
 
 
@@ -235,10 +281,12 @@ def default_program_datablock_access() -> dict[str, list[str]]:
 __all__ = [
     "Datablock",
     "DatablockCatalog",
+    "binding_rows_from_table",
     "datablock_from_dict",
     "datablock_to_dict",
     "default_program_datablock_access",
     "default_tank_datablock",
     "default_tank_datablock_catalog",
     "program_accessible_tags",
+    "union_program_access_ids",
 ]

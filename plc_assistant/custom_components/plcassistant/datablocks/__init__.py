@@ -1,14 +1,17 @@
-"""Datablock configuration panel + persistence (SWD-184)."""
+"""Datablock configuration panel + persistence (SWD-184).
 
-from .http_api import async_setup_datablock_api
+Keep HA-only ``http_api`` out of this package init (mirrors ``dynamics/``).
+"""
+
 from .store import (
+    binding_rows_from_store,
     load_store,
     save_store,
     store_path,
 )
 
 __all__ = [
-    "async_setup_datablock_api",
+    "binding_rows_from_store",
     "load_store",
     "save_store",
     "store_path",

@@ -73,15 +73,38 @@ th, td { border-bottom: 1px solid var(--line); padding: .35rem .3rem; text-align
 let catalog = [];
 let access = {};
 let selected = null;
+const API = "/api/plcassistant/datablocks";
 
-async function api(path, opts={}) {
-  const headers = Object.assign({'Content-Type':'application/json'}, opts.headers||{});
-  if (window.parent && window.parent.hass && window.parent.hass.auth) {
-    // Prefer HA parent callApi when embedded.
+async function api(path, opts = {}) {
+  const method = (opts.method || "GET").toUpperCase();
+  const suffix = path.startsWith("/api/plcassistant/datablocks")
+    ? path.slice("/api/plcassistant/datablocks".length) || ""
+    : path;
+  const callPath = "plcassistant/datablocks" + (suffix.startsWith("/") || suffix === "" ? suffix : "/" + suffix);
+  const hass = (() => {
+    try {
+      return window.parent?.document?.querySelector("home-assistant")?.hass || null;
+    } catch (_) {
+      return null;
+    }
+  })();
+  if (hass && typeof hass.callApi === "function") {
+    const body = opts.body ? JSON.parse(opts.body) : undefined;
+    const data = await hass.callApi(method.toLowerCase(), callPath, body);
+    if (data && data.ok === false) {
+      throw new Error(data.error || "request failed");
+    }
+    return data;
   }
-  const res = await fetch(path, Object.assign({}, opts, {headers}));
+  const res = await fetch(path.startsWith("/") ? path : (API + path), {
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
+    ...opts,
+  });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok || data.ok === false) throw new Error(data.error || res.statusText || 'request failed');
+  if (!res.ok || data.ok === false) {
+    throw new Error(data.error || res.statusText || "request failed");
+  }
   return data;
 }
 
@@ -173,14 +196,14 @@ async function saveAccess() {
   try {
     access = JSON.parse(document.getElementById('access').value || '{}');
     await api('/api/plcassistant/datablocks/access', {method:'PUT', body: JSON.stringify({program_access: access})});
-    setStatus('Program access saved', true);
+    setStatus('Program access saved (keep Soft-PLC Program.datablocks aligned)', true);
   } catch (e) { setStatus(String(e.message || e), false); }
 }
 
 async function applyBindings() {
   try {
     const data = await api('/api/plcassistant/datablocks/apply', {method:'POST', body: '{}'});
-    setStatus('Applied ' + data.count + ' binding(s) into runtime cache', true);
+    setStatus('Applied ' + data.count + ' binding(s); entry reloaded=' + !!data.reloaded, true);
   } catch (e) { setStatus(String(e.message || e), false); }
 }
 

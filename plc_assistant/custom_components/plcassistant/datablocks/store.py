@@ -8,8 +8,10 @@ from typing import Any
 
 from plcassistant.io.datablock import (
     DatablockCatalog,
+    binding_rows_from_table,
     default_program_datablock_access,
     default_tank_datablock_catalog,
+    union_program_access_ids,
 )
 
 
@@ -36,7 +38,7 @@ def load_store(config_root: Path) -> dict[str, Any]:
         data = json.load(fh)
     if not isinstance(data, dict):
         raise ValueError("datablocks store must be a JSON object")
-    # Ensure catalog validates.
+    # Ensure catalog validates (per-block BindingTable rules).
     DatablockCatalog.from_dict(data)
     data.setdefault("program_access", default_program_datablock_access())
     return data
@@ -57,23 +59,29 @@ def catalog_from_store(payload: dict[str, Any]) -> DatablockCatalog:
     return DatablockCatalog.from_dict(payload)
 
 
+def accessible_datablock_ids(payload: dict[str, Any]) -> list[str]:
+    """Datablock ids the HA MQTT/image path should wire.
+
+    Uses the union of ``program_access`` when any Program has access entries;
+    otherwise all catalog Datablock ids (empty access map → no tags).
+    """
+    access = payload.get("program_access") or {}
+    if not isinstance(access, dict):
+        raise ValueError("'program_access' must be a mapping")
+    if access:
+        return union_program_access_ids(access)
+    return []
+
+
 def binding_rows_from_store(payload: dict[str, Any]) -> list[dict[str, Any]]:
-    """Flatten all Datablock bindings for entity platform setup."""
+    """Flatten accessible Datablock bindings for entity platform setup.
+
+    Respects ``program_access`` (union of Datablock ids). Raises on BindingTable
+    conflicts instead of silently dropping duplicate tags.
+    """
     catalog = catalog_from_store(payload)
-    rows: list[dict[str, Any]] = []
-    seen: set[str] = set()
-    for block in catalog.datablocks.values():
-        for b in block.bindings:
-            if b.tag in seen:
-                continue
-            seen.add(b.tag)
-            rows.append(
-                {
-                    "tag": b.tag,
-                    "entity": b.entity,
-                    "direction": b.direction.value,
-                    "scale": b.scale,
-                    "offset": b.offset,
-                }
-            )
-    return rows
+    ids = accessible_datablock_ids(payload)
+    if not ids:
+        return []
+    table = catalog.binding_table_for(ids)
+    return binding_rows_from_table(table)

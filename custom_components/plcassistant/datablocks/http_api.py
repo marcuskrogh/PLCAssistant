@@ -12,15 +12,16 @@ from typing import Any
 
 from aiohttp import web
 from homeassistant.components.http import HomeAssistantView
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from plcassistant.io.datablock import (
-    DatablockCatalog,
     datablock_from_dict,
     datablock_to_dict,
     program_accessible_tags,
 )
 
+from ..const import CONF_BINDINGS, DOMAIN
 from .store import (
     binding_rows_from_store,
     catalog_from_store,
@@ -39,6 +40,11 @@ def _config_root(hass: HomeAssistant) -> Path:
 def _editor_html() -> str:
     path = Path(__file__).resolve().parent.parent / "www" / "datablock_editor.html"
     return path.read_text(encoding="utf-8")
+
+
+def _first_entry(hass: HomeAssistant) -> ConfigEntry | None:
+    entries = list(hass.config_entries.async_entries(DOMAIN))
+    return entries[0] if entries else None
 
 
 async def async_setup_datablock_api(hass: HomeAssistant) -> None:
@@ -66,7 +72,11 @@ def _json_error(message: str, status: int = 400) -> web.Response:
 
 
 class DatablockEditorView(HomeAssistantView):
-    """Serve the Datablock configuration panel SPA."""
+    """Serve the Datablock configuration panel SPA.
+
+    ``requires_auth`` is False so a Lovelace iframe can load the shell.
+    Mutating/data APIs stay authenticated; the SPA prefers ``parent.hass.callApi``.
+    """
 
     url = "/api/plcassistant/datablocks/ui"
     name = "api:plcassistant:datablocks:ui"
@@ -116,6 +126,10 @@ class DatablockCatalogView(HomeAssistantView):
             block = datablock_from_dict(body)
             payload = await hass.async_add_executor_job(load_store, _config_root(hass))
             catalog = catalog_from_store(payload)
+            if catalog.get(block.datablock_id) is not None:
+                return _json_error(
+                    f"Datablock {block.datablock_id!r} already exists", 409
+                )
             catalog.upsert(block)
             payload["datablocks"] = catalog.to_dict()["datablocks"]
             await hass.async_add_executor_job(save_store, _config_root(hass), payload)
@@ -170,7 +184,10 @@ class DatablockItemView(HomeAssistantView):
 
 
 class DatablockAccessView(HomeAssistantView):
-    """Program ↔ Datablock access map."""
+    """Program ↔ Datablock access map (HA source of truth for assignment).
+
+    Soft-PLC ``Program.datablocks`` should mirror this map (demo ships aligned).
+    """
 
     url = "/api/plcassistant/datablocks/access"
     name = "api:plcassistant:datablocks:access"
@@ -178,13 +195,16 @@ class DatablockAccessView(HomeAssistantView):
 
     async def get(self, request: web.Request) -> web.Response:
         hass: HomeAssistant = request.app["hass"]
-        payload = await hass.async_add_executor_job(load_store, _config_root(hass))
-        catalog = catalog_from_store(payload)
-        access = payload.get("program_access") or {}
-        resolved = {
-            pid: sorted(program_accessible_tags(catalog, dbs))
-            for pid, dbs in access.items()
-        }
+        try:
+            payload = await hass.async_add_executor_job(load_store, _config_root(hass))
+            catalog = catalog_from_store(payload)
+            access = payload.get("program_access") or {}
+            resolved = {
+                pid: sorted(program_accessible_tags(catalog, dbs))
+                for pid, dbs in access.items()
+            }
+        except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
+            return _json_error(str(exc), 500)
         return web.json_response(
             {"ok": True, "program_access": access, "resolved_tags": resolved}
         )
@@ -218,7 +238,7 @@ class DatablockAccessView(HomeAssistantView):
 
 
 class DatablockApplyView(HomeAssistantView):
-    """Return flattened bindings for reload into the MQTT/image path."""
+    """Apply store bindings into CONF_BINDINGS and reload the config entry."""
 
     url = "/api/plcassistant/datablocks/apply"
     name = "api:plcassistant:datablocks:apply"
@@ -229,9 +249,23 @@ class DatablockApplyView(HomeAssistantView):
         try:
             payload = await hass.async_add_executor_job(load_store, _config_root(hass))
             rows = binding_rows_from_store(payload)
-            hass.data.setdefault("plcassistant", {})
-            hass.data["plcassistant"]["datablock_bindings"] = rows
-            hass.data["plcassistant"]["datablock_store"] = payload
-        except (OSError, ValueError, KeyError, TypeError) as exc:
+            hass.data.setdefault(DOMAIN, {})
+            hass.data[DOMAIN]["datablock_bindings"] = rows
+            hass.data[DOMAIN]["datablock_store"] = payload
+        except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
             return _json_error(str(exc))
-        return web.json_response({"ok": True, "bindings": rows, "count": len(rows)})
+
+        entry = _first_entry(hass)
+        if entry is None:
+            return _json_error("no PLCAssistant config entry", 404)
+
+        new_data = {**dict(entry.data), CONF_BINDINGS: rows}
+        hass.config_entries.async_update_entry(entry, data=new_data)
+        # Always reload so platforms/MQTT rebuild from the new bindings.
+        await hass.config_entries.async_reload(entry.entry_id)
+        return web.json_response(
+            {"ok": True, "bindings": rows, "count": len(rows), "reloaded": True}
+        )
+
+
+__all__ = ["async_setup_datablock_api"]
