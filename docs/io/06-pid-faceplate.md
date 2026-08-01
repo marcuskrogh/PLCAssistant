@@ -16,10 +16,10 @@ Classic **output Manual** (operator sets CV directly) is deferred.
 | Mode | Code | Active SP source | How entered |
 |------|------|------------------|-------------|
 | Manual | `0` | `*_SP_MAN` | Write Man SP (auto-flip) or set mode |
-| Automatic | `1` | `*_SP_AUTO` | Explicit mode only |
+| Automatic | `1` | `*_SP_AUTO` | Write Auto SP (auto-flip) or set mode |
 | Remote | `2` | `*_SP_REM` | Write Rem SP (auto-flip) or set mode |
 
-Writing Automatic SP does **not** change mode.
+Writing Man / Auto / Rem SP Set flips the loop into that source mode (SWD-222).
 
 ## Demo tags (`DB_Tank`)
 
