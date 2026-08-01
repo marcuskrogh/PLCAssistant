@@ -35,13 +35,13 @@
 1. Soft-PLC IN precedence + seed MQTT await — done
 2. Start status honesty + plant load/watchdog — done
 3. PID faceplate mux + card draft UX + Auto flip — done
-4. Tests + version + docs — done (`tests/test_swd222_acceptance.py`, 578 passed)
+4. Tests + version + docs — done (`tests/test_swd222_acceptance.py`, 579 passed)
 
 ## Tracker
 - Task: [SWD-222](https://marcusknielsen.atlassian.net/browse/SWD-222)
 - Relates: SWD-221
 - Branch: `cursor/swd-222-start-cascade-pid-a52c`
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/85 (App 0.1.42)
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/85 (App 0.1.42) — **shipped**
 
 ## Next
-`/ship SWD-222` — Merge PR and close the Task
+Done — phase closed.
