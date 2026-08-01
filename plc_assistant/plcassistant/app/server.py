@@ -536,6 +536,7 @@ class AppState:
         )
         self.saved_project = new_project
         self.loader.restart_apply(_clone_project(new_project))
+        self._reapply_library_state()
         self._ensure_program_logs()
         self.append_log(pid, "info", f"Program {clean_name} created")
         self.persist_program()
@@ -670,6 +671,7 @@ class AppState:
         )
         self.saved_project = new_project
         self.loader.restart_apply(_clone_project(new_project))
+        self._reapply_library_state()
         self.program_logs.pop(program_id, None)
         self._ensure_program_logs()
         self.persist_program()
@@ -805,6 +807,7 @@ class AppState:
 
     def apply_saved_schedule(self) -> dict[str, Any]:
         self.loader.restart_apply(_clone_project(self.saved_project))
+        self._reapply_library_state()
         self._sync_applied_project_to_runtime()
         self._sync_scan_period_to_runtime()
         self._ensure_program_logs()

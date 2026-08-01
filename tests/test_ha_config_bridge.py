@@ -150,14 +150,18 @@ def test_hmi_tags_list_excludes_plant_includes_active_setpoints() -> None:
         assert "_HMI_TAGS" in src
         for tag in ("SP_LEVEL", "SP_FLOW"):
             assert f'"{tag}"' in src
-        for plant in ("LT_TANK", "LT_RES", "FT_INLET"):
-            # Present in bindings as IN, but not in _HMI_TAGS OUT poll list.
-            assert f'"{plant}"' in src
-        # Extract _HMI_TAGS tuple contents roughly
+        # Plant PVs live in Datablock DB_Tank (SWD-184), not inline in _HMI_TAGS.
+        assert "default_tank_datablock_catalog" in src
         start = src.index("_HMI_TAGS")
         chunk = src[start : start + 250]
         assert "SP_LEVEL" in chunk
         assert "LT_TANK" not in chunk
+    # Datablock catalog still declares plant IN tags.
+    from plcassistant.io.datablock import default_tank_datablock
+
+    plant_tags = set(default_tank_datablock().tags)
+    for plant in ("LT_TANK", "LT_RES", "FT_INLET"):
+        assert plant in plant_tags
     for src_path in runtime_paths:
         src = src_path.read_text(encoding="utf-8")
         assert "_write_ha_config_runtime" in src

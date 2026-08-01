@@ -1,4 +1,4 @@
-# plcassistant_dashboard_version: 15
+# plcassistant_dashboard_version: 16
 title: PLCAssistant
 views:
   - title: Operate
@@ -75,4 +75,12 @@ views:
     cards:
       - type: iframe
         url: /api/plcassistant/dynamics/ui
+        aspect_ratio: 100%
+  - title: Datablocks
+    path: datablocks
+    icon: mdi:database-outline
+    panel: true
+    cards:
+      - type: iframe
+        url: /api/plcassistant/datablocks/ui
         aspect_ratio: 100%

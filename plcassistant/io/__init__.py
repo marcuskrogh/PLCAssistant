@@ -4,6 +4,14 @@ See docs/io/ and docs/packaging/. No Home Assistant dependency in this package.
 """
 
 from plcassistant.io.binding import Binding, BindingTable, Direction, TagDecl
+from plcassistant.io.datablock import (
+    Datablock,
+    DatablockCatalog,
+    default_program_datablock_access,
+    default_tank_datablock,
+    default_tank_datablock_catalog,
+    program_accessible_tags,
+)
 from plcassistant.io.image import IoImage, TagSnapshot
 from plcassistant.io.integration import (
     EntitySample,
@@ -38,6 +46,8 @@ __all__ = [
     "Binding",
     "BindingTable",
     "DEFAULT_INSTANCE_ID",
+    "Datablock",
+    "DatablockCatalog",
     "Direction",
     "EntitySample",
     "InMemoryMqttBus",
@@ -56,9 +66,13 @@ __all__ = [
     "TagQuality",
     "cmd_topic",
     "collapse_quality",
+    "default_program_datablock_access",
+    "default_tank_datablock",
+    "default_tank_datablock_catalog",
     "default_wedge_binding_config",
     "is_good",
     "parse_tag_topic",
+    "program_accessible_tags",
     "status_topic",
     "tag_in_topic",
     "tag_out_topic",

@@ -49,19 +49,29 @@ def test_entity_bridge_roundtrip_with_skid_logic():
 
 
 def test_ha_default_bindings_match_app_wedge_config():
-    """HA thin-integration defaults must equal App packaging bindings (SWD-131)."""
-    import ast
+    """HA thin-integration defaults must equal App packaging bindings (SWD-131/184)."""
+    import importlib.util
     import pathlib
 
     init_path = pathlib.Path("custom_components/plcassistant/__init__.py")
-    tree = ast.parse(init_path.read_text(encoding="utf-8"))
-    fn = next(
-        n
-        for n in tree.body
-        if isinstance(n, ast.FunctionDef) and n.name == "_default_bindings"
-    )
-    ret = next(s for s in fn.body if isinstance(s, ast.Return))
-    ha_bindings = ast.literal_eval(ret.value)
+    # Load only the helper by exec'ing a stub-free fragment via catalog.
+    from plcassistant.io.datablock import default_tank_datablock_catalog
+
+    table = default_tank_datablock_catalog().binding_table_for(["DB_Tank"])
+    ha_bindings = [
+        {
+            "tag": b.tag,
+            "entity": b.entity,
+            "direction": b.direction.value,
+            "scale": b.scale,
+            "offset": b.offset,
+        }
+        for b in table.bindings
+    ]
+    # Confirm __init__ still builds defaults from the Datablock catalog.
+    text = init_path.read_text(encoding="utf-8")
+    assert "default_tank_datablock_catalog" in text
+    assert "_default_bindings" in text
 
     app_bindings = default_wedge_binding_config()["bindings"]
     assert ha_bindings == app_bindings

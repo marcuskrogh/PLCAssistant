@@ -58,7 +58,8 @@ def test_manifest_mqtt_dependency_and_config_keys():
     assert "Platform.NUMBER" in init_text
     assert "Platform.BUTTON" in init_text
     assert "Platform.UPDATE" in init_text
-    assert "FT_INLET" in init_text
+    assert "default_tank_datablock_catalog" in init_text
+    assert "datablocks" in init_text
     assert "HassPlantSimulator" in init_text
     assert "plant_simulator" in init_text
     assert "resolve_dynamics_options" in init_text

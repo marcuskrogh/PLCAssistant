@@ -116,97 +116,29 @@ class MqttEntityBridge:
 
 
 def default_wedge_binding_config() -> dict[str, Any]:
-    """Wedge process I/O bindings for packaging demos (SWD-145).
+    """Demo process I/O bindings from the rebuilt ``DB_Tank`` Datablock (SWD-184).
 
-    Plant PVs (``LT_*``, ``FT_INLET``) are Soft-PLC **IN** (MQTT ≡ field);
-    the thin integration owns the stand-alone simulator (SWD-146). Operator
-    writable request is ``SP_LEVEL_REQ`` IN. Active SPs and ``CMD_SPEED`` are
-    Soft-PLC OUT. Aligned with ``docs/wedge/02-io-hmi-contract.md``.
+    Prefer ``default_tank_datablock_catalog`` for Datablock-aware callers.
+    This helper remains for BindingTable consumers and returns the merged
+    flat tags+bindings view of ``DB_Tank``.
     """
+    from plcassistant.io.datablock import default_tank_datablock_catalog
+
+    table = default_tank_datablock_catalog().binding_table_for(["DB_Tank"])
     return {
         "tags": {
-            "LT_TANK": {"default": 0.15, "unit": "m"},
-            "LT_RES": {"default": 0.20, "unit": "m"},
-            "FT_INLET": {"default": 0.0, "unit": "L/min"},
-            "SP_LEVEL_REQ": {"default": 0.20, "unit": "m"},
-            "SP_LEVEL": {"default": 0.20, "unit": "m"},
-            "SP_FLOW": {"default": 0.0, "unit": "L/min"},
-            "CMD_SPEED": {"default": 0.0, "unit": "pct"},
-            "MODE": {"default": "STOP", "unit": None},
-            "PERM_OK": {"default": False, "unit": None},
-            "TRIP_ACTIVE": {"default": False, "unit": None},
+            name: {"default": decl.default, "unit": decl.unit}
+            for name, decl in table.tags.items()
         },
         "bindings": [
             {
-                "tag": "SP_LEVEL_REQ",
-                "entity": "number.plcassistant_sp_level_req",
-                "direction": "IN",
-                "scale": 1.0,
-                "offset": 0.0,
-            },
-            {
-                "tag": "LT_TANK",
-                "entity": "number.plcassistant_lt_tank_in",
-                "direction": "IN",
-                "scale": 1.0,
-                "offset": 0.0,
-            },
-            {
-                "tag": "LT_RES",
-                "entity": "number.plcassistant_lt_res_in",
-                "direction": "IN",
-                "scale": 1.0,
-                "offset": 0.0,
-            },
-            {
-                "tag": "FT_INLET",
-                "entity": "number.plcassistant_ft_inlet_in",
-                "direction": "IN",
-                "scale": 1.0,
-                "offset": 0.0,
-            },
-            {
-                "tag": "CMD_SPEED",
-                "entity": "sensor.plcassistant_cmd_speed",
-                "direction": "OUT",
-                "scale": 1.0,
-                "offset": 0.0,
-            },
-            {
-                "tag": "SP_LEVEL",
-                "entity": "sensor.plcassistant_sp_level",
-                "direction": "OUT",
-                "scale": 1.0,
-                "offset": 0.0,
-            },
-            {
-                "tag": "SP_FLOW",
-                "entity": "sensor.plcassistant_sp_flow",
-                "direction": "OUT",
-                "scale": 1.0,
-                "offset": 0.0,
-            },
-            {
-                "tag": "MODE",
-                "entity": "sensor.plcassistant_mode",
-                "direction": "OUT",
-                "scale": 1.0,
-                "offset": 0.0,
-            },
-            {
-                "tag": "PERM_OK",
-                "entity": "sensor.plcassistant_perm_ok",
-                "direction": "OUT",
-                "scale": 1.0,
-                "offset": 0.0,
-            },
-            {
-                "tag": "TRIP_ACTIVE",
-                "entity": "sensor.plcassistant_trip_active",
-                "direction": "OUT",
-                "scale": 1.0,
-                "offset": 0.0,
-            },
+                "tag": b.tag,
+                "entity": b.entity,
+                "direction": b.direction.value,
+                "scale": b.scale,
+                "offset": b.offset,
+            }
+            for b in table.bindings
         ],
     }
 

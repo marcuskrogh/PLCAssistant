@@ -53,14 +53,14 @@
 - Existing `default_wedge_binding_config` / integration mock bindings as material to **replace**, not freeze
 
 ## Acceptance criteria
-- [ ] Engineers can create/edit/delete a Datablock and its tag/binding rows in the HA configuration panel
-- [ ] Program declares Datablock access; Soft-PLC / image path only exposes tags from those Datablocks
-- [ ] Example system ships as a fully defined Datablock + matching Soft-PLC Program (and entities as needed)
-- [ ] Old flat-only demo binding path is replaced or clearly retired with a documented migration note
-- [ ] Changing mappings in HA applies into the live MQTT/image path without Soft-PLC needing to own the editor
-- [ ] **Unit** tests: Datablock schema, Program access → tag set, uniqueness/validation rules
-- [ ] **Integration** tests: HA panel/API persist + reload; Soft-PLC consumes accessible tags
-- [ ] **System** test: end-to-end setup path — define Datablock in integration → Soft-PLC Program with access runs with correct tags
+- [x] Engineers can create/edit/delete a Datablock and its tag/binding rows in the HA configuration panel
+- [x] Program declares Datablock access; Soft-PLC / image path only exposes tags from those Datablocks
+- [x] Example system ships as a fully defined Datablock + matching Soft-PLC Program (and entities as needed)
+- [x] Old flat-only demo binding path is replaced or clearly retired with a documented migration note
+- [x] Changing mappings in HA applies into the live MQTT/image path without Soft-PLC needing to own the editor
+- [x] **Unit** tests: Datablock schema, Program access → tag set, uniqueness/validation rules
+- [x] **Integration** tests: HA panel/API persist + reload; Soft-PLC consumes accessible tags
+- [x] **System** test: end-to-end setup path — define Datablock in integration → Soft-PLC Program with access runs with correct tags
 
 ## Work packages
 1. **Datablock model + schema** — [SWD-209](https://marcusknielsen.atlassian.net/browse/SWD-209)
@@ -81,7 +81,7 @@
 - Sub-tasks: SWD-209, SWD-208, SWD-210, SWD-207, SWD-212, SWD-211
 - Branch: `cursor/swd-184-datablock-mapping-a52c`
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/80
+App: 0.1.36
 
 ## Next
-`/implement SWD-184` — Build per this plan (same branch/PR)
-(or `/ship SWD-184` to finish remaining through Done)
+`/review-fix SWD-184` — Review and auto-fix until clean

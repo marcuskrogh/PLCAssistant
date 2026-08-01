@@ -86,3 +86,5 @@ After App Update + Core restart: stock Lovelace refreshes to dashboard version *
 If personal boards still show unavailable plant Numbers, delete stale unavailable
 entities in the entity registry (or remove/re-add the integration). Update any
 personal dashboards that still reference plant Numbers for Process display.
+
+**0.1.36** adds Datablock tag mapping: HA Datablocks configuration panel, `DB_Tank` example, Program↔Datablock access, store at `config/plcassistant/datablocks.json`.

@@ -134,6 +134,8 @@ class Program:
     wires: list[Wire] = field(default_factory=list)
     execution_order: list[str] = field(default_factory=list)
     user_templates: dict[str, BlockTemplate] = field(default_factory=dict)
+    # Soft-PLC only sees tags from these integration Datablocks (SWD-184).
+    datablocks: list[str] = field(default_factory=list)
     version: str = "1.0"
 
 

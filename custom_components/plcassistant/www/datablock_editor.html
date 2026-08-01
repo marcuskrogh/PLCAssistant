@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Datablock mapping</title>
+<style>
+:root {
+  --bg: #0f1419; --panel: #1a222c; --ink: #e8eef4; --muted: #9aa7b5;
+  --accent: #3d8bfd; --line: #2a3542; --ok: #3ecf8e; --bad: #f07178;
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: linear-gradient(160deg, #0f1419, #16202a 50%, #101820); color: var(--ink); min-height: 100vh; }
+header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--line); background: rgba(26,34,44,.9); }
+h1 { margin: 0; font-size: 1.35rem; letter-spacing: .02em; }
+p.sub { margin: .35rem 0 0; color: var(--muted); font-size: .9rem; }
+main { display: grid; gap: 1rem; padding: 1rem; max-width: 1100px; margin: 0 auto; }
+@media (min-width: 900px) { main { grid-template-columns: 280px 1fr; } }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 1rem; }
+.list button { display: block; width: 100%; text-align: left; margin: 0 0 .4rem; padding: .55rem .7rem; border-radius: 8px; border: 1px solid var(--line); background: #121820; color: var(--ink); cursor: pointer; }
+.list button.active { border-color: var(--accent); background: #152033; }
+label { display: block; font-size: .8rem; color: var(--muted); margin: .6rem 0 .2rem; }
+input, textarea, select { width: 100%; padding: .5rem .6rem; border-radius: 8px; border: 1px solid var(--line); background: #10161d; color: var(--ink); }
+textarea { min-height: 6rem; font-family: ui-monospace, monospace; font-size: .8rem; }
+.row { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .8rem; }
+.btn { border: 0; border-radius: 8px; padding: .55rem .9rem; cursor: pointer; background: var(--accent); color: #fff; font-weight: 600; }
+.btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--ink); }
+.btn.danger { background: #8b2e36; }
+.status { min-height: 1.2rem; font-size: .85rem; color: var(--muted); margin-top: .6rem; }
+.status.ok { color: var(--ok); } .status.err { color: var(--bad); }
+table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+th, td { border-bottom: 1px solid var(--line); padding: .35rem .3rem; text-align: left; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Datablocks</h1>
+  <p class="sub">Define industrial Datablock tag↔entity mappings. Soft-PLC Programs only see tags from Datablocks they can access.</p>
+</header>
+<main>
+  <section class="card">
+    <div class="row">
+      <button class="btn" onclick="newBlock()">New Datablock</button>
+      <button class="btn ghost" onclick="reload()">Reload</button>
+    </div>
+    <div id="list" class="list" style="margin-top:.8rem"></div>
+    <h3 style="margin:1rem 0 .4rem;font-size:1rem">Program access</h3>
+    <textarea id="access" placeholder='{"tank":["DB_Tank"]}'></textarea>
+    <div class="row">
+      <button class="btn ghost" onclick="saveAccess()">Save access</button>
+      <button class="btn ghost" onclick="applyBindings()">Apply bindings</button>
+    </div>
+  </section>
+  <section class="card">
+    <label>Datablock id</label>
+    <input id="db-id"/>
+    <label>Description</label>
+    <input id="db-desc"/>
+    <label>Tags JSON (name → {default, unit})</label>
+    <textarea id="db-tags"></textarea>
+    <label>Bindings JSON (list of {tag, entity, direction, scale?, offset?})</label>
+    <textarea id="db-bindings"></textarea>
+    <div class="row">
+      <button class="btn" onclick="saveBlock()">Save Datablock</button>
+      <button class="btn danger" onclick="deleteBlock()">Delete</button>
+    </div>
+    <div id="preview"></div>
+    <div id="status" class="status"></div>
+  </section>
+</main>
+<script>
+let catalog = [];
+let access = {};
+let selected = null;
+
+async function api(path, opts={}) {
+  const headers = Object.assign({'Content-Type':'application/json'}, opts.headers||{});
+  if (window.parent && window.parent.hass && window.parent.hass.auth) {
+    // Prefer HA parent callApi when embedded.
+  }
+  const res = await fetch(path, Object.assign({}, opts, {headers}));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.ok === false) throw new Error(data.error || res.statusText || 'request failed');
+  return data;
+}
+
+function setStatus(msg, ok) {
+  const el = document.getElementById('status');
+  el.textContent = msg || '';
+  el.className = 'status ' + (ok === true ? 'ok' : ok === false ? 'err' : '');
+}
+
+function renderList() {
+  const root = document.getElementById('list');
+  root.innerHTML = catalog.map(b =>
+    `<button class="${selected===b.id?'active':''}" onclick="selectBlock('${b.id}')">${b.id}<div style="color:var(--muted);font-size:.75rem">${b.description||''}</div></button>`
+  ).join('') || '<p class="sub">No Datablocks yet.</p>';
+  document.getElementById('access').value = JSON.stringify(access, null, 2);
+}
+
+function selectBlock(id) {
+  selected = id;
+  const b = catalog.find(x => x.id === id);
+  if (!b) return;
+  document.getElementById('db-id').value = b.id;
+  document.getElementById('db-desc').value = b.description || '';
+  document.getElementById('db-tags').value = JSON.stringify(b.tags || {}, null, 2);
+  document.getElementById('db-bindings').value = JSON.stringify(b.bindings || [], null, 2);
+  renderList();
+  previewBindings(b.bindings || []);
+}
+
+function previewBindings(rows) {
+  const el = document.getElementById('preview');
+  if (!rows.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `<table><thead><tr><th>Tag</th><th>Entity</th><th>Dir</th></tr></thead><tbody>` +
+    rows.map(r => `<tr><td>${r.tag}</td><td>${r.entity}</td><td>${r.direction}</td></tr>`).join('') +
+    `</tbody></table>`;
+}
+
+function newBlock() {
+  selected = null;
+  document.getElementById('db-id').value = 'DB_New';
+  document.getElementById('db-desc').value = '';
+  document.getElementById('db-tags').value = '{\n  "TAG": {"default": 0.0, "unit": null}\n}';
+  document.getElementById('db-bindings').value = '[\n  {"tag":"TAG","entity":"sensor.example","direction":"IN"}\n]';
+  renderList();
+  setStatus('Draft new Datablock', true);
+}
+
+async function reload() {
+  try {
+    const data = await api('/api/plcassistant/datablocks');
+    catalog = data.datablocks || [];
+    access = data.program_access || {};
+    renderList();
+    if (catalog.length) selectBlock(selected && catalog.some(b=>b.id===selected) ? selected : catalog[0].id);
+    setStatus('Loaded ' + catalog.length + ' Datablock(s)', true);
+  } catch (e) { setStatus(String(e.message || e), false); }
+}
+
+async function saveBlock() {
+  try {
+    const id = document.getElementById('db-id').value.trim();
+    const payload = {
+      id,
+      description: document.getElementById('db-desc').value,
+      tags: JSON.parse(document.getElementById('db-tags').value || '{}'),
+      bindings: JSON.parse(document.getElementById('db-bindings').value || '[]'),
+    };
+    const exists = catalog.some(b => b.id === id);
+    if (exists) await api('/api/plcassistant/datablocks/' + encodeURIComponent(id), {method:'PUT', body: JSON.stringify(payload)});
+    else await api('/api/plcassistant/datablocks', {method:'POST', body: JSON.stringify(payload)});
+    selected = id;
+    await reload();
+    setStatus('Saved ' + id, true);
+  } catch (e) { setStatus(String(e.message || e), false); }
+}
+
+async function deleteBlock() {
+  const id = document.getElementById('db-id').value.trim();
+  if (!id || !confirm('Delete Datablock ' + id + '?')) return;
+  try {
+    await api('/api/plcassistant/datablocks/' + encodeURIComponent(id), {method:'DELETE'});
+    selected = null;
+    await reload();
+    setStatus('Deleted ' + id, true);
+  } catch (e) { setStatus(String(e.message || e), false); }
+}
+
+async function saveAccess() {
+  try {
+    access = JSON.parse(document.getElementById('access').value || '{}');
+    await api('/api/plcassistant/datablocks/access', {method:'PUT', body: JSON.stringify({program_access: access})});
+    setStatus('Program access saved', true);
+  } catch (e) { setStatus(String(e.message || e), false); }
+}
+
+async function applyBindings() {
+  try {
+    const data = await api('/api/plcassistant/datablocks/apply', {method:'POST', body: '{}'});
+    setStatus('Applied ' + data.count + ' binding(s) into runtime cache', true);
+  } catch (e) { setStatus(String(e.message || e), false); }
+}
+
+reload();
+</script>
+</body>
+</html>

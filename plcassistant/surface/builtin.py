@@ -201,6 +201,7 @@ def wedge_cascade_program(
             }
         ],
         "execution_order": ["level_pi", "flow_pi"],
+        "datablocks": ["DB_Tank"],
     }
 
 

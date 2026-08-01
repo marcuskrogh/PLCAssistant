@@ -67,78 +67,19 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 
 def _default_bindings() -> list[dict]:
-    """Default mock bindings — keep in sync with ``default_wedge_binding_config``."""
+    """Default mock bindings from the rebuilt ``DB_Tank`` Datablock (SWD-184)."""
+    from plcassistant.io.datablock import default_tank_datablock_catalog
+
+    table = default_tank_datablock_catalog().binding_table_for(["DB_Tank"])
     return [
         {
-            "tag": "SP_LEVEL_REQ",
-            "entity": "number.plcassistant_sp_level_req",
-            "direction": "IN",
-            "scale": 1.0,
-            "offset": 0.0,
-        },
-        {
-            "tag": "LT_TANK",
-            "entity": "number.plcassistant_lt_tank_in",
-            "direction": "IN",
-            "scale": 1.0,
-            "offset": 0.0,
-        },
-        {
-            "tag": "LT_RES",
-            "entity": "number.plcassistant_lt_res_in",
-            "direction": "IN",
-            "scale": 1.0,
-            "offset": 0.0,
-        },
-        {
-            "tag": "FT_INLET",
-            "entity": "number.plcassistant_ft_inlet_in",
-            "direction": "IN",
-            "scale": 1.0,
-            "offset": 0.0,
-        },
-        {
-            "tag": "CMD_SPEED",
-            "entity": "sensor.plcassistant_cmd_speed",
-            "direction": "OUT",
-            "scale": 1.0,
-            "offset": 0.0,
-        },
-        {
-            "tag": "SP_LEVEL",
-            "entity": "sensor.plcassistant_sp_level",
-            "direction": "OUT",
-            "scale": 1.0,
-            "offset": 0.0,
-        },
-        {
-            "tag": "SP_FLOW",
-            "entity": "sensor.plcassistant_sp_flow",
-            "direction": "OUT",
-            "scale": 1.0,
-            "offset": 0.0,
-        },
-        {
-            "tag": "MODE",
-            "entity": "sensor.plcassistant_mode",
-            "direction": "OUT",
-            "scale": 1.0,
-            "offset": 0.0,
-        },
-        {
-            "tag": "PERM_OK",
-            "entity": "sensor.plcassistant_perm_ok",
-            "direction": "OUT",
-            "scale": 1.0,
-            "offset": 0.0,
-        },
-        {
-            "tag": "TRIP_ACTIVE",
-            "entity": "sensor.plcassistant_trip_active",
-            "direction": "OUT",
-            "scale": 1.0,
-            "offset": 0.0,
-        },
+            "tag": b.tag,
+            "entity": b.entity,
+            "direction": b.direction.value,
+            "scale": b.scale,
+            "offset": b.offset,
+        }
+        for b in table.bindings
     ]
 
 
@@ -189,9 +130,21 @@ def _apply_file_runtime(hass: HomeAssistant, entry_id: str, snap: dict) -> None:
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
     instance_id = entry.data.get(CONF_INSTANCE_ID, DEFAULT_INSTANCE_ID)
-    bindings = entry.data.get(CONF_BINDINGS) or _default_bindings()
-    mock_mode = entry.data.get(CONF_MOCK_MODE, True)
     config_root = Path(hass.config.path())
+    bindings = entry.data.get(CONF_BINDINGS) or _default_bindings()
+    # Prefer Datablock store when present (SWD-184).
+    try:
+        from .datablocks.store import binding_rows_from_store, load_store
+
+        store_payload = await hass.async_add_executor_job(load_store, config_root)
+        store_rows = binding_rows_from_store(store_payload)
+        if store_rows:
+            bindings = store_rows
+            hass.data[DOMAIN]["datablock_store"] = store_payload
+            hass.data[DOMAIN]["datablock_bindings"] = store_rows
+    except Exception:  # noqa: BLE001 — fall back to entry/default bindings
+        _LOGGER.exception("PLCAssistant: Datablock store load failed; using entry bindings")
+    mock_mode = entry.data.get(CONF_MOCK_MODE, True)
 
     hass.data[DOMAIN][entry.entry_id] = {
         CONF_INSTANCE_ID: instance_id,
@@ -359,6 +312,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         await async_setup_dynamics_api(hass)
     except Exception:  # noqa: BLE001 — never block setup on editor
         _LOGGER.exception("PLCAssistant: dynamics editor API setup failed")
+
+    # SWD-184: Datablock configuration panel + store API.
+    try:
+        from .datablocks.http_api import async_setup_datablock_api
+
+        await async_setup_datablock_api(hass)
+    except Exception:  # noqa: BLE001 — never block setup on panel
+        _LOGGER.exception("PLCAssistant: Datablock API setup failed")
 
     # SWD-146/143: integration-owned plant simulator (mock_mode only).
     if mock_mode:

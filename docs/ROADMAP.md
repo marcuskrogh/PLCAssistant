@@ -20,7 +20,7 @@ Soft-PLC App and thin HA integration expose an industrial-style engineering surf
 | 3 | App engineering surface (Program cards + Diagram/Log/Settings) | define→ship | SWD-182 | Done (App 0.1.33, PR #77) | [SWD-181](https://marcusknielsen.atlassian.net/browse/SWD-181) |
 | 4 | Task/Program scheduling editor | define→ship | SWD-181 | Done (App 0.1.34, PR #78) | [SWD-191](https://marcusknielsen.atlassian.net/browse/SWD-191) |
 | 5 | Library inspectability + generic PID | define→ship | SWD-182 | Done (App 0.1.35, PR #79) | [SWD-180](https://marcusknielsen.atlassian.net/browse/SWD-180) |
-| 6 | Integration Datablock tag mapping UI (mirrors Soft-PLC multi-model) | define→ship | SWD-182 | Defined (To Do) | [SWD-184](https://marcusknielsen.atlassian.net/browse/SWD-184) |
+| 6 | Integration Datablock tag mapping UI (mirrors Soft-PLC multi-model) | define→ship | SWD-182 | In Review (App 0.1.36) | [SWD-184](https://marcusknielsen.atlassian.net/browse/SWD-184) |
 | 7 | Define online / runtime visibility (loaded vs running, live values) | define | SWD-181 | To Do | [SWD-183](https://marcusknielsen.atlassian.net/browse/SWD-183) |
 
 ## Cleared so far
@@ -48,5 +48,5 @@ Soft-PLC App and thin HA integration expose an industrial-style engineering surf
 - Tasks: [SWD-179](https://marcusknielsen.atlassian.net/browse/SWD-179) (Done), [SWD-182](https://marcusknielsen.atlassian.net/browse/SWD-182) (Done), [SWD-181](https://marcusknielsen.atlassian.net/browse/SWD-181) (Done), [SWD-191](https://marcusknielsen.atlassian.net/browse/SWD-191) (Done), [SWD-180](https://marcusknielsen.atlassian.net/browse/SWD-180) (Done), [SWD-184](https://marcusknielsen.atlassian.net/browse/SWD-184), [SWD-183](https://marcusknielsen.atlassian.net/browse/SWD-183)
 
 ## Next
-`/implement SWD-184` — Build Datablock mapping UI per `docs/PLAN.md`
+`/review-fix SWD-184` — then ship closeout
 (also open: SWD-183)
