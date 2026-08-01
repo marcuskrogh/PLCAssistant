@@ -21,7 +21,7 @@ Soft-PLC App and thin HA integration expose an industrial-style engineering surf
 | 4 | Task/Program scheduling editor | define→ship | SWD-181 | Done (App 0.1.34, PR #78) | [SWD-191](https://marcusknielsen.atlassian.net/browse/SWD-191) |
 | 5 | Library inspectability + generic PID | define→ship | SWD-182 | Done (App 0.1.35, PR #79) | [SWD-180](https://marcusknielsen.atlassian.net/browse/SWD-180) |
 | 6 | Integration Datablock tag mapping UI (mirrors Soft-PLC multi-model) | define→ship | SWD-182 | Done (App 0.1.36) | [SWD-184](https://marcusknielsen.atlassian.net/browse/SWD-184) · PR [#80](https://github.com/marcuskrogh/PLCAssistant/pull/80) |
-| 7 | Define online / runtime visibility (loaded vs running, live values) | define | SWD-181 | To Do | [SWD-183](https://marcusknielsen.atlassian.net/browse/SWD-183) |
+| 7 | Online / runtime visibility + PID HMI faceplates | define→ship | SWD-181 | To Do (defined) | [SWD-183](https://marcusknielsen.atlassian.net/browse/SWD-183) · PR [#81](https://github.com/marcuskrogh/PLCAssistant/pull/81) |
 
 ## Cleared so far
 - [Research: industrial PLC program/UI capabilities](https://marcusknielsen.atlassian.net/browse/SWD-179) — multi-axis brief in `docs/RESEARCH.md`
@@ -31,9 +31,9 @@ Soft-PLC App and thin HA integration expose an industrial-style engineering surf
 - [Library inspectability + generic PID](https://marcusknielsen.atlassian.net/browse/SWD-180) — shipped PID, library editor, equation-driven instances; App 0.1.35; PR #79
 
 ## Not yet specified
-- Depth of online force/write vs monitor-only for v1 — SWD-183
 - Whether Python FBD remains the only authoring language (LD/ST deferred?)
-- Exact HA panel host API for Datablocks (custom vs sidebar) — implement choice on SWD-184
+- Classic PID **output Manual** (operator CV) — deferred from SWD-183
+- Additional specialised Lovelace cards beyond PID + generic list
 
 ## Out of scope
 - Full clone of TIA Portal / Studio 5000 / TwinCAT product surfaces
@@ -45,8 +45,7 @@ Soft-PLC App and thin HA integration expose an industrial-style engineering surf
 ## Tracker
 - Provider: jira
 - Story (map): [SWD-178](https://marcusknielsen.atlassian.net/browse/SWD-178)
-- Tasks: [SWD-179](https://marcusknielsen.atlassian.net/browse/SWD-179) (Done), [SWD-182](https://marcusknielsen.atlassian.net/browse/SWD-182) (Done), [SWD-181](https://marcusknielsen.atlassian.net/browse/SWD-181) (Done), [SWD-191](https://marcusknielsen.atlassian.net/browse/SWD-191) (Done), [SWD-180](https://marcusknielsen.atlassian.net/browse/SWD-180) (Done), [SWD-184](https://marcusknielsen.atlassian.net/browse/SWD-184) (Done), [SWD-183](https://marcusknielsen.atlassian.net/browse/SWD-183)
+- Tasks: [SWD-179](https://marcusknielsen.atlassian.net/browse/SWD-179) (Done), [SWD-182](https://marcusknielsen.atlassian.net/browse/SWD-182) (Done), [SWD-181](https://marcusknielsen.atlassian.net/browse/SWD-181) (Done), [SWD-191](https://marcusknielsen.atlassian.net/browse/SWD-191) (Done), [SWD-180](https://marcusknielsen.atlassian.net/browse/SWD-180) (Done), [SWD-184](https://marcusknielsen.atlassian.net/browse/SWD-184) (Done), [SWD-183](https://marcusknielsen.atlassian.net/browse/SWD-183) (defined)
 
 ## Next
-`/define SWD-183` — online / runtime visibility
-(also open: SWD-183)
+`/implement SWD-183` — online visibility + PID faceplates per PLAN.md

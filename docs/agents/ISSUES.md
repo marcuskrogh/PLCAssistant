@@ -89,7 +89,15 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-170 | Bug | [Iterate] Operate plant PVs still unavailable after 0.1.28 BOX hydrate | Done | Relates SWD-169 | docs/ITERATE.md | Done — shipped PR #72 (App 0.1.29) |
 | SWD-171 | Bug | [Iterate] Tank level settles away from setpoint (Soft-PLC plant IN silent) | Done | Relates SWD-170 | docs/ITERATE.md | Done — shipped PR #73 (App 0.1.30) |
 | SWD-173 | Bug | [Iterate] Soft-PLC stuck TRIPPED after settle — stale plant file LOS | Done | Relates SWD-171 | docs/ITERATE.md | Done — shipped PR #74 (App 0.1.31) |
-| SWD-178 | Story | Industrial-parity Soft-PLC programming surface (multi-program) | To Do | — | docs/ROADMAP.md, docs/RESEARCH.md, docs/PLAN.md | `/define SWD-183` |
+| SWD-178 | Story | Industrial-parity Soft-PLC programming surface (multi-program) | To Do | — | docs/ROADMAP.md, docs/RESEARCH.md, docs/PLAN.md | `/implement SWD-183` |
+| SWD-183 | Task | Online / runtime visibility + PID HMI faceplates | To Do | Relates SWD-178; blocked by SWD-181 | docs/PLAN.md | `/implement SWD-183` — draft PR [#81](https://github.com/marcuskrogh/PLCAssistant/pull/81) |
+| SWD-217 | Subtask | SWD-183: PID SP-source mode logic + Datablock tag contract | To Do | SWD-183 | docs/PLAN.md | — |
+| SWD-214 | Subtask | SWD-183: HA compound PID loop entity platform | To Do | SWD-183 | docs/PLAN.md | — |
+| SWD-215 | Subtask | SWD-183: Lovelace PID card + generic list card | To Do | SWD-183 | docs/PLAN.md | — |
+| SWD-213 | Subtask | SWD-183: Soft-PLC App online visibility | To Do | SWD-183 | docs/PLAN.md | — |
+| SWD-218 | Subtask | SWD-183: Demo rebuild + docs | To Do | SWD-183 | docs/PLAN.md | — |
+| SWD-216 | Subtask | SWD-183: unit + integration + system tests | To Do | SWD-183 | docs/PLAN.md | — |
+
 | SWD-179 | Task | Research: industrial PLC program organization & engineering UI capabilities | Done | Relates SWD-178, SWD-173 | docs/RESEARCH.md | Done — PR [#75](https://github.com/marcuskrogh/PLCAssistant/pull/75) |
 | SWD-182 | Task | Soft-PLC program organization model (tasks → programs → instances) | Done | Relates SWD-178; blocked by SWD-179 | docs/PLAN.md | Done — shipped PR [#76](https://github.com/marcuskrogh/PLCAssistant/pull/76) (App 0.1.32) |
 | SWD-187 | Sub-task | SWD-182: Schema + legacy Program migration | Done | SWD-182 | docs/PLAN.md | — |

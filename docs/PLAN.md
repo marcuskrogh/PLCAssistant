@@ -1,88 +1,93 @@
-# Implementation plan: Integration Datablock tag mapping UI (SWD-184)
+# Implementation plan: Online / runtime visibility + PID HMI faceplates (SWD-183)
 
 ## Summary
-- Introduce named **Datablocks** that group Soft-PLC tags and HA entity bindings.
-- Engineers define mappings in a real **HA integration configuration panel** (where signals live) — not in the Soft-PLC App.
-- Soft-PLC **Programs declare Datablock id(s)** they can access; Soft-PLC only sees the union of those tags.
-- Rebuild the **example system** to fit the new contract (beta — not constrained by the old flat wedge binding table).
-- Acceptance: **unit**, **integration**, **system** on the mapping setup path end-to-end.
+- Give Soft-PLC App **online visibility** of what is defined vs loaded/running, plus live tag/instance values on the engineering surface.
+- Give operators **Lovelace faceplates** driven by Datablock-backed compound entities: a specialised **PID** card and a **generic list card** for other/custom blocks.
+- Soft-PLC **PID mode logic** selects the active setpoint from Manual / Automatic / Remote SP sources; Datablock remains system source of truth (industrial SCADA style).
+- Acceptance: **unit**, **integration**, and **system** tests for online visibility and PID mode/HMI path.
 
 ## Scope
 
 ### In
-- Datablock model: id, description, tag declarations, bindings (direction, entity, scale, offset, … per existing binding rules)
-- Hybrid use: a Program may reference **one or more** Datablock ids
-- Soft-PLC tag visibility = tags from Datablocks the Program has access to
-- Real HA integration **configuration panel** with necessary CRUD: Datablocks, tags/bindings, Program↔Datablock assignment
-- Persist Datablocks in the integration (config entry / integration-owned store)
-- Apply/reload into the MQTT / I/O image path used by Soft-PLC
-- Rebuild demo: fully defined example Datablock(s) + matching Soft-PLC Program / entities as needed for the contract
-- Retire or replace the flat-only `default_wedge_binding_config` demo path
-- Tests: unit + integration + system for setup → Soft-PLC sees correct tags
+- Soft-PLC App online: loaded vs running / saved vs applied identity; live I/O tag values; live Diagram pin/instance overlays where practical
+- PID SP-source modes: **Manual | Automatic | Remote** with Soft-PLC logic selecting `*_SP_MAN` / `*_SP_AUTO` / `*_SP_REM` → `*_SP`
+- Writing Manual SP (or Remote SP) from HMI **auto-flips** mode to that source; return to Automatic requires **explicit** mode set
+- Tunings and loop faceplate state live in the **PLC Datablock** (entities/HMI write into DB); DB is SoT
+- HA **compound loop entity** (climate-like), e.g. `PLC_PID.INLET_FLOW` / domain entity with attributes for PV, SP, SP_MAN, SP_AUTO, SP_REM, mode, CV, tunings, status
+- Lovelace **PID card** auto-configured by pointing at that one entity
+- Lovelace **generic list card** for other library + custom blocks (same entity-hook pattern where applicable)
+- Demo: rebuild tank level/flow loops to the new PID mode + Datablock + card contract
+- Tests: unit (mode select / flip rules), integration (entity ↔ DB ↔ Soft-PLC), system (HMI/card path + App online)
 
 ### Out
-- Soft-PLC App as the mapping editor (App remains Programs / Tasks / Library / Diagram)
-- Online live values / force / deep runtime visibility → [SWD-183](https://marcusknielsen.atlassian.net/browse/SWD-183)
-- Field commissioning, SIL tooling, certified force workflows
-- Requiring Soft-PLC App to edit Program↔Datablock assignment (HA owns assignment; Soft-PLC consumes)
+- Classic **output Manual** (operator sets CV/valve directly, PID bypassed) — follow-on
+- Additional specialised cards (beyond PID + generic) — later Tasks
+- Certified SIL / force tables / field commissioning toolchains
+- Replacing Lovelace with Soft-PLC-native SCADA
+- Full DCS mode set (IMAN, ROUT, Program/Operator ownership split, etc.) — document as future
 
 ## Decisions
 | Topic | Decision |
 |-------|----------|
-| Shape | Hybrid Datablocks; Program may use ≥1 DB |
-| Ownership | HA integration defines mappings |
-| Product term | **Datablock** (industrial) |
-| Soft-PLC view | Tags only from Datablocks the Program has access to |
-| Access rule | Each Program declares Datablock id(s) |
-| HA UX | Real configuration panel in the integration (not Options-only forms) |
-| Soft-PLC App | Does not own mapping edit; may later show read-only access if useful |
-| Example | Redo example system to fit new contract (breaking changes OK if documented) |
-| Panel tech | Implement may choose HA custom panel / sidebar panel within “real config panel” |
+| Cards | Specialised **PID** + **generic list** for everything else; more specialised cards later |
+| SoT | **Datablock / PLC DB**; HMI and entities write into it |
+| PID modes (v1) | **SP-source** Manual \| Automatic \| Remote (research-informed; MAN≠CV override) |
+| Mode flip | Write MAN SP → Manual; write REM SP → Remote; Auto only via explicit mode |
+| Soft-PLC App | **Both** App online visibility **and** Lovelace cards in this Task |
+| Card binding | **Climate-like compound entity**; card hooks one entity and auto-configures |
+| Output Manual | Deferred |
+| Cascade as separate mode | Not a fourth faceplate mode in v1; cascade/MPC use **Remote** (or Auto writer) SP source |
 
 ## Constraints
 - Soft-PLC remains mock-unaware; plant dynamics stay integration-owned
-- Dual trees synced when shipping App/package changes
-- Prefer extending `docs/io/02-binding-model.md` + `BindingTable` rather than a parallel binding language
-- Preserve MQTT image path semantics (IN/OUT/quality) unless the new contract explicitly replaces them
-- Keep Tasks small; panel UX should be mobile-usable where practical
+- Extend Datablocks (SWD-184) + BindingTable; do not invent a parallel I/O language
+- Dual trees synced when shipping App/package/integration changes
+- Prefer HA patterns (climate / water_heater style entities + custom Lovelace card)
+- Keep Tasks implementable; PID faceplate + generic card + App online may be multiple Sub-tasks but one delivery PR
+- Bumpless transfer / SP-tracking niceties: implement best-effort if cheap; full DCS bumpless not required for Done
 
 ## Inputs (supportive — not substitutes for decisions above)
-- `docs/ROADMAP.md` route order 6; Story [SWD-178](https://marcusknielsen.atlassian.net/browse/SWD-178)
-- `docs/io/02-binding-model.md`, `docs/io/03-thin-integration-stub.md`
-- Soft-PLC multi-program model (SWD-182) and App surface (SWD-181/191/180)
-- Existing `default_wedge_binding_config` / integration mock bindings as material to **replace**, not freeze
+- `docs/ROADMAP.md` route order 7; Story [SWD-178](https://marcusknielsen.atlassian.net/browse/SWD-178)
+- `docs/RESEARCH.md` (SWD-179) — online monitor / force / identity
+- Industrial mode survey (define session): DCS MAN/AUTO/CAS/RCAS/ROUT; Rockwell PIDE; instrumentation texts — SP-source Remote is typical; MAN often means CV override (deferred here)
+- Prior: SWD-181 App surface, SWD-180 generic PID, SWD-184 Datablocks
+- Existing: `GET /api/runtime` tag snapshot; schedule saved vs applied; Program card run status
 
 ## Acceptance criteria
-- [x] Engineers can create/edit/delete a Datablock and its tag/binding rows in the HA configuration panel
-- [x] Program declares Datablock access; Soft-PLC / image path only exposes tags from those Datablocks
-- [x] Example system ships as a fully defined Datablock + matching Soft-PLC Program (and entities as needed)
-- [x] Old flat-only demo binding path is replaced or clearly retired with a documented migration note
-- [x] Changing mappings in HA applies into the live MQTT/image path without Soft-PLC needing to own the editor
-- [x] **Unit** tests: Datablock schema, Program access → tag set, uniqueness/validation rules
-- [x] **Integration** tests: HA panel/API persist + reload; Soft-PLC consumes accessible tags
-- [x] **System** test: end-to-end setup path — define Datablock in integration → Soft-PLC Program with access runs with correct tags
+- [ ] App shows clear **defined / saved vs loaded/applied vs running** state for Soft-PLC / Programs
+- [ ] App online path surfaces live **tag** values and meaningful **instance/pin** live values on the engineering surface
+- [ ] Soft-PLC PID (demo loops) implements **Manual / Automatic / Remote** SP selection into the active SP tag
+- [ ] Writing Manual SP from HMI/entity flips mode to Manual; same for Remote; Automatic requires explicit mode write
+- [ ] Tunings + mode + faceplate fields persist in Datablock / entity SoT and round-trip Soft-PLC ↔ HA
+- [ ] Compound **PID loop entity** exists; Lovelace **PID card** configures from that entity alone
+- [ ] **Generic list card** works for non-PID / custom blocks via a documented entity hook
+- [ ] Demo tank HMI uses the PID card(s) for level and/or flow loop with clean operator UX
+- [ ] **Unit** tests: mode multiplexer + auto-flip rules; entity attribute schema
+- [ ] **Integration** tests: Datablock/entity ↔ Soft-PLC image for mode/SP/tunings
+- [ ] **System** tests: App online visibility path + Lovelace/card (or API-equivalent) end-to-end
 
 ## Work packages
-1. **Datablock model + schema** — [SWD-209](https://marcusknielsen.atlassian.net/browse/SWD-209)
-2. **Program ↔ Datablock access + tag visibility** — [SWD-208](https://marcusknielsen.atlassian.net/browse/SWD-208)
-3. **HA configuration panel** — [SWD-210](https://marcusknielsen.atlassian.net/browse/SWD-210)
-4. **Rebuild example** — [SWD-207](https://marcusknielsen.atlassian.net/browse/SWD-207)
-5. **Persistence + apply/reload** — [SWD-212](https://marcusknielsen.atlassian.net/browse/SWD-212)
-6. **Tests** — [SWD-211](https://marcusknielsen.atlassian.net/browse/SWD-211)
+1. **PID SP-source mode logic + Datablock tag contract** — [SWD-217](https://marcusknielsen.atlassian.net/browse/SWD-217)
+2. **HA compound PID loop entity platform** — [SWD-214](https://marcusknielsen.atlassian.net/browse/SWD-214)
+3. **Lovelace PID card + generic list card** — [SWD-215](https://marcusknielsen.atlassian.net/browse/SWD-215)
+4. **Soft-PLC App online visibility** — [SWD-213](https://marcusknielsen.atlassian.net/browse/SWD-213)
+5. **Demo rebuild + docs** — [SWD-218](https://marcusknielsen.atlassian.net/browse/SWD-218)
+6. **Tests** — [SWD-216](https://marcusknielsen.atlassian.net/browse/SWD-216)
 
 ## Open items
-- Whether Soft-PLC App shows read-only Datablock access on Program Settings — optional follow-on
-- Soft-PLC App sync of HA `program_access` → `Program.datablocks` (demo ships mirrored; documented dual SoT)
+- Exact HA domain/platform name (`plcassistant_pid` vs extending existing platforms) — implement choice within climate-like decision
+- Whether one compound entity covers both level and flow loops as two instances or two entities — implement: **one entity per loop instance**
+- Depth of App Diagram pin overlay vs watch panel — implement may choose either as long as acceptance “live instance/pin values” is met
+- SP-tracking / bumpless on mode change — best-effort; full DCS behaviour deferred
 
 ## Tracker
 - Provider: jira
 - Story: [SWD-178](https://marcusknielsen.atlassian.net/browse/SWD-178)
-- Task: [SWD-184](https://marcusknielsen.atlassian.net/browse/SWD-184)
-- Sub-tasks: SWD-209, SWD-208, SWD-210, SWD-207, SWD-212, SWD-211 (Done)
-- Branch: `cursor/swd-184-datablock-mapping-a52c`
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/80
-- App: 0.1.36
-- Status: **Shipped** (review-fix CLEAN)
+- Task: [SWD-183](https://marcusknielsen.atlassian.net/browse/SWD-183)
+- Sub-tasks: SWD-217, SWD-214, SWD-215, SWD-213, SWD-218, SWD-216
+- Branch: `cursor/swd-183-online-visibility-a52c`
+- PR: *(draft — filled after open)*
 
 ## Next
-Done — phase closed.
+`/implement SWD-183` — Build per this plan on the same branch/PR  
+(or `/ship SWD-183` to finish remaining through Done)
