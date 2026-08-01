@@ -116,11 +116,18 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-206 | Subtask | SWD-180: Library editor UI + API | Done | SWD-180 | docs/PLAN.md | — |
 | SWD-201 | Subtask | SWD-180: Diagram instance equation editor | Done | SWD-180 | docs/PLAN.md | — |
 | SWD-204 | Subtask | SWD-180: unit + integration + system tests | Done | SWD-180 | docs/PLAN.md | — |
-| SWD-184 | Task | Define integration multi-datablock tag mapping UI | To Do | Relates SWD-178; blocked by SWD-182 | docs/ROADMAP.md | `/define SWD-184` |
+| SWD-184 | Task | Integration Datablock tag mapping UI | To Do | Relates SWD-178; blocked by SWD-182 | docs/PLAN.md | `/implement SWD-184` |
+| SWD-209 | Subtask | SWD-184: Datablock model + schema | To Do | SWD-184 | docs/PLAN.md | — |
+| SWD-208 | Subtask | SWD-184: Program ↔ Datablock access + tag visibility | To Do | SWD-184 | docs/PLAN.md | — |
+| SWD-210 | Subtask | SWD-184: HA configuration panel (Datablock CRUD) | To Do | SWD-184 | docs/PLAN.md | — |
+| SWD-207 | Subtask | SWD-184: Rebuild example Datablock + demo Program | To Do | SWD-184 | docs/PLAN.md | — |
+| SWD-212 | Subtask | SWD-184: Persistence + apply/reload into MQTT/image path | To Do | SWD-184 | docs/PLAN.md | — |
+| SWD-211 | Subtask | SWD-184: unit + integration + system tests | To Do | SWD-184 | docs/PLAN.md | — |
 | SWD-183 | Task | Define online / runtime visibility (loaded vs running) | To Do | Relates SWD-178; blocked by SWD-181 | docs/ROADMAP.md | `/define SWD-183` |
 
 ## Log
 
+- 2026-08-01 — Define SWD-184 approved: PLAN.md; Sub-tasks SWD-209/208/210/207/212/211; branch `cursor/swd-184-datablock-mapping-a52c`. Next `/implement SWD-184`.
 - 2026-08-01 — Shipped SWD-180 via PR #79 (App 0.1.35); review-fix CLEAN after 2 iters; Task Done; Next `/define SWD-184`.
 - 2026-08-01 — Implement SWD-180: generic equation-driven PID, copy-on-place instances, library editor/API/persistence, migration, App 0.1.35; full pytest 521 passed. Next `/review-fix SWD-180`.
 - 2026-08-01 — Define SWD-180 approved + ship: PLAN.md; Sub-tasks SWD-203/202/205/206/201/204; branch `cursor/swd-180-library-pid-a52c`. Remaining: implement → review-fix → closeout.
