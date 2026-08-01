@@ -21,7 +21,7 @@ _HTML = r"""<!DOCTYPE html>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="application-name" content="PLC Assistant">
-<title>PLCAssistant — block program editor</title>
+<title>PLCAssistant — Program engineering</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Sora:wght@400;500;600&display=swap" rel="stylesheet">
@@ -45,7 +45,6 @@ _HTML = r"""<!DOCTYPE html>
     --font-display: "Fraunces", "Times New Roman", serif;
     --font-ui: "Sora", "Segoe UI", sans-serif;
     --mono: "Cascadia Code", "Fira Code", "Consolas", monospace;
-    --ease: cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -59,7 +58,6 @@ _HTML = r"""<!DOCTYPE html>
     background:
       radial-gradient(ellipse 90% 55% at 12% -10%, var(--mist) 0%, transparent 55%),
       radial-gradient(ellipse 70% 45% at 95% 8%, rgba(184, 197, 214, 0.55) 0%, transparent 50%),
-      radial-gradient(ellipse 60% 40% at 50% 100%, rgba(26, 122, 109, 0.08) 0%, transparent 55%),
       linear-gradient(165deg, var(--paper) 0%, var(--paper-2) 100%);
     background-attachment: fixed;
   }
@@ -82,16 +80,8 @@ _HTML = r"""<!DOCTYPE html>
     letter-spacing: -0.02em;
     color: var(--ink);
   }
-  #app-header .subtitle {
-    font-size: 0.82rem;
-    font-weight: 500;
-    color: var(--muted);
-  }
-  #msg-status {
-    margin-left: auto;
-    font-size: 0.72rem;
-    color: var(--muted);
-  }
+  #app-header .subtitle { font-size: 0.82rem; font-weight: 500; color: var(--muted); }
+  #msg-status { margin-left: auto; font-size: 0.72rem; color: var(--muted); }
   #msg-status.ok { color: var(--teal); }
   #msg-status.err { color: var(--bad); }
 
@@ -104,14 +94,110 @@ _HTML = r"""<!DOCTYPE html>
     flex-shrink: 0;
   }
 
-  #editor-root {
-    flex: 1;
+  .page {
+    width: min(920px, 100%);
+    margin: 0 auto;
+    padding: 18px;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
-    min-height: 0;
+    gap: 14px;
   }
+  .page-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .page h1, .shell-title {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--ink);
+  }
+  .page h1 { font-size: clamp(1.5rem, 9vw, 2.4rem); }
+  .helper { color: var(--muted); font-size: 0.86rem; line-height: 1.5; }
+  .program-list { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  .program-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: 0 10px 26px rgba(18, 32, 51, 0.08);
+  }
+  .program-card h2 { font-family: var(--font-display); font-size: 1.35rem; letter-spacing: -0.02em; }
+  .program-card .desc { color: var(--ink-soft); font-size: 0.86rem; min-height: 1.2em; }
+  .card-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .chip {
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 4px 9px;
+    background: rgba(255, 252, 247, 0.68);
+    font-size: 0.72rem;
+    color: var(--ink-soft);
+  }
+  .chip.running, .chip.ok { border-color: rgba(15, 107, 98, 0.45); color: var(--teal); }
+  .chip.not-running { border-color: var(--line); color: var(--ink-soft); }
+  .chip.warning { border-color: rgba(184, 106, 16, 0.45); color: var(--amber); }
+  .chip.error { border-color: rgba(168, 50, 50, 0.45); color: var(--bad); }
 
+  .btn {
+    font-family: var(--font-ui);
+    background: var(--panel);
+    border: 1px solid var(--line);
+    color: var(--ink);
+    padding: 7px 12px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 0.78rem;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn:hover, .btn.active { border-color: var(--teal); color: var(--teal); }
+  .btn.primary { background: rgba(15, 107, 98, 0.1); border-color: rgba(15, 107, 98, 0.4); color: var(--teal); }
+  .btn.danger { border-color: rgba(179, 58, 58, 0.45); color: var(--bad); }
+  .btn.danger:hover { background: rgba(179, 58, 58, 0.08); }
+
+  .form-card, .log-list {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  label { font-size: 0.75rem; color: var(--muted); font-weight: 600; }
+  input, textarea {
+    background: #fff;
+    border: 1px solid var(--line);
+    color: var(--ink);
+    border-radius: var(--radius);
+    padding: 8px 10px;
+    font-size: 0.9rem;
+    font-family: var(--font-ui);
+    width: 100%;
+  }
+  textarea { resize: vertical; min-height: 84px; }
+  .form-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  #program-shell { flex: 1; display: none; min-height: 0; flex-direction: column; }
+  .shell-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+    background: rgba(255, 252, 247, 0.68);
+  }
+  .shell-title { font-size: 1.15rem; margin-right: auto; }
+  .shell-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .shell-page { display: none; flex: 1; min-height: 0; }
+  .shell-page.active { display: flex; flex-direction: column; }
+
+  #editor-root { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
   #editor-bar {
     display: flex;
     flex-wrap: wrap;
@@ -122,28 +208,7 @@ _HTML = r"""<!DOCTYPE html>
     background: rgba(255, 252, 247, 0.65);
     flex-shrink: 0;
   }
-  .btn {
-    font-family: var(--font-ui);
-    background: var(--panel);
-    border: 1px solid var(--line);
-    color: var(--ink);
-    padding: 6px 12px;
-    border-radius: var(--radius);
-    cursor: pointer;
-    font-size: 0.78rem;
-    font-weight: 500;
-  }
-  .btn:hover { border-color: var(--teal); color: var(--teal); }
-  .btn.danger { border-color: rgba(179, 58, 58, 0.45); color: var(--bad); }
-  .btn.danger:hover { background: rgba(179, 58, 58, 0.08); }
-
-  #editor-main {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-    min-height: 0;
-  }
-
+  #editor-main { display: flex; flex: 1; overflow: hidden; min-height: 0; }
   #sidebar {
     width: 210px;
     background: rgba(255, 252, 247, 0.7);
@@ -176,10 +241,7 @@ _HTML = r"""<!DOCTYPE html>
   .lib-item:hover { border-color: var(--teal); }
   .lib-item .lib-id { font-weight: 600; color: var(--wire); }
   .lib-item .lib-lib { font-size: 0.68rem; color: var(--muted); }
-  .lib-item .lib-desc {
-    font-size: 0.7rem; color: var(--muted); margin-top: 2px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
+  .lib-item .lib-desc { font-size: 0.7rem; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #add-user-btn { margin: 8px; }
 
   #canvas-wrap {
@@ -192,10 +254,9 @@ _HTML = r"""<!DOCTYPE html>
       rgba(244, 241, 235, 0.4);
     background-size: 24px 24px, 24px 24px, auto;
     min-width: 0;
-    min-height: 220px;
+    min-height: 260px;
   }
   #canvas { width: 100%; height: 100%; cursor: default; }
-
   #right {
     width: 300px;
     background: rgba(255, 252, 247, 0.7);
@@ -219,43 +280,11 @@ _HTML = r"""<!DOCTYPE html>
     min-height: 120px;
   }
   .panel-sep { height: 1px; background: var(--line); }
-
-  #user-editor {
-    background: transparent;
-    border-top: 1px solid var(--line);
-    display: flex;
-    flex-direction: column;
-    max-height: 300px;
-    flex-shrink: 0;
-  }
-  #user-editor h2 {
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: none;
-  }
+  #user-editor { background: transparent; border-top: 1px solid var(--line); display: flex; flex-direction: column; max-height: 300px; flex-shrink: 0; }
+  #user-editor h2 { cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-bottom: none; }
   #user-editor h2 span.tog { color: var(--teal); }
-  #user-form {
-    padding: 8px 10px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    overflow-y: auto;
-    flex: 1;
-  }
-  #user-form label { font-size: 0.7rem; color: var(--muted); }
-  #user-form input, #user-form textarea {
-    background: #fff;
-    border: 1px solid var(--line);
-    color: var(--ink);
-    border-radius: var(--radius);
-    padding: 5px 8px;
-    font-size: 0.76rem;
-    font-family: var(--mono);
-    width: 100%;
-  }
-  #user-form textarea { resize: vertical; min-height: 64px; }
+  #user-form { padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; overflow-y: auto; flex: 1; }
+  #user-form input, #user-form textarea { font-family: var(--mono); font-size: 0.76rem; padding: 5px 8px; }
   #user-form .row { display: flex; gap: 6px; }
   #user-form .row button { flex: 1; }
 
@@ -267,13 +296,15 @@ _HTML = r"""<!DOCTYPE html>
     box-shadow: 0 12px 40px rgba(26, 35, 50, 0.12);
   }
   #overlay h3 { color: var(--wire); font-size: 0.9rem; margin-bottom: 4px; font-family: var(--font-display); }
-  #overlay label { font-size: 0.75rem; color: var(--muted); }
-  #overlay input {
-    background: #fff; border: 1px solid var(--line); color: var(--ink);
-    border-radius: var(--radius); padding: 5px 8px; font-size: 0.8rem; width: 100%;
-  }
   #overlay .btns { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
   #backdrop { position: fixed; inset: 0; background: rgba(26, 35, 50, 0.35); z-index: 999; display: none; }
+
+  .log-entry { border-bottom: 1px solid var(--line); padding: 10px 0; display: grid; gap: 4px; }
+  .log-entry:last-child { border-bottom: 0; }
+  .log-meta { color: var(--muted); font-size: 0.72rem; display: flex; gap: 8px; flex-wrap: wrap; }
+  .log-level-info { color: var(--teal); }
+  .log-level-warn, .log-level-warning { color: var(--amber); }
+  .log-level-error { color: var(--bad); }
 
   .block-g { cursor: move; }
   .block-rect { fill: #fffcf7; stroke: var(--line); stroke-width: 1.5; rx: 4; ry: 4; }
@@ -288,35 +319,13 @@ _HTML = r"""<!DOCTYPE html>
   .wire-path.draft { stroke-dasharray: 5,3; opacity: 0.6; }
   .exec-badge { fill: #e8eef4; }
   .exec-text { fill: var(--muted); font-size: 9px; font-family: var(--mono); }
-
-  .panel-tog {
-    display: none;
-    font-family: var(--font-ui);
-    font-size: 0.75rem;
-    border: 1px solid var(--line);
-    background: var(--panel);
-    color: var(--ink-soft);
-    padding: 6px 10px;
-    border-radius: var(--radius);
-    cursor: pointer;
-  }
+  .panel-tog { display: none; font-family: var(--font-ui); font-size: 0.75rem; border: 1px solid var(--line); background: var(--panel); color: var(--ink-soft); padding: 6px 10px; border-radius: var(--radius); cursor: pointer; }
 
   @media (max-width: 860px) {
-    #editor-main {
-      flex-direction: column;
-      overflow-y: auto;
-    }
-    #sidebar, #right {
-      width: 100%;
-      border-right: none;
-      border-left: none;
-      max-height: none;
-    }
+    #editor-main { flex-direction: column; overflow-y: auto; }
+    #sidebar, #right { width: 100%; border-right: none; border-left: none; max-height: none; }
     #sidebar.collapsed, #right.collapsed { display: none; }
-    #canvas-wrap {
-      min-height: 42dvh;
-      flex: 1 0 auto;
-    }
+    #canvas-wrap { min-height: 42dvh; flex: 1 0 auto; }
     .panel-tog { display: inline-flex; }
     #user-editor { max-height: none; }
   }
@@ -326,65 +335,126 @@ _HTML = r"""<!DOCTYPE html>
 
 <header id="app-header">
   <div class="mark">PLCAssistant</div>
-  <div class="subtitle">block program editor</div>
+  <div class="subtitle">Program engineering</div>
   <div id="msg-status" class="ok">Ready</div>
 </header>
-<p class="hmi-banner">Operator HMI is in Home Assistant Lovelace — this App is the Soft-PLC program editor.</p>
+<p class="hmi-banner">Operator HMI is in Home Assistant Lovelace — this App is the Soft-PLC Program editor.</p>
 
-<div id="editor-root" aria-label="Program editor">
-  <div id="editor-bar">
-    <button class="btn" onclick="applyRestart()">Apply (restart)</button>
-    <button class="btn" onclick="applyHot()">Hot Apply</button>
-    <button class="btn danger" onclick="removeSelected()">Remove</button>
-    <button type="button" class="panel-tog" onclick="togglePanel('sidebar')">Library</button>
-    <button type="button" class="panel-tog" onclick="togglePanel('right')">JSON</button>
+<main id="programs-view" class="page" aria-label="Programs">
+  <div class="page-head">
+    <div>
+      <h1>Programs</h1>
+      <p class="helper">One Program card per Soft-PLC Program. Scheduling edits are handled later.</p>
+    </div>
+    <a class="btn primary" href="#/programs/new" data-route="#/programs/new">Create Program</a>
+  </div>
+  <div id="program-list" class="program-list" data-testid="program-cards"></div>
+</main>
+
+<main id="create-view" class="page" aria-label="Create Program" style="display:none">
+  <div class="page-head">
+    <div>
+      <h1>Create Program</h1>
+      <p class="helper">New Programs start empty and unscheduled.</p>
+    </div>
+    <a class="btn" href="#/programs">Back</a>
+  </div>
+  <form id="create-form" class="form-card" onsubmit="createProgram(event)">
+    <label for="new-name">Name</label>
+    <input id="new-name" name="name" required autocomplete="off" placeholder="Tank startup" />
+    <label for="new-description">Description (optional)</label>
+    <textarea id="new-description" name="description" placeholder="What this Program owns"></textarea>
+    <div class="form-row"><button class="btn primary" type="submit">Save</button></div>
+  </form>
+</main>
+
+<div id="program-shell" aria-label="Program shell">
+  <div class="shell-bar">
+    <a class="btn" href="#/programs">Back</a>
+    <div class="shell-title" id="program-title">Program</div>
+    <nav class="shell-tabs" aria-label="Program tabs">
+      <a class="btn" id="tab-diagram" href="#/programs/tank/diagram">Diagram</a>
+      <a class="btn" id="tab-log" href="#/programs/tank/log">Log</a>
+      <a class="btn" id="tab-settings" href="#/programs/tank/settings">Settings</a>
+    </nav>
   </div>
 
-  <div id="editor-main">
-    <div id="sidebar">
-      <h2>Block Library</h2>
-      <div id="lib-list"></div>
-      <button class="btn" id="add-user-btn" onclick="openUserEditor(null)">+ New User Block</button>
-    </div>
+  <section id="diagram-view" class="shell-page" aria-label="Diagram">
+    <div id="editor-root" aria-label="Program editor">
+      <div id="editor-bar">
+        <button class="btn" onclick="applyRestart()">Apply (restart)</button>
+        <button class="btn" onclick="applyHot()">Hot Apply</button>
+        <button class="btn danger" onclick="removeSelected()">Remove</button>
+        <button type="button" class="panel-tog" onclick="togglePanel('sidebar')">Library</button>
+        <button type="button" class="panel-tog" onclick="togglePanel('right')">JSON</button>
+      </div>
 
-    <div id="canvas-wrap">
-      <svg id="canvas" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <marker id="arrowhead" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto">
-            <polygon points="0 0, 6 2, 0 4" fill="var(--wire)" opacity="0.8"/>
-          </marker>
-        </defs>
-        <g id="wires-layer"></g>
-        <g id="blocks-layer"></g>
-        <line id="draft-wire" class="wire-path draft" style="display:none" marker-end="url(#arrowhead)"/>
-      </svg>
-    </div>
+      <div id="editor-main">
+        <div id="sidebar">
+          <h2>Block Library</h2>
+          <div id="lib-list"></div>
+          <button class="btn" id="add-user-btn" onclick="openUserEditor(null)">+ New User Block</button>
+        </div>
 
-    <div id="right">
-      <h2>Program JSON</h2>
-      <textarea id="yaml-area" spellcheck="false" oninput="onYamlEdit()"></textarea>
-      <div class="panel-sep"></div>
-      <div id="user-editor">
-        <h2 onclick="toggleUserEditor()">User Block Editor <span class="tog" id="ue-tog">▲</span></h2>
-        <div id="user-form">
-          <label>Template ID</label>
-          <input id="ue-tid" placeholder="my_block" />
-          <label>Description</label>
-          <input id="ue-desc" placeholder="What this block does" />
-          <label>Pins JSON (array of {name, direction, data_type?, default?})</label>
-          <textarea id="ue-pins" rows="3">[{"name":"x","direction":"IN","data_type":"float","default":0.0},{"name":"out","direction":"OUT","data_type":"float"}]</textarea>
-          <label>Params JSON (dict of name→default_value)</label>
-          <textarea id="ue-params" rows="2">{"gain": 1.0}</textarea>
-          <label>Python Body</label>
-          <textarea id="ue-body" rows="4" placeholder="out = x * gain"></textarea>
-          <div class="row">
-            <button class="btn" onclick="saveUserBlock()">Save</button>
-            <button class="btn danger" onclick="deleteUserBlock()">Delete</button>
+        <div id="canvas-wrap">
+          <svg id="canvas" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <marker id="arrowhead" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto">
+                <polygon points="0 0, 6 2, 0 4" fill="var(--wire)" opacity="0.8"/>
+              </marker>
+            </defs>
+            <g id="wires-layer"></g>
+            <g id="blocks-layer"></g>
+            <line id="draft-wire" class="wire-path draft" style="display:none" marker-end="url(#arrowhead)"/>
+          </svg>
+        </div>
+
+        <div id="right">
+          <h2>Program JSON</h2>
+          <textarea id="yaml-area" spellcheck="false" oninput="onYamlEdit()"></textarea>
+          <div class="panel-sep"></div>
+          <div id="user-editor">
+            <h2 onclick="toggleUserEditor()">User Block Editor <span class="tog" id="ue-tog">▲</span></h2>
+            <div id="user-form">
+              <label>Template ID</label>
+              <input id="ue-tid" placeholder="my_block" />
+              <label>Description</label>
+              <input id="ue-desc" placeholder="What this block does" />
+              <label>Pins JSON (array of {name, direction, data_type?, default?})</label>
+              <textarea id="ue-pins" rows="3">[{"name":"x","direction":"IN","data_type":"float","default":0.0},{"name":"out","direction":"OUT","data_type":"float"}]</textarea>
+              <label>Params JSON (dict of name to default_value)</label>
+              <textarea id="ue-params" rows="2">{"gain": 1.0}</textarea>
+              <label>Python Body</label>
+              <textarea id="ue-body" rows="4" placeholder="out = x * gain"></textarea>
+              <div class="row">
+                <button class="btn" onclick="saveUserBlock()">Save</button>
+                <button class="btn danger" onclick="deleteUserBlock()">Delete</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
+  </section>
+
+  <section id="log-view" class="shell-page page" aria-label="Log">
+    <div class="page-head"><h1>Log</h1></div>
+    <div id="log-list" class="log-list"></div>
+  </section>
+
+  <section id="settings-view" class="shell-page page" aria-label="Settings">
+    <div class="page-head"><h1>Settings</h1></div>
+    <form id="settings-form" class="form-card" onsubmit="saveSettings(event)">
+      <label for="settings-name">Name</label>
+      <input id="settings-name" required autocomplete="off" />
+      <label for="settings-description">Description (optional)</label>
+      <textarea id="settings-description"></textarea>
+      <div class="form-row">
+        <button class="btn primary" type="submit">Save</button>
+        <button class="btn danger" type="button" onclick="deleteProgram()">Delete</button>
+      </div>
+    </form>
+  </section>
 </div>
 
 <div id="backdrop" onclick="closeOverlay()"></div>
@@ -399,8 +469,11 @@ _HTML = r"""<!DOCTYPE html>
 </div>
 
 <script>
-// ── State ──────────────────────────────────────────────────────────────────
 let program = { version: "1.0", instances: {}, wires: [], execution_order: [] };
+let programMeta = null;
+let programs = [];
+let selectedProgramId = null;
+let currentTab = 'diagram';
 let library = [];
 let selectedId = null;
 let dragging = null;
@@ -411,8 +484,9 @@ let ueVisible = true;
 const BLOCK_W = 140, BLOCK_H_BASE = 30, PIN_ROW = 16, PIN_R = 5;
 
 window.onload = () => {
+  window.addEventListener('hashchange', route);
   loadLibrary();
-  loadProgram();
+  route();
 };
 
 function setStatus(msg, ok = true) {
@@ -426,7 +500,6 @@ function togglePanel(id) {
   if (el) el.classList.toggle('collapsed');
 }
 
-// ── API (Ingress-safe relative paths) ──────────────────────────────────────
 function apiUrl(path) {
   const rel = String(path || '').replace(/^\//, '');
   let dir = window.location.pathname || '/';
@@ -447,20 +520,165 @@ async function apiFetch(path, opts = {}) {
   } catch (e) { setStatus('Error: ' + e.message, false); throw e; }
 }
 
+function show(id) {
+  for (const elId of ['programs-view', 'create-view', 'program-shell']) {
+    const el = document.getElementById(elId);
+    if (el) el.style.display = elId === id ? (id === 'program-shell' ? 'flex' : '') : 'none';
+  }
+}
+
+function programUrl(id, tab) {
+  return '#/programs/' + encodeURIComponent(id) + '/' + tab;
+}
+
+async function route() {
+  const hash = window.location.hash || '#/programs';
+  if (hash === '#/' || hash === '#/programs') {
+    selectedProgramId = null;
+    show('programs-view');
+    await loadPrograms();
+    return;
+  }
+  if (hash === '#/programs/new') {
+    selectedProgramId = null;
+    show('create-view');
+    return;
+  }
+  const match = hash.match(/^#\/programs\/([^/]+)\/(diagram|log|settings)$/);
+  if (match) {
+    selectedProgramId = decodeURIComponent(match[1]);
+    currentTab = match[2];
+    show('program-shell');
+    await loadProgramMeta(selectedProgramId);
+    setShellTab(currentTab);
+    if (currentTab === 'diagram') {
+      await loadProgram();
+    } else if (currentTab === 'log') {
+      await loadLog();
+    } else {
+      renderSettings();
+    }
+    return;
+  }
+  window.location.hash = '#/programs';
+}
+
+async function loadPrograms() {
+  programs = await apiFetch('api/programs');
+  const list = document.getElementById('program-list');
+  list.innerHTML = '';
+  if (!programs.length) {
+    list.innerHTML = '<div class="program-card"><p class="helper">No Programs yet.</p></div>';
+    return;
+  }
+  for (const p of programs) {
+    const card = document.createElement('article');
+    card.className = 'program-card';
+    const statusClass = String(p.status || '').replace(/\s+/g, '-');
+    card.innerHTML = `<h2>${esc(p.name || p.id)}</h2>
+      <p class="desc">${esc(p.description || 'No description')}</p>
+      <div class="card-row">
+        <span class="chip ${esc(statusClass)}">${esc(p.status)}</span>
+        <span class="chip ${esc(p.health)}">health: ${esc(p.health)}</span>
+        <span class="chip">${p.task_id ? 'Task ' + esc(p.task_id) : 'No task'}</span>
+      </div>
+      <div><a class="btn primary" href="${programUrl(p.id, 'diagram')}">Open Diagram</a></div>`;
+    list.appendChild(card);
+  }
+  setStatus('Programs loaded', true);
+}
+
+async function createProgram(event) {
+  event.preventDefault();
+  const name = document.getElementById('new-name').value.trim();
+  const description = document.getElementById('new-description').value;
+  const card = await apiFetch('api/programs', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name, description})
+  });
+  document.getElementById('create-form').reset();
+  window.location.hash = programUrl(card.id, 'diagram');
+}
+
+async function loadProgramMeta(id) {
+  programMeta = await apiFetch('api/programs/' + encodeURIComponent(id));
+  const title = programMeta.name || id;
+  document.getElementById('program-title').textContent = title;
+  for (const tab of ['diagram', 'log', 'settings']) {
+    document.getElementById('tab-' + tab).href = programUrl(id, tab);
+  }
+}
+
+function setShellTab(tab) {
+  for (const name of ['diagram', 'log', 'settings']) {
+    document.getElementById(name + '-view').classList.toggle('active', name === tab);
+    document.getElementById('tab-' + name).classList.toggle('active', name === tab);
+  }
+}
+
+async function loadLog() {
+  const entries = await apiFetch('api/programs/' + encodeURIComponent(selectedProgramId) + '/log');
+  const el = document.getElementById('log-list');
+  if (!entries.length) {
+    el.innerHTML = '<p class="helper">No log entries yet.</p>';
+    return;
+  }
+  el.innerHTML = '';
+  for (const entry of entries) {
+    const row = document.createElement('div');
+    row.className = 'log-entry';
+    const level = String(entry.level || 'info').toLowerCase();
+    row.innerHTML = `<div class="log-meta"><span>${esc(entry.ts || '')}</span><strong class="log-level-${esc(level)}">${esc(level)}</strong></div><div>${esc(entry.message || '')}</div>`;
+    el.appendChild(row);
+  }
+}
+
+function renderSettings() {
+  document.getElementById('settings-name').value = programMeta?.name || selectedProgramId || '';
+  document.getElementById('settings-description').value = programMeta?.description || '';
+}
+
+async function saveSettings(event) {
+  event.preventDefault();
+  const name = document.getElementById('settings-name').value.trim();
+  const description = document.getElementById('settings-description').value;
+  programMeta = await apiFetch('api/programs/' + encodeURIComponent(selectedProgramId) + '/meta', {
+    method: 'PUT',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({name, description})
+  });
+  document.getElementById('program-title').textContent = programMeta.name || selectedProgramId;
+  setStatus('Settings saved', true);
+}
+
+async function deleteProgram() {
+  if (!selectedProgramId) return;
+  if (!confirm('Are you sure you want to delete this Program?')) return;
+  await apiFetch('api/programs/' + encodeURIComponent(selectedProgramId), {method: 'DELETE'});
+  window.location.hash = '#/programs';
+}
+
 async function loadLibrary() {
   library = await apiFetch('api/library');
   renderLibrary();
 }
 
+function selectedQuery() {
+  return selectedProgramId ? '?id=' + encodeURIComponent(selectedProgramId) : '';
+}
+
 async function loadProgram() {
-  program = await apiFetch('api/program');
+  if (!selectedProgramId) program = await apiFetch('api/program');
+  else program = await apiFetch('api/program' + selectedQuery());
   syncYamlPane();
   render();
   setStatus('Loaded', true);
 }
 
 async function putProgram(prog) {
-  program = await apiFetch('api/program', {
+  const path = 'api/program' + selectedQuery();
+  program = await apiFetch(path, {
     method: 'PUT',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(prog)
@@ -471,26 +689,26 @@ async function putProgram(prog) {
 }
 
 async function applyRestart() {
-  await apiFetch('api/apply', {
+  await apiFetch('api/apply' + selectedQuery(), {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({mode: 'restart'})
+    body: JSON.stringify({mode: 'restart', program_id: selectedProgramId})
   });
   setStatus('Applied (restart)', true);
 }
 
 async function applyHot() {
-  await apiFetch('api/apply', {
+  await apiFetch('api/apply' + selectedQuery(), {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({mode: 'hot'})
+    body: JSON.stringify({mode: 'hot', program_id: selectedProgramId})
   });
   setStatus('Applied (hot)', true);
 }
 
-// ── Library panel ──────────────────────────────────────────────────────────
 function renderLibrary() {
   const el = document.getElementById('lib-list');
+  if (!el) return;
   el.innerHTML = '';
   for (const t of library) {
     const d = document.createElement('div');
@@ -513,7 +731,6 @@ function renderLibrary() {
   }
 }
 
-// ── Canvas drag-drop to place ──────────────────────────────────────────────
 const canvasSvg = document.getElementById('canvas');
 canvasSvg.addEventListener('dragover', e => e.preventDefault());
 canvasSvg.addEventListener('drop', async e => {
@@ -529,17 +746,16 @@ canvasSvg.addEventListener('drop', async e => {
 });
 
 async function place(tid, tlib, iid, x, y) {
-  program = await apiFetch('api/place', {
+  program = await apiFetch('api/place' + selectedQuery(), {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({template_id: tid, library: tlib, instance_id: iid, x, y})
+    body: JSON.stringify({template_id: tid, library: tlib, instance_id: iid, x, y, program_id: selectedProgramId})
   });
   syncYamlPane();
   render();
   setStatus('Placed ' + tid, true);
 }
 
-// ── Canvas render ──────────────────────────────────────────────────────────
 function blockHeight(tmpl) {
   const pins = tmpl ? tmpl.pins : [];
   const inPins = pins.filter(p => p.direction === 'IN');
@@ -764,7 +980,7 @@ async function onYamlEdit() {
     const txt = document.getElementById('yaml-area').value;
     program = JSON.parse(txt);
     await putProgram(program);
-  } catch (_) { /* JSON parse error; user is still typing */ }
+  } catch (_) { }
 }
 
 function openOverlay(iid) {
@@ -802,10 +1018,10 @@ async function applyOverlay() {
 
 async function resetInstanceOverlay() {
   if (!overlayInst) return;
-  program = await apiFetch('api/reset_instance', {
+  program = await apiFetch('api/reset_instance' + selectedQuery(), {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({instance_id: overlayInst})
+    body: JSON.stringify({instance_id: overlayInst, program_id: selectedProgramId})
   });
   syncYamlPane(); render();
   closeOverlay();
@@ -839,10 +1055,10 @@ async function saveUserBlock() {
   catch(e) { setStatus('Params JSON invalid: ' + e.message, false); return; }
   const body = document.getElementById('ue-body').value;
   const desc = document.getElementById('ue-desc').value;
-  await apiFetch('api/library/user', {
+  await apiFetch('api/library/user' + selectedQuery(), {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({template_id: tid, description: desc, pins, params, body})
+    body: JSON.stringify({template_id: tid, description: desc, pins, params, body, program_id: selectedProgramId})
   });
   await loadLibrary();
   await loadProgram();
@@ -853,14 +1069,14 @@ async function deleteUserBlock() {
   const tid = document.getElementById('ue-tid').value.trim();
   if (!tid) { setStatus('Template ID required', false); return; }
   if (!confirm('Delete user block ' + tid + '?')) return;
-  await apiFetch('api/library/user/' + encodeURIComponent(tid), {method: 'DELETE'});
+  await apiFetch('api/library/user/' + encodeURIComponent(tid) + selectedQuery(), {method: 'DELETE'});
   await loadLibrary();
   await loadProgram();
   setStatus('Deleted ' + tid, true);
 }
 
 function svgEl(tag) { return document.createElementNS('http://www.w3.org/2000/svg', tag); }
-function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 </script>
 </body>
 </html>

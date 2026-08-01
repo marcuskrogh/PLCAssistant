@@ -338,6 +338,40 @@ class ProjectLoader:
         else:
             self.hot_apply(new_project, superuser=superuser)
 
+    def replace_program(
+        self,
+        program_id: str,
+        program: Program,
+        *,
+        restart: bool = True,
+        superuser: bool = False,
+    ) -> None:
+        """Swap a selected Program in the active project."""
+        proj = self._project
+        if proj is None:
+            if program_id in ("", self._main_program_id(SoftPlcProject())):
+                self.load(
+                    project_from_dict(
+                        migrate_legacy_program_dict(program_to_dict(program))
+                    )
+                )
+                return
+            raise KeyError(f"Program {program_id!r} not found")
+        if program_id not in proj.programs:
+            raise KeyError(f"Program {program_id!r} not found")
+        new_programs = dict(proj.programs)
+        new_programs[program_id] = program
+        new_project = SoftPlcProject(
+            programs=new_programs,
+            tasks=list(proj.tasks),
+            scan_period_s=proj.scan_period_s,
+            version=proj.version,
+        )
+        if restart:
+            self.restart_apply(new_project)
+        else:
+            self.hot_apply(new_project, superuser=superuser)
+
     @staticmethod
     def _main_program_id(project: SoftPlcProject) -> str:
         from plcassistant.surface.model import MAIN_TASK_ID

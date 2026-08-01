@@ -46,6 +46,8 @@ from the integration simulator (SWD-146+ / SWD-170); Numbers remain for nudges.
 
 ## Upgrading from App 0.1.10 / 0.1.19 / 0.1.28
 
+**0.1.33** adds the App Program engineering surface: Program cards, create, Diagram/Log/Settings, and selected-Program canvas APIs. Scheduling remains out of scope.
+
 Entity IDs changed in **0.1.11** (OUT tags became sensors; setpoint request renamed),
 again in **0.1.20** (plant PVs flipped back to Soft-PLC IN Numbers), and in
 **0.1.32** (Soft-PLC project organization: Tasks → Programs; legacy flat program auto-migrates):

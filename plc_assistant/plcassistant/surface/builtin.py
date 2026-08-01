@@ -262,6 +262,8 @@ def wedge_cascade_program(
     """
     return {
         "version": "1.0",
+        "name": "Tank",
+        "description": "Default tank level-flow cascade program.",
         "instances": {
             "level_pi": {
                 "template_id": "level_pi",

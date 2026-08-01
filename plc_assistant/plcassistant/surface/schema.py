@@ -286,6 +286,10 @@ def program_to_dict(program: Program) -> dict[str, Any]:
     **not** embedded; user templates are stored under ``user_templates``.
     """
     result: dict[str, Any] = {"version": program.version}
+    if program.name:
+        result["name"] = program.name
+    if program.description:
+        result["description"] = program.description
     if program.user_templates:
         result["user_templates"] = {
             tid: _template_to_dict(tmpl)
@@ -311,6 +315,8 @@ def program_from_dict(data: Mapping[str, Any]) -> Program:
         raise ValueError("program data must be a mapping")
 
     version = str(data.get("version", "1.0"))
+    name = str(data.get("name", ""))
+    description = str(data.get("description", ""))
 
     raw_utemplates = data.get("user_templates") or {}
     if not isinstance(raw_utemplates, Mapping):
@@ -344,6 +350,8 @@ def program_from_dict(data: Mapping[str, Any]) -> Program:
         execution_order = [str(x) for x in raw_order]
 
     program = Program(
+        name=name,
+        description=description,
         instances=instances,
         wires=wires,
         execution_order=execution_order,
