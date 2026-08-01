@@ -138,6 +138,12 @@ def test_http_create_get_meta_diagram_put_log_delete_and_html(tmp_path) -> None:
         )
         assert status == 200
         assert meta["name"] == "Aux Pump 2"
+        status, blank = _json_request(
+            srv.base + "/api/programs/aux-pump/meta",
+            "PUT",
+            {"name": "   ", "description": "blank rejected"},
+        )
+        assert status == 400
         status, renamed = _json_get(srv.base + "/api/program?id=aux-pump")
         assert status == 200
         assert renamed["instances"] == {}
@@ -173,6 +179,77 @@ def test_http_create_get_meta_diagram_put_log_delete_and_html(tmp_path) -> None:
         status, missing = _json_get(srv.base + "/api/programs/aux-pump")
         assert status == 404
         assert "not found" in missing["error"].lower()
+
+
+def test_encoded_program_id_and_scoped_user_templates(tmp_path) -> None:
+    from plcassistant.surface.user_library import make_user_template
+
+    project = wedge_softplc_project()
+    project["programs"]["aux pump"] = {
+        "version": "1.0",
+        "name": "Aux Pump",
+        "description": "",
+        "instances": {},
+        "wires": [],
+        "execution_order": [],
+        "user_templates": {},
+    }
+    state = AppState(initial_project=project, program_path=str(tmp_path / "program.json"))
+    a = state.create_program("Alpha")
+    b = state.create_program("Beta")
+    prog_a = state.program_for_id(a["id"])
+    prog_b = state.program_for_id(b["id"])
+    assert prog_a is not None and prog_b is not None
+    tmpl_a = make_user_template(
+        "calc",
+        body="out = 1",
+        pins=[
+            {"name": "out", "direction": "OUT", "data_type": "float"},
+        ],
+        description="A",
+    )
+    tmpl_b = make_user_template(
+        "calc",
+        body="out = 2",
+        pins=[
+            {"name": "out", "direction": "OUT", "data_type": "float"},
+        ],
+        description="B",
+    )
+    prog_a.user_templates["calc"] = tmpl_a
+    prog_b.user_templates["calc"] = tmpl_b
+    state.library.register(tmpl_b)  # last-wins global registration
+    state.library.register(tmpl_a)
+    state.persist_program()
+
+    with _Server(state) as srv:
+        status, got = _json_get(srv.base + "/api/programs/aux%20pump")
+        assert status == 200
+        assert got["name"] == "Aux Pump"
+
+        status, place_a = _json_request(
+            srv.base + "/api/place",
+            "POST",
+            {
+                "program_id": a["id"],
+                "template_id": "calc",
+                "library": "user",
+                "instance_id": "calc_a",
+            },
+        )
+        assert status == 200
+        assert place_a["instances"]["calc_a"]["template_id"] == "calc"
+        resolved_a = state.resolve_template(a["id"], "user", "calc")
+        resolved_b = state.resolve_template(b["id"], "user", "calc")
+        assert resolved_a is not None and resolved_b is not None
+        assert resolved_a.description == "A"
+        assert resolved_b.description == "B"
+
+        status, lib_a = _json_get(srv.base + f"/api/library?id={a['id']}")
+        assert status == 200
+        user_a = [t for t in lib_a if t["library"] == "user" and t["template_id"] == "calc"]
+        assert len(user_a) == 1
+        assert user_a[0]["description"] == "A"
 
 
 def test_system_app_mqtt_program_cards_and_opening_program_api() -> None:

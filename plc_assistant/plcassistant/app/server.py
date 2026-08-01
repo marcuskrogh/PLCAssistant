@@ -30,7 +30,7 @@ import re
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 from plcassistant.app._canvas import get_canvas_html
 from plcassistant.app.operator_runtime import OperatorRuntime
@@ -276,11 +276,55 @@ class AppState:
         prog = self.program_for_id(program_id)
         if prog is None:
             raise KeyError(f"Program {program_id!r} not found")
-        prog.name = str(name).strip()
+        clean_name = str(name).strip()
+        if not clean_name:
+            raise ValueError("name required")
+        prog.name = clean_name
         prog.description = str(description or "")
         self.persist_program()
         self.append_log(program_id, "info", "Program settings saved")
         return self.program_card(program_id)
+
+    def resolve_template(self, program_id: str | None, library: str, template_id: str):
+        """Resolve a template for *program_id*, preferring that Program's user templates."""
+        prog = self.program_for_id(program_id)
+        if library == "user" and prog is not None:
+            tmpl = (prog.user_templates or {}).get(template_id)
+            if tmpl is not None:
+                return tmpl
+        tmpl = self.library.get(library, template_id)
+        if tmpl is not None:
+            return tmpl
+        if prog is not None:
+            return (prog.user_templates or {}).get(template_id)
+        return None
+
+    def library_payload(self, program_id: str | None = None) -> list[dict[str, Any]]:
+        """Builtin templates plus the selected Program's user templates (no cross-Program bleed)."""
+        builtins = [t for t in self.library.all_templates() if t.is_builtin]
+        prog = self.program_for_id(program_id)
+        user = list((prog.user_templates or {}).values()) if prog is not None else []
+        templates = builtins + user
+        return [
+            {
+                "template_id": t.template_id,
+                "library": t.library,
+                "description": t.description,
+                "pins": [
+                    {
+                        "name": p.name,
+                        "direction": p.direction.value,
+                        "data_type": p.data_type,
+                        **({"default": p.default} if p.default is not None else {}),
+                    }
+                    for p in t.pins
+                ],
+                "params": t.params,
+                "body": t.body,
+                "is_builtin": t.is_builtin,
+            }
+            for t in templates
+        ]
 
     def delete_program(self, program_id: str) -> dict[str, Any]:
         proj = self.loader.project
@@ -364,7 +408,9 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
             if not path.startswith("/api/programs"):
                 return None
             suffix = path[len("/api/programs") :].strip("/")
-            return [] if not suffix else suffix.split("/")
+            if not suffix:
+                return []
+            return [unquote(part) for part in suffix.split("/")]
 
         def do_GET(self) -> None:
             path = urlparse(self.path).path.rstrip("/") or "/"
@@ -382,33 +428,7 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
                 elif path == "/api/project":
                     self._send_json(state.project_dict)
                 elif path == "/api/library":
-                    templates = state.library.all_templates()
-                    self._send_json(
-                        [
-                            {
-                                "template_id": t.template_id,
-                                "library": t.library,
-                                "description": t.description,
-                                "pins": [
-                                    {
-                                        "name": p.name,
-                                        "direction": p.direction.value,
-                                        "data_type": p.data_type,
-                                        **(
-                                            {"default": p.default}
-                                            if p.default is not None
-                                            else {}
-                                        ),
-                                    }
-                                    for p in t.pins
-                                ],
-                                "params": t.params,
-                                "body": t.body,
-                                "is_builtin": t.is_builtin,
-                            }
-                            for t in templates
-                        ]
-                    )
+                    self._send_json(state.library_payload(self._program_id_from()))
                 elif path == "/api/runtime":
                     self._send_json(state.runtime_snapshot())
                 else:
@@ -436,13 +456,17 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
                     self._send_json(state.program_dict_for(parts[0]))
                 elif (parts := self._program_path_parts()) and len(parts) == 2 and parts[1] == "meta":
                     data = self._read_json()
-                    self._send_json(
-                        state.update_program_meta(
-                            parts[0],
-                            str(data.get("name", "")),
-                            str(data.get("description", "")),
+                    try:
+                        self._send_json(
+                            state.update_program_meta(
+                                parts[0],
+                                str(data.get("name", "")),
+                                str(data.get("description", "")),
+                            )
                         )
-                    )
+                    except ValueError as exc:
+                        self._send_error_json(str(exc))
+                        return
                 elif path == "/api/project":
                     data = self._read_json()
                     new_project = project_from_dict(data)
@@ -576,16 +600,13 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
             )
             x = float(data.get("x", 0.0))
             y = float(data.get("y", 0.0))
-            tmpl = state.library.get(tlib, tid)
-            if tmpl is None:
-                prog = state.program_for_id(pid)
-                tmpl = (prog.user_templates or {}).get(tid) if prog else None
-            if tmpl is None:
-                self._send_error_json(f"Template {tlib!r}/{tid!r} not found", 404)
-                return
             prog = state.program_for_id(pid)
             if prog is None:
                 self._send_error_json("No program loaded", 400)
+                return
+            tmpl = state.resolve_template(pid, tlib, tid)
+            if tmpl is None:
+                self._send_error_json(f"Template {tlib!r}/{tid!r} not found", 404)
                 return
             inst = place_block(tmpl, iid, x=x, y=y)
             prog.instances[iid] = inst
@@ -606,9 +627,7 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
             if inst is None:
                 self._send_error_json(f"Instance {iid!r} not found", 404)
                 return
-            tmpl = state.library.get(inst.library, inst.template_id)
-            if tmpl is None:
-                tmpl = (prog.user_templates or {}).get(inst.template_id)
+            tmpl = state.resolve_template(pid, inst.library, inst.template_id)
             if tmpl is None:
                 self._send_error_json(
                     f"Template {inst.library!r}/{inst.template_id!r} not found", 404

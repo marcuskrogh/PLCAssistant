@@ -87,7 +87,7 @@
 - Sub-tasks: SWD-190, SWD-192, SWD-194, SWD-195, SWD-193
 - Follow-on Task: [SWD-191](https://marcusknielsen.atlassian.net/browse/SWD-191) (scheduling editor)
 - Branch: `cursor/swd-181-app-engineering-surface-a52c`
-- PR: (opening)
+- PR: [#77](https://github.com/marcuskrogh/PLCAssistant/pull/77)
 
 ## Next
 `/review-fix SWD-181` — Review and auto-fix until clean
