@@ -151,8 +151,8 @@ def test_canvas_uses_relative_api_paths(app_server):
     assert status == 200
     html = body.decode("utf-8")
     assert "function apiUrl(" in html
-    assert "apiFetch('api/library')" in html
-    assert "apiFetch('api/program')" in html
+    assert "apiFetch('api/library' + selectedQuery())" in html
+    assert "apiFetch('api/program')" in html or "apiFetch('api/program' + selectedQuery())" in html
     # Must not call apiFetch with a leading-slash absolute Soft-PLC API path.
     assert "apiFetch('/api/" not in html
     # Fixed resolution appends '/' — must NOT strip the last pathname segment
