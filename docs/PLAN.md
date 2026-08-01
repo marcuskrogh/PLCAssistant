@@ -54,17 +54,17 @@
 - Existing: `GET /api/runtime` tag snapshot; schedule saved vs applied; Program card run status
 
 ## Acceptance criteria
-- [ ] App shows clear **defined / saved vs loaded/applied vs running** state for Soft-PLC / Programs
-- [ ] App online path surfaces live **tag** values and meaningful **instance/pin** live values on the engineering surface
-- [ ] Soft-PLC PID (demo loops) implements **Manual / Automatic / Remote** SP selection into the active SP tag
-- [ ] Writing Manual SP from HMI/entity flips mode to Manual; same for Remote; Automatic requires explicit mode write
-- [ ] Tunings + mode + faceplate fields persist in Datablock / entity SoT and round-trip Soft-PLC ↔ HA
-- [ ] Compound **PID loop entity** exists; Lovelace **PID card** configures from that entity alone
-- [ ] **Generic list card** works for non-PID / custom blocks via a documented entity hook
-- [ ] Demo tank HMI uses the PID card(s) for level and/or flow loop with clean operator UX
-- [ ] **Unit** tests: mode multiplexer + auto-flip rules; entity attribute schema
-- [ ] **Integration** tests: Datablock/entity ↔ Soft-PLC image for mode/SP/tunings
-- [ ] **System** tests: App online visibility path + Lovelace/card (or API-equivalent) end-to-end
+- [x] App shows clear **defined / saved vs loaded/applied vs running** state for Soft-PLC / Programs
+- [x] App online path surfaces live **tag** values and meaningful **instance/pin** live values on the engineering surface
+- [x] Soft-PLC PID (demo loops) implements **Manual / Automatic / Remote** SP selection into the active SP tag
+- [x] Writing Manual SP from HMI/entity flips mode to Manual; same for Remote; Automatic requires explicit mode write
+- [x] Tunings + mode + faceplate fields persist in Datablock / entity SoT and round-trip Soft-PLC ↔ HA
+- [x] Compound **PID loop entity** exists; Lovelace **PID card** configures from that entity alone
+- [x] **Generic list card** works for non-PID / custom blocks via a documented entity hook
+- [x] Demo tank HMI uses the PID card(s) for level and/or flow loop with clean operator UX
+- [x] **Unit** tests: mode multiplexer + auto-flip rules; entity attribute schema
+- [x] **Integration** tests: Datablock/entity ↔ Soft-PLC image for mode/SP/tunings
+- [x] **System** tests: App online visibility path + Lovelace/card (or API-equivalent) end-to-end
 
 ## Work packages
 1. **PID SP-source mode logic + Datablock tag contract** — [SWD-217](https://marcusknielsen.atlassian.net/browse/SWD-217)
@@ -88,5 +88,10 @@
 - Branch: `cursor/swd-183-online-visibility-a52c`
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/81
 
+## Shipped
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/81
+- App: **0.1.38**
+- review-fix: CLEAN after 2 iterations
+
 ## Next
-`/review-fix SWD-183` — Review and auto-fix until clean
+Done — phase closed.

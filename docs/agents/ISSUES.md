@@ -89,8 +89,8 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-170 | Bug | [Iterate] Operate plant PVs still unavailable after 0.1.28 BOX hydrate | Done | Relates SWD-169 | docs/ITERATE.md | Done — shipped PR #72 (App 0.1.29) |
 | SWD-171 | Bug | [Iterate] Tank level settles away from setpoint (Soft-PLC plant IN silent) | Done | Relates SWD-170 | docs/ITERATE.md | Done — shipped PR #73 (App 0.1.30) |
 | SWD-173 | Bug | [Iterate] Soft-PLC stuck TRIPPED after settle — stale plant file LOS | Done | Relates SWD-171 | docs/ITERATE.md | Done — shipped PR #74 (App 0.1.31) |
-| SWD-178 | Story | Industrial-parity Soft-PLC programming surface (multi-program) | To Do | — | docs/ROADMAP.md, docs/RESEARCH.md, docs/PLAN.md | `/review-fix SWD-183` |
-| SWD-183 | Task | Online / runtime visibility + PID HMI faceplates | In Review | Relates SWD-178; blocked by SWD-181 | docs/PLAN.md | `/review-fix SWD-183` — PR [#81](https://github.com/marcuskrogh/PLCAssistant/pull/81) |
+| SWD-178 | Story | Industrial-parity Soft-PLC programming surface (multi-program) | Done | — | docs/ROADMAP.md, docs/RESEARCH.md, docs/PLAN.md | Done — initiative complete |
+| SWD-183 | Task | Online / runtime visibility + PID HMI faceplates | Done | Relates SWD-178; blocked by SWD-181 | docs/PLAN.md | Done — shipped PR [#81](https://github.com/marcuskrogh/PLCAssistant/pull/81) (App 0.1.38) |
 | SWD-217 | Subtask | SWD-183: PID SP-source mode logic + Datablock tag contract | Done | SWD-183 | docs/PLAN.md | — |
 | SWD-214 | Subtask | SWD-183: HA compound PID loop entity platform | Done | SWD-183 | docs/PLAN.md | — |
 | SWD-215 | Subtask | SWD-183: Lovelace PID card + generic list card | Done | SWD-183 | docs/PLAN.md | — |
@@ -134,6 +134,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
+- 2026-08-01 — Shipped SWD-183 via PR #81 (App 0.1.38); review-fix CLEAN after 2 iters; Task Done; Story SWD-178 Done — initiative complete.
 - 2026-08-01 — Implement SWD-183 complete (App 0.1.37): PID modes + compound entities + Lovelace cards + App online; Sub-tasks Done; Task → In Review; PR #81; Next `/review-fix SWD-183`.
 - 2026-08-01 — Define SWD-183 approved: PLAN.md; Sub-tasks SWD-217/214/215/213/218/216; branch `cursor/swd-183-online-visibility-a52c`. Next `/implement SWD-183`.
 - 2026-08-01 — Shipped SWD-184 via PR #80 (App 0.1.36); review-fix CLEAN after 2 iters; Task Done; Next `/define SWD-183`.
