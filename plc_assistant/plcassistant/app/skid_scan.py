@@ -57,18 +57,34 @@ def _resolve_level_sp(image: IoImage) -> float:
     return select_active_sp(mode, sp_man=man, sp_auto=auto, sp_rem=rem)
 
 
+def _resolve_flow_mode(image: IoImage) -> SpSourceMode:
+    names = image.names()
+    mode_raw = image.get_value(FLOW_LOOP.mode) if FLOW_LOOP.mode in names else 1
+    try:
+        return SpSourceMode.parse(mode_raw)
+    except ValueError:
+        return SpSourceMode.AUTOMATIC
+
+
 def _resolve_flow_sp(image: IoImage, *, cascade_auto: float) -> float:
     """Select active flow SP; Automatic source is the cascade (level CV)."""
     names = image.names()
     auto = cascade_auto
     man = _tag_float(image, FLOW_LOOP.sp_man, auto)
     rem = _tag_float(image, FLOW_LOOP.sp_rem, auto)
-    mode_raw = image.get_value(FLOW_LOOP.mode) if FLOW_LOOP.mode in names else 1
-    try:
-        mode = SpSourceMode.parse(mode_raw)
-    except ValueError:
-        mode = SpSourceMode.AUTOMATIC
+    mode = _resolve_flow_mode(image)
     return select_active_sp(mode, sp_man=man, sp_auto=auto, sp_rem=rem)
+
+
+def _flow_sp_override_from_image(image: IoImage) -> float | None:
+    """Manual/Remote flow SP for the flow PI this scan; None keeps cascade wire."""
+    mode = _resolve_flow_mode(image)
+    if mode is SpSourceMode.AUTOMATIC:
+        return None
+    names = image.names()
+    man = _tag_float(image, FLOW_LOOP.sp_man, 0.0)
+    rem = _tag_float(image, FLOW_LOOP.sp_rem, 0.0)
+    return select_active_sp(mode, sp_man=man, sp_auto=0.0, sp_rem=rem)
 
 
 class SkidImageLogic:
@@ -149,6 +165,8 @@ class SkidImageLogic:
         if FLOW_LOOP.ki in names:
             cascade.flow_ki = _tag_float(image, FLOW_LOOP.ki, cascade.flow_ki)
         self.skid.sp_level = _resolve_level_sp(image)
+        # Apply Flow Man/Rem to the flow PI this scan (not display-only) (SWD-223).
+        self.skid.sp_flow_override = _flow_sp_override_from_image(image)
         self._feed_plant_from_image(image)
         pending = self._pending
         self._pending = []
@@ -162,11 +180,8 @@ class SkidImageLogic:
                 step_dt = dt if i == len(pending) - 1 else 0.0
                 snap = self.skid.step(step_dt, cmd)
         assert snap is not None
-        # Cascade: level CV becomes flow Automatic SP source; mux → active SP_FLOW.
+        # Cascade: level CV is SP_FLOW_AUTO; mux → published active SP_FLOW.
         flow_sp = _resolve_flow_sp(image, cascade_auto=float(snap.sp_flow))
-        # Re-apply flow SP into skid if mode is not Automatic (Skid already used
-        # cascade SP_FLOW). For MAN/REM we override published SP_FLOW only —
-        # CMD_SPEED still comes from this scan's cascade PI (demo approximation).
         _set = image.set_output
         if "SP_LEVEL" in names:
             _set("SP_LEVEL", float(snap.sp_level))

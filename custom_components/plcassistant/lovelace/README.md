@@ -90,6 +90,8 @@ If personal boards still show unavailable plant Numbers, delete stale unavailabl
 entities in the entity registry (or remove/re-add the integration). Update any
 personal dashboards that still reference plant Numbers for Process display.
 
+**0.1.43** Flow Manual SP drives flow PI / CMD_SPEED; Level CV faceplate uses `SP_FLOW_AUTO`. Stock Lovelace refreshes to dashboard version **22**.
+
 **0.1.42** Start/cascade reliability: file seed beats stale MQTT retain, awaited
 qos1 Start/Stop + operator seed, honest Soft-PLC status (no optimistic running),
 plant file writes ≤1 Hz + CMD watchdog pause while frozen, PID mux + Auto SP

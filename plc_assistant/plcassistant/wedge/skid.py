@@ -186,6 +186,9 @@ class Skid:
         # Re-sync in case injected process/safety carried stale thresholds
         self._apply_limits()
         self.sp_level = self.config.sp_level
+        # When set, Flow Man/Rem SP overrides the cascade wire into flow_pi.sp
+        # for that CONTROL tick (SWD-223). None → Automatic cascade wire.
+        self.sp_flow_override: float | None = None
         self._last: SkidSnapshot | None = None
         self._was_running = False
         self._force_quality: dict[str, TagQuality] = {}
@@ -405,7 +408,26 @@ class Skid:
                 ctx["flow_pi.running"] = running
 
                 assert self._loader.program is not None
-                self._loader.tick(ctx, dt)
+                # Flow Man/Rem: detach cascade wire for this tick so ctx flow_pi.sp
+                # wins (BlockRuntime prefers wires over context) (SWD-223).
+                prog = self._loader.program
+                saved_wires = None
+                override = self.sp_flow_override
+                if override is not None:
+                    saved_wires = list(prog.wires)
+                    prog.wires = [
+                        w
+                        for w in prog.wires
+                        if not (
+                            w.dst_instance == "flow_pi" and w.dst_pin == "sp"
+                        )
+                    ]
+                    ctx["flow_pi.sp"] = float(override)
+                try:
+                    self._loader.tick(ctx, dt)
+                finally:
+                    if saved_wires is not None:
+                        prog.wires = saved_wires
 
                 sp_flow = float(ctx.get("level_pi.cv") or 0.0)
                 cmd_speed_raw = float(ctx.get("flow_pi.cv") or 0.0)
@@ -417,11 +439,14 @@ class Skid:
                     ctx["flow_pi.cv"] = 0.0
                 lt_val = mv.lt_tank if mv.lt_tank is not None else 0.0
                 ft_val = mv.ft_inlet if mv.ft_inlet is not None else 0.0
+                flow_sp_active = (
+                    float(override) if override is not None else sp_flow
+                )
                 cascade = CascadeOutputs(
                     sp_flow=sp_flow,
                     cmd_speed=cmd_speed_raw,
                     level_error=self.sp_level - lt_val,
-                    flow_error=sp_flow - ft_val,
+                    flow_error=flow_sp_active - ft_val,
                 )
                 box["cascade"] = cascade
                 # Sync control.last for callers that use the CascadeController API.
