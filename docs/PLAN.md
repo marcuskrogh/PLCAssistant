@@ -86,7 +86,7 @@
 - Task: [SWD-180](https://marcusknielsen.atlassian.net/browse/SWD-180)
 - Sub-tasks: SWD-203, SWD-202, SWD-205, SWD-206, SWD-201, SWD-204
 - Branch: `cursor/swd-180-library-pid-a52c`
-- PR: pending after push
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/79
 
 ## Next
-`/review-fix SWD-180` — Review and auto-fix until clean
+Done — shipped App 0.1.35 via PR #79.

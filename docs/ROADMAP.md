@@ -19,7 +19,7 @@ Soft-PLC App and thin HA integration expose an industrial-style engineering surf
 | 2 | Soft-PLC program organization model (tasks → programs → instances) | define→ship | SWD-179 | Done (App 0.1.32, PR #76) | [SWD-182](https://marcusknielsen.atlassian.net/browse/SWD-182) |
 | 3 | App engineering surface (Program cards + Diagram/Log/Settings) | define→ship | SWD-182 | Done (App 0.1.33, PR #77) | [SWD-181](https://marcusknielsen.atlassian.net/browse/SWD-181) |
 | 4 | Task/Program scheduling editor | define→ship | SWD-181 | Done (App 0.1.34, PR #78) | [SWD-191](https://marcusknielsen.atlassian.net/browse/SWD-191) |
-| 5 | Library inspectability + generic PID | define→ship | SWD-182 | In Review (App 0.1.35) | [SWD-180](https://marcusknielsen.atlassian.net/browse/SWD-180) |
+| 5 | Library inspectability + generic PID | define→ship | SWD-182 | Done (App 0.1.35, PR #79) | [SWD-180](https://marcusknielsen.atlassian.net/browse/SWD-180) |
 | 6 | Define integration multi-datablock tag mapping UI (mirrors Soft-PLC multi-model) | define | SWD-182 | To Do | [SWD-184](https://marcusknielsen.atlassian.net/browse/SWD-184) |
 | 7 | Define online / runtime visibility (loaded vs running, live values) | define | SWD-181 | To Do | [SWD-183](https://marcusknielsen.atlassian.net/browse/SWD-183) |
 
@@ -28,7 +28,7 @@ Soft-PLC App and thin HA integration expose an industrial-style engineering surf
 - [Soft-PLC program organization model](https://marcusknielsen.atlassian.net/browse/SWD-182) — SoftPlcProject/Task/ProjectLoader; App 0.1.32; PR #76
 - [App engineering surface](https://marcusknielsen.atlassian.net/browse/SWD-181) — Program cards + Diagram/Log/Settings; App 0.1.33; PR #77
 - [Task/Program scheduling editor](https://marcusknielsen.atlassian.net/browse/SWD-191) — Save/Apply schedule; App 0.1.34; PR #78
-- [Library inspectability + generic PID](https://marcusknielsen.atlassian.net/browse/SWD-180) — shipped PID, library editor, equation-driven instances; App 0.1.35; branch `cursor/swd-180-library-pid-a52c`
+- [Library inspectability + generic PID](https://marcusknielsen.atlassian.net/browse/SWD-180) — shipped PID, library editor, equation-driven instances; App 0.1.35; PR #79
 
 ## Not yet specified
 - How integration “datablocks” bind to Soft-PLC programs (1:1 vs many tags per program) — SWD-184
