@@ -85,7 +85,7 @@
 - Task: [SWD-191](https://marcusknielsen.atlassian.net/browse/SWD-191)
 - Sub-tasks: SWD-196, SWD-199, SWD-200, SWD-197, SWD-198
 - Branch: `cursor/swd-191-task-scheduling-editor-a52c`
-- PR: (opening)
+- PR: [#78](https://github.com/marcuskrogh/PLCAssistant/pull/78)
 
 ## Next
 `/review-fix SWD-191` — Review and auto-fix until clean
