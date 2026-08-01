@@ -126,39 +126,59 @@ async def _async_register_lovelace_cards(hass: HomeAssistant) -> None:
 async def _async_register_frontend_card(
     hass: HomeAssistant, base_url: str, version: str
 ) -> None:
-    """Register one card URL as a Lovelace resource, else frontend extra JS."""
+    """Register one card URL as a Lovelace resource, else frontend extra JS.
+
+    Storage-mode dashboards must use Lovelace resources. Do **not** fall back to
+    ``add_extra_js_url`` when storage mode is detected — that race is what produced
+    Configuration error cards (SWD-220). YAML / unknown mode may use extra JS.
+    """
     from homeassistant.components import frontend
 
-    card_url = f"{base_url}?v={version}"
-    lovelace = hass.data.get("lovelace")
-    resources = getattr(lovelace, "resources", None) if lovelace is not None else None
+    from .lovelace_dashboard import _lovelace_data_key
 
-    if getattr(lovelace, "mode", None) == "storage" or (
-        getattr(lovelace, "resource_mode", None) == "storage" and resources is not None
-    ):
+    card_url = f"{base_url}?v={version}"
+    lovelace = hass.data.get(_lovelace_data_key()) or hass.data.get("lovelace")
+    resources = getattr(lovelace, "resources", None) if lovelace is not None else None
+    is_storage = getattr(lovelace, "mode", None) == "storage" or (
+        getattr(lovelace, "resource_mode", None) == "storage"
+    )
+
+    if is_storage:
+        if resources is None:
+            _LOGGER.warning(
+                "PLCAssistant: Lovelace storage mode but resources unavailable; "
+                "skipping card registration for %s (will need Core restart)",
+                base_url,
+            )
+            return
         try:
-            if resources is not None:
-                if not getattr(resources, "loaded", True):
-                    await resources.async_get_info()
-                for item in resources.async_items():
-                    item_url = str(item.get("url") or "")
-                    if item_url.split("?", 1)[0] != base_url:
-                        continue
-                    if item_url != card_url:
-                        await resources.async_update_item(
-                            item["id"], {"res_type": "module", "url": card_url}
-                        )
-                    return
-                await resources.async_create_item(
-                    {"res_type": "module", "url": card_url}
-                )
+            if hasattr(resources, "async_load") and not getattr(
+                resources, "loaded", True
+            ):
+                await resources.async_load()
+            elif not getattr(resources, "loaded", True) and hasattr(
+                resources, "async_get_info"
+            ):
+                await resources.async_get_info()
+            for item in resources.async_items():
+                item_url = str(item.get("url") or "")
+                if item_url.split("?", 1)[0] != base_url:
+                    continue
+                if item_url != card_url:
+                    await resources.async_update_item(
+                        item["id"], {"res_type": "module", "url": card_url}
+                    )
                 return
+            await resources.async_create_item({"res_type": "module", "url": card_url})
+            return
         except Exception:  # noqa: BLE001 — never block setup on card resources
-            _LOGGER.debug(
-                "PLCAssistant: Lovelace resource registration failed for %s",
+            _LOGGER.warning(
+                "PLCAssistant: Lovelace resource registration failed for %s "
+                "(storage mode; not falling back to add_extra_js_url)",
                 base_url,
                 exc_info=True,
             )
+            return
 
     try:
         frontend.add_extra_js_url(hass, card_url)

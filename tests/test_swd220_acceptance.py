@@ -18,12 +18,8 @@ def test_unit_mode_defaults_are_manual() -> None:
     assert float(block.tags["FLOW_MODE"].default) == pytest.approx(0.0)
 
     meta = (ROOT / "number.py").read_text(encoding="utf-8")
-    assert '"LEVEL_MODE"' in meta
-    assert "default\": 0.0,  # Manual (SWD-220)" in meta or '"default": 0.0,  # Manual (SWD-220)' in meta
-    assert '"FLOW_MODE"' in meta
-
-    # Number meta defaults for modes are 0.0
-    assert meta.count('"object_id": "plcassistant_level_mode"') == 1
+    assert '"object_id": "plcassistant_level_mode"' in meta
+    assert '"object_id": "plcassistant_flow_mode"' in meta
     level_block = meta.split('"LEVEL_MODE":', 1)[1].split('"SP_FLOW_MAN"', 1)[0]
     assert '"default": 0.0' in level_block
     flow_block = meta.split('"FLOW_MODE":', 1)[1].split('"LEVEL_KP"', 1)[0]
@@ -31,31 +27,53 @@ def test_unit_mode_defaults_are_manual() -> None:
 
 
 def test_unit_skid_missing_mode_defaults_manual() -> None:
-    from plcassistant.app.default_image import declare_default_image
+    """Missing or invalid LEVEL_MODE must select Manual SP (mux fallback)."""
     from plcassistant.app.skid_scan import _resolve_level_sp
-    from plcassistant.io.quality import QualityStatus
 
-    image = declare_default_image()
-    # Clear mode sample so fallback path is used.
-    image.apply_input("SP_LEVEL_MAN", 0.25, QualityStatus.GOOD)
-    image.apply_input("SP_LEVEL_REQ", 0.20, QualityStatus.GOOD)
-    # LEVEL_MODE declared but never sampled → get_value may still return default.
-    # Force the resolve helper's missing-mode branch by removing the tag name.
-    names = set(image.names())
-    assert "LEVEL_MODE" in names
-    # With default 0.0 from datablock, active SP should be Manual.
-    sp = _resolve_level_sp(image)
-    assert sp == pytest.approx(0.25)
+    class _FakeImage:
+        def __init__(self, names: tuple[str, ...], values: dict[str, float | str]) -> None:
+            self._names = names
+            self._values = values
+
+        def names(self) -> tuple[str, ...]:
+            return self._names
+
+        def get_value(self, name: str) -> float | str:
+            return self._values[name]
+
+    missing_mode = _FakeImage(
+        ("SP_LEVEL_MAN", "SP_LEVEL_REQ", "SP_LEVEL_REM"),
+        {"SP_LEVEL_MAN": 0.25, "SP_LEVEL_REQ": 0.20, "SP_LEVEL_REM": 0.99},
+    )
+    assert _resolve_level_sp(missing_mode) == pytest.approx(0.25)
+
+    invalid_mode = _FakeImage(
+        ("SP_LEVEL_MAN", "SP_LEVEL_REQ", "SP_LEVEL_REM", "LEVEL_MODE"),
+        {
+            "SP_LEVEL_MAN": 0.25,
+            "SP_LEVEL_REQ": 0.20,
+            "SP_LEVEL_REM": 0.99,
+            "LEVEL_MODE": "bogus",
+        },
+    )
+    assert _resolve_level_sp(invalid_mode) == pytest.approx(0.25)
 
 
 def test_integration_hydrate_publish_does_not_reference_flip_path() -> None:
     """Setup seed path must call _publish_in_tag, not async_set_native_value (no flip)."""
     text = (ROOT / "number.py").read_text(encoding="utf-8")
-    # The hydrate/setup branch comment + direct publish (SWD-220).
-    assert "without MAN/REM mode-flip (SWD-220)" in text
-    assert "await self._publish_in_tag(self._tag, eng)" in text
-    # Flip remains only on explicit async_set_native_value.
-    assert "_sp_mode_flip_map().get(self._tag)" in text
+    # Isolate the non-simulator async_added_to_hass seed branch.
+    added = text.split("async def async_added_to_hass", 1)[1]
+    seed = added.split("async def _on_tag_in", 1)[0]
+    assert "await self._publish_in_tag(self._tag, eng)" in seed
+    assert "async_set_native_value" not in seed
+    assert "_sp_mode_flip_map" not in seed
+    # Flip remains only on explicit operator writes.
+    assert "async def async_set_native_value" in text
+    set_fn = text.split("async def async_set_native_value", 1)[1].split(
+        "async def async_added_to_hass", 1
+    )[0]
+    assert "_sp_mode_flip_map().get(self._tag)" in set_fn
 
 
 def test_system_lovelace_resource_registration() -> None:
@@ -63,8 +81,11 @@ def test_system_lovelace_resource_registration() -> None:
     assert "_async_register_frontend_card" in init
     assert "async_create_item" in init
     assert "res_type" in init
-    assert "?v=" in init or "card_url = f\"{base_url}?v={version}\"" in init
-    assert "add_extra_js_url" in init  # YAML fallback
+    assert "?v=" in init or 'card_url = f"{base_url}?v={version}"' in init
+    assert "add_extra_js_url" in init  # YAML fallback only
+    assert "not falling back to add_extra_js_url" in init
+    assert "_lovelace_data_key" in init
+    assert "async_load" in init
 
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
     assert '"after_dependencies"' in manifest
@@ -72,12 +93,12 @@ def test_system_lovelace_resource_registration() -> None:
     assert '"0.1.40"' in manifest
 
     pid = (ROOT / "www" / "pid-loop-card.js").read_text(encoding="utf-8")
-    assert "customElements.get(\"plcassistant-pid-card\")" in pid
+    assert 'customElements.get("plcassistant-pid-card")' in pid
     assert "getConfigElement" not in pid
     assert 'mode = (st?.state || "manual")' in pid
 
     block = (ROOT / "www" / "block-list-card.js").read_text(encoding="utf-8")
-    assert "customElements.get(\"plcassistant-block-list-card\")" in block
+    assert 'customElements.get("plcassistant-block-list-card")' in block
 
     dash = (ROOT / "lovelace" / "plcassistant.yaml").read_text(encoding="utf-8")
     assert "plcassistant_dashboard_version: 19" in dash
