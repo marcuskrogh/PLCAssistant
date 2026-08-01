@@ -1,186 +1,188 @@
-# Research: Packaging shape (SWD-84)
+# Research brief: Industrial PLC program organization & engineering UI capabilities
 
-**Tracker:** [SWD-84](https://marcusknielsen.atlassian.net/browse/SWD-84)  
-**Parent:** [SWD-81](https://marcusknielsen.atlassian.net/browse/SWD-81) · Roadmap theme 5  
-**Date:** 2026-07-27  
+**Tracker:** [SWD-179](https://marcusknielsen.atlassian.net/browse/SWD-179)  
+**Story:** [SWD-178](https://marcusknielsen.atlassian.net/browse/SWD-178)  
+**Prior context:** [SWD-173](https://marcusknielsen.atlassian.net/browse/SWD-173) (control recovered; App still shows empty program)  
+**Date:** 2026-08-01  
 **Tooling:** `scripts/arxiv_research.py` + WebSearch / WebFetch
 
 ## Question
 
-What do external sources say about **packaging / deployment shape** for a lab / hobby soft-PLC that uses Home Assistant as I/O and HMI — especially:
+What do **industrial PLC systems** expose for:
 
-1. What packaging options exist in the **HA ecosystem** (integrations, Apps/add-ons, containers beside HA, external host)
-2. Which **constraints** (lifecycle, isolation, UX, updates, install-method availability) change which shapes are viable
-3. How peer soft-PLC / industrial edge practice packages a **cyclic runtime** relative to an I/O / HMI platform
+1. **Program organization** — how logic is structured (programs, tasks, blocks)
+2. **Multiple concurrent programs / tasks** — how several runnable units coexist on one controller
+3. **Engineering UI** — what the IDE shows for defined vs running logic, libraries, and equations
+4. **Online / runtime capabilities** — monitoring, force/write, download/compare, active application
 
-Scope: inform `/define SWD-84` with evidence. This brief does **not** choose a packaging shape. In-repo preliminary sketch (`docs/wedge/08-packaging-sketch.md`) is background, not a research conclusion.
+Scope: supportive evidence for `/explore` / `/define` on Soft-PLC App parity. This brief does **not** decide PLCAssistant product scope, UX, or acceptance.
 
 ## Axes covered
 
 | Axis | Status | Notes |
 |------|--------|-------|
-| Preprints (arXiv) | covered | Soft-PLC / IEC 61499 / Docker+industrial hits are sparse for HA-specific packaging; best hits are distributed IEC 61499, security/availability, low-code factory automation |
-| Formal written | covered | HA developer docs (integrations, Apps), HA installation/deprecation blog; IEEE INDIN OpenPLC container study (via DOI); CODESYS Virtual Control product sheet |
-| Web discovery | covered | HA Apps rename + install-method FAQ; OpenPLC Runtime architecture; CODESYS Virtual Control; Avassa softPLC containerization overview |
-| Informal / practitioner | covered | HA community (add-on vs integration, MQTT vs companion integration); AppDaemon vs pyscript packaging; honeytreelabs soft-PLC beside MQTT/HA |
+| Preprints (arXiv) | covered | Strong on IEC 61131-3 languages / verification / complexity; weak on vendor IDE UX. Queries returned ~41–48 unique papers; few SoftPLC packaging hits. |
+| Formal written | covered | IEC 61131-3 software model (via PLCopen / OPC UA mapping / ABB overview); Siemens S7 block docs; Rockwell Logix tasks PM; CODESYS Application/Task docs; Beckhoff TwinCAT monitoring docs |
+| Web discovery | covered | IronPLC IEC model explainer; vendor help hubs; OpenPLC Runtime architecture |
+| Informal / practitioner | covered | Automation.com IEC model; SolisPLC / Industrial Monitor Direct tutorials; OpenPLC forum multi-program setup; labeled informal |
 
 ## Search strategy
 
 | Axis | Queries / targets |
 |------|-------------------|
-| Preprints | `soft PLC` / OpenPLC / CODESYS / vPLC + architecture/deployment; IEC 61499 + container/edge; Home Assistant + packaging (mostly smart-home noise). Lookup: `2101.01856`, `1705.05367`, `2204.13499`, `2504.04224`. |
-| Formal | [developers.home-assistant.io integration architecture](https://developers.home-assistant.io/docs/architecture_components/); [Apps (formerly add-ons)](https://developers.home-assistant.io/docs/apps/); [App communication](https://developers.home-assistant.io/docs/apps/communication/); [HA install methods FAQ](https://www.home-assistant.io/faq/ha-vs-hassio); [2025.5 Core/Supervised deprecation](https://www.home-assistant.io/blog/2025/05/22/deprecating-core-and-supervised-installation-methods-and-32-bit-systems/); OpenPLC INDIN 2025 DOI `10.1109/indin64977.2025.11279472`; CODESYS Virtual Control SL datasheet |
-| Web | SoftPLC containerization surveys; OpenPLC Runtime ARCHITECTURE.md; CODESYS Virtual Control product pages; HA Apps user docs |
-| Informal | HA forum threads on add-on vs integration / MQTT vs registered integration; AppDaemon add-on docs; honeytreelabs architecture posts |
-
-Raw JSON under `/tmp/swd84-research/` (not committed).
+| Preprints | `IEC 61131` + program/task/POU/FB; soft-PLC / IEC 61499 programming; PLC + IDE/engineering; software-model / OpenPLC / PID cascade. Raw JSON: `/tmp/plc-ui-research/arxiv.json`, `arxiv2.json` (not committed). |
+| Formal | [OPC UA PLC Info Model §4.1.1.3](https://reference.opcfoundation.org/specs/OPC-30000/4.1.1.3); [ABB IEC 61131 overview PDF](https://library.e.abb.com/public/c8e8874bd8bf42b78a685f86eb967588/DS_2101127-EN_AE_WEB.pdf); [Siemens code blocks](https://docs.tia.siemens.cloud/r/simatic_s7_1200_manual_collection_enus_20/plc-concepts/execution-of-the-user-program/code-blocks-for-structuring-your-program); [Rockwell Studio 5000 Tasks/Programs/Routines](https://www.rockwellautomation.com/en-us/docs/studio-5000-logix-designer/37-00/contents-ditamap/studio-5000-logix-designer/controller-organizer/use-the-controller-organizer/use-tasks--programs--and-routines.html) + [1756-PM005](https://literature.rockwellautomation.com/idc/groups/literature/documents/pm/1756-pm005_-en-p.pdf); [CODESYS Application](https://content.helpme-codesys.com/en/CODESYS%20Development%20System/_cds_obj_application.html) / [Task Configuration](https://content.helpme-codesys.com/en/CODESYS%20Development%20System/_cds_f_task_configuration.html); [TwinCAT monitoring](https://infosys.beckhoff.com/content/1033/tc3_plc_intro/2527669643.html); [CODESYS PID FB](https://content.helpme-codesys.com/en/libs/Util/Current/Controller/PID.html) |
+| Web | IronPLC program organization; OpenPLC Runtime README / debug protocol; PLCopen FAQs |
+| Informal | OpenPLC forum “two programs”; TIA online/force/cross-ref practitioner guides; TwinCAT task POU order notes |
 
 ## Executive summary (what the sources say)
 
-Sources converge on a **structural split**, not on a single packaging winner:
+Industrial controllers converge on a **hierarchical software model**, not a single flat diagram:
 
-1. **Inside HA Core (integration / custom component)** is the path for entity state, config flows, services, and UI binding — Python modules in the Core event loop ([integration architecture](https://developers.home-assistant.io/docs/architecture_components/)). Long-running deterministic scan loops are a poor fit for that process model (practitioner consensus: AppDaemon-as-add-on vs pyscript-in-Core).
-2. **Beside HA as a containerized App (formerly add-on)** is the supported Supervisor path for standalone services. Apps are OCI images managed by Supervisor; available on **Home Assistant OS** (and historically Supervised). They are **not** available on Home Assistant Container ([Apps docs](https://www.home-assistant.io/apps/), [FAQ](https://www.home-assistant.io/faq/ha-vs-hassio)).
-3. **Beside HA as a plain Docker/compose service** is the Container-install escape hatch: same container image pattern as an App, without Supervisor store/lifecycle ([deprecation blog migration table](https://www.home-assistant.io/blog/2025/05/22/deprecating-core-and-supervised-installation-methods-and-32-bit-systems/)).
-4. **External / SBC soft-PLC** (native Linux or container, MQTT/Modbus I/O) is how hobby soft-PLCs often sit next to HA without living in HA at all ([honeytreelabs](https://honeytreelabs.com/posts/smart-home-architecture-and-impl/), OpenPLC Runtime).
+```text
+Configuration / Project / Device
+  └── Resource / CPU / Application(s)
+        └── Task(s)  — cyclic | continuous/freewheeling | event
+              └── Program instance(s) / scheduled programs
+                    └── Function Blocks + Functions (+ data)
+```
 
-Industrial soft-PLC practice is moving toward **containerized runtimes** (CODESYS Virtual Control SL; OpenPLC Runtime Docker; Avassa edge narrative) with separate authoring tools and I/O plugins — reinforcing “runtime container + I/O bridge,” not “all logic inside the HMI platform.”
+**Multiple programs (or program instances) running “at the same time”** is normal: they are scheduled by **tasks** with intervals and priorities. Concurrent execution is **scheduled / preemptive**, not “independent apps with no shared schedule.” Vendor UIs always expose a **project tree** (organizer) listing tasks → programs → routines/blocks, plus which application is **active** on the device.
 
-HA install-method consolidation (OS + Container only; Core/Supervised deprecated) **raises the stakes** of App-only packaging: choosing Apps-only excludes Container users unless a twin Docker story exists.
+**Library practice for PID:** vendor libraries ship a **generic PID/PI function block** (tunable gains, clamps, manual/reset). Application-specific loops (level vs flow) are **instances** of that FB with different parameters and wiring — not separate opaque library types with empty bodies. PI is typically PID with derivative term disabled (`TV=0` in CODESYS Util).
 
-Communication between App and Core is a first-class design axis: Supervisor proxy + `SUPERVISOR_TOKEN`, MQTT service discovery, or a **companion integration** that talks HTTP to the App ([App communication](https://developers.home-assistant.io/docs/apps/communication/); community MQTT-vs-integration thread).
+**Engineering UIs expose far more than offline edit:**
+
+| Capability | What sources describe |
+|------------|------------------------|
+| Project / device tree | Tasks, programs, POUs, libraries, GVLs |
+| Defined vs loaded | Download/login; compare offline project to PLC; list applications on device |
+| Active application | Explicit “active application” (CODESYS); scheduled vs unscheduled programs (Logix) |
+| Block / instance view | Open program / FB instance; pins, params, instance data |
+| Algorithm visibility | ST/LD/FBD source or library docs with equations; not empty placeholders |
+| Online monitoring | Inline values in editors; watch tables; Boolean line coloring |
+| Write / force | Prepare & force values; force tables (with safety caveats) |
+| Cross-reference | Where tags/blocks are used |
+| Debug protocol (open) | OpenPLC: WebSocket variable poll + program hash identity |
+
+Relative to that baseline, a Soft-PLC App that shows only a **library list** and an **empty program JSON** while control is running is **missing the primary industrial surface**: the **scheduled program(s)** that are actually defined/loaded/running, with inspectable block instances and configuration.
 
 ## Key sources
 
 | Title | Axis | ID/URL | Relevance |
 |-------|------|--------|-----------|
-| Developing an app (formerly add-on) | Formal / Web | https://developers.home-assistant.io/docs/apps/ | Apps = container images; Supervisor-managed |
-| App communication | Formal | https://developers.home-assistant.io/docs/apps/communication/ | Core API proxy, Supervisor API, MQTT services |
-| Integration architecture | Formal | https://developers.home-assistant.io/docs/architecture_components/ | Integrations live in Core; domains/entities/actions |
-| HA OS vs Container FAQ | Formal | https://www.home-assistant.io/faq/ha-vs-hassio | Apps only on OS; Container has no Apps |
-| Deprecating Core and Supervised (2025.5) | Formal | https://www.home-assistant.io/blog/2025/05/22/deprecating-core-and-supervised-installation-methods-and-32-bit-systems/ | Supported paths shrink to OS + Container |
-| OpenPLC Runtime Architecture | Web / Informal | https://github.com/Autonomy-Logic/openplc-runtime/blob/main/docs/ARCHITECTURE.md | Dual-process soft-PLC; native + Docker |
-| OpenPLC container benchmarking (INDIN 2025) | Formal | DOI 10.1109/indin64977.2025.11279472 | Native vs Docker vs K8s trade-offs |
-| CODESYS Virtual Control SL | Formal / Web | https://us.codesys.com/products/runtime/virtual-control-sl/ | Containerized industrial softPLC product form |
-| Sollfrank et al. Docker for time-sensitive industrial apps | Formal (cited) | DOI 10.1109/tii.2020.3022843 | Container overhead for time-sensitive control |
-| Designing actively secure IACS apps | Preprint | arXiv:2101.01856 | IEC 61499 packaging of security at application layer |
-| Evaluating XMPP in IEC 61499 | Preprint | arXiv:1705.05367 | Distributed FB apps need explicit protocol SIFBs |
-| HA forum: integrations vs add-ons | Informal | https://community.home-assistant.io/t/integrations-add-ons-and-custom-integrations/710483 | Add-ons = services; integrations = clients |
-| HA forum: MQTT vs registered integration | Informal | https://community.home-assistant.io/t/communicating-from-addon-to-home-assistant-mqtt-vs-registered-integration/997238 | Bridge patterns and trade-offs |
-| AppDaemon add-on docs | Informal | https://appdaemon.readthedocs.io/en/latest/ADDON.html | Long-running Python as App + Supervisor token |
-| honeytreelabs soft-PLC architecture | Informal | https://honeytreelabs.com/posts/smart-home-architecture-and-impl/ | Cyclic PLC beside MQTT/HA, not inside HA |
+| IronPLC — Program Organization | Web | https://www.ironplc.com/explanation/program-organization.html | Clear CONFIGURATION→RESOURCE→TASK→PROGRAM layering |
+| OPC UA for PLCs (IEC 61131-3) §4.1.1.3 | Formal | https://reference.opcfoundation.org/specs/OPC-30000/4.1.1.3 | Normative mapping of Ctrl Configuration/Resource/Task/Program |
+| PLCopen / IEC Common Elements excerpt | Formal | PLCopen Common Elements (via plcopen.org download) | Configurations/resources start-stop; programs under tasks; global vars / access paths |
+| ABB — Overview of IEC 61131 | Formal | ABB DS_2101127 PDF | Multi-resource, multi-task vs “one loop” conventional PLC |
+| Siemens — Code blocks | Formal | Siemens TIA S7-1200 docs | OB / FC / FB / DB structuring; instance DBs |
+| Rockwell — Tasks, Programs, Routines | Formal | Studio 5000 docs + 1756-PM005 | Continuous/periodic/event tasks; many programs per task |
+| CODESYS — Application object | Formal | helpme-codesys.com Application | Multiple applications per device; active application; task config required |
+| CODESYS — Task Configuration | Formal | helpme-codesys.com Task Configuration | Task types, priority, call list of programs |
+| TwinCAT — Monitoring in Programming Objects | Formal | infosys.beckhoff.com | Inline monitoring, force/write, instance vs type view |
+| CODESYS Util — PID FB | Formal | helpme-codesys.com PID | Generic PID; PI via `TV=0`; equation documented |
+| OpenPLC Runtime architecture / DEBUG_PROTOCOL | Informal/Web | github.com/Autonomy-Logic/openplc-runtime | Editor↔runtime: load, start/stop, WebSocket monitor/force |
+| OpenPLC forum — two programs | Informal | openplc.discussion.community | Same resource: multiple tasks + instances + globals |
+| arXiv 2212.05918 | Preprints | arXiv:2212.05918 | Complexity of graphical+textual IEC software (structure matters) |
+| arXiv 2410.15200 | Preprints | arXiv:2410.15200 | Graphic IEC languages still dominant in practice |
 
 ## Themes and trends
 
-### T1 — Integration ≠ App (service vs client)
+### 1. Software model: configuration → resource → task → program
 
-Across HA docs and forums: **integrations** extend Core (entities, actions, config); **Apps** (add-ons) are separate containers for long-running software. Patterns that need both (Mosquitto App + MQTT integration; NUT; Z-Wave) are common. A soft-PLC that owns a scan loop maps naturally to the **App/container** side; entity↔tag bindings map to the **integration** side — matching the in-repo preliminary sketch, but as *evidence of ecosystem pattern*, not a lock.
+Sources agree (IEC model, OPC UA Ctrl* types, IronPLC, ABB): **programs are scheduled by tasks**; tasks live under a resource/CPU; a configuration/device binds hardware. Conventional “one cyclic scan of one main” is a **degenerate** case of this model (PLCopen FAQ notes tools may hide the layers and auto-create one resource/one task/one program).
 
-### T2 — Install method gates App availability
+### 2. Multi-program is first-class
 
-Official support converges on **HA OS** (Supervisor + Apps) and **HA Container** (no Apps). Deprecating Supervised/Core ([2025.5 blog](https://www.home-assistant.io/blog/2025/05/22/deprecating-core-and-supervised-installation-methods-and-32-bit-systems/)) means an Apps-only Soft-PLC **does not cover Container users** unless the same image is documented for manual Docker. Migration guidance explicitly says Container users can run former add-ons as sidecar containers.
+- **CODESYS:** multiple **Applications** under a device; each has Task Configuration; one is **active** for online work; device editor lists applications **on the PLC**.
+- **Logix:** up to many **Tasks**; each schedules ordered **Programs**; programs contain **Routines**; unscheduled programs folder exists.
+- **Siemens:** multiple **OBs** (cyclic, interrupt, startup) call FCs/FBs; structure is block-centric rather than “Application” named, but still multi-entry-point.
+- **TwinCAT / OpenPLC:** multiple Program POUs assigned to tasks; OpenPLC: multiple instances/tasks under one resource.
 
-### T3 — Soft-PLC peers package as containers beside I/O
+### 3. What the engineering UI must show
 
-OpenPLC Runtime: dual process (API server + real-time scan), Docker with `SYS_NICE`/`SYS_RESOURCE`, persistent volume ([ARCHITECTURE.md](https://github.com/Autonomy-Logic/openplc-runtime/blob/main/docs/ARCHITECTURE.md)). CODESYS Virtual Control SL: SoftPLC as Docker/Podman image on Linux edge. INDIN 2025 OpenPLC study: native lowest latency; Docker balanced; Kubernetes stronger on recovery/throughput. Containerization is mainstream for softPLC **deployment**, with RT caveats.
+Across vendors, the operator/engineer surface always includes:
 
-### T4 — Bridge choice is a packaging decision
+1. **Navigator** of the runnable hierarchy (not only a block library)
+2. Editors for **selected program / block instance** with **parameters and logic**
+3. **Online connection** that overlays **live values** on that structure
+4. **Identity of what is on the controller** (download, compare, application list, program hash)
 
-App↔HA options from docs/community:
+Library browsers exist, but they are **not** the running system.
 
-| Bridge | Pros (sources) | Cons (sources) |
-|--------|----------------|----------------|
-| Supervisor Core API proxy | Built-in token; no broker | Requires App + Supervisor; App-only installs |
-| MQTT | Works without Supervisor; portable to Container/external host | Extra broker; less native config flow |
-| Companion integration → App HTTP | Native Devices & services UX | Needs integration install; App must be reachable |
+### 4. Library blocks vs instances
 
-Choosing “thin integration + App” implies committing to **at least one** of these bridges for production HA IPC (in-repo stub today is in-process only).
+Industrial practice: **one generic controller FB** (PID/PI/P) in a library, **documented algorithm**, instantiated N times (level loop, flow loop) with different gains/clamps and wiring. Vendor docs publish the equation (e.g. CODESYS PID). Opaque builtins with empty body fields diverge from that expectation.
 
-### T5 — In-Core Python is for event logic, not scan engines
+### 5. Online capabilities beyond “edit YAML”
 
-AppDaemon (App/container, separate process) vs pyscript (custom integration, in-loop interpreter) debates show practitioners put **heavy / long-running / library-rich** Python **outside** Core. That aligns with keeping Soft-PLC scan + program editor out of `custom_components`.
+Recurring feature set: monitor, write, force, breakpoints/step (where supported), watch lists, cross-reference, offline↔online compare. OpenPLC’s debug WebSocket is a concrete open-source analogue for Soft-PLC↔editor live identity.
 
-### T6 — Academic axis is thin on HA packaging
+### 6. Scholarly axis gap
 
-arXiv hits for “Home Assistant + packaging” are mostly smart-home UX/security, not deployment topology. Useful scholarly signal is **IEC 61499 distribution / security** and **containerized industrial control**, not HA-specific packaging theory. Gap: little peer-reviewed work on soft-PLC-as-HA-App specifically.
+arXiv material emphasizes **language semantics, verification, LLM codegen, complexity metrics** — useful for “structure and inspectability matter,” weak for product UX parity. Vendor docs + practitioner material carry the UI capability list.
 
 ## Gaps and limitations
 
-- No single normative standard for “soft-PLC packaging beside home automation.”
-- OpenPLC INDIN paper accessed via DOI/abstract synthesis from search — full PDF not deep-read in this pass.
-- HA developer “Apps” rename is recent (2026 docs); older “add-on” literature still dominates forums.
-- Real-time claims for containers (CODESYS, OpenPLC) depend on host RT kernel / privileges — not validated here.
-- In-repo preliminary sketch and SWD-82 “App hosts editor” naming are **prior project artifacts**, not external evidence.
+- Full IEC 61131-3 standard text is paywalled; synthesis uses secondary normative mappings (OPC UA, PLCopen excerpts, reputable explainers).
+- Vendor docs emphasize **their** metaphors (OB vs Task vs Application); absolute feature parity is impossible without choosing a reference model.
+- Safety / SIL engineering surfaces and motion-specific tasks are out of depth here.
+- Preprints do not document Soft-PLC App UX; do not treat arXiv as product guidance.
+- This brief does **not** claim PLCAssistant must implement every vendor feature; it maps what “industrial systems expose.”
 
 ## Recommended reading order
 
-1. [HA Apps intro](https://developers.home-assistant.io/docs/apps/) + [App communication](https://developers.home-assistant.io/docs/apps/communication/)
-2. [Integration architecture](https://developers.home-assistant.io/docs/architecture_components/) + [OS vs Container FAQ](https://www.home-assistant.io/faq/ha-vs-hassio)
-3. [2025.5 install-method deprecation](https://www.home-assistant.io/blog/2025/05/22/deprecating-core-and-supervised-installation-methods-and-32-bit-systems/)
-4. OpenPLC [ARCHITECTURE.md](https://github.com/Autonomy-Logic/openplc-runtime/blob/main/docs/ARCHITECTURE.md) (peer soft-PLC packaging)
-5. Community: [MQTT vs companion integration](https://community.home-assistant.io/t/communicating-from-addon-to-home-assistant-mqtt-vs-registered-integration/997238)
-6. CODESYS Virtual Control overview (industrial container softPLC form)
-
-## Particulars left open for `/define`
-
-Research does **not** decide:
-
-- Primary packaging: Apps-only vs Apps+Docker twin vs external host vs integration-heavy
-- Whether Container-install users are in-scope for v1
-- Bridge: Supervisor API vs MQTT vs companion integration (or hybrid)
-- Where program-of-record files live (App data, HA config share, git)
-- How far to pursue RT privileges in container vs demo-grade Python scan
-- Rename/docs cleanup of Add-on → App across historical wedge docs
+1. IronPLC program organization (quick mental model)
+2. OPC UA PLC Info Model §4.1.1.3 (formal hierarchy)
+3. CODESYS Application + Task Configuration (multi-application + active app)
+4. Rockwell Tasks/Programs/Routines (multi-program scheduling language)
+5. Siemens OB/FC/FB/DB (alternate vendor structuring)
+6. TwinCAT online monitoring (what “running” looks like in the editor)
+7. CODESYS PID FB (generic library + equation)
+8. OpenPLC Runtime + DEBUG_PROTOCOL (open Soft-PLC editor↔runtime pattern)
 
 ## Role in pipeline
 
-Supportive context for `/define SWD-84`. Does **not** settle user alignment. Preliminary sketch in `docs/wedge/08-packaging-sketch.md` remains a working hypothesis to probe, not a research verdict.
+Supportive context for `/explore SWD-178` and later `/define` on Soft-PLC App program surface. Does **not** settle user alignment. Particulars still open: which industrial reference to emulate first, how many concurrent programs in v1, online monitoring depth, PID library consolidation vs keep wedge-named wrappers, etc.
 
 ## Sources
 
 ### Preprints (arXiv)
 
-- Tanveer et al., “Designing Actively Secure, Highly Available Industrial Automation Applications,” arXiv:2101.01856 (DOI 10.1109/INDIN41052.2019.8972262).
-- Veichtlbauer et al., “Evaluating XMPP Communication in IEC 61499-based Distributed Energy Applications,” arXiv:1705.05367 (DOI 10.1109/ETFA.2016.7733744).
-- FieldFuzz authors, “FieldFuzz: In Situ Blackbox Fuzzing of Proprietary Industrial Automation Runtimes via the Network,” arXiv:2204.13499.
-- Siemens/Berkeley report, “Exploration of Approaches for Robustness and Safety in a Low Code Open Environment for Factory Automation,” arXiv:2504.04224.
+- Zhang & de Sousa, *Exploring LLM Support for Generating IEC 61131-3 Graphic Language Programs*, arXiv:2410.15200
+- Fischer et al., *Measuring the Overall Complexity of Graphical and Textual IEC 61131-3 Control Software*, arXiv:2212.05918
+- Additional IEC 61131 verification / ST semantics papers in search dumps (`/tmp/plc-ui-research/`)
 
 ### Formal written
 
-- Home Assistant Developer Docs — Integration architecture: https://developers.home-assistant.io/docs/architecture_components/
-- Home Assistant Developer Docs — Developing an app: https://developers.home-assistant.io/docs/apps/
-- Home Assistant Developer Docs — App communication: https://developers.home-assistant.io/docs/apps/communication/
-- Home Assistant Developer Docs — App configuration: https://developers.home-assistant.io/docs/apps/configuration/
-- Home Assistant — OS vs Container FAQ: https://www.home-assistant.io/faq/ha-vs-hassio
-- Home Assistant Blog — Deprecating Core and Supervised (2025-05-22): https://www.home-assistant.io/blog/2025/05/22/deprecating-core-and-supervised-installation-methods-and-32-bit-systems/
-- Home Assistant Supervisor overview: https://developers.home-assistant.io/docs/supervisor/
-- OpenPLC container benchmarking, IEEE INDIN 2025, DOI 10.1109/indin64977.2025.11279472
-- Sollfrank et al., “Evaluating Docker for Lightweight Virtualization…,” IEEE TII 2020, DOI 10.1109/tii.2020.3022843 (cited by INDIN study)
-- CODESYS Virtual Control SL product sheet / store pages
+- OPC Foundation, *OPC UA for Programmable Logic Controllers based on IEC 61131-3*, §4.1.1.3 Ctrl Configuration/Resources/Tasks — https://reference.opcfoundation.org/specs/OPC-30000/4.1.1.3
+- ABB, *Overview of the IEC 61131 standard* — DS_2101127-EN PDF
+- Siemens, *Code blocks for structuring your program* (S7-1200) — docs.tia.siemens.cloud
+- Rockwell Automation, *Use Tasks, Programs, and Routines* (Studio 5000) + *Logix 5000 Controllers Tasks, Programs, and Routines* (1756-PM005)
+- CODESYS Help, *Object: Application*; *Task Configuration*; *PID (FB)* (Util library)
+- Beckhoff Infosys, *Monitoring in Programming Objects* (TwinCAT 3)
 
 ### Web discovery
 
-- Home Assistant Apps (user): https://www.home-assistant.io/apps/
-- OpenPLC Runtime ARCHITECTURE.md: https://github.com/Autonomy-Logic/openplc-runtime/blob/main/docs/ARCHITECTURE.md
-- CODESYS Virtual Control SL: https://us.codesys.com/products/runtime/virtual-control-sl/
-- Avassa — “Why Containerized softPLCs Will Transform the Industrial Edge”: https://avassa.io/articles/softplc-containerization-industrial-edge-automation/
-- Developer blog — Migrating app builds to Docker BuildKit (2026-04-02): https://developers.home-assistant.io/blog/2026/04/02/builder-migration/
+- IronPLC, *Program Organization* — https://www.ironplc.com/explanation/program-organization.html
+- PLCopen FAQs / Common Elements materials — plcopen.org
+- Autonomy Logic, OpenPLC Runtime README + `docs/DEBUG_PROTOCOL.md`
 
 ### Informal / practitioner
 
-- HA Community — Integrations, add-ons, custom integrations: https://community.home-assistant.io/t/integrations-add-ons-and-custom-integrations/710483
-- HA Community — MQTT vs registered integration from addon: https://community.home-assistant.io/t/communicating-from-addon-to-home-assistant-mqtt-vs-registered-integration/997238
-- AppDaemon ADDON docs: https://appdaemon.readthedocs.io/en/latest/ADDON.html
-- honeytreelabs — Architecture and Implementation of my Smart Home PLC: https://honeytreelabs.com/posts/smart-home-architecture-and-impl/
-- honeytreelabs/homeautomation-plc: https://github.com/honeytreelabs/homeautomation-plc
-- CODESYS Forge blog — Adventures with CODESYS Virtual Control (homelab containers)
+- Automation.com, *Coder's Corner: The IEC 61131-3 Software Model*
+- SolisPLC / Industrial Monitor Direct — Logix tasks; TIA online/force/cross-ref guides
+- OpenPLC Discussion Community — multi-program / task / global variable setup
+- Industrial Monitor Direct — TwinCAT Program POU order under PlcTask
 
 ## Tracker
 
-- Task: SWD-84
+- Story: [SWD-178](https://marcusknielsen.atlassian.net/browse/SWD-178)
+- Task: [SWD-179](https://marcusknielsen.atlassian.net/browse/SWD-179)
 - Artifact: `docs/RESEARCH.md`
-- Prior sketch (not research): `docs/wedge/08-packaging-sketch.md`
+- Branch: `cursor/swd-179-plc-program-surface-research-a52c`
+- PR: [#75](https://github.com/marcuskrogh/PLCAssistant/pull/75)
 
 ## Next
 
-`/define SWD-84` — Define packaging with the user; this brief is supportive context only
+`/explore SWD-178` — Chart destination and route Tasks for industrial-parity Soft-PLC programming surface; research brief is supportive context only (does not lock scope).

@@ -1,69 +1,100 @@
-# Implementation plan: Integration mock UI + preset selection (SWD-143)
+# Implementation plan: Soft-PLC program organization model (SWD-182)
 
 ## Summary
-- Let operators **select a plant dynamics preset** (`skid`, `skid_composed`, …) and apply **numeric param overrides** from the thin Home Assistant integration — not from Soft-PLC or hard-wired code.
-- Persist selection on the **config entry**; rebuild the plant simulator on apply (reload), keeping Soft-PLC **mock-unaware**.
+- Introduce Soft-PLC **project organization**: Soft-PLC → **Task(s)** → **Program(s)** → blocks.
+- Ship the **single tank example Program** under one default **Main** Task; the model **allows several Tasks**.
+- Preserve Soft-PLC **`scan_period_s`** as the single scan rate (MQTT status → integration mock).
+- Apply policy follows industrial practice: **Hot Apply** for Program logic/params; **Apply (restart)** for Task/Program structure.
+- Minimal App/API JSON exposure of the tree; visual navigator deferred to SWD-181.
+- Acceptance at **unit**, **integration**, and **system** (full HA + App + MQTT) levels.
 
 ## Scope
-**In**
-- Config-entry **Options flow** (“Configure”) for `dynamics_preset` + optional `dynamics_params` overrides
-- Wire `HassPlantSimulator` / `PlantSimulator.for_preset` to the configured preset + params (default remains code `skid`)
-- Service `plcassistant.set_dynamics_preset` that writes the same options SoT and reloads the plant
-- Active-preset visibility (sensor state/attributes) + Lovelace/HMI operator copy
-- Docs + tests + App/integration version bump (**0.1.24**)
-- Dual-tree sync via `./scripts/sync-ha-app-package.sh`
 
-**Out**
-- Soft-PLC App Ingress / block-editor plant UI (mock ≠ PLC program)
-- Full unit-op graph / equation authoring UI (file/YAML documents remain the authoring path from SWD-144)
-- Mid-scan live rewiring of the model graph (apply = rebuild from initials)
-- Mock-off / field I/O commissioning changes
-- Scan-edge lockstep; Soft-PLC programming/control/safety changes
-- Persisted live plant **state** across Core restart (still reset to model initials)
+### In
+- Naming/metaphor: Soft-PLC → Task → Program → blocks (hide Configuration/Resource; avoid “Application”)
+- Schema + persistence for project organization (versioned); **legacy flat Program YAML auto-migrates** to Soft-PLC + Main Task calling that Program
+- Runtime: one shared scan; Tasks run as **ordered priority passes**; each Task’s Program call list executes in order
+- Each Program on **at most one** Task; Programs on no Task remain **defined but unscheduled**
+- Tasks carry **priority + Program call order** only (no per-Task interval driving the scheduler)
+- Default wedge content: **one** tank Program + **one** Main Task that calls it; additional Tasks allowed (empty until filled)
+- Apply: structure changes → restart apply; Program body/params/wires → hot apply (existing hot-apply auth rules)
+- Soft-PLC continues exposing **`scan_period_s`** on MQTT; mock continues to apply it
+- Minimal HTTP/JSON API so App can get/put the Soft-PLC project tree (no full navigator UI)
+- Tests: unit + integration + **system** (HA + App + MQTT)
+
+### Out (later route Tasks / explicit defer)
+- Visual App navigator / canvas multi-program UI → SWD-181
+- Library inspectability + generic PID → SWD-180
+- Integration multi-datablock tag mapping UI → SWD-184
+- Online live-value / force UI → SWD-183
+- True multi-rate / preemptive Task intervals
+- Per-Task interval as scan driver
+- Same Program on multiple Tasks
+- IEC LD/ST languages; full vendor IDE clone
 
 ## Decisions
-1. **UI surface:** Config-entry **Options flow** is the primary chooser. No custom panel and no Soft-PLC Ingress plant UI. Lovelace documents how to configure; it is not a second authoring surface.
-2. **Apply model:** Changing preset/params **rebuilds** the plant simulator (stop → new `PlantSimulator.for_preset` → start). Plant state returns to model initials. Existing plant Number **nudges** stay the live state path; param overrides are not live mid-scan.
-3. **Preset list:** Driven by `list_presets()` / registry (`skid`, `skid_composed`, plus any future documents under `dynamics/models/`). Unknown names fail at apply/load with a clear error — never crash mid-tick.
-4. **Customize depth (v1):** Select preset + optional **numeric param overrides** (keys from `param_defaults`). No HA unit-op graph editor; composed documents stay file-based.
-5. **Persistence:** `config_entry.options` keys `dynamics_preset` (str, default `"skid"`) and `dynamics_params` (mapping of float overrides, default `{}`). Options win over hard-wired defaults; `data.mock_mode` still gates whether a simulator runs.
-6. **Service:** `set_dynamics_preset` updates options (same keys) and triggers the same reload path as Options flow — one SoT.
-7. **Visibility:** Expose active preset (and optionally effective params) on a thin integration sensor/attributes so operators and Lovelace can see what is running.
-8. **Soft-PLC boundary locked:** Plant math stays under `custom_components/plcassistant/dynamics/`. Soft-PLC stays `HeldProcess` + MQTT plant IN. Do not import Soft-PLC surface for plant config.
-9. **Versioning:** App + integration **0.1.24**; dual trees synced.
+| Topic | Decision |
+|-------|----------|
+| Hierarchy naming | Soft-PLC → Task → Program → blocks |
+| Shipped example | One tank Program |
+| Multi-Task | Allowed; default one Main Task calling the tank Program |
+| Scan rate | Soft-PLC `scan_period_s` only; MQTT → mock |
+| Multi-Task semantics | One scan; priority-ordered Task passes |
+| Task fields (v1) | Priority + Program call list (no scheduling interval) |
+| Unscheduled Programs | Defined, not executed |
+| Program↔Task | At most one Task per Program |
+| Legacy YAML | Auto-wrap into Soft-PLC + Main + that Program |
+| Hot vs restart | Industrial: logic/params hot; structure restart |
+| App in this slice | Minimal API/JSON tree only |
+| System tests | Full HA + App + MQTT |
 
 ## Constraints
-- Soft-PLC remains mock-unaware
-- HA-free dynamics modules stay free of `homeassistant` imports; options/service/simulator wrappers may use HA
-- Preserve MQTT topic/payload contracts; plant Numbers remain display/nudge while simulator owns tags
-- One simulator task per config entry
-- Default live preset remains `skid` when options omit the key (zero operator regression)
+- Soft-PLC remains mock-unaware (SWD-145); plant dynamics stay integration-owned
+- Existing apply auth: hot apply still superuser; restart always available
+- Dual trees (`plcassistant/` and packaged App) stay version-synced when shipping
+- Do not invent visual navigator scope here
+
+## Inputs (supportive — not substitutes for decisions above)
+- Research: `docs/RESEARCH.md` (SWD-179)
+- Roadmap: `docs/ROADMAP.md` (SWD-178)
+- Existing: `docs/surface/01-block-model.md`, `04-apply-policy.md`, `scan_period_s` MQTT (SWD-145)
 
 ## Acceptance criteria
-1. Options flow lists available presets and persists `dynamics_preset` / `dynamics_params` on the config entry.
-2. After apply/reload, `HassPlantSimulator` runs the selected registry preset with overrides; default without options is still `skid`.
-3. Selecting `skid_composed` runs the composed document path (oracle-equivalent dynamics from SWD-144).
-4. Invalid preset name fails apply/setup with a clear error; running tick path never raises from bad config mid-scan.
-5. Service `set_dynamics_preset` updates the same options and reloads equivalently to Options flow.
-6. Active preset is visible via integration sensor/attributes; Lovelace copy tells operators where to configure.
-7. Soft-PLC App does not gain plant math or preset APIs.
-8. Automated tests cover: options→registry wiring, param overrides, invalid preset, default `skid`.
-9. App + integration versions bumped to **0.1.24** and dual trees synced.
+- [ ] Project schema loads Soft-PLC with ≥1 Task and ≥0 Programs; validates “Program on at most one Task”
+- [ ] Legacy flat Program YAML migrates to Soft-PLC + Main Task + that Program without manual edit
+- [ ] Shipped tank example is one Program under Main; additional empty Tasks can be declared
+- [ ] Scan executes Tasks by priority; unscheduled Programs do not run; `dt` from Soft-PLC `scan_period_s`
+- [ ] MQTT status still publishes `scan_period_s`; mock steps using it (regression)
+- [ ] Restart apply required for Task/Program structure changes; Hot Apply allowed for Program logic/params
+- [ ] App/API returns/accepts Soft-PLC → Tasks → Programs JSON (minimal; no navigator UI required)
+- [ ] **Unit** tests cover schema, migration, scheduling rules, apply classification
+- [ ] **Integration** tests cover loader/runtime + MQTT `scan_period_s` with mock consumer
+- [ ] **System** test: HA + App + MQTT path loads migrated tank project and runs Main Task successfully
 
 ## Work packages
-1. **Options flow + persistence** — OptionsFlow schema; constants; entry update + plant reload hook ([SWD-162](https://marcusknielsen.atlassian.net/browse/SWD-162))
-2. **Simulator wiring** — preset/params into `HassPlantSimulator` / `for_preset`; active-preset sensor attrs ([SWD-163](https://marcusknielsen.atlassian.net/browse/SWD-163))
-3. **Service + Lovelace copy** — `set_dynamics_preset`; HMI/help text for chooser ([SWD-164](https://marcusknielsen.atlassian.net/browse/SWD-164))
-4. **Acceptance + packaging** — tests, docs, version **0.1.24**, dual-tree sync ([SWD-165](https://marcusknielsen.atlassian.net/browse/SWD-165))
+1. **Schema + migration** — Soft-PLC project model; legacy Program auto-wrap; validation (one Task per Program)
+2. **Runtime + apply** — priority Task passes in one scan; restart vs hot classification for structure vs logic
+3. **Wedge content** — ship single tank Program under Main Task; allow extra empty Tasks in schema
+4. **Minimal App/API** — get/put project tree JSON; keep canvas behavior compatible (single Program view OK)
+5. **Tests** — unit + integration + system (HA + App + MQTT) for setup/load/run of organized project
+
+## Open items
+- Exact JSON/YAML field names (`softplc` vs `project`, Task id conventions) — implementer default OK if documented
+- Whether empty extra Tasks ship in the default wedge file or only via schema capability — prefer schema capability + tests; wedge file stays Main + tank only unless needed for demos
+- System-test harness details (compose vs existing CI patterns) — follow repo conventions; must be full HA+App+MQTT
 
 ## Tracker
 - Provider: jira
-- Story: [SWD-142](https://marcusknielsen.atlassian.net/browse/SWD-142)
-- Task: [SWD-143](https://marcusknielsen.atlassian.net/browse/SWD-143)
-- Sub-tasks: [SWD-162](https://marcusknielsen.atlassian.net/browse/SWD-162) options, [SWD-163](https://marcusknielsen.atlassian.net/browse/SWD-163) simulator wiring, [SWD-164](https://marcusknielsen.atlassian.net/browse/SWD-164) service/Lovelace, [SWD-165](https://marcusknielsen.atlassian.net/browse/SWD-165) acceptance
-- Prior: [SWD-144](https://marcusknielsen.atlassian.net/browse/SWD-144) Done (App 0.1.23)
-- Branch: `cursor/swd-143-mock-ui-presets-33f4`
-- Implement: App **0.1.24** — PR https://github.com/marcuskrogh/PLCAssistant/pull/66
+- Story: [SWD-178](https://marcusknielsen.atlassian.net/browse/SWD-178)
+- Task: [SWD-182](https://marcusknielsen.atlassian.net/browse/SWD-182)
+- Sub-tasks:
+  - [SWD-187](https://marcusknielsen.atlassian.net/browse/SWD-187) Schema + legacy Program migration
+  - [SWD-185](https://marcusknielsen.atlassian.net/browse/SWD-185) Runtime Task passes + apply policy
+  - [SWD-188](https://marcusknielsen.atlassian.net/browse/SWD-188) Wedge tank Program under Main Task
+  - [SWD-189](https://marcusknielsen.atlassian.net/browse/SWD-189) Minimal App/API project tree JSON
+  - [SWD-186](https://marcusknielsen.atlassian.net/browse/SWD-186) Unit + integration + system tests (HA/App/MQTT)
+- Branch: `cursor/swd-182-softplc-program-model-a52c`
+- PR: *(opened with this commit)*
 
 ## Next
-Done — phase closed.
+`/implement SWD-182` — Build per this plan (same branch/PR)

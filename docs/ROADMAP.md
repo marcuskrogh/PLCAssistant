@@ -1,40 +1,47 @@
-# Roadmap: Configurable mock dynamics
+# Roadmap: Industrial-parity Soft-PLC programming surface
 
-## Direction
-- Move beyond a **hard-wired example skid mock** toward a **broad, configurable mock** of tags and underlying dynamics.
-- Operators should configure mocks primarily from the **thin Home Assistant integration** (UI or equivalent), using **basic unit operations**, **custom differential equations**, and a **collected ODE** stepped on the Soft-PLC **sampling interval**.
-- The current tank/reservoir skid remains available as a **selectable preset**, not the only plant model.
+## Destination
+Soft-PLC App and thin HA integration expose an industrial-style engineering surface: multi-program/task organization with matching multi-datablock tag mappings, inspectable block instances (including equations), a single generic PID library mapped into loops by instance, online visibility of what is defined vs loaded/running, and acceptance proven at unit, integration, and system levels.
 
-## Themes to investigate
-| Phase | Theme | Why it matters | Deferred to | Issue |
-|-------|-------|----------------|--------------|-------|
-| 1 | Soft-PLC ↔ integration mock ownership | Docs put plant under the integration; runtime hard-wires `Skid`/`MockProcess` in the App — this choice shapes everything else | **Done** (App 0.1.21) | [SWD-145](https://marcusknielsen.atlassian.net/browse/SWD-145) |
-| 2 | Configurable dynamics core + skid preset | States/tags + collected ODE at scan period; skid as first preset | **Done** (App 0.1.22) | [SWD-146](https://marcusknielsen.atlassian.net/browse/SWD-146) |
-| 3 | Unit-op library + custom equation authoring | Easy mocks vs expressive custom DEs | **Done** (App 0.1.23) | [SWD-144](https://marcusknielsen.atlassian.net/browse/SWD-144) |
-| 4 | Integration mock UI + preset selection | Configure and select presets in HA, not only in code | **Done** (App 0.1.24) | [SWD-143](https://marcusknielsen.atlassian.net/browse/SWD-143) |
+## Notes
+- Trigger: after SWD-173 control recovered, App still showed empty canvas / empty builtin equations; integration still lacks a proper tag/datablock mapping UI.
+- Evidence: [docs/RESEARCH.md](RESEARCH.md) ([SWD-179](https://marcusknielsen.atlassian.net/browse/SWD-179)) — IEC hierarchy, vendor UIs, generic PID practice. Supportive only; does not lock product choices.
+- Route order: **full Soft-PLC program organization model first**, then App surface and library, then **integration multi-datablock / tag mapping UI** (sequential — mirrors Soft-PLC multi-model), then online visibility.
+- Prefer industrial metaphors from the brief — exact metaphor is a define probe on SWD-182.
+- Keep Soft-PLC mock-unaware; plant dynamics stay integration-owned (SWD-145 lineage).
+- **Testing bar (this initiative):** every define → implement slice must ship **unit**, **integration**, and **system**-level tests that exercise the setup path.
 
-## Open questions
-- ~~Where the ODE solver should run~~ → **locked (SWD-145/146):** integration-owned simulator; Soft-PLC mock-unaware
-- ~~How Soft-PLC stays mock-agnostic~~ → **locked:** MQTT plant IN; `HeldProcess` on Soft-PLC
-- ~~What “unit operation” means for v1 and how custom equations are expressed safely~~ → **locked** (SWD-144)
-- ~~How presets are selected/edited in HA UI~~ → **locked** (SWD-143): Options flow + options persistence + service; reload rebuilds plant
-- ~~Sidebar block editor for unit-ops / ODEs~~ → **locked** (SWD-166): Dynamics tab + model store (App 0.1.25)
-- ~~Per-equation state/measurement authoring~~ → **locked** (SWD-167): one-row state ODEs + measurement `y=g(x,u,θ)` (App 0.1.26)
-- How far mock-off / field I/O must remain a first-class path
+## Route
+| Order | Task | Type | Blocked by | Status | Issue |
+|-------|------|------|------------|--------|-------|
+| 1 | Research: industrial PLC program organization & engineering UI capabilities | research | — | Done | [SWD-179](https://marcusknielsen.atlassian.net/browse/SWD-179) |
+| 2 | Define Soft-PLC program organization model (tasks → programs → instances) | define | SWD-179 | Defined — `/implement` | [SWD-182](https://marcusknielsen.atlassian.net/browse/SWD-182) |
+| 3 | Define App engineering surface (navigator + defined/active programs on canvas) | define | SWD-182 | To Do | [SWD-181](https://marcusknielsen.atlassian.net/browse/SWD-181) |
+| 4 | Define library inspectability + generic PID (replace opaque level_pi/flow_pi) | define | SWD-182 | To Do | [SWD-180](https://marcusknielsen.atlassian.net/browse/SWD-180) |
+| 5 | Define integration multi-datablock tag mapping UI (mirrors Soft-PLC multi-model) | define | SWD-182 | To Do | [SWD-184](https://marcusknielsen.atlassian.net/browse/SWD-184) |
+| 6 | Define online / runtime visibility (loaded vs running, live values) | define | SWD-181 | To Do | [SWD-183](https://marcusknielsen.atlassian.net/browse/SWD-183) |
 
-## Explicitly deferred
-- Soft-PLC App plant UI (mock ≠ PLC program)
-- Mid-scan live model-graph rewiring
-- replacing Soft-PLC control programming with plant math (mock ≠ PLC program)
-- physical plant / field commissioning (still follow-on)
-- Broad chem-eng catalog beyond skid-derived ops → follow-on
+## Cleared so far
+- [Research: industrial PLC program/UI capabilities](https://marcusknielsen.atlassian.net/browse/SWD-179) — multi-axis brief in `docs/RESEARCH.md`
+
+## Not yet specified
+- How integration “datablocks” bind to Soft-PLC programs (1:1 vs many tags per program) — SWD-184
+- Depth of online force/write vs monitor-only for v1 — SWD-183
+- Whether Python FBD remains the only authoring language (LD/ST deferred?)
+- Migration path for existing wedge cascade instances onto generic PID — SWD-180
+- Exact JSON/YAML field names for Soft-PLC project (implementer default OK if documented) — SWD-182
+
+## Out of scope
+- Full clone of TIA Portal / Studio 5000 / TwinCAT product surfaces
+- SIL / safety-engineering toolchain and certified force workflows
+- Physical plant / field I/O commissioning
+- Replacing Lovelace HMI with Soft-PLC-native SCADA
+- Re-opening Soft-PLC plant ODEs (mock stays integration-owned)
 
 ## Tracker
 - Provider: jira
-- Story: [SWD-142](https://marcusknielsen.atlassian.net/browse/SWD-142) — **Done** (all theme Tasks Done)
-- Tasks: [SWD-145](https://marcusknielsen.atlassian.net/browse/SWD-145) (Done), [SWD-146](https://marcusknielsen.atlassian.net/browse/SWD-146) (Done), [SWD-144](https://marcusknielsen.atlassian.net/browse/SWD-144) (Done), [SWD-143](https://marcusknielsen.atlassian.net/browse/SWD-143) (Done — PR #66)
-- Iterate: [SWD-166](https://marcusknielsen.atlassian.net/browse/SWD-166) (Done — PR #68), [SWD-167](https://marcusknielsen.atlassian.net/browse/SWD-167) (Done — PR #69, App 0.1.26), [SWD-168](https://marcusknielsen.atlassian.net/browse/SWD-168) (Done — PR #70, App 0.1.27 Restart required on Updates), [SWD-169](https://marcusknielsen.atlassian.net/browse/SWD-169) (Done — PR #71, App 0.1.28 plant IN Number HMI), [SWD-170](https://marcusknielsen.atlassian.net/browse/SWD-170) (Done — PR #72, App 0.1.29 plant IN Sensors on Operate)
-- Prior initiative: [SWD-81](https://marcusknielsen.atlassian.net/browse/SWD-81) (Done)
+- Story (map): [SWD-178](https://marcusknielsen.atlassian.net/browse/SWD-178)
+- Tasks: [SWD-179](https://marcusknielsen.atlassian.net/browse/SWD-179) (Done), [SWD-182](https://marcusknielsen.atlassian.net/browse/SWD-182), [SWD-181](https://marcusknielsen.atlassian.net/browse/SWD-181), [SWD-180](https://marcusknielsen.atlassian.net/browse/SWD-180), [SWD-184](https://marcusknielsen.atlassian.net/browse/SWD-184), [SWD-183](https://marcusknielsen.atlassian.net/browse/SWD-183)
 
 ## Next
-Done — initiative complete (SWD-168 iterate shipped).
+`/implement SWD-182` — Build Soft-PLC program organization model per `docs/PLAN.md`
