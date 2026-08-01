@@ -92,7 +92,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-178 | Story | Industrial-parity Soft-PLC programming surface (multi-program) | Done | — | docs/ROADMAP.md, docs/RESEARCH.md, docs/PLAN.md | Done — initiative complete |
 | SWD-183 | Task | Online / runtime visibility + PID HMI faceplates | Done | Relates SWD-178; blocked by SWD-181 | docs/PLAN.md | Done — shipped PR [#81](https://github.com/marcuskrogh/PLCAssistant/pull/81) (App 0.1.38) |
 | SWD-219 | Bug | [Iterate] Integration setup fails: No module named plcassistant.io | Done | Relates SWD-183 | docs/ITERATE.md | Done — shipped PR [#82](https://github.com/marcuskrogh/PLCAssistant/pull/82) (App 0.1.39) |
-| SWD-220 | Bug | [Iterate] PID cards Configuration error + default mode Remote (should be Manual) | In Progress | Relates SWD-219 | docs/ITERATE.md | `/review-fix SWD-220` |
+| SWD-220 | Bug | [Iterate] PID cards Configuration error + default mode Remote (should be Manual) | In Review | Relates SWD-219 | docs/ITERATE.md | `/review-fix SWD-220` — PR [#83](https://github.com/marcuskrogh/PLCAssistant/pull/83) (App 0.1.40) |
 | SWD-217 | Subtask | SWD-183: PID SP-source mode logic + Datablock tag contract | Done | SWD-183 | docs/PLAN.md | — |
 | SWD-214 | Subtask | SWD-183: HA compound PID loop entity platform | Done | SWD-183 | docs/PLAN.md | — |
 | SWD-215 | Subtask | SWD-183: Lovelace PID card + generic list card | Done | SWD-183 | docs/PLAN.md | — |
@@ -136,7 +136,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
-- 2026-08-01 — Implement SWD-220: Lovelace resource registration + Manual SP-source default (App 0.1.40); Task In Progress → In Review after PR.
+- 2026-08-01 — Implement SWD-220: Lovelace resource registration + Manual SP-source default (App 0.1.40); PR [#83](https://github.com/marcuskrogh/PLCAssistant/pull/83) → In Review. Next `/review-fix SWD-220`.
 - 2026-08-01 — Iterate SWD-220: PID cards Configuration error + mode Remote by default; Relates SWD-219; App 0.1.40.
 - 2026-08-01 — Shipped SWD-219 via PR #82 (App 0.1.39); review-fix CLEAN after 1 iter; Task Done.
 - 2026-08-01 — Implement SWD-219: HA-local Datablock catalog (App 0.1.39); PR [#82](https://github.com/marcuskrogh/PLCAssistant/pull/82) → In Review. Next `/review-fix SWD-219`.
