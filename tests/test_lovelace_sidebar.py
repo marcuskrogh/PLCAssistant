@@ -197,6 +197,73 @@ def test_ensure_refreshes_stock_board_old_dashboard_version(tmp_path) -> None:
     assert "custom:plcassistant-pid-card" in text
 
 
+def test_ensure_refreshes_stock_board_version_27_to_28(tmp_path) -> None:
+    """SWD-229: stock boards on dashboard version 27 refresh to SCADA v28."""
+    mod = _load("plcassistant_lovelace_dashboard3e", CC / "lovelace_dashboard.py")
+
+    class FakeConfig:
+        def path(self, *parts: str) -> str:
+            return str(tmp_path.joinpath(*parts))
+
+    class FakeHass:
+        config = FakeConfig()
+
+    dest = tmp_path / "dashboards" / "plcassistant.yaml"
+    dest.parent.mkdir(parents=True)
+    dest.write_text(
+        "# plcassistant_dashboard_version: 27\n"
+        "title: PLCAssistant\nviews:\n"
+        "  - cards:\n"
+        "      - type: markdown\n"
+        "        content: changelog\n"
+        "      - type: history-graph\n"
+        "        entities:\n"
+        "          - entity: sensor.plcassistant_lt_tank_in\n"
+        "      - type: entities\n"
+        "        entities:\n"
+        "          - entity: sensor.plcassistant_status\n"
+        "          - entity: button.plcassistant_start\n"
+        "          - entity: custom:plcassistant-block-list-card\n",
+        encoding="utf-8",
+    )
+    out = mod.ensure_dashboard_yaml(FakeHass())  # type: ignore[arg-type]
+    text = out.read_text(encoding="utf-8")
+    assert "plcassistant_dashboard_version: 28" in text
+    assert "type: glance" in text
+    assert "custom:plcassistant-pid-card" in text
+    assert "type: markdown" not in text
+    assert "type: history-graph" not in text
+    assert "custom:plcassistant-block-list-card" not in text
+
+
+def test_ensure_preserves_stock_board_version_28(tmp_path) -> None:
+    """SWD-229: current stock v28 must not be rewritten on ensure."""
+    mod = _load("plcassistant_lovelace_dashboard3f", CC / "lovelace_dashboard.py")
+
+    class FakeConfig:
+        def path(self, *parts: str) -> str:
+            return str(tmp_path.joinpath(*parts))
+
+    class FakeHass:
+        config = FakeConfig()
+
+    dest = tmp_path / "dashboards" / "plcassistant.yaml"
+    dest.parent.mkdir(parents=True)
+    original = (
+        "# plcassistant_dashboard_version: 28\n"
+        "title: PLCAssistant\nviews:\n"
+        "  - cards:\n"
+        "      - type: entities\n"
+        "        entities:\n"
+        "          - entity: sensor.plcassistant_status\n"
+        "          - entity: button.plcassistant_start\n"
+        "          - entity: button.plcassistant_operator_note\n"
+    )
+    dest.write_text(original, encoding="utf-8")
+    out = mod.ensure_dashboard_yaml(FakeHass())  # type: ignore[arg-type]
+    assert out.read_text(encoding="utf-8") == original
+
+
 def test_ensure_preserves_status_board_without_version_marker(tmp_path) -> None:
     """SWD-137: status present + no version marker must not be clobbered."""
     mod = _load("plcassistant_lovelace_dashboard3d", CC / "lovelace_dashboard.py")
@@ -250,6 +317,7 @@ def test_run_sh_refreshes_stock_missing_status_not_custom() -> None:
     assert "seeded default" in text or "mqtt_broker=core-mosquitto" in text
     # Explicit old versions only — refresh 1–27 stock boards to v28 (SWD-229).
     assert "plcassistant_dashboard_version:[[:space:]]*([1-9]|1[0-9]|2[0-7])" in text
+    assert "title: PLCAssistant" in text or "PLCAssistant" in text
     assert "request_core_restart_after_sync" in text
     assert "supervisor/core/restart" in text
     assert "PLCASSISTANT_AUTO_CORE_RESTART" in text

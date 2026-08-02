@@ -78,8 +78,9 @@ Soft-PLC helpers live in
 
 JS is served from `/plcassistant_static/` and registered as Lovelace
 **resources** on integration setup (storage mode, with `?v=` cache-bust;
-YAML mode falls back to `frontend.add_extra_js_url`). Fallback entity rows
-remain on the Operate board if custom cards are not loaded.
+YAML mode falls back to `frontend.add_extra_js_url`). Stock Operate (SWD-229)
+is a SCADA layout with PID cards only — no fallback entity dump. Custom boards
+may still list the underlying Number/sensor entities if cards fail to load.
 
 The PID card (SWD-226) uses climate-inspired mode colours (Man / Auto / Rem),
 a hero strip for PV / active SP / CV, and text+`inputmode=decimal` SP editors

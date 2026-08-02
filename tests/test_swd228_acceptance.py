@@ -104,7 +104,7 @@ def test_system_faceplate_js_compact_contract() -> None:
         )
 
 
-def test_system_app_version_0_1_48() -> None:
+def test_system_app_version_tracks_current() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
     assert '"0.1.49"' in manifest
     config = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
@@ -116,7 +116,7 @@ def test_system_app_version_0_1_48() -> None:
     assert "custom:plcassistant-pid-card" in dash
 
 
-def test_system_dashboard_upgrade_includes_26() -> None:
+def test_system_dashboard_upgrade_includes_prior_versions() -> None:
     dash_py = (ROOT / "lovelace_dashboard.py").read_text(encoding="utf-8")
     assert "2[0-7]" in dash_py
     run = Path("plc_assistant/run.sh").read_text(encoding="utf-8")

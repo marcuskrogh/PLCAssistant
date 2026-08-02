@@ -134,7 +134,7 @@ def test_unit_sp_mode_flip_codes_are_floats() -> None:
     assert '"man"' not in src.split("_sp_mode_flip_map", 1)[1].split("def ", 1)[0]
 
 
-def test_system_app_version_0_1_48() -> None:
+def test_system_app_version_tracks_current() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
     assert '"0.1.49"' in manifest
     config = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")

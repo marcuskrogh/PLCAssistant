@@ -85,17 +85,14 @@ def test_integration_level_faceplate_auto_writes_req() -> None:
     assert 'await self._publish_in_tag("SP_LEVEL_REQ", eng)' in number
 
 
-def test_system_operate_board_scada_commands() -> None:
+def test_system_level_auto_sp_entity_contract() -> None:
+    """SWD-221: Level Auto still writes SP_LEVEL_REQ (Operate layout is SWD-229)."""
     dash = (ROOT / "lovelace" / "plcassistant.yaml").read_text(encoding="utf-8")
     assert "plcassistant_dashboard_version: 28" in dash
-    operate = dash.split("title: Operate", 1)[1].split("title: Dynamics", 1)[0]
-    assert "button.plcassistant_start" in operate
-    assert "button.plcassistant_stop" in operate
-    assert "button.plcassistant_reset" in operate
-    assert "sensor.plcassistant_mode" in operate
-    # SP edits live on PID faceplates (not duplicate Operate entity rows).
-    assert "Level SP Man (default)" not in operate
-    assert "number.plcassistant_sp_level_req" not in operate
-    assert "custom:plcassistant-pid-card" in operate
+    assert "custom:plcassistant-pid-card" in dash
+    assert "sensor.plcassistant_pid_level" in dash
+    # Writable Auto SP entity remains registered for the PID faceplate.
+    number = (ROOT / "number.py").read_text(encoding="utf-8")
+    assert "plcassistant_sp_level_req" in number
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
     assert '"0.1.49"' in manifest

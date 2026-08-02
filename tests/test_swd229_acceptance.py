@@ -96,3 +96,8 @@ def test_system_dual_trees_synced() -> None:
     assert ra == rb
     assert "SCADA" in ra or "scada" in ra.lower()
     assert "0.1.49" in ra
+    dash_a = DASH_PY.read_text(encoding="utf-8")
+    dash_b = Path(
+        "plc_assistant/custom_components/plcassistant/lovelace_dashboard.py"
+    ).read_text(encoding="utf-8")
+    assert dash_a == dash_b
