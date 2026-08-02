@@ -21,7 +21,7 @@ called `_setMode("man")` → `Number("man")` is NaN, and `_applySp` never ran.
 - [x] **Regression tests** for integration ↔ HMI communication:
   - Node contract (`tests/js/pid_faceplate_contract.test.mjs`): Set under ancestor
     `data-mode` resolves to **apply** (not mode); `numberServiceValue("man")` is
-    null; finite floats build `{ value: <number> }` for `number.set_value`
+    null; finite floats build `{ entity_id, value: <number> }` for `number.set_value`
   - Pytest wraps the Node harness + asserts faceplate entity ids / float flip codes
 
 ## Out of scope
@@ -33,10 +33,11 @@ called `_setMode("man")` → `Number("man")` is NaN, and `_applySp` never ran.
 - Relates: SWD-226
 - Branch: `cursor/swd-227-pid-card-set-float-5ef6`
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/90
+- Shipped: App **0.1.47**
 
-## Fix-forward (open PR)
-User asked to require tests so incorrect HMI ↔ integration communication cannot
-ship again. Implemented on the same open PR #90 (not a parallel iterate Task).
+## Review-fix
+- Iter 1: entity_id in serviceData + stronger contract tests — fixed
+- Iter 2: CLEAN
 
 ## Next
-`/review-fix SWD-227` — Review and auto-fix until clean
+Done — phase closed.
