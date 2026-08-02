@@ -94,13 +94,13 @@ function swd227SetClickTarget() {
   return apply;
 }
 
-function servicePayload(value) {
+function servicePayload(entityId, value) {
   const numeric = numberServiceValue(value);
   if (numeric === null) return null;
   return {
     domain: "number",
     service: "set_value",
-    serviceData: { value: numeric },
+    serviceData: { entity_id: entityId, value: numeric },
   };
 }
 
@@ -126,16 +126,28 @@ assertEq(numberServiceValue("0"), 0, "mode code 0 is finite");
 assertEq(numberServiceValue("1"), 1, "mode code 1 is finite");
 assertEq(numberServiceValue("2"), 2, "mode code 2 is finite");
 
-const good = servicePayload("0.3");
+const spEntity = "number.plcassistant_sp_level_man";
+const good = servicePayload(spEntity, "0.3");
 assert(good !== null, "Set SP builds a service call");
 assertEq(good.domain, "number", "service domain is number");
 assertEq(good.service, "set_value", "service is set_value");
+assertEq(good.serviceData.entity_id, spEntity, "serviceData.entity_id targets SP number");
 assert(
   typeof good.serviceData.value === "number" && Number.isFinite(good.serviceData.value),
   "serviceData.value is a finite number (not string/NaN)"
 );
 assertEq(good.serviceData.value, 0.3, "serviceData.value is 0.3");
-assertEq(servicePayload("man"), null, "label string must not become set_value");
+assertEq(servicePayload(spEntity, "man"), null, "label string must not become set_value");
+
+const modeEntity = "number.plcassistant_level_mode";
+const modeCall = servicePayload(modeEntity, "0");
+assert(modeCall !== null, "mode switch builds a service call");
+assertEq(modeCall.serviceData.entity_id, modeEntity, "mode targets mode_entity");
+assertEq(modeCall.serviceData.value, 0, "mode code 0 is finite float");
+
+// Disabled Set (e.g. flow Auto sensor.*) must not apply.
+const disabledApply = node("button", { "data-apply": "auto", disabled: true });
+assertEq(resolveFaceplateClick(disabledApply), null, "disabled Set resolves to null");
 
 // --- resolveFaceplateClick (Set must not be hijacked by ancestor data-mode) ---
 const setBtn = swd227SetClickTarget();

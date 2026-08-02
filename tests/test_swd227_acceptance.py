@@ -44,10 +44,18 @@ def test_unit_pid_card_set_number_rejects_non_finite() -> None:
     set_number = text.split("async _setNumber", 1)[1].split("async _setMode", 1)[0]
     assert "numberServiceValue(value)" in set_number
     assert "numeric === null" in set_number
-    assert 'callService(\n      "number",\n      "set_value",\n      { value: numeric }' in set_number
+    # entity_id must stay in serviceData (legacy-compatible Lovelace target).
+    assert "entity_id: entityId" in set_number
+    assert "value: numeric" in set_number
+    assert 'callService("number", "set_value"' in set_number
     set_mode = text.split("async _setMode", 1)[1].split("_inputValue", 1)[0]
     assert "numberServiceValue(code)" in set_mode
     assert "never pass label strings" in set_mode
+
+
+def test_unit_dual_tree_pid_card_synced() -> None:
+    app_card = Path("plc_assistant/custom_components/plcassistant/www/pid-loop-card.js")
+    assert CARD.read_bytes() == app_card.read_bytes()
 
 
 def test_system_faceplate_js_float_service_contract() -> None:

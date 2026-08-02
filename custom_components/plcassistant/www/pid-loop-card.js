@@ -28,8 +28,8 @@ export function parseSpValue(raw) {
  * Returns a finite number, or null when the payload must not be sent (e.g. "man").
  */
 export function numberServiceValue(value) {
-  const numeric = parseFloat(String(value).trim().replace(",", "."));
-  return Number.isFinite(numeric) ? numeric : null;
+  // Same gate as parseSpValue so Set and mode cannot diverge on drafts like "12abc".
+  return parseSpValue(value);
 }
 
 /**
@@ -105,12 +105,12 @@ class PlcAssistantPidCard extends HTMLElement {
     if (!this._hass || !entityId) return;
     const numeric = numberServiceValue(value);
     if (numeric === null) return;
-    await this._hass.callService(
-      "number",
-      "set_value",
-      { value: numeric },
-      { entity_id: entityId }
-    );
+    // Keep entity_id in serviceData (legacy-compatible Lovelace shape) alongside
+    // the finite float — do not rely solely on a 4th-arg target.
+    await this._hass.callService("number", "set_value", {
+      entity_id: entityId,
+      value: numeric,
+    });
   }
 
   async _setMode(code) {
