@@ -21,7 +21,7 @@
 - [x] Generic unit tests cover format apply (IN and OUT) without per-wire tests
 - [x] Writing `LEVEL_KP` / `FLOW_KP` (etc.) updates live `level_pi` / `flow_pi` instance params before the next tick
 - [x] Flow Man/Rem overrides cascade into `flow_pi.sp` via `prefer_context` (no `program.wires` mutation)
-- [x] App/integration **0.1.44**; dual trees synced; 590 pytest passed
+- [x] App/integration **0.1.44**; dual trees synced; 591 pytest passed
 
 ## Out of scope
 - Classic output Manual (operator sets CV directly)
@@ -31,12 +31,13 @@
 1. Add `TagPinWire` format + apply helpers + default cascade map — done
 2. Skid: drive CONTROL I/O + gains through the format; Start→CV — done
 3. Tests + docs + version bump (0.1.44) — done (`tests/test_swd224_acceptance.py`)
+4. review-fix: sync gains before bumpless; prefer_context wire fallback — done
 
 ## Tracker
 - Task: [SWD-224](https://marcusknielsen.atlassian.net/browse/SWD-224)
 - Relates: SWD-223
 - Branch: `cursor/swd-224-start-pid-io-wires-5ef6`
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/87 (App 0.1.44) — draft
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/87 (App 0.1.44) — **shipped**
 
 ## Next
-`/review-fix SWD-224` — Review and auto-fix until clean
+Done — phase closed.
