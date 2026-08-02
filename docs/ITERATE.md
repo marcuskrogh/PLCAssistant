@@ -18,10 +18,10 @@ After 0.1.49 the PID faceplates still feel foreign next to stock Lovelace cards,
 - "Truncate to two decimals" means display with two fractional digits (`toFixed(2)` / round-half-away display), not a new control algorithm.
 
 ## Acceptance criteria
-- [ ] PID card uses Home Assistant design tokens for font family and text sizes (title / labels / values / controls), so it reads as a native Lovelace card beside entities/glance
-- [ ] Every numeric value rendered on the PID card (PV, Active SP, CV, err, Man/Auto/Rem committed inputs) is formatted to exactly two decimal places
-- [ ] Compound PID sensor attributes (`pv`, `sp`, `sp_*`, `cv`, `kp`, `ki`, `kd`) are rounded to 2dp when published
-- [ ] App/integration **0.1.50**; dual trees synced; JS + Python regression tests green
+- [x] PID card uses Home Assistant design tokens for font family and text sizes (title / labels / values / controls), so it reads as a native Lovelace card beside entities/glance
+- [x] Every numeric value rendered on the PID card (PV, Active SP, CV, err, Man/Auto/Rem committed inputs) is formatted to exactly two decimal places
+- [x] Compound PID sensor attributes (`pv`, `sp`, `sp_*`, `cv`, `kp`, `ki`, `kd`) are rounded to 2dp when published
+- [x] App/integration **0.1.50**; dual trees synced; JS + Python regression tests green
 
 ## Out of scope
 - Changing Soft-PLC / PID control semantics or mode logic
