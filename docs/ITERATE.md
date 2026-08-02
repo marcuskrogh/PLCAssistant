@@ -25,6 +25,7 @@ Direction of the climate-inspired PID faceplate is good, but operators still nee
 - [x] Overall visual pass: compact, sleek, modern; mode accent retained
 - [x] Prior float/Set contracts preserved (`button[data-mode]`, `number.set_value` finite floats)
 - [x] App/integration **0.1.48**; dashboard **27**; dual trees synced; tests green
+- [x] Dialog mounts outside `.pid-card { overflow: hidden }` (review-fix iter 1)
 
 ## Out of scope
 - Classic output Manual (CV override)
@@ -42,6 +43,11 @@ Direction of the climate-inspired PID faceplate is good, but operators still nee
 - Branch: `cursor/swd-228-pid-card-compact-33f6`
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/91
 - App: **0.1.48** / dashboard **27**
+- Shipped: App **0.1.48**
+
+## Review-fix
+- Iter 1: dialog clipped by `.pid-card { overflow: hidden }` — fixed (sibling under `.pid-shell`)
+- Iter 2: CLEAN
 
 ## Next
-`/review-fix SWD-228` — Review and auto-fix until clean
+Done — phase closed.
