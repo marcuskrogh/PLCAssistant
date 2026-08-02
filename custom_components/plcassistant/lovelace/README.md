@@ -90,6 +90,8 @@ If personal boards still show unavailable plant Numbers, delete stale unavailabl
 entities in the entity registry (or remove/re-add the integration). Update any
 personal dashboards that still reference plant Numbers for Process display.
 
+**0.1.48** Compact PID faceplate: 2dp KPIs, single-row mobile, tap opens edit popup. Stock Lovelace refreshes to dashboard version **27**.
+
 **0.1.47** PID card Set SP no longer hijacked by data-mode (float error). Stock Lovelace refreshes to dashboard version **26**.
 
 **0.1.46** PID faceplate climate-style refresh + stable SP text editing while RUNNING. Stock Lovelace refreshes to dashboard version **25**.

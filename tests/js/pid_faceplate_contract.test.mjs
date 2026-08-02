@@ -1,8 +1,9 @@
 /**
- * SWD-227 regression: HMI ↔ HA number.set_value communication contract.
+ * SWD-227 / SWD-228 regression: HMI ↔ HA number.set_value communication contract
+ * plus compact faceplate helpers (2dp format, open/close dialog routing).
  *
  * Exercises the exported helpers in pid-loop-card.js (parse / coerce / click
- * routing). Run via pytest or:
+ * routing / display format). Run via pytest or:
  *   node --experimental-default-type=module tests/js/pid_faceplate_contract.test.mjs
  */
 
@@ -20,9 +21,13 @@ const cardUrl = new URL(
   import.meta.url
 ).href;
 
-const { parseSpValue, numberServiceValue, resolveFaceplateClick } = await import(
-  cardUrl
-);
+const {
+  parseSpValue,
+  numberServiceValue,
+  resolveFaceplateClick,
+  formatPidValue,
+  PID_DISPLAY_DIGITS,
+} = await import(cardUrl);
 
 let failed = 0;
 
@@ -77,6 +82,11 @@ function matches(el, selector) {
     const m = /^button\[([a-zA-Z0-9_-]+)\]$/.exec(s);
     return Boolean(m && el.getAttribute(m[1]) !== null);
   }
+  if (s.startsWith(".") ) {
+    const cls = s.slice(1);
+    const classAttr = el.getAttribute("class") || "";
+    return classAttr.split(/\s+/).includes(cls);
+  }
   if (s.startsWith("[") && s.endsWith("]")) {
     const attr = s.slice(1, -1);
     return el.getAttribute(attr) !== null;
@@ -103,6 +113,13 @@ function servicePayload(entityId, value) {
     serviceData: { entity_id: entityId, value: numeric },
   };
 }
+
+// --- formatPidValue / 2dp display (SWD-228) ---
+assertEq(PID_DISPLAY_DIGITS, 2, "PID_DISPLAY_DIGITS is 2");
+assertEq(formatPidValue(0.2), "0.20", "formatPidValue(0.2) → 0.20");
+assertEq(formatPidValue(1.23456), "1.23", "formatPidValue truncates to 2dp");
+assertEq(formatPidValue(null), "—", "formatPidValue(null) → em-dash");
+assertEq(formatPidValue("bad"), "—", "formatPidValue(non-finite) → em-dash");
 
 // --- parseSpValue ---
 assertEq(parseSpValue("0.3"), 0.3, "parseSpValue accepts 0.3");
@@ -181,6 +198,18 @@ assert(
   setBtn.closest("button[data-mode]") === null,
   "Set button is not a mode button"
 );
+
+// --- Dialog open / close routing (SWD-228) ---
+const face = node("button", { "data-open-editor": "", class: "pid-face" });
+assertEq(resolveFaceplateClick(face)?.type, "open", "face click opens editor");
+const closeBtn = node("button", { "data-close-editor": "", class: "pid-dialog-close" });
+assertEq(resolveFaceplateClick(closeBtn)?.type, "close", "close button closes editor");
+const backdrop = node("button", { "data-close-editor": "", class: "pid-dialog-backdrop" });
+assertEq(resolveFaceplateClick(backdrop)?.type, "close", "backdrop closes editor");
+const panel = node("div", { class: "pid-dialog-panel" });
+const panelInput = node("input", { "data-sp": "man" }, panel);
+assertEq(resolveFaceplateClick(panelInput), null, "dialog input does not re-open");
+assertEq(resolveFaceplateClick(panel), null, "dialog panel click is ignored");
 
 if (failed > 0) {
   console.error(`\n${failed} assertion(s) failed`);

@@ -1,17 +1,31 @@
 /**
- * PLCAssistant PID faceplate card (SWD-183 / SWD-222 / SWD-226 / SWD-227).
+ * PLCAssistant PID faceplate card (SWD-183 / SWD-222 / SWD-226 / SWD-227 / SWD-228).
  *
  * Config: { type: "custom:plcassistant-pid-card", entity: "sensor.plcassistant_pid_level" }
  * Reads climate-like attributes from the compound PID sensor and writes
  * Manual/Auto/Remote mode + SP sources via number.* entities.
+ *
+ * Compact faceplate (SWD-228): PV / Active SP / CV at 2dp in a single row;
+ * click opens a climate-style dialog for mode + SP edits.
  *
  * Drafts: typed SP inputs use text + inputmode=decimal (not type=number) so
  * intermediate edits like "0." survive live hass updates without caret jumps
  * (SWD-226). Dirty drafts persist across refreshes until Set / Escape / clear.
  *
  * Exported helpers below are the integration↔HMI communication contract and are
- * covered by Node regression tests (SWD-227).
+ * covered by Node regression tests (SWD-227 / SWD-228).
  */
+
+/** Display precision for faceplate KPIs (PV / SP / CV / error). */
+export const PID_DISPLAY_DIGITS = 2;
+
+/** Format a numeric faceplate value to fixed decimal places, or em-dash. */
+export function formatPidValue(value, digits = PID_DISPLAY_DIGITS) {
+  if (value === null || value === undefined || value === "") return "—";
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "—";
+  return n.toFixed(digits);
+}
 
 /** Parse an SP draft string into a finite number, or null if incomplete/invalid. */
 export function parseSpValue(raw) {
@@ -33,7 +47,7 @@ export function numberServiceValue(value) {
 }
 
 /**
- * Resolve a faceplate click to a mode or SP-apply action.
+ * Resolve a faceplate click to a mode, SP-apply, open, or close action.
  *
  * Mode switches must use ``button[data-mode]`` only — never a bare
  * ``[data-mode]`` match — so a card-root accent attribute cannot hijack Set
@@ -41,13 +55,28 @@ export function numberServiceValue(value) {
  */
 export function resolveFaceplateClick(target) {
   if (!target || typeof target.closest !== "function") return null;
+  const closeBtn = target.closest("[data-close-editor]");
+  if (closeBtn) {
+    return { type: "close" };
+  }
   const modeBtn = target.closest("button[data-mode]");
   if (modeBtn) {
     return { type: "mode", code: modeBtn.getAttribute("data-mode") };
   }
   const applyBtn = target.closest("[data-apply]");
-  if (!applyBtn || applyBtn.disabled) return null;
-  return { type: "apply", key: applyBtn.getAttribute("data-apply") };
+  if (applyBtn) {
+    if (applyBtn.disabled) return null;
+    return { type: "apply", key: applyBtn.getAttribute("data-apply") };
+  }
+  // Dialog chrome (inputs/labels/panel) must not re-trigger open.
+  if (target.closest(".pid-dialog-panel") || target.closest("input[data-sp]")) {
+    return null;
+  }
+  const openSurface = target.closest("[data-open-editor]");
+  if (openSurface) {
+    return { type: "open" };
+  }
+  return null;
 }
 
 class PlcAssistantPidCard extends HTMLElement {
@@ -60,6 +89,7 @@ class PlcAssistantPidCard extends HTMLElement {
     this._drafts = {};
     this._dirty = {};
     this._bound = false;
+    this._dialogOpen = false;
   }
 
   setConfig(config) {
@@ -69,6 +99,7 @@ class PlcAssistantPidCard extends HTMLElement {
     this._config = config;
     this._drafts = {};
     this._dirty = {};
+    this._dialogOpen = false;
     this._render(true);
   }
 
@@ -78,7 +109,7 @@ class PlcAssistantPidCard extends HTMLElement {
   }
 
   getCardSize() {
-    return 5;
+    return 2;
   }
 
   _attr(stateObj, key, fallback) {
@@ -87,18 +118,15 @@ class PlcAssistantPidCard extends HTMLElement {
     return v === undefined || v === null ? fallback : v;
   }
 
-  _fmt(value, digits = 3) {
-    const n = Number(value);
-    if (!Number.isFinite(n)) return "—";
-    return n.toFixed(digits);
+  _fmt(value, digits = PID_DISPLAY_DIGITS) {
+    return formatPidValue(value, digits);
   }
 
   _committedText(value) {
     const n = Number(value);
-    if (!Number.isFinite(n)) return "0";
-    // Prefer short decimal text (avoid "0.300" stomping while idle display).
-    const fixed = n.toFixed(6).replace(/\.?0+$/, "");
-    return fixed === "-0" ? "0" : fixed;
+    if (!Number.isFinite(n)) return "0.00";
+    // Committed editor text matches faceplate display precision (2dp).
+    return n.toFixed(PID_DISPLAY_DIGITS);
   }
 
   async _setNumber(entityId, value) {
@@ -171,12 +199,32 @@ class PlcAssistantPidCard extends HTMLElement {
     this._setNumber(entity, parsed);
   }
 
+  _openDialog() {
+    if (this._dialogOpen) return;
+    this._dialogOpen = true;
+    this._render(false);
+  }
+
+  _closeDialog() {
+    if (!this._dialogOpen) return;
+    this._dialogOpen = false;
+    this._render(false);
+  }
+
   _bindEditors() {
     if (!this._root || this._bound) return;
     this._bound = true;
     this._root.addEventListener("click", (ev) => {
       const action = resolveFaceplateClick(ev.target);
       if (!action) return;
+      if (action.type === "open") {
+        this._openDialog();
+        return;
+      }
+      if (action.type === "close") {
+        this._closeDialog();
+        return;
+      }
       if (action.type === "mode") {
         this._setMode(action.code);
         return;
@@ -194,6 +242,14 @@ class PlcAssistantPidCard extends HTMLElement {
       this._dirty[key] = true;
     });
     this._root.addEventListener("keydown", (ev) => {
+      if (ev.key === "Escape" && this._dialogOpen) {
+        const onInput = ev.target.closest?.("input[data-sp]");
+        if (!onInput) {
+          ev.preventDefault();
+          this._closeDialog();
+          return;
+        }
+      }
       const input = ev.target.closest("input[data-sp]");
       if (!input) return;
       const key = input.getAttribute("data-sp");
@@ -286,53 +342,130 @@ class PlcAssistantPidCard extends HTMLElement {
         .pid-card[data-pid-mode="auto"] { --pid-accent: var(--pid-auto); }
         .pid-card[data-pid-mode="rem"] { --pid-accent: var(--pid-rem); }
         .pid-accent {
-          position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+          position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
           background: var(--pid-accent);
+          transition: background 0.2s ease;
         }
-        .pid-body { padding: 14px 16px 14px 18px; }
+        .pid-face {
+          display: block; width: 100%; border: 0; background: transparent;
+          text-align: left; color: inherit; cursor: pointer; padding: 0;
+          font: inherit;
+        }
+        .pid-face:focus-visible {
+          outline: 2px solid var(--pid-accent);
+          outline-offset: -2px;
+        }
+        .pid-body { padding: 10px 12px 10px 14px; }
         .pid-head {
           display: flex; justify-content: space-between; align-items: center;
-          gap: 10px; margin-bottom: 14px;
+          gap: 8px; margin-bottom: 8px;
         }
         .pid-title {
-          font-size: 1.05rem; font-weight: 600; letter-spacing: -0.01em;
+          font-size: 0.92rem; font-weight: 600; letter-spacing: -0.01em;
           color: var(--primary-text-color);
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+          min-width: 0;
         }
         .pid-badge {
-          font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em;
-          text-transform: uppercase; padding: 4px 10px; border-radius: 4px;
+          flex: 0 0 auto;
+          font-size: 0.62rem; font-weight: 700; letter-spacing: 0.07em;
+          text-transform: uppercase; padding: 3px 8px; border-radius: 999px;
           color: #fff; background: var(--pid-accent);
         }
         .pid-hero {
-          display: grid; grid-template-columns: 1.1fr 1.1fr 0.9fr;
-          gap: 12px; margin-bottom: 14px;
-          padding: 12px 12px 14px;
-          border-radius: 8px;
-          background: var(--secondary-background-color, #f5f5f5);
-          border: 1px solid var(--divider-color, #ddd);
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 6px;
+          align-items: start;
         }
-        .pid-metric { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .pid-metric {
+          display: flex; flex-direction: column; gap: 1px; min-width: 0;
+        }
         .pid-metric span {
-          font-size: 0.65rem; opacity: 0.7; text-transform: uppercase;
-          letter-spacing: 0.06em; font-weight: 600;
+          font-size: 0.58rem; opacity: 0.65; text-transform: uppercase;
+          letter-spacing: 0.05em; font-weight: 600;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .pid-metric strong {
-          font-size: 1.55rem; font-variant-numeric: tabular-nums; font-weight: 600;
-          letter-spacing: -0.02em; line-height: 1.15;
+          font-size: clamp(0.95rem, 3.8vw, 1.35rem);
+          font-variant-numeric: tabular-nums; font-weight: 600;
+          letter-spacing: -0.02em; line-height: 1.1;
           color: var(--primary-text-color);
+          white-space: nowrap;
         }
         .pid-metric[data-role="sp"] strong { color: var(--pid-accent); }
         .pid-metric .pid-sub {
-          font-size: 0.68rem; opacity: 0.65; font-variant-numeric: tabular-nums;
+          font-size: 0.58rem; opacity: 0.6; font-variant-numeric: tabular-nums;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .pid-cv-track {
-          margin-top: 6px; height: 4px; border-radius: 2px;
+          margin-top: 8px; height: 3px; border-radius: 2px;
           background: var(--divider-color, #ccc);
           overflow: hidden;
         }
         .pid-cv-fill {
           height: 100%; width: 0%; border-radius: 2px;
           background: var(--pid-accent); transition: width 0.25s ease;
+        }
+        .pid-hint {
+          margin-top: 6px; font-size: 0.62rem; opacity: 0.5;
+          letter-spacing: 0.02em;
+        }
+        .pid-dialog {
+          position: fixed; inset: 0; z-index: 1000;
+          display: flex; align-items: center; justify-content: center;
+          padding: 16px;
+          animation: pid-fade-in 0.15s ease;
+        }
+        .pid-dialog[hidden] { display: none !important; }
+        .pid-dialog-backdrop {
+          position: absolute; inset: 0;
+          background: rgba(0, 0, 0, 0.45);
+          border: 0; padding: 0; cursor: pointer;
+        }
+        @keyframes pid-fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .pid-dialog-panel {
+          position: relative; z-index: 1;
+          width: min(100%, 380px);
+          max-height: min(90vh, 560px);
+          overflow: auto;
+          border-radius: 12px;
+          background: var(--card-background-color, #fff);
+          color: var(--primary-text-color);
+          box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+          border: 1px solid var(--divider-color, #ddd);
+          animation: pid-rise 0.18s ease;
+        }
+        @keyframes pid-rise {
+          from { transform: translateY(8px); opacity: 0.85; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        .pid-dialog-head {
+          display: flex; justify-content: space-between; align-items: center;
+          gap: 10px; padding: 14px 14px 10px;
+          border-bottom: 1px solid var(--divider-color, #e5e5e5);
+        }
+        .pid-dialog-title {
+          font-size: 1rem; font-weight: 600; letter-spacing: -0.01em;
+          min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        .pid-dialog-close {
+          border: 0; background: transparent; color: var(--primary-text-color);
+          opacity: 0.65; cursor: pointer; font-size: 1.25rem; line-height: 1;
+          padding: 4px 8px; border-radius: 6px;
+        }
+        .pid-dialog-close:hover { opacity: 1; background: var(--secondary-background-color, #f0f0f0); }
+        .pid-dialog-body { padding: 12px 14px 14px; }
+        .pid-dialog-summary {
+          display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 8px; margin-bottom: 12px;
+          padding: 10px;
+          border-radius: 8px;
+          background: var(--secondary-background-color, #f5f5f5);
+          border: 1px solid var(--divider-color, #ddd);
         }
         .pid-modes {
           display: grid; grid-template-columns: repeat(3, 1fr);
@@ -352,7 +485,7 @@ class PlcAssistantPidCard extends HTMLElement {
         .pid-modes button[data-mode="2"].active { background: var(--pid-rem); color: #fff; }
         .pid-editors { display: grid; gap: 8px; }
         .pid-row {
-          display: grid; grid-template-columns: 64px 1fr auto; gap: 8px;
+          display: grid; grid-template-columns: 56px 1fr auto; gap: 8px;
           align-items: center; padding: 8px 10px; border-radius: 8px;
           border: 1px solid transparent;
           background: var(--secondary-background-color, #f7f7f7);
@@ -361,29 +494,6 @@ class PlcAssistantPidCard extends HTMLElement {
           border-color: var(--pid-accent);
           background: var(--card-background-color, #fff);
           box-shadow: inset 3px 0 0 var(--pid-accent);
-        }
-        @supports (background: color-mix(in srgb, red 50%, blue)) {
-          .pid-hero {
-            background:
-              linear-gradient(135deg,
-                color-mix(in srgb, var(--pid-accent) 12%, transparent),
-                color-mix(in srgb, var(--secondary-background-color, #f5f5f5) 88%, transparent));
-            border: 1px solid color-mix(in srgb, var(--pid-accent) 28%, var(--divider-color, #ddd));
-          }
-          .pid-row.active-source {
-            border-color: color-mix(in srgb, var(--pid-accent) 55%, transparent);
-            background: color-mix(in srgb, var(--pid-accent) 10%, var(--card-background-color, #fff));
-          }
-          .pid-row input:focus {
-            outline: 2px solid color-mix(in srgb, var(--pid-accent) 45%, transparent);
-          }
-          .pid-row button {
-            border-color: color-mix(in srgb, var(--pid-accent) 40%, var(--divider-color, #ccc));
-            background: color-mix(in srgb, var(--pid-accent) 12%, transparent);
-          }
-          .pid-cv-track {
-            background: color-mix(in srgb, var(--divider-color, #ccc) 55%, transparent);
-          }
         }
         .pid-row label {
           font-size: 0.72rem; font-weight: 600; opacity: 0.8;
@@ -410,12 +520,30 @@ class PlcAssistantPidCard extends HTMLElement {
           font-size: 0.78rem; font-weight: 600;
         }
         .pid-row button:disabled { opacity: 0.45; cursor: default; }
-        .pid-note { margin-top: 10px; font-size: 0.7rem; opacity: 0.6; line-height: 1.35; }
+        .pid-note { margin-top: 10px; font-size: 0.68rem; opacity: 0.55; line-height: 1.35; }
         .pid-missing { padding: 16px; opacity: 0.7; }
-        @media (max-width: 420px) {
-          .pid-hero { grid-template-columns: 1fr 1fr; }
-          .pid-metric[data-role="cv"] { grid-column: 1 / -1; }
-          .pid-metric strong { font-size: 1.35rem; }
+        @supports (background: color-mix(in srgb, red 50%, blue)) {
+          .pid-dialog-summary {
+            background:
+              linear-gradient(135deg,
+                color-mix(in srgb, var(--pid-accent) 12%, transparent),
+                color-mix(in srgb, var(--secondary-background-color, #f5f5f5) 88%, transparent));
+            border: 1px solid color-mix(in srgb, var(--pid-accent) 28%, var(--divider-color, #ddd));
+          }
+          .pid-row.active-source {
+            border-color: color-mix(in srgb, var(--pid-accent) 55%, transparent);
+            background: color-mix(in srgb, var(--pid-accent) 10%, var(--card-background-color, #fff));
+          }
+          .pid-row input:focus {
+            outline: 2px solid color-mix(in srgb, var(--pid-accent) 45%, transparent);
+          }
+          .pid-row button {
+            border-color: color-mix(in srgb, var(--pid-accent) 40%, var(--divider-color, #ccc));
+            background: color-mix(in srgb, var(--pid-accent) 12%, transparent);
+          }
+          .pid-cv-track {
+            background: color-mix(in srgb, var(--divider-color, #ccc) 55%, transparent);
+          }
         }
       </style>
       ${
@@ -423,51 +551,79 @@ class PlcAssistantPidCard extends HTMLElement {
           ? `<div class="pid-missing">Entity ${this._config.entity} unavailable</div>`
           : `<div class="pid-card" data-pid-mode="man">
         <div class="pid-accent" aria-hidden="true"></div>
-        <div class="pid-body">
-          <div class="pid-head">
-            <div class="pid-title"></div>
-            <div class="pid-badge" data-badge></div>
+        <button type="button" class="pid-face" data-open-editor aria-haspopup="dialog">
+          <div class="pid-body">
+            <div class="pid-head">
+              <div class="pid-title"></div>
+              <div class="pid-badge" data-badge></div>
+            </div>
+            <div class="pid-hero">
+              <div class="pid-metric" data-role="pv">
+                <span>PV</span>
+                <strong data-metric="pv"></strong>
+              </div>
+              <div class="pid-metric" data-role="sp">
+                <span>SP</span>
+                <strong data-metric="sp"></strong>
+                <div class="pid-sub" data-metric="err"></div>
+              </div>
+              <div class="pid-metric" data-role="cv">
+                <span>CV</span>
+                <strong data-metric="cv"></strong>
+              </div>
+            </div>
+            <div class="pid-cv-track"><div class="pid-cv-fill" data-cv-bar></div></div>
+            <div class="pid-hint">Tap to adjust</div>
           </div>
-          <div class="pid-hero">
-            <div class="pid-metric" data-role="pv">
-              <span>Process</span>
-              <strong data-metric="pv"></strong>
-              <div class="pid-sub">PV</div>
+        </button>
+        <div class="pid-dialog" hidden role="dialog" aria-modal="true">
+          <button type="button" class="pid-dialog-backdrop" data-close-editor aria-label="Dismiss"></button>
+          <div class="pid-dialog-panel" role="document">
+            <div class="pid-dialog-head">
+              <div class="pid-dialog-title" data-dialog-title></div>
+              <button type="button" class="pid-dialog-close" data-close-editor aria-label="Close">×</button>
             </div>
-            <div class="pid-metric" data-role="sp">
-              <span>Active SP</span>
-              <strong data-metric="sp"></strong>
-              <div class="pid-sub" data-metric="err"></div>
-            </div>
-            <div class="pid-metric" data-role="cv">
-              <span>Control</span>
-              <strong data-metric="cv"></strong>
-              <div class="pid-cv-track"><div class="pid-cv-fill" data-cv-bar></div></div>
+            <div class="pid-dialog-body">
+              <div class="pid-dialog-summary">
+                <div class="pid-metric" data-role="pv">
+                  <span>PV</span>
+                  <strong data-metric="dlg-pv"></strong>
+                </div>
+                <div class="pid-metric" data-role="sp">
+                  <span>Active SP</span>
+                  <strong data-metric="dlg-sp"></strong>
+                  <div class="pid-sub" data-metric="dlg-err"></div>
+                </div>
+                <div class="pid-metric" data-role="cv">
+                  <span>CV</span>
+                  <strong data-metric="dlg-cv"></strong>
+                </div>
+              </div>
+              <div class="pid-modes">
+                <button type="button" data-mode="0">Man</button>
+                <button type="button" data-mode="1">Auto</button>
+                <button type="button" data-mode="2">Rem</button>
+              </div>
+              <div class="pid-editors">
+                <div class="pid-row" data-source="man">
+                  <label>Man</label>
+                  <input data-sp="man" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" />
+                  <button type="button" data-apply="man">Set</button>
+                </div>
+                <div class="pid-row" data-source="auto">
+                  <label>Auto</label>
+                  <input data-sp="auto" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" />
+                  <button type="button" data-apply="auto">Set</button>
+                </div>
+                <div class="pid-row" data-source="rem">
+                  <label>Rem</label>
+                  <input data-sp="rem" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" />
+                  <button type="button" data-apply="rem">Set</button>
+                </div>
+              </div>
+              <div class="pid-note"></div>
             </div>
           </div>
-          <div class="pid-modes">
-            <button type="button" data-mode="0">Man</button>
-            <button type="button" data-mode="1">Auto</button>
-            <button type="button" data-mode="2">Rem</button>
-          </div>
-          <div class="pid-editors">
-            <div class="pid-row" data-source="man">
-              <label>Man</label>
-              <input data-sp="man" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" />
-              <button type="button" data-apply="man">Set</button>
-            </div>
-            <div class="pid-row" data-source="auto">
-              <label>Auto</label>
-              <input data-sp="auto" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" />
-              <button type="button" data-apply="auto">Set</button>
-            </div>
-            <div class="pid-row" data-source="rem">
-              <label>Rem</label>
-              <input data-sp="rem" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" />
-              <button type="button" data-apply="rem">Set</button>
-            </div>
-          </div>
-          <div class="pid-note"></div>
         </div>
       </div>`
       }
@@ -486,24 +642,39 @@ class PlcAssistantPidCard extends HTMLElement {
 
     const titleEl = this._root.querySelector(".pid-title");
     const badgeEl = this._root.querySelector("[data-badge]");
+    const dlgTitle = this._root.querySelector("[data-dialog-title]");
     if (titleEl) titleEl.textContent = title;
     if (badgeEl) badgeEl.textContent = mode;
+    if (dlgTitle) dlgTitle.textContent = title;
 
-    const pvEl = this._root.querySelector('[data-metric="pv"]');
-    const spEl = this._root.querySelector('[data-metric="sp"]');
-    const cvEl = this._root.querySelector('[data-metric="cv"]');
-    const errEl = this._root.querySelector('[data-metric="err"]');
-    const barEl = this._root.querySelector("[data-cv-bar]");
-    if (pvEl) pvEl.textContent = this._fmt(pv);
-    if (spEl) spEl.textContent = this._fmt(sp);
-    if (cvEl) cvEl.textContent = this._fmt(cv, 2);
-    if (errEl) {
-      errEl.textContent =
-        err === null ? "error —" : `error ${err >= 0 ? "+" : ""}${this._fmt(err)}`;
+    const setMetric = (sel, value) => {
+      const el = this._root.querySelector(sel);
+      if (el) el.textContent = this._fmt(value);
+    };
+    setMetric('[data-metric="pv"]', pv);
+    setMetric('[data-metric="sp"]', sp);
+    setMetric('[data-metric="cv"]', cv);
+    setMetric('[data-metric="dlg-pv"]', pv);
+    setMetric('[data-metric="dlg-sp"]', sp);
+    setMetric('[data-metric="dlg-cv"]', cv);
+
+    const errText =
+      err === null ? "err —" : `err ${err >= 0 ? "+" : ""}${this._fmt(err)}`;
+    for (const sel of ['[data-metric="err"]', '[data-metric="dlg-err"]']) {
+      const errEl = this._root.querySelector(sel);
+      if (errEl) errEl.textContent = errText;
     }
+
+    const barEl = this._root.querySelector("[data-cv-bar]");
     if (barEl) barEl.style.width = `${this._cvBarPct(cv, loopId)}%`;
 
-    this._root.querySelectorAll("[data-mode]").forEach((btn) => {
+    const dialog = this._root.querySelector(".pid-dialog");
+    if (dialog) {
+      if (this._dialogOpen) dialog.removeAttribute("hidden");
+      else dialog.setAttribute("hidden", "");
+    }
+
+    this._root.querySelectorAll("button[data-mode]").forEach((btn) => {
       const code = btn.getAttribute("data-mode");
       const active =
         (code === "0" && mode === "manual") ||
@@ -544,7 +715,7 @@ class PlcAssistantPidCard extends HTMLElement {
     const note = this._root.querySelector(".pid-note");
     if (note) {
       note.textContent =
-        `Mode via ${modeEntity || "—"}. Set writes the SP and flips to that source. Enter commits · Esc cancels.`;
+        `Mode via ${modeEntity || "—"}. Set writes the SP and flips to that source. Enter commits · Esc cancels draft (or closes).`;
     }
   }
 }
