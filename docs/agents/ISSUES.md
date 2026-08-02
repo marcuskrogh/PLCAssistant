@@ -95,7 +95,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-221 | Bug | [Iterate] Cascade reliability: HA freeze, Start path, Level Man / Flow Auto defaults | Done | Relates SWD-220 | docs/ITERATE.md | Done — shipped PR [#84](https://github.com/marcuskrogh/PLCAssistant/pull/84) (App 0.1.41) |
 | SWD-222 | Bug | [Iterate] Start/cascade dead, Start–Stop unresponsive, PID setpoints, HA lockup | Done | Relates SWD-221 | docs/ITERATE.md | Done — shipped PR [#85](https://github.com/marcuskrogh/PLCAssistant/pull/85) (App 0.1.42) |
 | SWD-223 | Bug | [Iterate] Level/Flow PID Manual SP does not drive CV (post 0.1.42) | Done | Relates SWD-222 | docs/ITERATE.md | Done — shipped PR [#86](https://github.com/marcuskrogh/PLCAssistant/pull/86) (App 0.1.43) |
-| SWD-224 | Bug | [Iterate] Start does not drive PID CVs — unify tag↔pin wirings | In Progress | Relates SWD-223 | docs/ITERATE.md | `/review-fix SWD-224` |
+| SWD-224 | Bug | [Iterate] Start does not drive PID CVs — unify tag↔pin wirings | In Review | Relates SWD-223 | docs/ITERATE.md | `/review-fix SWD-224` |
 | SWD-220 | Bug | [Iterate] PID cards Configuration error + default mode Remote (should be Manual) | Done | Relates SWD-219 | docs/ITERATE.md | Done — shipped PR [#83](https://github.com/marcuskrogh/PLCAssistant/pull/83) (App 0.1.40) |
 | SWD-217 | Subtask | SWD-183: PID SP-source mode logic + Datablock tag contract | Done | SWD-183 | docs/PLAN.md | — |
 | SWD-214 | Subtask | SWD-183: HA compound PID loop entity platform | Done | SWD-183 | docs/PLAN.md | — |
@@ -140,6 +140,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
+- 2026-08-02 — Implement SWD-224: Start/PID io_wires + gain sync (App 0.1.44); PR [#87](https://github.com/marcuskrogh/PLCAssistant/pull/87) → In Review. Next `/review-fix SWD-224`.
 - 2026-08-02 — Iterate SWD-224: Start does not drive PID CVs; unify tag↔pin io_wires + gain sync (App 0.1.44); Relates SWD-223.
 - 2026-08-02 — Shipped SWD-223 via PR #86 (App 0.1.43); review-fix CLEAN; CI green; Task Done.
 - 2026-08-01 — Implement SWD-223: Flow Manual drives CMD; Level CV=`SP_FLOW_AUTO` (App 0.1.43); PR [#86](https://github.com/marcuskrogh/PLCAssistant/pull/86) → In Review. Next `/review-fix SWD-223`.

@@ -36,7 +36,7 @@
 - Task: [SWD-224](https://marcusknielsen.atlassian.net/browse/SWD-224)
 - Relates: SWD-223
 - Branch: `cursor/swd-224-start-pid-io-wires-5ef6`
-- PR: *(opening)*
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/87 (App 0.1.44) — draft
 
 ## Next
 `/review-fix SWD-224` — Review and auto-fix until clean
