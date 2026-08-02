@@ -1,53 +1,46 @@
-# Iterate: PID card compact redesign (2dp, single-row KPIs, more-info popup)
+# Iterate: Lovelace Operate SCADA-style declutter
 
 ## Prior work
-- Task: [SWD-227](https://marcusknielsen.atlassian.net/browse/SWD-227)
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/90 (App 0.1.47)
-- Spec context: docs/ITERATE.md (prior), SWD-226 climate-style faceplate
+- Task: [SWD-228](https://marcusknielsen.atlassian.net/browse/SWD-228)
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/91 (App 0.1.48)
+- Spec context: docs/ITERATE.md (prior PID compact), lovelace/plcassistant.yaml Operate view
 
 ## Problem
-Direction of the climate-inspired PID faceplate is good, but operators still need a tighter HMI:
+The Operate dashboard is an entity dump, not a SCADA screen:
 
-1. **Precision** — values show more than two decimal places; unnecessary for now.
-2. **Mobile KPIs** — PV / Active SP / CV wrap to two rows on narrow viewports; all three must stay on one row.
-3. **Compact + popup** — the card is too tall with inline editors; clicking the card should open a popup (like the native climate card) where mode and SP values can be changed.
-4. **Design pass** — overall look should be more compact, sleek, user-friendly, and modern.
+1. **Clutter** — changelog markdown, block-list card, PID fallback entity rows, duplicate SP / active-SP cards, and an always-on history graph show nearly every exposed tag.
+2. **Wrong job** — operators need relevant process values, PID faceplates, and clear Start / Stop / Reset / Mode controls — not a browser of every entity.
+3. **History** — important values should open HA more-info (history) on click, not force a permanent graph.
 
 ## Clarifications
 - Invoke was rich; no further clarifying questions.
-- Keep existing Set/mode float contracts (SWD-227) and draft-edit behaviour (SWD-226) inside the popup editors.
+- Skid **Mode** means `sensor.plcassistant_mode` (`STOP` / `RUNNING` / `TRIPPED`), shown with command buttons.
+- Dynamics / Datablocks engineering tabs stay; declutter is Operate-only.
+- PID cards remain the SP / mode editors (tap popup from SWD-228).
 
 ## Acceptance criteria
-- [x] Displayed PV, Active SP, CV, and error use **two decimal places**
-- [x] On mobile (narrow) widths, all three KPIs remain in a **single row** (no wrap to two rows)
-- [x] Faceplate is **compact** (no inline Man/Auto/Rem SP editors on the card body)
-- [x] **Clicking the card** opens a popup/dialog to change mode and SP values (climate-card-like)
-- [x] Overall visual pass: compact, sleek, modern; mode accent retained
-- [x] Prior float/Set contracts preserved (`button[data-mode]`, `number.set_value` finite floats)
-- [x] App/integration **0.1.48**; dashboard **27**; dual trees synced; tests green
-- [x] Dialog mounts outside `.pid-card { overflow: hidden }` (review-fix iter 1)
+- [x] Operate view is a compact SCADA layout: Soft-PLC status, Mode, Trip, Start / Stop / Reset, key PVs, Level + Flow PID cards
+- [x] No changelog markdown wall, block-list card, PID fallback entity dump, duplicate SP / active-SP entities cards, or always-on history-graph on Operate
+- [x] Key process values (tank / reservoir / inlet flow / pump speed) are shown; clicking opens more-info / history
+- [x] Dynamics and Datablocks tabs retained
+- [x] Stock dashboard upgrade includes version **27** → **28**; App/integration **0.1.49**; dual trees synced; tests green
 
 ## Out of scope
+- New custom SCADA graphics / P&ID drawing canvas
+- Changing Soft-PLC / Datablock / PID semantics
+- Removing Dynamics / Datablocks engineering surfaces
 - Classic output Manual (CV override)
-- Changing Soft-PLC / Datablock semantics
-- Non-PID specialised cards
 
 ## Work packages
-1. Compact faceplate layout + 2dp formatting + single-row KPIs
-2. More-info / popup editors for mode + SP (reuse draft/Set contracts)
-3. Version bump, dual-tree sync, acceptance + contract tests
+1. Rewrite Operate Lovelace YAML as SCADA HMI + README
+2. Bump dashboard upgrade path (27→28) + App 0.1.49 + dual-tree sync
+3. Acceptance / regression tests for declutter contract
 
 ## Tracker
-- Task: [SWD-228](https://marcusknielsen.atlassian.net/browse/SWD-228)
-- Relates: SWD-227
-- Branch: `cursor/swd-228-pid-card-compact-33f6`
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/91
-- App: **0.1.48** / dashboard **27**
-- Shipped: App **0.1.48**
-
-## Review-fix
-- Iter 1: dialog clipped by `.pid-card { overflow: hidden }` — fixed (sibling under `.pid-shell`)
-- Iter 2: CLEAN
+- Task: [SWD-229](https://marcusknielsen.atlassian.net/browse/SWD-229)
+- Relates: SWD-228
+- Branch: `cursor/swd-229-lovelace-scada-declutter-566c`
+- App: **0.1.49** / dashboard **28**
 
 ## Next
-Done — phase closed.
+`/review-fix SWD-229` — Review and auto-fix until clean

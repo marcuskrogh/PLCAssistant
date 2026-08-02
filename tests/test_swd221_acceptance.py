@@ -85,13 +85,17 @@ def test_integration_level_faceplate_auto_writes_req() -> None:
     assert 'await self._publish_in_tag("SP_LEVEL_REQ", eng)' in number
 
 
-def test_system_operate_board_man_primary() -> None:
+def test_system_operate_board_scada_commands() -> None:
     dash = (ROOT / "lovelace" / "plcassistant.yaml").read_text(encoding="utf-8")
-    assert "plcassistant_dashboard_version: 27" in dash
-    assert "Level SP Man (default)" in dash
-    assert "Level SP Auto (request)" in dash
-    # Man appears in Operate before REQ.
-    operate = dash.split("title: Operate", 1)[1].split("title: Level PID", 1)[0]
-    assert operate.index("sp_level_man") < operate.index("sp_level_req")
+    assert "plcassistant_dashboard_version: 28" in dash
+    operate = dash.split("title: Operate", 1)[1].split("title: Dynamics", 1)[0]
+    assert "button.plcassistant_start" in operate
+    assert "button.plcassistant_stop" in operate
+    assert "button.plcassistant_reset" in operate
+    assert "sensor.plcassistant_mode" in operate
+    # SP edits live on PID faceplates (not duplicate Operate entity rows).
+    assert "Level SP Man (default)" not in operate
+    assert "number.plcassistant_sp_level_req" not in operate
+    assert "custom:plcassistant-pid-card" in operate
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.48"' in manifest
+    assert '"0.1.49"' in manifest

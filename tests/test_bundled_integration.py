@@ -126,8 +126,9 @@ def test_platforms_publish_and_subscribe_paths():
         assert svc in button
 
     lovelace = (CC / "lovelace" / "plcassistant.yaml").read_text(encoding="utf-8")
-    assert "number.plcassistant_sp_level_req" in lovelace
     assert "button.plcassistant_start" in lovelace
+    assert "button.plcassistant_stop" in lovelace
+    assert "button.plcassistant_reset" in lovelace
     assert "sensor.plcassistant_lt_tank_in" in lovelace
     assert "sensor.plcassistant_ft_inlet_in" in lovelace
     assert "entity: number.plcassistant_lt_tank_in" not in lovelace
@@ -135,12 +136,13 @@ def test_platforms_publish_and_subscribe_paths():
     assert "sensor.plcassistant_mode" in lovelace
     assert "custom:plcassistant-pid-card" in lovelace
     assert "sensor.plcassistant_pid_level" in lovelace
-    assert "plcassistant_dashboard_version: 27" in lovelace
+    assert "plcassistant_dashboard_version: 28" in lovelace
     assert (CC / "www" / "pid-loop-card.js").is_file()
     assert (CC / "www" / "block-list-card.js").is_file()
-    assert "live simulator" in lovelace.lower() or "0.1.29" in lovelace or "dynamics" in lovelace.lower()
-    assert "sensor.plcassistant_dynamics_preset" in lovelace
     assert "path: dynamics" in lovelace
+    assert "type: glance" in lovelace
+    assert "custom:plcassistant-block-list-card" not in lovelace
+    assert "type: history-graph" not in lovelace
     assert "set_dynamics_preset:" in (CC / "services.yaml").read_text(encoding="utf-8")
     assert "PlcAssistantOptionsFlow" in (CC / "config_flow.py").read_text(encoding="utf-8")
     assert (CC / "www" / "dynamics_editor.html").is_file()

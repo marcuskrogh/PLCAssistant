@@ -311,12 +311,14 @@ def test_system_canvas_polls_runtime() -> None:
     assert "saved_signature" in html or "progCount" in html
 
 
-def test_system_lovelace_operate_has_block_list_card() -> None:
+def test_system_lovelace_operate_has_pid_cards_not_block_list() -> None:
     text = Path("custom_components/plcassistant/lovelace/plcassistant.yaml").read_text(
         encoding="utf-8"
     )
-    assert "plcassistant_dashboard_version: 27" in text
-    assert "custom:plcassistant-block-list-card" in text
+    assert "plcassistant_dashboard_version: 28" in text
+    assert "custom:plcassistant-pid-card" in text
+    # SCADA declutter (SWD-229): block-list is not on Operate.
+    assert "custom:plcassistant-block-list-card" not in text
 
 
 def test_system_pid_card_js_exists() -> None:

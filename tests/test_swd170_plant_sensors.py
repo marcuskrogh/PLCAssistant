@@ -80,11 +80,13 @@ def test_plant_sensor_object_ids_match_lovelace() -> None:
         "sensor.plcassistant_ft_inlet_in",
     ):
         assert f"entity: {entity}" in lovelace
-    # History graph uses the same plant IN sensor IDs.
-    hist = lovelace.split("type: history-graph", 1)[1]
-    assert "sensor.plcassistant_lt_tank_in" in hist
-    assert "sensor.plcassistant_lt_res_in" in hist
-    assert "sensor.plcassistant_ft_inlet_in" in hist
+    # SCADA Process glance uses the same plant IN sensor IDs (tap → more-info/history).
+    assert "type: glance" in lovelace
+    glance = lovelace.split("type: glance", 1)[1].split("type: custom:", 1)[0]
+    assert "sensor.plcassistant_lt_tank_in" in glance
+    assert "sensor.plcassistant_lt_res_in" in glance
+    assert "sensor.plcassistant_ft_inlet_in" in glance
+    assert "type: history-graph" not in lovelace
 
 
 def test_simulator_caches_in_values_before_bus() -> None:
@@ -96,10 +98,10 @@ def test_simulator_caches_in_values_before_bus() -> None:
     assert cache_at < fire_at
 
 
-def test_run_sh_refreshes_dashboard_versions_through_26() -> None:
+def test_run_sh_refreshes_dashboard_versions_through_27() -> None:
     run = (ROOT / "plc_assistant" / "run.sh").read_text(encoding="utf-8")
     assert re.search(
-        r"plcassistant_dashboard_version:\[\[:space:\]\]\*\(\[1-9\]\|1\[0-9\]\|20\|21\|22\|23\|24\|25\|26\)",
+        r"plcassistant_dashboard_version:\[\[:space:\]\]\*\(\[1-9\]\|1\[0-9\]\|2\[0-7\]\)",
         run,
     )
-    assert "1[0-9]" in run
+    assert "2[0-7]" in run
