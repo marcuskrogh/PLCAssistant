@@ -97,7 +97,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-223 | Bug | [Iterate] Level/Flow PID Manual SP does not drive CV (post 0.1.42) | Done | Relates SWD-222 | docs/ITERATE.md | Done — shipped PR [#86](https://github.com/marcuskrogh/PLCAssistant/pull/86) (App 0.1.43) |
 | SWD-224 | Bug | [Iterate] Start does not drive PID CVs — unify tag↔pin wirings | Done | Relates SWD-223 | docs/ITERATE.md | Done — shipped PR [#87](https://github.com/marcuskrogh/PLCAssistant/pull/87) (App 0.1.44) |
 | SWD-225 | Bug | [Iterate] Start still leaves PID CVs at 0 (post 0.1.44) | Done | Relates SWD-224 | docs/ITERATE.md | Done — shipped PR #88 |
-| SWD-226 | Bug | [Iterate] PID card SP edit bugs + climate-inspired visual refresh | In Review | Relates SWD-225 | docs/ITERATE.md | `/review-fix SWD-226` |
+| SWD-226 | Bug | [Iterate] PID card SP edit bugs + climate-inspired visual refresh | Done | Relates SWD-225 | docs/ITERATE.md | Done — shipped PR #89 |
 | SWD-220 | Bug | [Iterate] PID cards Configuration error + default mode Remote (should be Manual) | Done | Relates SWD-219 | docs/ITERATE.md | Done — shipped PR [#83](https://github.com/marcuskrogh/PLCAssistant/pull/83) (App 0.1.40) |
 | SWD-217 | Subtask | SWD-183: PID SP-source mode logic + Datablock tag contract | Done | SWD-183 | docs/PLAN.md | — |
 | SWD-214 | Subtask | SWD-183: HA compound PID loop entity platform | Done | SWD-183 | docs/PLAN.md | — |
@@ -142,6 +142,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
+- 2026-08-02 — Shipped SWD-226 via PR #89 (App 0.1.46); review-fix CLEAN after 2 iters; Task Done.
 - 2026-08-02 — Implement SWD-226: PID card SP edit + climate faceplate (App 0.1.46); PR [#89](https://github.com/marcuskrogh/PLCAssistant/pull/89) → In Review. Next `/review-fix SWD-226`.
 - 2026-08-02 — Iterate SWD-226: PID card SP edit bugs + climate-inspired visual refresh (App 0.1.46); Relates SWD-225.
 - 2026-08-02 — Shipped SWD-225 via PR #88 (App 0.1.45); review-fix CLEAN after 2 iters; Task Done.

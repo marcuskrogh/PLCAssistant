@@ -31,11 +31,16 @@
 2. Climate-inspired visual redesign of `pid-loop-card.js` — done
 3. Version bump + acceptance tests + dual-tree sync — done
 
+## Review-fix
+- Iter 1: dirty-on-focus freeze + color-mix fallbacks — fixed
+- Iter 2: CLEAN
+
 ## Tracker
 - Task: [SWD-226](https://marcusknielsen.atlassian.net/browse/SWD-226)
 - Relates: SWD-225
 - Branch: `cursor/swd-226-pid-card-sp-edit-visual-5ef6`
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/89
+- Shipped: App **0.1.46**
 
 ## Next
-`/review-fix SWD-226` — Review and auto-fix until clean
+Done — phase closed.
