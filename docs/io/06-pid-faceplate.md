@@ -41,17 +41,22 @@ uses `SP_LEVEL_AUTO`. Writing REQ from the HMI also mirrors into
 ### Flow Manual / Remote SP (SWD-223)
 
 When flow SP-source mode is Manual or Remote, Soft-PLC applies the muxed
-`SP_FLOW` to `flow_pi.sp` for that scan (cascade wire detached for the tick)
-so `CMD_SPEED` tracks the operator SP. Automatic mode keeps the level CV →
-flow SP wire. Level faceplate CV reads `SP_FLOW_AUTO` (true level CV), not
-the muxed active `SP_FLOW`.
+`SP_FLOW` to `flow_pi.sp` for that scan via runtime `prefer_context` (cascade
+wire left intact on the Program) so `CMD_SPEED` tracks the operator SP.
+Automatic mode keeps the level CV → flow SP wire. Level faceplate CV reads
+`SP_FLOW_AUTO` (true level CV), not the muxed active `SP_FLOW`.
 
 ### Tunings
 
 `LEVEL_KP`, `LEVEL_KI`, `FLOW_KP`, and `FLOW_KI` IN tags (defaults aligned
 with `CascadeConfig`: 40 / 5 / 12 / 2) are applied into the live Soft-PLC
-`Skid` cascade each scan when bound. `LEVEL_KD` / `FLOW_KD` are declared for
+`Skid` cascade **and synced into executing PID instance params** each scan
+when bound (SWD-224). `LEVEL_KD` / `FLOW_KD` are declared for
 faceplate parity; the wedge cascade PI does not use D terms yet.
+
+Process tag ↔ PID pin bridging uses the common `TagPinWire` format
+(`plcassistant.surface.io_wires`) so Start → `running` → CV is one
+testable map rather than hardcoded per-pin assignments.
 
 Soft-PLC helpers live in
 `plcassistant.io.pid_loop` (`select_active_sp`, `apply_sp_write`,

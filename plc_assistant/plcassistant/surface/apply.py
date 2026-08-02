@@ -433,12 +433,20 @@ class ProjectLoader:
             self.restart_apply(project)
         return mode
 
-    def tick(self, context: Any, dt: float) -> None:
+    def tick(
+        self,
+        context: Any,
+        dt: float,
+        *,
+        prefer_context: frozenset[tuple[str, str]] | set[tuple[str, str]] | None = None,
+    ) -> None:
         """Run all scheduled Programs: Tasks by priority, programs in call order."""
         if self._project is None:
             return
         for _task, _prog_id, prog in scheduled_programs(self._project):
-            self._runtime.tick(prog, context, dt)
+            self._runtime.tick(
+                prog, context, dt, prefer_context=prefer_context
+            )
 
     def _register_all_user_templates(self, project: SoftPlcProject) -> None:
         """Prune stale program user templates; keep App-global custom templates."""

@@ -130,7 +130,9 @@ the runtime `exec`s it with this namespace:
 | OUT pin write | `context.set("{instance_id}.{pin_name}", value)` |
 
 Callers bridge process tags (e.g. `LT_TANK`) to instance pins by pre-loading
-the context (e.g. `context.set("level_pi.pv", image.get_value("LT_TANK"))`).
+the context (e.g. `context.set("level_pi.pv", image.get_value("LT_TANK"))`),
+or preferably via the shared `TagPinWire` helpers in
+`plcassistant.surface.io_wires` (SWD-224) so the map is one testable list.
 
 ---
 
@@ -166,6 +168,11 @@ shell.run(
     on_out=...,
 )
 ```
+
+Optional `prefer_context={(instance, pin), ...}` makes context win over an
+inter-block wire for those pins (SWD-224 Flow Man/Rem). If context has no
+value for a preferred pin, the runtime falls back to the wire (not the pin
+default).
 
 The safety callback runs in `SAFETY` phase (before `CONTROL`). The runtime
 never sees safety state and cannot bypass it.

@@ -92,7 +92,7 @@ def test_editor_and_api_packaging() -> None:
     assert "async_setup_dynamics_api" in init
 
     lovelace = (CC / "lovelace" / "plcassistant.yaml").read_text(encoding="utf-8")
-    assert "plcassistant_dashboard_version: 22" in lovelace
+    assert "plcassistant_dashboard_version: 23" in lovelace
     assert "path: dynamics" in lovelace
     assert "/api/plcassistant/dynamics/ui" in lovelace
     assert "title: Operate" in lovelace
