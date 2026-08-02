@@ -27,7 +27,7 @@ called `_setMode("man")` → `Number("man")` is NaN, and `_applySp` never ran.
 - Task: [SWD-227](https://marcusknielsen.atlassian.net/browse/SWD-227)
 - Relates: SWD-226
 - Branch: `cursor/swd-227-pid-card-set-float-5ef6`
-- PR: *(opening)*
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/90
 
 ## Next
 `/review-fix SWD-227` — Review and auto-fix until clean
