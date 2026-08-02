@@ -135,7 +135,7 @@ def test_platforms_publish_and_subscribe_paths():
     assert "sensor.plcassistant_mode" in lovelace
     assert "custom:plcassistant-pid-card" in lovelace
     assert "sensor.plcassistant_pid_level" in lovelace
-    assert "plcassistant_dashboard_version: 24" in lovelace
+    assert "plcassistant_dashboard_version: 25" in lovelace
     assert (CC / "www" / "pid-loop-card.js").is_file()
     assert (CC / "www" / "block-list-card.js").is_file()
     assert "live simulator" in lovelace.lower() or "0.1.29" in lovelace or "dynamics" in lovelace.lower()

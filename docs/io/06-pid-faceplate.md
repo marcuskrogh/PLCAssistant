@@ -81,6 +81,11 @@ JS is served from `/plcassistant_static/` and registered as Lovelace
 YAML mode falls back to `frontend.add_extra_js_url`). Fallback entity rows
 remain on the Operate board if custom cards are not loaded.
 
+The PID card (SWD-226) uses climate-inspired mode colours (Man / Auto / Rem),
+a hero strip for PV / active SP / CV, and text+`inputmode=decimal` SP editors
+so intermediate edits survive live Soft-PLC hass updates. **Set** (or Enter)
+commits; Esc cancels a dirty draft.
+
 Cascade demo defaults (SWD-221): Level **Manual**, Flow **Automatic**.
 Operator IN defaults are batch-seeded once at setup (no per-Number MQTT/file
 storm). Level faceplate Automatic writes ``SP_LEVEL_REQ`` (the mux Automatic

@@ -90,6 +90,8 @@ If personal boards still show unavailable plant Numbers, delete stale unavailabl
 entities in the entity registry (or remove/re-add the integration). Update any
 personal dashboards that still reference plant Numbers for Process display.
 
+**0.1.46** PID faceplate climate-style refresh + stable SP text editing while RUNNING. Stock Lovelace refreshes to dashboard version **25**.
+
 **0.1.45** File runtime mirrors SP_FLOW_AUTO; Program Apply syncs live Skid; missing cascade falls back so Start drives CVs. Stock Lovelace refreshes to dashboard version **24**.
 
 **0.1.44** Start drives PID CVs via common tag↔pin io_wires; faceplate KP/KI sync into live instances. Stock Lovelace refreshes to dashboard version **23**.

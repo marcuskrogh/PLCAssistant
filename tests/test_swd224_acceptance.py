@@ -201,10 +201,10 @@ def test_system_flow_manual_prefer_context_does_not_mutate_wires() -> None:
 
 def test_system_app_version_0_1_44() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.45"' in manifest
+    assert '"0.1.46"' in manifest
     config = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.45"' in config
+    assert 'version: "0.1.46"' in config
     docker = Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.45" in docker
+    assert "BUILD_VERSION=0.1.46" in docker
     dash = (ROOT / "lovelace" / "plcassistant.yaml").read_text(encoding="utf-8")
-    assert "plcassistant_dashboard_version: 24" in dash
+    assert "plcassistant_dashboard_version: 25" in dash
