@@ -324,23 +324,26 @@ class PlcAssistantPidCard extends HTMLElement {
 
     this._captureFocusedDrafts();
 
-    if (forceRebuild || !this._root.querySelector(".pid-card")) {
+    if (forceRebuild || !this._root.querySelector(".pid-shell")) {
       this._bound = false;
       this._root.innerHTML = `
       <style>
-        .pid-card {
+        .pid-shell {
           --pid-man: #c47800;
           --pid-auto: #0d9488;
           --pid-rem: #3b6ea5;
           --pid-accent: var(--pid-man);
           position: relative;
-          overflow: hidden;
           padding: 0;
           font-family: var(--paper-font-body1_-_font-family, "Segoe UI", Roboto, sans-serif);
         }
-        .pid-card[data-pid-mode="man"] { --pid-accent: var(--pid-man); }
-        .pid-card[data-pid-mode="auto"] { --pid-accent: var(--pid-auto); }
-        .pid-card[data-pid-mode="rem"] { --pid-accent: var(--pid-rem); }
+        .pid-shell[data-pid-mode="man"] { --pid-accent: var(--pid-man); }
+        .pid-shell[data-pid-mode="auto"] { --pid-accent: var(--pid-auto); }
+        .pid-shell[data-pid-mode="rem"] { --pid-accent: var(--pid-rem); }
+        .pid-card {
+          position: relative;
+          overflow: hidden;
+        }
         .pid-accent {
           position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
           background: var(--pid-accent);
@@ -549,7 +552,8 @@ class PlcAssistantPidCard extends HTMLElement {
       ${
         unavailable
           ? `<div class="pid-missing">Entity ${this._config.entity} unavailable</div>`
-          : `<div class="pid-card" data-pid-mode="man">
+          : `<div class="pid-shell" data-pid-mode="man">
+        <div class="pid-card">
         <div class="pid-accent" aria-hidden="true"></div>
         <button type="button" class="pid-face" data-open-editor aria-haspopup="dialog">
           <div class="pid-body">
@@ -576,6 +580,7 @@ class PlcAssistantPidCard extends HTMLElement {
             <div class="pid-hint">Tap to adjust</div>
           </div>
         </button>
+        </div>
         <div class="pid-dialog" hidden role="dialog" aria-modal="true">
           <button type="button" class="pid-dialog-backdrop" data-close-editor aria-label="Dismiss"></button>
           <div class="pid-dialog-panel" role="document">
@@ -637,8 +642,8 @@ class PlcAssistantPidCard extends HTMLElement {
       return;
     }
 
-    const card = this._root.querySelector(".pid-card");
-    if (card) card.setAttribute("data-pid-mode", modeKey);
+    const shell = this._root.querySelector(".pid-shell");
+    if (shell) shell.setAttribute("data-pid-mode", modeKey);
 
     const titleEl = this._root.querySelector(".pid-title");
     const badgeEl = this._root.querySelector("[data-badge]");

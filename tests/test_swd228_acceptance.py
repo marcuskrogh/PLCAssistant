@@ -35,6 +35,7 @@ def test_unit_pid_card_compact_popup_editors() -> None:
     assert "data-close-editor" in text
     assert "pid-dialog" in text
     assert "pid-dialog-panel" in text
+    assert "pid-shell" in text
     assert "_dialogOpen" in text
     assert 'getCardSize() {\n    return 2;' in text or "return 2;" in text
     # Editors live in the dialog, not as always-visible faceplate rows alone.
@@ -43,6 +44,39 @@ def test_unit_pid_card_compact_popup_editors() -> None:
     # Faceplate surface opens dialog; Set/mode stay on button[data-mode]/data-apply.
     assert 'closest("button[data-mode]")' in text
     assert "data-pid-mode" in text
+    # Dialog must be a sibling of .pid-card (not nested under overflow:hidden).
+    assert "pid-shell" in text
+    card_idx = text.find('<div class="pid-card">')
+    dialog_idx = text.find('<div class="pid-dialog"')
+    assert card_idx != -1 and dialog_idx != -1 and dialog_idx > card_idx
+    # Explicit: overflow:hidden stays on .pid-card, not on .pid-shell.
+    assert ".pid-card {\n          position: relative;\n          overflow: hidden;" in text
+    assert "overflow: hidden;" not in text.split(".pid-shell", 1)[1].split(".pid-card", 1)[0]
+
+
+def test_unit_pid_dialog_not_nested_under_overflow_clip() -> None:
+    """Regression for review-fix iter 1: fixed dialog must escape face clip."""
+    text = CARD.read_text(encoding="utf-8")
+    # Extract the available-entity HTML template region.
+    start = text.find('<div class="pid-shell"')
+    end = text.find("`\n      }", start)
+    assert start != -1 and end != -1
+    tpl = text[start:end]
+    # Dialog is inside pid-shell but outside pid-card.
+    assert '<div class="pid-card">' in tpl
+    assert '<div class="pid-dialog"' in tpl
+    # Close the pid-card before the dialog opens.
+    card_open = tpl.find('<div class="pid-card">')
+    dialog_open = tpl.find('<div class="pid-dialog"')
+    # Count div depth between card open and dialog: after closing pid-card
+    # there should be a literal </div> that ends pid-card before dialog.
+    between = tpl[card_open:dialog_open]
+    assert between.count("<div") >= 1
+    assert "</div>" in between
+    # Ensure dialog is not inside an overflow:hidden ancestor in CSS ownership.
+    assert "overflow: hidden" in text
+    shell_css = text.split(".pid-shell {", 1)[1].split(".pid-card {", 1)[0]
+    assert "overflow: hidden" not in shell_css
 
 
 def test_unit_dual_tree_pid_card_synced() -> None:
