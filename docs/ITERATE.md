@@ -32,7 +32,7 @@
 - Task: [SWD-225](https://marcusknielsen.atlassian.net/browse/SWD-225)
 - Relates: SWD-224
 - Branch: `cursor/swd-225-start-pid-cvs-still-zero-5ef6`
-- PR: *(opening)*
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/88
 
 ## Next
 `/review-fix SWD-225` — Review and auto-fix until clean

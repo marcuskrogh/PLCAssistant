@@ -96,7 +96,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-222 | Bug | [Iterate] Start/cascade dead, Start–Stop unresponsive, PID setpoints, HA lockup | Done | Relates SWD-221 | docs/ITERATE.md | Done — shipped PR [#85](https://github.com/marcuskrogh/PLCAssistant/pull/85) (App 0.1.42) |
 | SWD-223 | Bug | [Iterate] Level/Flow PID Manual SP does not drive CV (post 0.1.42) | Done | Relates SWD-222 | docs/ITERATE.md | Done — shipped PR [#86](https://github.com/marcuskrogh/PLCAssistant/pull/86) (App 0.1.43) |
 | SWD-224 | Bug | [Iterate] Start does not drive PID CVs — unify tag↔pin wirings | Done | Relates SWD-223 | docs/ITERATE.md | Done — shipped PR [#87](https://github.com/marcuskrogh/PLCAssistant/pull/87) (App 0.1.44) |
-| SWD-225 | Bug | [Iterate] Start still leaves PID CVs at 0 (post 0.1.44) | In Progress | Relates SWD-224 | docs/ITERATE.md | `/review-fix SWD-225` |
+| SWD-225 | Bug | [Iterate] Start still leaves PID CVs at 0 (post 0.1.44) | In Review | Relates SWD-224 | docs/ITERATE.md | `/review-fix SWD-225` |
 | SWD-220 | Bug | [Iterate] PID cards Configuration error + default mode Remote (should be Manual) | Done | Relates SWD-219 | docs/ITERATE.md | Done — shipped PR [#83](https://github.com/marcuskrogh/PLCAssistant/pull/83) (App 0.1.40) |
 | SWD-217 | Subtask | SWD-183: PID SP-source mode logic + Datablock tag contract | Done | SWD-183 | docs/PLAN.md | — |
 | SWD-214 | Subtask | SWD-183: HA compound PID loop entity platform | Done | SWD-183 | docs/PLAN.md | — |
