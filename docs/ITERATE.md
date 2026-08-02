@@ -1,43 +1,46 @@
-# Iterate: Start still leaves PID CVs at 0 (post 0.1.44)
+# Iterate: PID faceplate card — SP edit bugs + climate-inspired visual refresh
 
 ## Prior work
-- Task: [SWD-224](https://marcusknielsen.atlassian.net/browse/SWD-224)
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/87 (App 0.1.44)
-- Spec context: screenshot — Level Man SP=0.3 / PV=0 / CV=0 while running
+- Task: [SWD-225](https://marcusknielsen.atlassian.net/browse/SWD-225)
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/88 (App 0.1.45)
+- Spec context: PID loops engage; faceplate SP editing + card look still weak
 
 ## Problem
-1. Pressing Start did not engage PID loops — Level/Flow CVs stayed **0.00** while status showed running.
-2. Soft-PLC file runtime omitted `SP_FLOW_AUTO` (HA file-bridge expected it).
-3. File snapshot wrote bumpless-zero on Start then throttled updates while RUNNING.
-4. `/api/apply` did not sync into the live Skid; missing `level_pi`/`flow_pi` silently published CV=0.
+1. While the Soft-PLC is active, PID card SP fields are buggy: deleting/editing
+   (e.g. Man SP `0.2` → `0.3`) auto-jumps the caret and produces values like
+   `30` instead of `0.3` (HTML `type="number"` + live hass restomps).
+2. The PID card looks plain — needs a climate-card-inspired visual refresh:
+   mode colours, clear active SP / PV / CV hierarchy, more engaging layout.
 
 ## Acceptance criteria
-- [x] Soft-PLC file runtime mirror includes `SP_FLOW_AUTO`
-- [x] While RUNNING, file runtime refreshes every scan (not stuck at Start bumpless zero)
-- [x] Program Apply (hot/restart) syncs into the live Skid loader
-- [x] Missing `level_pi`/`flow_pi` falls back to CascadeController so Start still drives CVs
-- [x] Screenshot repro (Level Man SP=0.3, PV=0, Flow Auto) → CVs rise
-- [x] App/integration **0.1.45**; dual trees synced; pytest green
+- [x] SP Man/Auto/Rem edits preserve intermediate text (`0.`, empty, partial)
+      across live hass updates; caret does not jump; Set commits a valid number
+- [x] Active mode is colour-coded (Man / Auto / Rem); active SP source row is
+      visually emphasized; PV / active SP / CV are first-class readouts
+- [x] Card remains a single Lovelace custom card (`plcassistant-pid-card`);
+      mode + Set behaviour unchanged (Set still flips mode per faceplate contract)
+- [x] App/integration **0.1.46**; dashboard **25**; dual trees synced; tests green
 
 ## Out of scope
-- Classic output Manual
-- Full multi-program prefer_context redesign
+- Classic output Manual (operator sets CV directly)
+- New HA entity attributes beyond what the compound sensor already exposes
+- Full climate domain migration
 
 ## Work packages
-1. File mirror SP_FLOW_AUTO + per-scan refresh while RUNNING — done
-2. Apply → Skid sync + cascade fallback — done
-3. Tests + version bump — done (`tests/test_swd225_acceptance.py`)
+1. Fix draft SP editing (text + inputmode; stable draft while focused/dirty) — done
+2. Climate-inspired visual redesign of `pid-loop-card.js` — done
+3. Version bump + acceptance tests + dual-tree sync — done
 
 ## Review-fix
-- Iter 1: hot sync as restart; `/api/project` gap; Flow Man `SP_FLOW_AUTO` contract — fixed
+- Iter 1: dirty-on-focus freeze + color-mix fallbacks — fixed
 - Iter 2: CLEAN
 
 ## Tracker
-- Task: [SWD-225](https://marcusknielsen.atlassian.net/browse/SWD-225)
-- Relates: SWD-224
-- Branch: `cursor/swd-225-start-pid-cvs-still-zero-5ef6`
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/88
-- Shipped: App **0.1.45**
+- Task: [SWD-226](https://marcusknielsen.atlassian.net/browse/SWD-226)
+- Relates: SWD-225
+- Branch: `cursor/swd-226-pid-card-sp-edit-visual-5ef6`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/89
+- Shipped: App **0.1.46**
 
 ## Next
 Done — phase closed.
