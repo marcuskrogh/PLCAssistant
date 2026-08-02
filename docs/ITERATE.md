@@ -1,42 +1,52 @@
-# Iterate: PID card Set SP fails — expected float (data-mode click hijack)
+# Iterate: PID card compact redesign (2dp, single-row KPIs, more-info popup)
 
 ## Prior work
-- Task: [SWD-226](https://marcusknielsen.atlassian.net/browse/SWD-226)
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/89 (App 0.1.46)
-- Spec context: screenshot — Set Man SP 0.3 → toast `expected float`; Active SP stays 0.200
+- Task: [SWD-227](https://marcusknielsen.atlassian.net/browse/SWD-227)
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/90 (App 0.1.47)
+- Spec context: docs/ITERATE.md (prior), SWD-226 climate-style faceplate
 
 ## Problem
-Setting SP from the climate-style PID card fails with
-`Failed to perform the action number/set_value. expected float for dictionary value @ data['value']`.
+Direction of the climate-inspired PID faceplate is good, but operators still need a tighter HMI:
 
-Root cause: card root used `data-mode="man|auto|rem"` for accent styling; click
-handler used `closest("[data-mode]")`, so Set clicks matched the card root,
-called `_setMode("man")` → `Number("man")` is NaN, and `_applySp` never ran.
+1. **Precision** — values show more than two decimal places; unnecessary for now.
+2. **Mobile KPIs** — PV / Active SP / CV wrap to two rows on narrow viewports; all three must stay on one row.
+3. **Compact + popup** — the card is too tall with inline editors; clicking the card should open a popup (like the native climate card) where mode and SP values can be changed.
+4. **Design pass** — overall look should be more compact, sleek, user-friendly, and modern.
+
+## Clarifications
+- Invoke was rich; no further clarifying questions.
+- Keep existing Set/mode float contracts (SWD-227) and draft-edit behaviour (SWD-226) inside the popup editors.
 
 ## Acceptance criteria
-- [x] Set / Enter commits SP as a finite float via `number.set_value`
-- [x] Mode buttons still switch via codes 0/1/2 only (`button[data-mode]`)
-- [x] Card accent uses `data-pid-mode` (not conflicting with mode buttons)
-- [x] App/integration **0.1.47**; dashboard **26**; dual trees; tests green
-- [x] **Regression tests** for integration ↔ HMI communication:
-  - Node contract (`tests/js/pid_faceplate_contract.test.mjs`): Set under ancestor
-    `data-mode` resolves to **apply** (not mode); `numberServiceValue("man")` is
-    null; finite floats build `{ entity_id, value: <number> }` for `number.set_value`
-  - Pytest wraps the Node harness + asserts faceplate entity ids / float flip codes
+- [x] Displayed PV, Active SP, CV, and error use **two decimal places**
+- [x] On mobile (narrow) widths, all three KPIs remain in a **single row** (no wrap to two rows)
+- [x] Faceplate is **compact** (no inline Man/Auto/Rem SP editors on the card body)
+- [x] **Clicking the card** opens a popup/dialog to change mode and SP values (climate-card-like)
+- [x] Overall visual pass: compact, sleek, modern; mode accent retained
+- [x] Prior float/Set contracts preserved (`button[data-mode]`, `number.set_value` finite floats)
+- [x] App/integration **0.1.48**; dashboard **27**; dual trees synced; tests green
+- [x] Dialog mounts outside `.pid-card { overflow: hidden }` (review-fix iter 1)
 
 ## Out of scope
-- Further visual redesign
-- Classic output Manual
+- Classic output Manual (CV override)
+- Changing Soft-PLC / Datablock semantics
+- Non-PID specialised cards
+
+## Work packages
+1. Compact faceplate layout + 2dp formatting + single-row KPIs
+2. More-info / popup editors for mode + SP (reuse draft/Set contracts)
+3. Version bump, dual-tree sync, acceptance + contract tests
 
 ## Tracker
-- Task: [SWD-227](https://marcusknielsen.atlassian.net/browse/SWD-227)
-- Relates: SWD-226
-- Branch: `cursor/swd-227-pid-card-set-float-5ef6`
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/90
-- Shipped: App **0.1.47**
+- Task: [SWD-228](https://marcusknielsen.atlassian.net/browse/SWD-228)
+- Relates: SWD-227
+- Branch: `cursor/swd-228-pid-card-compact-33f6`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/91
+- App: **0.1.48** / dashboard **27**
+- Shipped: App **0.1.48**
 
 ## Review-fix
-- Iter 1: entity_id in serviceData + stronger contract tests — fixed
+- Iter 1: dialog clipped by `.pid-card { overflow: hidden }` — fixed (sibling under `.pid-shell`)
 - Iter 2: CLEAN
 
 ## Next
