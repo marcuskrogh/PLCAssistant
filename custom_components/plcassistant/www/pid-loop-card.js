@@ -1,5 +1,5 @@
 /**
- * PLCAssistant PID faceplate card (SWD-183 / SWD-222 / SWD-226).
+ * PLCAssistant PID faceplate card (SWD-183 / SWD-222 / SWD-226 / SWD-227).
  *
  * Config: { type: "custom:plcassistant-pid-card", entity: "sensor.plcassistant_pid_level" }
  * Reads climate-like attributes from the compound PID sensor and writes
@@ -8,7 +8,48 @@
  * Drafts: typed SP inputs use text + inputmode=decimal (not type=number) so
  * intermediate edits like "0." survive live hass updates without caret jumps
  * (SWD-226). Dirty drafts persist across refreshes until Set / Escape / clear.
+ *
+ * Exported helpers below are the integration↔HMI communication contract and are
+ * covered by Node regression tests (SWD-227).
  */
+
+/** Parse an SP draft string into a finite number, or null if incomplete/invalid. */
+export function parseSpValue(raw) {
+  const text = String(raw ?? "").trim().replace(",", ".");
+  if (text === "" || text === "-" || text === "." || text === "-.") {
+    return null;
+  }
+  const n = Number(text);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Coerce a value for ``number.set_value``.
+ * Returns a finite number, or null when the payload must not be sent (e.g. "man").
+ */
+export function numberServiceValue(value) {
+  // Same gate as parseSpValue so Set and mode cannot diverge on drafts like "12abc".
+  return parseSpValue(value);
+}
+
+/**
+ * Resolve a faceplate click to a mode or SP-apply action.
+ *
+ * Mode switches must use ``button[data-mode]`` only — never a bare
+ * ``[data-mode]`` match — so a card-root accent attribute cannot hijack Set
+ * (SWD-227: ``data-mode="man"`` → Number("man") → NaN toast).
+ */
+export function resolveFaceplateClick(target) {
+  if (!target || typeof target.closest !== "function") return null;
+  const modeBtn = target.closest("button[data-mode]");
+  if (modeBtn) {
+    return { type: "mode", code: modeBtn.getAttribute("data-mode") };
+  }
+  const applyBtn = target.closest("[data-apply]");
+  if (!applyBtn || applyBtn.disabled) return null;
+  return { type: "apply", key: applyBtn.getAttribute("data-apply") };
+}
+
 class PlcAssistantPidCard extends HTMLElement {
   static getStubConfig() {
     return { entity: "sensor.plcassistant_pid_level" };
@@ -62,9 +103,13 @@ class PlcAssistantPidCard extends HTMLElement {
 
   async _setNumber(entityId, value) {
     if (!this._hass || !entityId) return;
+    const numeric = numberServiceValue(value);
+    if (numeric === null) return;
+    // Keep entity_id in serviceData (legacy-compatible Lovelace shape) alongside
+    // the finite float — do not rely solely on a 4th-arg target.
     await this._hass.callService("number", "set_value", {
       entity_id: entityId,
-      value: Number(value),
+      value: numeric,
     });
   }
 
@@ -72,7 +117,10 @@ class PlcAssistantPidCard extends HTMLElement {
     const st = this._hass?.states?.[this._config.entity];
     const modeEntity = this._attr(st, "mode_entity", null);
     if (!modeEntity) return;
-    await this._setNumber(modeEntity, code);
+    // Mode codes are 0/1/2 — never pass label strings like "man".
+    const numeric = numberServiceValue(code);
+    if (numeric === null) return;
+    await this._setNumber(modeEntity, numeric);
   }
 
   _inputValue(key, fallback) {
@@ -103,12 +151,7 @@ class PlcAssistantPidCard extends HTMLElement {
   }
 
   _parseSp(raw) {
-    const text = String(raw ?? "").trim().replace(",", ".");
-    if (text === "" || text === "-" || text === "." || text === "-.") {
-      return null;
-    }
-    const n = Number(text);
-    return Number.isFinite(n) ? n : null;
+    return parseSpValue(raw);
   }
 
   _applySp(key) {
@@ -132,14 +175,15 @@ class PlcAssistantPidCard extends HTMLElement {
     if (!this._root || this._bound) return;
     this._bound = true;
     this._root.addEventListener("click", (ev) => {
-      const modeBtn = ev.target.closest("[data-mode]");
-      if (modeBtn) {
-        this._setMode(modeBtn.getAttribute("data-mode"));
+      const action = resolveFaceplateClick(ev.target);
+      if (!action) return;
+      if (action.type === "mode") {
+        this._setMode(action.code);
         return;
       }
-      const applyBtn = ev.target.closest("[data-apply]");
-      if (!applyBtn || applyBtn.disabled) return;
-      this._applySp(applyBtn.getAttribute("data-apply"));
+      if (action.type === "apply") {
+        this._applySp(action.key);
+      }
     });
     this._root.addEventListener("input", (ev) => {
       const input = ev.target.closest("input[data-sp]");
@@ -238,9 +282,9 @@ class PlcAssistantPidCard extends HTMLElement {
           padding: 0;
           font-family: var(--paper-font-body1_-_font-family, "Segoe UI", Roboto, sans-serif);
         }
-        .pid-card[data-mode="man"] { --pid-accent: var(--pid-man); }
-        .pid-card[data-mode="auto"] { --pid-accent: var(--pid-auto); }
-        .pid-card[data-mode="rem"] { --pid-accent: var(--pid-rem); }
+        .pid-card[data-pid-mode="man"] { --pid-accent: var(--pid-man); }
+        .pid-card[data-pid-mode="auto"] { --pid-accent: var(--pid-auto); }
+        .pid-card[data-pid-mode="rem"] { --pid-accent: var(--pid-rem); }
         .pid-accent {
           position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
           background: var(--pid-accent);
@@ -377,7 +421,7 @@ class PlcAssistantPidCard extends HTMLElement {
       ${
         unavailable
           ? `<div class="pid-missing">Entity ${this._config.entity} unavailable</div>`
-          : `<div class="pid-card" data-mode="man">
+          : `<div class="pid-card" data-pid-mode="man">
         <div class="pid-accent" aria-hidden="true"></div>
         <div class="pid-body">
           <div class="pid-head">
@@ -438,7 +482,7 @@ class PlcAssistantPidCard extends HTMLElement {
     }
 
     const card = this._root.querySelector(".pid-card");
-    if (card) card.setAttribute("data-mode", modeKey);
+    if (card) card.setAttribute("data-pid-mode", modeKey);
 
     const titleEl = this._root.querySelector(".pid-title");
     const badgeEl = this._root.querySelector("[data-badge]");

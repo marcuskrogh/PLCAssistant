@@ -98,6 +98,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-224 | Bug | [Iterate] Start does not drive PID CVs — unify tag↔pin wirings | Done | Relates SWD-223 | docs/ITERATE.md | Done — shipped PR [#87](https://github.com/marcuskrogh/PLCAssistant/pull/87) (App 0.1.44) |
 | SWD-225 | Bug | [Iterate] Start still leaves PID CVs at 0 (post 0.1.44) | Done | Relates SWD-224 | docs/ITERATE.md | Done — shipped PR #88 |
 | SWD-226 | Bug | [Iterate] PID card SP edit bugs + climate-inspired visual refresh | Done | Relates SWD-225 | docs/ITERATE.md | Done — shipped PR #89 |
+| SWD-227 | Bug | [Iterate] PID card Set SP fails — expected float (data-mode click hijack) | Done | Relates SWD-226 | docs/ITERATE.md | — |
 | SWD-220 | Bug | [Iterate] PID cards Configuration error + default mode Remote (should be Manual) | Done | Relates SWD-219 | docs/ITERATE.md | Done — shipped PR [#83](https://github.com/marcuskrogh/PLCAssistant/pull/83) (App 0.1.40) |
 | SWD-217 | Subtask | SWD-183: PID SP-source mode logic + Datablock tag contract | Done | SWD-183 | docs/PLAN.md | — |
 | SWD-214 | Subtask | SWD-183: HA compound PID loop entity platform | Done | SWD-183 | docs/PLAN.md | — |
@@ -142,6 +143,10 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
+- 2026-08-02 — Shipped SWD-227 via PR #90 (App 0.1.47); review-fix CLEAN after 2 iters; Task Done.
+- 2026-08-02 — Fix-forward SWD-227: Node + pytest regression for HMI↔`number.set_value` float contract (PR #90). Next `/review-fix SWD-227`.
+- 2026-08-02 — Implement SWD-227: PID Set SP data-mode hijack fix (App 0.1.47); PR [#90](https://github.com/marcuskrogh/PLCAssistant/pull/90) → In Review. Next `/review-fix SWD-227`.
+- 2026-08-02 — Iterate SWD-227: PID card Set SP fails (data-mode click hijack → NaN); App 0.1.47; Relates SWD-226.
 - 2026-08-02 — Shipped SWD-226 via PR #89 (App 0.1.46); review-fix CLEAN after 2 iters; Task Done.
 - 2026-08-02 — Implement SWD-226: PID card SP edit + climate faceplate (App 0.1.46); PR [#89](https://github.com/marcuskrogh/PLCAssistant/pull/89) → In Review. Next `/review-fix SWD-226`.
 - 2026-08-02 — Iterate SWD-226: PID card SP edit bugs + climate-inspired visual refresh (App 0.1.46); Relates SWD-225.
