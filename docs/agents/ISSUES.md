@@ -100,7 +100,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-226 | Bug | [Iterate] PID card SP edit bugs + climate-inspired visual refresh | Done | Relates SWD-225 | docs/ITERATE.md | Done — shipped PR #89 |
 | SWD-227 | Bug | [Iterate] PID card Set SP fails — expected float (data-mode click hijack) | Done | Relates SWD-226 | docs/ITERATE.md | Done — shipped PR [#90](https://github.com/marcuskrogh/PLCAssistant/pull/90) (App 0.1.47) |
 | SWD-228 | Bug | [Iterate] PID card compact redesign: 2dp KPIs, single-row mobile, more-info popup | Done | Relates SWD-227 | docs/ITERATE.md | Done — shipped PR [#91](https://github.com/marcuskrogh/PLCAssistant/pull/91) (App 0.1.48) |
-| SWD-229 | Bug | [Iterate] Lovelace Operate: SCADA-style declutter (not every entity) | In Progress | Relates SWD-228 | docs/ITERATE.md | `/review-fix SWD-229` |
+| SWD-229 | Bug | [Iterate] Lovelace Operate: SCADA-style declutter (not every entity) | In Review | Relates SWD-228 | docs/ITERATE.md | `/review-fix SWD-229` |
 | SWD-220 | Bug | [Iterate] PID cards Configuration error + default mode Remote (should be Manual) | Done | Relates SWD-219 | docs/ITERATE.md | Done — shipped PR [#83](https://github.com/marcuskrogh/PLCAssistant/pull/83) (App 0.1.40) |
 | SWD-217 | Subtask | SWD-183: PID SP-source mode logic + Datablock tag contract | Done | SWD-183 | docs/PLAN.md | — |
 | SWD-214 | Subtask | SWD-183: HA compound PID loop entity platform | Done | SWD-183 | docs/PLAN.md | — |

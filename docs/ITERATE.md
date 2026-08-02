@@ -40,6 +40,7 @@ The Operate dashboard is an entity dump, not a SCADA screen:
 - Task: [SWD-229](https://marcusknielsen.atlassian.net/browse/SWD-229)
 - Relates: SWD-228
 - Branch: `cursor/swd-229-lovelace-scada-declutter-566c`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/92
 - App: **0.1.49** / dashboard **28**
 
 ## Next
