@@ -92,8 +92,8 @@ Manual copy is no longer required on HA OS. Fallback if the config mount is unav
 ### 6. Verify the install
 
 1. Open the App UI (Ingress or port 8099) — the **program editor** should load with a populated **Block Library** (if Ingress shows `Error: 404`, Update the App and hard-refresh).
-2. In HA, confirm **Level setpoint** (`number.plcassistant_sp_level_req`), process **sensors** (including **Status** / **Mode**), and Start/Stop/Reset buttons under the PLCAssistant integration.
-3. Open **PLCAssistant** in the HA **sidebar** — status is at the top. After Core restart with the App **Started**, Soft-PLC should show `stopped` (not stuck `offline`) with Start ready On when healthy. Set the level setpoint, press **Start** — Soft-PLC status becomes `running`, MODE `RUNNING`, and tank/flow/speed/active SPs move. Start ready correctly shows Off while RUNNING.
+2. In HA, confirm PLCAssistant entities exist under the integration: Status / Mode sensors, Start/Stop/Reset buttons, plant process sensors, and PID loop entities (Level setpoint Numbers remain available for automation / PID popup).
+3. Open **PLCAssistant** in the HA **sidebar** — Operate shows Soft-PLC status, Mode, Trip, Commands, Process glance PVs, and Level/Flow PID cards. After Core restart with the App **Started**, Soft-PLC should show `stopped` (not stuck `offline`). Tap a PID card to set the level SP, press **Start** — Soft-PLC status becomes `running`, Mode `RUNNING`, and Process / PID values move.
 4. Press **Stop** / **Reset** (or call services `plcassistant.start` / `stop` / `reset`) — these publish command pulses to the App.
 5. Place or edit a program in the App editor, restart the App, and confirm it reloads from persistent storage (`/data/program.json` inside the App).
 
@@ -112,9 +112,9 @@ This walkthrough gets the bundled tank/reservoir skid mock running end-to-end, t
 ### B. Operate the skid HMI
 
 1. Open the HA sidebar item **PLCAssistant** (url path `plcassistant-skid`).
-2. Stay on the **Operate** tab. Soft-PLC should show **stopped** (not offline) with Start ready **On**.
-3. Confirm **Dynamics preset** reads `skid` (code default) or the last applied model.
-4. Set **Level setpoint**, press **Start**. Tank / reservoir / inlet flow Numbers should move; Soft-PLC Mode becomes **RUNNING**.
+2. Stay on the **Operate** tab. Soft-PLC should show **stopped** (not offline); Mode **STOP**.
+3. Dynamics preset is selected via **Dynamics** tab / Options / `plcassistant.set_dynamics_preset` (not on Operate).
+4. Tap the **Level PID** card to set Manual / Auto SP, press **Start**. Process glance sensors (tank / reservoir / inlet flow / pump speed) should move; Soft-PLC Mode becomes **RUNNING**. Tap a Process value for history.
 
 ### C. Edit plant dynamics (state & measurement equations)
 

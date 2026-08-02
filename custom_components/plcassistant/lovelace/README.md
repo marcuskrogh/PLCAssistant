@@ -21,28 +21,32 @@ entities for your own SCADA boards. Fully custom YAML under
 `sensor.plcassistant_status`, or still marked on an older stock version, are
 refreshed on update so the status card and help appear.
 
-## Status (top of board)
+## Operate (SCADA HMI)
 
-| Entity | Values |
-|--------|--------|
-| `sensor.plcassistant_status` | `running` / `stopped` / `fault` / `offline` (App scan) |
-| `sensor.plcassistant_mode` | `STOP` / `RUNNING` / `TRIPPED` (skid MODE) |
-| `sensor.plcassistant_perm_ok` | `on` / `off` (Start ready when idle; Off while RUNNING is expected) |
-| `sensor.plcassistant_trip_active` | `on` / `off` |
+Operate is a compact SCADA screen — not an entity browser:
+
+| Area | Contents |
+|------|----------|
+| **Status** | Soft-PLC, Mode (`STOP` / `RUNNING` / `TRIPPED`), Trip |
+| **Commands** | Start / Stop / Reset |
+| **Process** | Glance PVs (tank, reservoir, inlet flow, pump speed) — tap opens more-info / history |
+| **PID** | Level + Flow faceplates (tap card to edit mode / SP) |
+
+Engineering surfaces stay on the **Dynamics** and **Datablocks** tabs.
 
 Press **Start** → Soft-PLC status `running`, MODE `RUNNING`, and Soft-PLC CVs
-(`CMD_SPEED`, active SPs) update. Plant level/flow **sensors** are Soft-PLC **IN**
-from the integration simulator (SWD-146+ / SWD-170); Numbers remain for nudges.
+update. Plant PVs are Soft-PLC **IN** sensors from the integration simulator;
+PID cards edit SP / mode (entities still exist for automation / custom boards).
 
 ## Writable vs read-only
 
 | Entity | Role |
 |--------|------|
-| `number.plcassistant_sp_level_req` | Operator **level setpoint request** (writable; Automatic source) |
+| `number.plcassistant_sp_level_req` | Operator **level setpoint request** (writable; Automatic source; via PID popup) |
 | `number.plcassistant_sp_level_man` / `_rem` / `level_mode` | Level PID Manual/Remote SP + mode (0/1/2) |
 | `number.plcassistant_sp_flow_man` / `_rem` / `flow_mode` | Flow PID Manual/Remote SP + mode |
 | `sensor.plcassistant_pid_level` / `_pid_flow` | Compound PID faceplate (mode + attributes) |
-| `sensor.plcassistant_lt_tank_in` / `_lt_res_in` / `_ft_inlet_in` | Plant PVs as Soft-PLC **IN** (Operate Process display) |
+| `sensor.plcassistant_lt_tank_in` / `_lt_res_in` / `_ft_inlet_in` | Plant PVs as Soft-PLC **IN** (Operate Process glance) |
 | `number.plcassistant_lt_tank_in` / `_lt_res_in` / `_ft_inlet_in` | Plant PV **nudges** (writable; same tags) |
 | `button.plcassistant_start` / `_stop` / `_reset` | Operator commands |
 | `sensor.plcassistant_*` (other) | Soft-PLC OUT (CVs, active SPs, MODE / status) — read-only |
@@ -89,6 +93,8 @@ After App Update + Core restart: stock Lovelace refreshes to dashboard version *
 If personal boards still show unavailable plant Numbers, delete stale unavailable
 entities in the entity registry (or remove/re-add the integration). Update any
 personal dashboards that still reference plant Numbers for Process display.
+
+**0.1.49** Operate is a SCADA HMI (status, Start/Stop/Reset, Mode, key PVs, PID cards) — not an entity dump. Tap Process values for history. Stock Lovelace refreshes to dashboard version **28**.
 
 **0.1.48** Compact PID faceplate: 2dp KPIs, single-row mobile, tap opens edit popup. Stock Lovelace refreshes to dashboard version **27**.
 

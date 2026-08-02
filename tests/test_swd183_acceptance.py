@@ -311,21 +311,19 @@ def test_system_canvas_polls_runtime() -> None:
     assert "saved_signature" in html or "progCount" in html
 
 
-def test_system_lovelace_operate_has_block_list_card() -> None:
+def test_system_pid_card_js_exists() -> None:
+    """SWD-183: PID + block-list card JS remain packaged (Operate layout is SWD-229)."""
     text = Path("custom_components/plcassistant/lovelace/plcassistant.yaml").read_text(
         encoding="utf-8"
     )
-    assert "plcassistant_dashboard_version: 27" in text
-    assert "custom:plcassistant-block-list-card" in text
-
-
-def test_system_pid_card_js_exists() -> None:
+    assert "plcassistant_dashboard_version: 28" in text
+    assert "custom:plcassistant-pid-card" in text
     pid = Path("custom_components/plcassistant/www/pid-loop-card.js")
     block = Path("custom_components/plcassistant/www/block-list-card.js")
     assert pid.is_file()
     assert block.is_file()
-    text = pid.read_text(encoding="utf-8")
-    assert "plcassistant-pid-card" in text
-    assert "customCards" in text
+    js = pid.read_text(encoding="utf-8")
+    assert "plcassistant-pid-card" in js
+    assert "customCards" in js
     assert "plcassistant-block-list-card" in block.read_text(encoding="utf-8")
     assert FLOW_LOOP.mode == "FLOW_MODE"

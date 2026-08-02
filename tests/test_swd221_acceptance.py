@@ -85,13 +85,14 @@ def test_integration_level_faceplate_auto_writes_req() -> None:
     assert 'await self._publish_in_tag("SP_LEVEL_REQ", eng)' in number
 
 
-def test_system_operate_board_man_primary() -> None:
+def test_system_level_auto_sp_entity_contract() -> None:
+    """SWD-221: Level Auto still writes SP_LEVEL_REQ (Operate layout is SWD-229)."""
     dash = (ROOT / "lovelace" / "plcassistant.yaml").read_text(encoding="utf-8")
-    assert "plcassistant_dashboard_version: 27" in dash
-    assert "Level SP Man (default)" in dash
-    assert "Level SP Auto (request)" in dash
-    # Man appears in Operate before REQ.
-    operate = dash.split("title: Operate", 1)[1].split("title: Level PID", 1)[0]
-    assert operate.index("sp_level_man") < operate.index("sp_level_req")
+    assert "plcassistant_dashboard_version: 28" in dash
+    assert "custom:plcassistant-pid-card" in dash
+    assert "sensor.plcassistant_pid_level" in dash
+    # Writable Auto SP entity remains registered for the PID faceplate.
+    number = (ROOT / "number.py").read_text(encoding="utf-8")
+    assert "plcassistant_sp_level_req" in number
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.48"' in manifest
+    assert '"0.1.49"' in manifest

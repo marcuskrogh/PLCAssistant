@@ -45,20 +45,20 @@ def test_unit_pid_card_climate_visual_cues() -> None:
     assert 'data-mode="' in text
 
 
-def test_system_app_version_0_1_48() -> None:
+def test_system_app_version_tracks_current() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.48"' in manifest
+    assert '"0.1.49"' in manifest
     config = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.48"' in config
+    assert 'version: "0.1.49"' in config
     docker = Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.48" in docker
+    assert "BUILD_VERSION=0.1.49" in docker
     dash = (ROOT / "lovelace" / "plcassistant.yaml").read_text(encoding="utf-8")
-    assert "plcassistant_dashboard_version: 27" in dash
-    assert "0.1.46+" in dash
+    assert "plcassistant_dashboard_version: 28" in dash
+    assert "custom:plcassistant-pid-card" in dash
 
 
-def test_system_dashboard_upgrade_includes_24() -> None:
+def test_system_dashboard_upgrade_includes_prior_versions() -> None:
     dash_py = (ROOT / "lovelace_dashboard.py").read_text(encoding="utf-8")
-    assert "|24)" in dash_py or "|24\\" in dash_py or "23|24" in dash_py
+    assert "2[0-7]" in dash_py
     run = Path("plc_assistant/run.sh").read_text(encoding="utf-8")
-    assert "23|24" in run
+    assert "2[0-7]" in run

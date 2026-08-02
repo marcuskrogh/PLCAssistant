@@ -1,4 +1,4 @@
-# plcassistant_dashboard_version: 27
+# plcassistant_dashboard_version: 28
 title: PLCAssistant
 views:
   - title: Operate
@@ -11,19 +11,12 @@ views:
         entities:
           - entity: sensor.plcassistant_status
             name: Soft-PLC
-          - entity: sensor.plcassistant_dynamics_preset
-            name: Dynamics preset
           - entity: sensor.plcassistant_mode
             name: Mode
-          - entity: sensor.plcassistant_perm_ok
-            name: Start ready (when idle)
           - entity: sensor.plcassistant_trip_active
-            name: Trip active
-      - type: markdown
-        content: |
-          **PLCAssistant** — Soft-PLC skid HMI (**Operate**). Soft-PLC must show **stopped** (not offline) before Start works. Open the **Dynamics** tab to edit unit-op / ODE **state equations** and Soft-PLC **measurement equations** (App **0.1.26+**). Soft-PLC stays mock-unaware (`HeldProcess`). Process rows are live plant **sensors** (App **0.1.29+**); Numbers remain available for plant nudges. **0.1.48+**: compact PID faceplate (2dp, single-row KPIs, tap-to-edit popup). **0.1.47+**: PID Set SP float fix. **0.1.46+**: PID card climate-style faceplate + stable SP editing. **0.1.45+**: file mirror SP_FLOW_AUTO + Apply→Skid; Start drives CVs. **0.1.44+**: Start drives PID CVs via tag↔pin io_wires; faceplate KP/KI reach live instances. **0.1.43+**: Flow Manual SP drives pump CMD; Level CV = SP_FLOW_AUTO. **0.1.42+**: cascade defaults Level **Manual** / Flow **Automatic**; Start awaits MQTT; operator file seed beats stale retain so inlet flow engages on Start. Soft-PLC must show **stopped** before Start. Change **Level SP Man**, press **Start**, then watch Active flow SP / pump speed. Level Automatic uses the request SP (faceplate Auto).
+            name: Trip
       - type: entities
-        title: Operate
+        title: Commands
         show_header_toggle: false
         entities:
           - entity: button.plcassistant_start
@@ -32,75 +25,24 @@ views:
             name: Stop
           - entity: button.plcassistant_reset
             name: Reset
-          - entity: number.plcassistant_sp_level_man
-            name: Level SP Man (default)
-          - entity: number.plcassistant_sp_level_req
-            name: Level SP Auto (request)
+      - type: glance
+        title: Process
+        show_state: true
+        entities:
+          - entity: sensor.plcassistant_lt_tank_in
+            name: Tank level
+          - entity: sensor.plcassistant_lt_res_in
+            name: Reservoir
+          - entity: sensor.plcassistant_ft_inlet_in
+            name: Inlet flow
+          - entity: sensor.plcassistant_cmd_speed
+            name: Pump speed
       - type: custom:plcassistant-pid-card
         entity: sensor.plcassistant_pid_level
         title: Level PID
       - type: custom:plcassistant-pid-card
         entity: sensor.plcassistant_pid_flow
         title: Flow PID
-      - type: custom:plcassistant-block-list-card
-        entity: sensor.plcassistant_pid_level
-        title: Level blocks
-      - type: entities
-        title: PID loops (fallback entities)
-        show_header_toggle: false
-        entities:
-          - entity: sensor.plcassistant_pid_level
-            name: Level loop mode
-          - entity: number.plcassistant_sp_level_man
-            name: Level SP Man
-          - entity: number.plcassistant_sp_level_rem
-            name: Level SP Rem
-          - entity: number.plcassistant_level_mode
-            name: Level mode (0 Man / 1 Auto / 2 Rem)
-          - entity: sensor.plcassistant_pid_flow
-            name: Flow loop mode
-          - entity: number.plcassistant_sp_flow_man
-            name: Flow SP Man
-          - entity: number.plcassistant_sp_flow_rem
-            name: Flow SP Rem
-          - entity: number.plcassistant_flow_mode
-            name: Flow mode (default Auto cascade)
-      - type: entities
-        title: Process (IN — live simulator)
-        show_header_toggle: false
-        entities:
-          - entity: sensor.plcassistant_lt_tank_in
-            name: Tank level
-          - entity: sensor.plcassistant_lt_res_in
-            name: Reservoir level
-          - entity: sensor.plcassistant_ft_inlet_in
-            name: Inlet flow
-          - entity: sensor.plcassistant_cmd_speed
-            name: Pump speed command
-      - type: entities
-        title: Active setpoints (Soft-PLC)
-        show_header_toggle: false
-        entities:
-          - entity: sensor.plcassistant_sp_level
-            name: Active level SP
-          - entity: sensor.plcassistant_sp_flow
-            name: Active flow SP
-          - entity: sensor.plcassistant_sp_flow_auto
-            name: Flow SP Auto (cascade)
-      - type: history-graph
-        title: Levels, speed & setpoints
-        hours_to_show: 1
-        entities:
-          - entity: sensor.plcassistant_lt_tank_in
-            name: Tank
-          - entity: sensor.plcassistant_lt_res_in
-            name: Reservoir
-          - entity: sensor.plcassistant_ft_inlet_in
-            name: Inlet flow
-          - entity: sensor.plcassistant_cmd_speed
-            name: Speed
-          - entity: sensor.plcassistant_sp_flow
-            name: Flow SP
   - title: Dynamics
     path: dynamics
     icon: mdi:graph-outline

@@ -118,9 +118,8 @@ def test_options_flow_and_service_surface_in_integration_sources() -> None:
     assert "homeassistant" not in options
 
 
-def test_lovelace_documents_preset_chooser() -> None:
+def test_lovelace_documents_dynamics_tab() -> None:
     text = (CC / "lovelace" / "plcassistant.yaml").read_text(encoding="utf-8")
-    assert "plcassistant_dashboard_version: 27" in text
-    assert "sensor.plcassistant_dynamics_preset" in text
+    assert "plcassistant_dashboard_version: 28" in text
     assert "path: dynamics" in text
     assert "/api/plcassistant/dynamics/ui" in text
