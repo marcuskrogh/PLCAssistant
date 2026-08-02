@@ -173,6 +173,19 @@ class BlockRuntime:
                     ctx_val = context.get(tag_name)
                     if ctx_val is not None:
                         value = ctx_val
+                    elif use_context and wire_key in wire_map:
+                        # prefer_context requested but no context value — fall
+                        # back to the inter-block wire rather than pin default.
+                        src_inst, src_pin = wire_map[wire_key]
+                        cache_key = (src_inst, src_pin)
+                        if cache_key not in pin_cache:
+                            raise ValueError(
+                                f"wire source {src_inst!r}.{src_pin!r} → "
+                                f"{instance_id!r}.{pin_spec.name!r} has not been "
+                                f"computed yet: check execution_order (source must "
+                                f"run before destination)"
+                            )
+                        value = pin_cache[cache_key]
                     elif pin_spec.default is not None:
                         value = pin_spec.default
                     else:

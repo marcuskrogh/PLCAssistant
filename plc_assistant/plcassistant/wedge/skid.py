@@ -406,17 +406,17 @@ class Skid:
 
             if self._use_block_runtime:
                 # Block runtime path (default).
+                # Faceplate KP/KI live on CascadeConfig; sync into executing
+                # PID instance params *before* bumpless so Start seeds with the
+                # tuned gains (SWD-224). CascadeConfig alone is not read by
+                # BlockRuntime.
+                self._sync_cascade_gains_into_instances()
                 if running and not self._was_running:
                     if mv.lt_tank is not None and mv.ft_inlet is not None:
                         self._prepare_bumpless_blocks(
                             lt_tank=mv.lt_tank,
                             ft_inlet=mv.ft_inlet,
                         )
-
-                # Faceplate KP/KI live on CascadeConfig; sync into executing
-                # PID instance params so Start actually drives with tuned gains
-                # (SWD-224) — CascadeConfig alone is not read by BlockRuntime.
-                self._sync_cascade_gains_into_instances()
 
                 ctx = self._block_context
                 tag_values = {
@@ -438,9 +438,16 @@ class Skid:
                         if w.tag != SHELL_TAG_FLOW_SP_OVERRIDE
                     ]
 
+                def _get_tag(name: str) -> object:
+                    if name not in tag_values:
+                        raise KeyError(
+                            f"io_wire IN tag {name!r} not supplied by skid shell"
+                        )
+                    return tag_values[name]
+
                 apply_io_wires_in(
                     active_wires,
-                    get_tag=tag_values.__getitem__,
+                    get_tag=_get_tag,
                     set_pin=ctx.__setitem__,
                 )
 
@@ -620,8 +627,8 @@ class Skid:
         """Copy CascadeConfig KP/KI into live PID instance params (SWD-224).
 
         Faceplate / image tags update ``Skid.config.cascade``; BlockRuntime
-        only reads ``inst.params``. Without this sync, Start appears to leave
-        CVs unchanged after retune (and docs claiming tunings apply were false).
+        only reads ``inst.params``. Write only when values differ so unchanged
+        canvas params are not rewritten every scan.
         """
         prog = self._loader.program if self._loader is not None else None
         if prog is None:
@@ -636,7 +643,14 @@ class Skid:
             if inst is None:
                 continue
             for key, value in pairs:
-                inst.params[key] = float(value)
+                new = float(value)
+                old = inst.params.get(key)
+                try:
+                    if old is not None and float(old) == new:
+                        continue
+                except (TypeError, ValueError):
+                    pass
+                inst.params[key] = new
 
     # ------------------------------------------------------------------
     # Bumpless-start helper for block runtime

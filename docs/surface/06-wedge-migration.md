@@ -112,9 +112,13 @@ context for the skid to read `sp_flow` and `cmd_speed`.
 from plcassistant.surface import program_from_dict, wedge_cascade_program
 
 skid = Skid()
-# Build a modified cascade program and hot-apply it:
+# Build a modified cascade program and restart-apply it:
 new_prog = program_from_dict(wedge_cascade_program(level_kp=60.0))
 skid.program_loader.restart_apply(new_prog)
+# Live App path: faceplate LEVEL_KP/FLOW_KP update CascadeConfig and sync
+# into instance params each scan (SWD-224). After attach, faceplate values
+# own the executing gains — canvas Apply of kp alone will be overwritten
+# when CascadeConfig differs.
 ```
 
 ---

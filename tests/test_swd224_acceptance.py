@@ -136,6 +136,39 @@ def test_system_faceplate_gains_reach_live_pid_instances() -> None:
     assert prog.instances["level_pi"].params["ki"] == pytest.approx(7.0)
     assert prog.instances["flow_pi"].params["kp"] == pytest.approx(18.0)
     assert prog.instances["flow_pi"].params["ki"] == pytest.approx(3.0)
+    # Sync-before-bumpless: retuned Start must move level CV quickly.
+    for _ in range(3):
+        logic(image)
+    assert float(image.get_value("SP_FLOW_AUTO")) > 0.05
+
+
+def test_unit_prefer_context_falls_back_to_wire_when_absent() -> None:
+    from plcassistant.surface.builtin import register_builtins, wedge_cascade_program
+    from plcassistant.surface.model import TemplateLibrary
+    from plcassistant.surface.runtime import BlockRuntime, DictContext
+    from plcassistant.surface.schema import program_from_dict
+
+    lib = TemplateLibrary()
+    rt = BlockRuntime(lib)
+    register_builtins(lib, rt)
+    prog = program_from_dict(wedge_cascade_program())
+    ctx = DictContext(
+        {
+            "level_pi.pv": 0.0,
+            "level_pi.sp": 1.0,
+            "level_pi.running": True,
+            "flow_pi.pv": 0.0,
+            "flow_pi.running": True,
+            # flow_pi.sp intentionally absent while prefer_context asks for it
+        }
+    )
+    rt.tick(prog, ctx, 0.1, prefer_context={("flow_pi", "sp")})
+    level_cv = float(ctx["level_pi.cv"])
+    flow_cv = float(ctx["flow_pi.cv"])
+    assert level_cv > 0.0
+    # Missing prefer_context value must use cascade wire (level CV → flow SP),
+    # not pin default 0 — so flow sees a positive SP and drives CV.
+    assert flow_cv > 0.0
 
 
 def test_system_flow_manual_prefer_context_does_not_mutate_wires() -> None:

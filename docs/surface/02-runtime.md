@@ -169,6 +169,11 @@ shell.run(
 )
 ```
 
+Optional `prefer_context={(instance, pin), ...}` makes context win over an
+inter-block wire for those pins (SWD-224 Flow Man/Rem). If context has no
+value for a preferred pin, the runtime falls back to the wire (not the pin
+default).
+
 The safety callback runs in `SAFETY` phase (before `CONTROL`). The runtime
 never sees safety state and cannot bypass it.
 
