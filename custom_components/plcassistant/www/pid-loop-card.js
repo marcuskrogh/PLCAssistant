@@ -62,17 +62,24 @@ class PlcAssistantPidCard extends HTMLElement {
 
   async _setNumber(entityId, value) {
     if (!this._hass || !entityId) return;
-    await this._hass.callService("number", "set_value", {
-      entity_id: entityId,
-      value: Number(value),
-    });
+    const numeric = parseFloat(String(value).trim().replace(",", "."));
+    if (!Number.isFinite(numeric)) return;
+    await this._hass.callService(
+      "number",
+      "set_value",
+      { value: numeric },
+      { entity_id: entityId }
+    );
   }
 
   async _setMode(code) {
     const st = this._hass?.states?.[this._config.entity];
     const modeEntity = this._attr(st, "mode_entity", null);
     if (!modeEntity) return;
-    await this._setNumber(modeEntity, code);
+    // Mode codes are 0/1/2 — never pass label strings like "man".
+    const numeric = Number(code);
+    if (!Number.isFinite(numeric)) return;
+    await this._setNumber(modeEntity, numeric);
   }
 
   _inputValue(key, fallback) {
@@ -132,7 +139,8 @@ class PlcAssistantPidCard extends HTMLElement {
     if (!this._root || this._bound) return;
     this._bound = true;
     this._root.addEventListener("click", (ev) => {
-      const modeBtn = ev.target.closest("[data-mode]");
+      // Only mode *buttons* — not the card root `data-pid-mode` (SWD-227).
+      const modeBtn = ev.target.closest("button[data-mode]");
       if (modeBtn) {
         this._setMode(modeBtn.getAttribute("data-mode"));
         return;
@@ -238,9 +246,9 @@ class PlcAssistantPidCard extends HTMLElement {
           padding: 0;
           font-family: var(--paper-font-body1_-_font-family, "Segoe UI", Roboto, sans-serif);
         }
-        .pid-card[data-mode="man"] { --pid-accent: var(--pid-man); }
-        .pid-card[data-mode="auto"] { --pid-accent: var(--pid-auto); }
-        .pid-card[data-mode="rem"] { --pid-accent: var(--pid-rem); }
+        .pid-card[data-pid-mode="man"] { --pid-accent: var(--pid-man); }
+        .pid-card[data-pid-mode="auto"] { --pid-accent: var(--pid-auto); }
+        .pid-card[data-pid-mode="rem"] { --pid-accent: var(--pid-rem); }
         .pid-accent {
           position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
           background: var(--pid-accent);
@@ -377,7 +385,7 @@ class PlcAssistantPidCard extends HTMLElement {
       ${
         unavailable
           ? `<div class="pid-missing">Entity ${this._config.entity} unavailable</div>`
-          : `<div class="pid-card" data-mode="man">
+          : `<div class="pid-card" data-pid-mode="man">
         <div class="pid-accent" aria-hidden="true"></div>
         <div class="pid-body">
           <div class="pid-head">
@@ -438,7 +446,7 @@ class PlcAssistantPidCard extends HTMLElement {
     }
 
     const card = this._root.querySelector(".pid-card");
-    if (card) card.setAttribute("data-mode", modeKey);
+    if (card) card.setAttribute("data-pid-mode", modeKey);
 
     const titleEl = this._root.querySelector(".pid-title");
     const badgeEl = this._root.querySelector("[data-badge]");
