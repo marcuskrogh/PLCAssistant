@@ -28,11 +28,16 @@
 2. Apply → Skid sync + cascade fallback — done
 3. Tests + version bump — done (`tests/test_swd225_acceptance.py`)
 
+## Review-fix
+- Iter 1: hot sync as restart; `/api/project` gap; Flow Man `SP_FLOW_AUTO` contract — fixed
+- Iter 2: CLEAN
+
 ## Tracker
 - Task: [SWD-225](https://marcusknielsen.atlassian.net/browse/SWD-225)
 - Relates: SWD-224
 - Branch: `cursor/swd-225-start-pid-cvs-still-zero-5ef6`
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/88
+- Shipped: App **0.1.45**
 
 ## Next
-`/review-fix SWD-225` — Review and auto-fix until clean
+Done — phase closed.
