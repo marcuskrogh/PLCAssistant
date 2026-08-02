@@ -43,5 +43,13 @@ The Operate dashboard is an entity dump, not a SCADA screen:
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/92
 - App: **0.1.49** / dashboard **28**
 
+## Review-fix
+- Iter 1: run.sh title guard; v27/v28 ensure tests; README Operate journey; stale test names
+- Iter 2: CLEAN
+
+## Shipped
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/92
+- App: **0.1.49**
+
 ## Next
-`/review-fix SWD-229` — Review and auto-fix until clean
+Done — phase closed.
