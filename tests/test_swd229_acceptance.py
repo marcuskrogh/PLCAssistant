@@ -60,16 +60,16 @@ def test_system_engineering_tabs_retained() -> None:
     assert "/api/plcassistant/datablocks/ui" in text
 
 
-def test_system_app_version_0_1_49() -> None:
-    assert '"0.1.49"' in (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert 'version: "0.1.49"' in Path("plc_assistant/config.yaml").read_text(
+def test_system_app_version_tracks_current() -> None:
+    assert '"0.1.50"' in (ROOT / "manifest.json").read_text(encoding="utf-8")
+    assert 'version: "0.1.50"' in Path("plc_assistant/config.yaml").read_text(
         encoding="utf-8"
     )
-    assert "BUILD_VERSION=0.1.49" in Path("plc_assistant/Dockerfile").read_text(
+    assert "BUILD_VERSION=0.1.50" in Path("plc_assistant/Dockerfile").read_text(
         encoding="utf-8"
     )
     dual = Path("plc_assistant/custom_components/plcassistant")
-    assert '"0.1.49"' in (dual / "manifest.json").read_text(encoding="utf-8")
+    assert '"0.1.50"' in (dual / "manifest.json").read_text(encoding="utf-8")
     assert "plcassistant_dashboard_version: 28" in (
         dual / "lovelace" / "plcassistant.yaml"
     ).read_text(encoding="utf-8")
@@ -95,7 +95,7 @@ def test_system_dual_trees_synced() -> None:
     ).read_text(encoding="utf-8")
     assert ra == rb
     assert "SCADA" in ra or "scada" in ra.lower()
-    assert "0.1.49" in ra
+    assert "0.1.50" in ra
     dash_a = DASH_PY.read_text(encoding="utf-8")
     dash_b = Path(
         "plc_assistant/custom_components/plcassistant/lovelace_dashboard.py"

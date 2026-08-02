@@ -113,7 +113,9 @@ def test_unit_number_set_native_value_requires_float() -> None:
             assert ann is not None
             assert ast.unparse(ann).strip() == "float"
             body = ast.unparse(node)
-            assert "float(value)" in body
+            # SWD-230: round_display(value) coerces via float() then 2dp; still
+            # the HA number.set_value float entry point.
+            assert "round_display(value)" in body or "float(value)" in body
             found = True
             break
     assert found, "async_set_native_value not found"
@@ -136,11 +138,11 @@ def test_unit_sp_mode_flip_codes_are_floats() -> None:
 
 def test_system_app_version_tracks_current() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.49"' in manifest
+    assert '"0.1.50"' in manifest
     config = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.49"' in config
+    assert 'version: "0.1.50"' in config
     docker = Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.49" in docker
+    assert "BUILD_VERSION=0.1.50" in docker
     dash = (ROOT / "lovelace" / "plcassistant.yaml").read_text(encoding="utf-8")
     assert "plcassistant_dashboard_version: 28" in dash
 

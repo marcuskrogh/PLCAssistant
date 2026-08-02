@@ -7,7 +7,6 @@ attributes carry PV / SP sources / CV / tunings and related entity ids.
 from __future__ import annotations
 
 import json
-import math
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -15,7 +14,7 @@ from homeassistant.components.sensor import SensorEntity
 from homeassistant.core import Event, HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
+from .const import DOMAIN, round_display
 
 # Soft-PLC tag map mirrored from plcassistant.io.pid_loop (no Soft-PLC import
 # in the thin integration CI path).
@@ -126,16 +125,6 @@ def _select_sp(mode: str, man: float, auto: float, rem: float) -> float:
     return auto
 
 
-def _as_float(value: Any, default: float = 0.0) -> float:
-    try:
-        num = float(value)
-    except (TypeError, ValueError):
-        return default
-    if not math.isfinite(num):
-        return default
-    return num
-
-
 async def async_setup_pid_loop_sensors(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -214,24 +203,24 @@ class PlcAssistantPidLoopSensor(SensorEntity):
         store = self.hass.data.get(DOMAIN, {}).get(self._entry_id) or {}
         spec = self._spec
         mode = _parse_mode(_cache_value(store, spec["mode"]))
-        man = _as_float(_cache_value(store, spec["sp_man"]))
-        auto = _as_float(_cache_value(store, spec["sp_auto"]))
-        rem = _as_float(_cache_value(store, spec["sp_rem"]))
+        man = round_display(_cache_value(store, spec["sp_man"])) or 0.0
+        auto = round_display(_cache_value(store, spec["sp_auto"])) or 0.0
+        rem = round_display(_cache_value(store, spec["sp_rem"])) or 0.0
         # Always mux from mode + sources — never prefer stale Soft-PLC SP_* OUT
         # (that made faceplate Set look broken when OUT lagged) (SWD-222).
-        sp = _select_sp(mode, man, auto, rem)
+        sp = round_display(_select_sp(mode, man, auto, rem)) or 0.0
         attrs = self._empty_attrs()
         attrs.update(
             {
-                "pv": _cache_value(store, spec["pv"]),
+                "pv": round_display(_cache_value(store, spec["pv"])),
                 "sp": sp,
                 "sp_man": man,
                 "sp_auto": auto,
                 "sp_rem": rem,
-                "cv": _cache_value(store, spec["cv"]),
-                "kp": _cache_value(store, spec["kp"]),
-                "ki": _cache_value(store, spec["ki"]),
-                "kd": _cache_value(store, spec["kd"]),
+                "cv": round_display(_cache_value(store, spec["cv"])),
+                "kp": round_display(_cache_value(store, spec["kp"])),
+                "ki": round_display(_cache_value(store, spec["ki"])),
+                "kd": round_display(_cache_value(store, spec["kd"])),
             }
         )
         changed = mode != self._attr_native_value or attrs != self._attr_extra_state_attributes
