@@ -99,7 +99,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-225 | Bug | [Iterate] Start still leaves PID CVs at 0 (post 0.1.44) | Done | Relates SWD-224 | docs/ITERATE.md | Done — shipped PR #88 |
 | SWD-226 | Bug | [Iterate] PID card SP edit bugs + climate-inspired visual refresh | Done | Relates SWD-225 | docs/ITERATE.md | Done — shipped PR #89 |
 | SWD-227 | Bug | [Iterate] PID card Set SP fails — expected float (data-mode click hijack) | Done | Relates SWD-226 | docs/ITERATE.md | Done — shipped PR [#90](https://github.com/marcuskrogh/PLCAssistant/pull/90) (App 0.1.47) |
-| SWD-228 | Bug | [Iterate] PID card compact redesign: 2dp KPIs, single-row mobile, more-info popup | In Review | Relates SWD-227 | docs/ITERATE.md | `/review-fix SWD-228` |
+| SWD-228 | Bug | [Iterate] PID card compact redesign: 2dp KPIs, single-row mobile, more-info popup | In Review | Relates SWD-227 | docs/ITERATE.md | `/review-fix SWD-228` — PR [#91](https://github.com/marcuskrogh/PLCAssistant/pull/91) |
 | SWD-220 | Bug | [Iterate] PID cards Configuration error + default mode Remote (should be Manual) | Done | Relates SWD-219 | docs/ITERATE.md | Done — shipped PR [#83](https://github.com/marcuskrogh/PLCAssistant/pull/83) (App 0.1.40) |
 | SWD-217 | Subtask | SWD-183: PID SP-source mode logic + Datablock tag contract | Done | SWD-183 | docs/PLAN.md | — |
 | SWD-214 | Subtask | SWD-183: HA compound PID loop entity platform | Done | SWD-183 | docs/PLAN.md | — |
@@ -144,7 +144,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
-- 2026-08-02 — Implement SWD-228: compact PID faceplate (2dp, single-row KPIs, tap popup); App 0.1.48 / dash 27; branch `cursor/swd-228-pid-card-compact-33f6`. Next `/review-fix SWD-228`.
+- 2026-08-02 — Implement SWD-228: compact PID faceplate (2dp, single-row KPIs, tap popup); App 0.1.48 / dash 27; PR [#91](https://github.com/marcuskrogh/PLCAssistant/pull/91) → In Review. Next `/review-fix SWD-228`.
 - 2026-08-02 — Iterate SWD-228: Relates SWD-227; docs/ITERATE.md — compact redesign after 0.1.47.
 - 2026-08-02 — Shipped SWD-227 via PR #90 (App 0.1.47); review-fix CLEAN after 2 iters; Task Done.
 - 2026-08-02 — Fix-forward SWD-227: Node + pytest regression for HMI↔`number.set_value` float contract (PR #90). Next `/review-fix SWD-227`.

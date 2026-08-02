@@ -40,6 +40,7 @@ Direction of the climate-inspired PID faceplate is good, but operators still nee
 - Task: [SWD-228](https://marcusknielsen.atlassian.net/browse/SWD-228)
 - Relates: SWD-227
 - Branch: `cursor/swd-228-pid-card-compact-33f6`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/91
 - App: **0.1.48** / dashboard **27**
 
 ## Next
