@@ -349,13 +349,25 @@ class AppState:
         skid = getattr(logic, "skid", None)
         return getattr(skid, "program_loader", None) if skid is not None else None
 
-    def _sync_applied_project_to_runtime(self) -> None:
-        """Push the live applied project into the scan-loop Skid loader."""
+    def _sync_applied_project_to_runtime(self, *, mode: str = "restart") -> None:
+        """Push the live applied project into the scan-loop Skid loader.
+
+        ``mode`` must match the App loader apply (``hot`` vs ``restart``) so a
+        hot Apply does not ``restart_apply`` the MQTT Skid and re-bumpless
+        CVs to 0 while MODE stays RUNNING (SWD-225 review-fix).
+        """
         live = self._live_skid_loader()
         applied = self.loader.project
         if live is None or applied is None:
             return
-        live.restart_apply(_clone_project(applied))
+        clone = _clone_project(applied)
+        if mode == "hot":
+            try:
+                live.hot_apply(clone, superuser=True)
+            except (PermissionError, ValueError):
+                live.restart_apply(clone)
+        else:
+            live.restart_apply(clone)
         self._register_library_into(live._library)
 
     @property
@@ -810,7 +822,7 @@ class AppState:
     def apply_saved_schedule(self) -> dict[str, Any]:
         self.loader.restart_apply(_clone_project(self.saved_project))
         self._reapply_library_state()
-        self._sync_applied_project_to_runtime()
+        self._sync_applied_project_to_runtime(mode="restart")
         self._sync_scan_period_to_runtime()
         self._ensure_program_logs()
         self.persist_program()
@@ -985,6 +997,8 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
                     state._reapply_library_state()
                     state.saved_project = _clone_project(new_project)
                     state.persist_program()
+                    # Same dual-loader sync as /api/apply (SWD-225).
+                    state._sync_applied_project_to_runtime(mode=mode)
                     state._sync_scan_period_to_runtime()
                     self._send_json(state.project_dict)
                 elif (parts := self._task_path_parts()) and len(parts) == 1:
@@ -1222,7 +1236,7 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
                 state.loader.restart_apply(proj)
                 state._reapply_library_state()
                 # Live MQTT Skid must run the same applied project (SWD-225).
-                state._sync_applied_project_to_runtime()
+                state._sync_applied_project_to_runtime(mode="restart")
                 state._sync_scan_period_to_runtime()
                 state.persist_program()
                 state.append_log(pid, "info", "Applied with restart")
@@ -1230,7 +1244,7 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
             elif mode == "hot":
                 state.loader.hot_apply(proj, superuser=state.superuser_hot_apply)
                 state._reapply_library_state()
-                state._sync_applied_project_to_runtime()
+                state._sync_applied_project_to_runtime(mode="hot")
                 state._sync_scan_period_to_runtime()
                 state.persist_program()
                 state.append_log(pid, "info", "Hot apply succeeded")

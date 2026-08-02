@@ -22,14 +22,24 @@ def test_unit_file_runtime_mirrors_sp_flow_auto() -> None:
 
 def test_unit_api_apply_syncs_live_skid() -> None:
     server = Path("plcassistant/app/server.py").read_text(encoding="utf-8")
+    sync_def = server.split("def _sync_applied_project_to_runtime", 1)[1].split(
+        "@property", 1
+    )[0]
+    assert 'mode: str = "restart"' in sync_def
+    assert "live.hot_apply" in sync_def
     apply = server.split("def _handle_post_apply", 1)[1].split(
         "return Handler", 1
     )[0]
-    assert apply.count("_sync_applied_project_to_runtime") >= 2
+    assert '_sync_applied_project_to_runtime(mode="restart")' in apply
+    assert '_sync_applied_project_to_runtime(mode="hot")' in apply
     sync_live = server.split("def _sync_program_to_live", 1)[1].split(
         "def _ensure_program_logs", 1
     )[0]
     assert "_sync_applied_project_to_runtime" in sync_live
+    project_put = server.split('path == "/api/project"', 1)[1].split(
+        "elif (parts := self._task_path_parts())", 1
+    )[0]
+    assert "_sync_applied_project_to_runtime(mode=mode)" in project_put
 
 
 def test_system_missing_cascade_instances_still_drive_cv_on_start() -> None:
@@ -100,6 +110,103 @@ def test_system_screenshot_level_man_pv0_drives_cvs() -> None:
     assert float(image.get_value("SP_FLOW")) == pytest.approx(
         float(image.get_value("SP_FLOW_AUTO")), abs=1e-6
     )
+
+
+def test_system_fallback_flow_man_keeps_level_cv_as_sp_flow_auto() -> None:
+    """Missing cascade instances + Flow Man must not overwrite SP_FLOW_AUTO."""
+    from plcassistant.app.default_image import declare_default_image
+    from plcassistant.app.skid_scan import SkidImageLogic
+    from plcassistant.io.quality import QualityStatus
+    from plcassistant.surface.model import Program, SoftPlcProject, Task
+
+    image = declare_default_image()
+    image.begin_inputs()
+    for tag, val in (
+        ("LEVEL_MODE", 0.0),
+        ("FLOW_MODE", 0.0),
+        ("SP_LEVEL_MAN", 0.30),
+        ("SP_FLOW_MAN", 2.0),
+        ("LT_TANK", 0.0),
+        ("LT_RES", 0.20),
+        ("FT_INLET", 0.5),
+    ):
+        image.apply_input(tag, val, QualityStatus.GOOD)
+    logic = SkidImageLogic(period_s=0.1)
+    empty = SoftPlcProject(
+        programs={
+            "tank": Program(
+                name="Tank", instances={}, wires=[], execution_order=[]
+            )
+        },
+        tasks=[Task(task_id="main", priority=0, programs=["tank"])],
+        scan_period_s=0.1,
+    )
+    logic.skid.program_loader.restart_apply(empty)
+    logic.enqueue_operator("start")
+    logic(image)
+    for _ in range(20):
+        logic(image)
+    level_cv = float(image.get_value("SP_FLOW_AUTO"))
+    assert level_cv > 0.5
+    # Active flow SP is Man; Level CV faceplate stays on cascade sp_flow.
+    assert float(image.get_value("SP_FLOW")) == pytest.approx(2.0, abs=1e-6)
+    assert level_cv != pytest.approx(2.0, abs=0.05)
+    assert float(image.get_value("CMD_SPEED")) > 0.0
+
+
+def test_system_hot_sync_does_not_rebumpless_while_running() -> None:
+    """App hot-apply sync must not force live Skid restart bumpless to 0."""
+    from plcassistant.app.default_image import declare_default_image
+    from plcassistant.app.server import AppState
+    from plcassistant.app.skid_scan import SkidImageLogic
+    from plcassistant.io.quality import QualityStatus
+
+    image = declare_default_image()
+    image.begin_inputs()
+    for tag, val in (
+        ("LEVEL_MODE", 0.0),
+        ("FLOW_MODE", 1.0),
+        ("SP_LEVEL_MAN", 0.30),
+        ("LT_TANK", 0.0),
+        ("LT_RES", 0.20),
+        ("FT_INLET", 0.0),
+    ):
+        image.apply_input(tag, val, QualityStatus.GOOD)
+    logic = SkidImageLogic(period_s=0.1)
+    logic.enqueue_operator("start")
+    for _ in range(15):
+        logic(image)
+    cmd_before = float(image.get_value("CMD_SPEED"))
+    assert cmd_before > 0.0
+
+    from types import SimpleNamespace
+
+    loop = SimpleNamespace(logic=logic)
+    # OperatorRuntime._scan_loop reads ``lifecycle.loop`` (not a method).
+    lifecycle = SimpleNamespace(loop=loop)
+
+    state = AppState()
+    state.superuser_hot_apply = True
+    state.operator.attach(lifecycle)
+    # Seed App loader from the live Skid project, then hot-sync a clone.
+    live = logic.skid.program_loader
+    assert live is not None and live.project is not None
+    state.loader.restart_apply(live.project)
+    state._reapply_library_state()
+    state.saved_project = live.project
+    assert state._live_skid_loader() is live
+    # Hot sync of unchanged structure must preserve running CVs.
+    state._sync_applied_project_to_runtime(mode="hot")
+    logic(image)
+    cmd_after = float(image.get_value("CMD_SPEED"))
+    assert cmd_after > 0.0
+    assert abs(cmd_after - cmd_before) < max(0.5, 0.25 * cmd_before)
+
+    # Contrast: restart sync re-bumplesses toward 0 on the next scan.
+    state._sync_applied_project_to_runtime(mode="restart")
+    logic(image)
+    assert float(image.get_value("CMD_SPEED")) < cmd_after * 0.5
+
 
 
 def test_system_file_runtime_snapshot_includes_level_cv(tmp_path, monkeypatch) -> None:

@@ -141,6 +141,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
+- 2026-08-02 — Implement SWD-225: file mirror + Apply→Skid + cascade fallback (App 0.1.45); PR [#88](https://github.com/marcuskrogh/PLCAssistant/pull/88) → In Review. Next `/review-fix SWD-225`.
 - 2026-08-02 — Iterate SWD-225: Start still leaves PID CVs at 0 after 0.1.44; file mirror + Apply→Skid (App 0.1.45); Relates SWD-224.
 - 2026-08-02 — Shipped SWD-224 via PR #87 (App 0.1.44); review-fix CLEAN after 2 iters; CI green; Task Done.
 - 2026-08-02 — Implement SWD-224: Start/PID io_wires + gain sync (App 0.1.44); PR [#87](https://github.com/marcuskrogh/PLCAssistant/pull/87) → In Review. Next `/review-fix SWD-224`.

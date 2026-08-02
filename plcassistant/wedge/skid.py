@@ -670,8 +670,9 @@ class Skid:
         override = self.sp_flow_override
         if override is None or not running:
             return cascade
-        # Flow Man/Rem without flow_pi: publish override as SP_FLOW and drive
-        # CMD from flow KP × error (CascadeController has no separate flow SP).
+        # Flow Man/Rem without flow_pi: keep level CV as sp_flow (→ SP_FLOW_AUTO
+        # via SkidImageLogic) and drive CMD from flow KP × (override − FT).
+        # Do not publish override as sp_flow — that broke Level CV (SWD-225).
         cfg = self.config.cascade
         ft = mv.ft_inlet if mv.ft_inlet is not None else 0.0
         err = float(override) - ft
@@ -680,7 +681,7 @@ class Skid:
             min(cfg.cmd_speed_max, cfg.flow_kp * err),
         )
         return CascadeOutputs(
-            sp_flow=float(override),
+            sp_flow=cascade.sp_flow,
             cmd_speed=float(cmd),
             level_error=cascade.level_error,
             flow_error=err,
