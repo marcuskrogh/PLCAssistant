@@ -96,10 +96,10 @@ def test_simulator_caches_in_values_before_bus() -> None:
     assert cache_at < fire_at
 
 
-def test_run_sh_refreshes_dashboard_versions_through_19() -> None:
+def test_run_sh_refreshes_dashboard_versions_through_21() -> None:
     run = (ROOT / "plc_assistant" / "run.sh").read_text(encoding="utf-8")
     assert re.search(
-        r"plcassistant_dashboard_version:\[\[:space:\]\]\*\(\[1-9\]\|1\[0-9\]\|20\)",
+        r"plcassistant_dashboard_version:\[\[:space:\]\]\*\(\[1-9\]\|1\[0-9\]\|20\|21\)",
         run,
     )
     assert "1[0-9]" in run

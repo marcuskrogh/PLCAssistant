@@ -27,7 +27,7 @@ _LEVEL = {
     "sp_auto": "SP_LEVEL_REQ",
     "sp_rem": "SP_LEVEL_REM",
     "mode": "LEVEL_MODE",
-    "cv": "SP_FLOW",
+    "cv": "SP_FLOW_AUTO",
     "kp": "LEVEL_KP",
     "ki": "LEVEL_KI",
     "kd": "LEVEL_KD",
@@ -37,7 +37,7 @@ _LEVEL = {
     "sp_auto_entity": "number.plcassistant_sp_level_req",
     "sp_rem_entity": "number.plcassistant_sp_level_rem",
     "mode_entity": "number.plcassistant_level_mode",
-    "cv_entity": "sensor.plcassistant_sp_flow",
+    "cv_entity": "sensor.plcassistant_sp_flow_auto",
     "kp_entity": "number.plcassistant_level_kp",
     "ki_entity": "number.plcassistant_level_ki",
 }

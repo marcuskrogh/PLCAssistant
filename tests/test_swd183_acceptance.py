@@ -252,7 +252,7 @@ def test_system_skid_scan_manual_uses_sp_level_man() -> None:
 
 
 def test_system_flow_man_publishes_sp_flow_override() -> None:
-    """Flow MAN mode publishes muxed SP_FLOW (CMD_SPEED still cascade PI this scan)."""
+    """Flow MAN mode publishes muxed SP_FLOW and drives flow PI / CMD (SWD-223)."""
     from plcassistant.io.quality import QualityStatus
 
     image = declare_default_image()
@@ -269,7 +269,10 @@ def test_system_flow_man_publishes_sp_flow_override() -> None:
     logic = SkidImageLogic(period_s=0.1)
     logic.enqueue_operator("start")
     logic(image)
+    for _ in range(25):
+        logic(image)
     assert float(image.get_value("SP_FLOW")) == pytest.approx(4.5, abs=0.01)
+    assert float(image.get_value("CMD_SPEED")) > 0.0
 
 
 def test_system_tunings_applied_into_skid_cascade() -> None:
@@ -312,7 +315,7 @@ def test_system_lovelace_operate_has_block_list_card() -> None:
     text = Path("custom_components/plcassistant/lovelace/plcassistant.yaml").read_text(
         encoding="utf-8"
     )
-    assert "plcassistant_dashboard_version: 21" in text
+    assert "plcassistant_dashboard_version: 22" in text
     assert "custom:plcassistant-block-list-card" in text
 
 

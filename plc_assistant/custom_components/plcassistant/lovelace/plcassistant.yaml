@@ -1,4 +1,4 @@
-# plcassistant_dashboard_version: 21
+# plcassistant_dashboard_version: 22
 title: PLCAssistant
 views:
   - title: Operate
@@ -21,7 +21,7 @@ views:
             name: Trip active
       - type: markdown
         content: |
-          **PLCAssistant** — Soft-PLC skid HMI (**Operate**). Soft-PLC must show **stopped** (not offline) before Start works. Open the **Dynamics** tab to edit unit-op / ODE **state equations** and Soft-PLC **measurement equations** (App **0.1.26+**). Soft-PLC stays mock-unaware (`HeldProcess`). Process rows are live plant **sensors** (App **0.1.29+**); Numbers remain available for plant nudges. **0.1.42+**: cascade defaults Level **Manual** / Flow **Automatic**; Start awaits MQTT; operator file seed beats stale retain so inlet flow engages on Start. Soft-PLC must show **stopped** before Start. Change **Level SP Man**, press **Start**, then watch Active flow SP / pump speed. Level Automatic uses the request SP (faceplate Auto).
+          **PLCAssistant** — Soft-PLC skid HMI (**Operate**). Soft-PLC must show **stopped** (not offline) before Start works. Open the **Dynamics** tab to edit unit-op / ODE **state equations** and Soft-PLC **measurement equations** (App **0.1.26+**). Soft-PLC stays mock-unaware (`HeldProcess`). Process rows are live plant **sensors** (App **0.1.29+**); Numbers remain available for plant nudges. **0.1.43+**: Flow Manual SP drives pump CMD; Level CV = SP_FLOW_AUTO. **0.1.42+**: cascade defaults Level **Manual** / Flow **Automatic**; Start awaits MQTT; operator file seed beats stale retain so inlet flow engages on Start. Soft-PLC must show **stopped** before Start. Change **Level SP Man**, press **Start**, then watch Active flow SP / pump speed. Level Automatic uses the request SP (faceplate Auto).
       - type: entities
         title: Operate
         show_header_toggle: false

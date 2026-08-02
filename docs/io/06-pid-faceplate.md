@@ -21,11 +21,15 @@ Classic **output Manual** (operator sets CV directly) is deferred.
 
 Writing Man / Auto / Rem SP Set flips the loop into that source mode (SWD-222).
 
+Level loop **CV** is published as `SP_FLOW_AUTO` (cascade request into flow).
+Active flow SP is muxed onto `SP_FLOW` (Manual / Automatic / Remote). Flow Manual
+or Remote SP is applied to the flow PI each scan (SWD-223) — not display-only.
+
 ## Demo tags (`DB_Tank`)
 
 | Loop | Mode | SP Man / Auto / Rem | Active SP | PV | CV |
 |------|------|---------------------|-----------|----|----|
-| Level | `LEVEL_MODE` | `SP_LEVEL_MAN` / `SP_LEVEL_AUTO` / `SP_LEVEL_REM` | `SP_LEVEL` | `LT_TANK` | `SP_FLOW` (cascade) |
+| Level | `LEVEL_MODE` | `SP_LEVEL_MAN` / `SP_LEVEL_AUTO` / `SP_LEVEL_REM` | `SP_LEVEL` | `LT_TANK` | `SP_FLOW_AUTO` (level CV) |
 | Flow | `FLOW_MODE` | `SP_FLOW_MAN` / `SP_FLOW_AUTO` / `SP_FLOW_REM` | `SP_FLOW` | `FT_INLET` | `CMD_SPEED` |
 
 Legacy `SP_LEVEL_REQ` is the **Automatic writer** for the level loop when
@@ -34,12 +38,13 @@ declared on the Datablock — it feeds the Automatic SP source even when
 uses `SP_LEVEL_AUTO`. Writing REQ from the HMI also mirrors into
 `SP_LEVEL_AUTO` (retained IN sync).
 
-### Flow MAN/REM demo approximation
+### Flow Manual / Remote SP (SWD-223)
 
-When flow SP-source mode is Manual or Remote, Soft-PLC publishes the muxed
-`SP_FLOW` override for the faceplate, but `CMD_SPEED` for that scan still
-comes from the cascade PI using the level loop CV as Automatic flow SP.
-Full output-manual / bumpless flow override is deferred.
+When flow SP-source mode is Manual or Remote, Soft-PLC applies the muxed
+`SP_FLOW` to `flow_pi.sp` for that scan (cascade wire detached for the tick)
+so `CMD_SPEED` tracks the operator SP. Automatic mode keeps the level CV →
+flow SP wire. Level faceplate CV reads `SP_FLOW_AUTO` (true level CV), not
+the muxed active `SP_FLOW`.
 
 ### Tunings
 
