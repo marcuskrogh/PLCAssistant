@@ -42,14 +42,16 @@ def test_unit_pid_card_formats_all_numerics_via_helper() -> None:
 
 def test_unit_pid_attributes_rounded_to_two_decimals() -> None:
     text = PID.read_text(encoding="utf-8")
-    assert "def _round_display" in text
-    assert "return round(num, digits)" in text
+    assert "from .const import DOMAIN, round_display" in text or "round_display" in text
+    assert "round_display(_cache_value" in text
     refresh = text.split("def _refresh_from_store", 1)[1].split(
         "async def async_added_to_hass", 1
     )[0]
     for key in ("pv", "sp", "sp_man", "sp_auto", "sp_rem", "cv", "kp", "ki", "kd"):
-        assert "_round_display" in refresh
+        assert "round_display" in refresh
         assert f'"{key}"' in refresh
+    assert '"_round_display"' not in text
+    assert "_round_display" not in text.split("__all__", 1)[-1]
 
 
 def test_unit_round_display_helper() -> None:
@@ -58,7 +60,6 @@ def test_unit_round_display_helper() -> None:
     import sys
     from types import ModuleType
 
-    # Stub homeassistant imports used by pid_loop.py at module load.
     if "homeassistant" not in sys.modules:
         ha = ModuleType("homeassistant")
         sys.modules["homeassistant"] = ha
@@ -77,9 +78,8 @@ def test_unit_round_display_helper() -> None:
         sys.modules["homeassistant.core"].Event = object
         sys.modules["homeassistant.core"].HomeAssistant = object
 
-    # Ensure package path resolves for relative imports inside pid_loop.
     cc = Path("custom_components").resolve()
-    if str(cc) not in sys.path:
+    if str(cc.parent) not in sys.path:
         sys.path.insert(0, str(cc.parent))
     if "custom_components" not in sys.modules:
         pkg = ModuleType("custom_components")
@@ -89,20 +89,18 @@ def test_unit_round_display_helper() -> None:
         sub = ModuleType("custom_components.plcassistant")
         sub.__path__ = [str(ROOT.resolve())]  # type: ignore[attr-defined]
         sys.modules["custom_components.plcassistant"] = sub
-    if "custom_components.plcassistant.const" not in sys.modules:
-        const = ModuleType("custom_components.plcassistant.const")
-        const.DOMAIN = "plcassistant"
-        sys.modules["custom_components.plcassistant.const"] = const
 
-    spec = importlib.util.spec_from_file_location(
-        "custom_components.plcassistant.pid_loop",
-        PID,
+    const_path = ROOT / "const.py"
+    spec_c = importlib.util.spec_from_file_location(
+        "custom_components.plcassistant.const",
+        const_path,
     )
-    assert spec and spec.loader
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules["custom_components.plcassistant.pid_loop"] = mod
-    spec.loader.exec_module(mod)
-    round_display = mod._round_display
+    assert spec_c and spec_c.loader
+    const_mod = importlib.util.module_from_spec(spec_c)
+    sys.modules["custom_components.plcassistant.const"] = const_mod
+    spec_c.loader.exec_module(const_mod)
+    assert const_mod.DISPLAY_PRECISION == 2
+    round_display = const_mod.round_display
     assert round_display(1.23456) == 1.23
     assert round_display("0.2") == 0.2
     assert round_display(None) is None
@@ -112,18 +110,35 @@ def test_unit_round_display_helper() -> None:
 
 def test_unit_process_sensors_suggest_two_decimals() -> None:
     text = SENSOR.read_text(encoding="utf-8")
-    assert text.count("_attr_suggested_display_precision = 2") >= 2
-    assert "round(raw, 2)" in text or "round(display, 2)" in text
+    assert "DISPLAY_PRECISION" in text
+    assert "round_display" in text
+    assert text.count("suggested_display_precision = DISPLAY_PRECISION") >= 2
+    assert "SWD-230" in text
     num = NUMBER.read_text(encoding="utf-8")
-    assert "_attr_suggested_display_precision = 2" in num
+    assert "suggested_display_precision = DISPLAY_PRECISION" in num
     assert 'meta.get("step", 0.01)' in num
+    assert "round_display(value)" in num
 
 
 def test_unit_dual_tree_pid_card_synced() -> None:
-    app_card = Path("plc_assistant/custom_components/plcassistant/www/pid-loop-card.js")
-    assert CARD.read_bytes() == app_card.read_bytes()
-    app_pid = Path("plc_assistant/custom_components/plcassistant/pid_loop.py")
-    assert PID.read_bytes() == app_pid.read_bytes()
+    dual = Path("plc_assistant/custom_components/plcassistant")
+    for rel in (
+        "www/pid-loop-card.js",
+        "pid_loop.py",
+        "sensor.py",
+        "number.py",
+        "const.py",
+    ):
+        assert (ROOT / rel).read_bytes() == (dual / rel).read_bytes(), rel
+
+
+def test_unit_pid_card_null_safe_err_and_commit() -> None:
+    text = CARD.read_text(encoding="utf-8")
+    assert "export function isPresentFinite" in text
+    assert "export function commitSpValue" in text
+    assert "isPresentFinite(sp) && isPresentFinite(pv)" in text
+    assert "commitSpValue(parsed)" in text
+    assert "DISPLAY_PRECISION in const.py" in text
 
 
 def test_system_faceplate_js_contract() -> None:

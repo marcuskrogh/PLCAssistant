@@ -1,6 +1,7 @@
 /**
- * SWD-227 / SWD-228 regression: HMI ↔ HA number.set_value communication contract
- * plus compact faceplate helpers (2dp format, open/close dialog routing).
+ * SWD-227 / SWD-228 / SWD-230 regression: HMI ↔ HA number.set_value communication
+ * contract plus compact faceplate helpers (2dp format, open/close dialog routing,
+ * null-safe err gating, commit rounding).
  *
  * Exercises the exported helpers in pid-loop-card.js (parse / coerce / click
  * routing / display format). Run via pytest or:
@@ -26,6 +27,8 @@ const {
   numberServiceValue,
   resolveFaceplateClick,
   formatPidValue,
+  commitSpValue,
+  isPresentFinite,
   PID_DISPLAY_DIGITS,
 } = await import(cardUrl);
 
@@ -128,6 +131,16 @@ assert(
   "formatPidValue never leaks long decimals"
 );
 
+// --- isPresentFinite / commitSpValue (SWD-230 review-fix) ---
+assertEq(isPresentFinite(null), false, "null is not a present finite");
+assertEq(isPresentFinite(undefined), false, "undefined is not a present finite");
+assertEq(isPresentFinite(""), false, "empty string is not a present finite");
+assertEq(isPresentFinite(0), true, "0 is present finite");
+assertEq(isPresentFinite(0.2), true, "0.2 is present finite");
+assertEq(commitSpValue(1.236), 1.24, "commitSpValue rounds 1.236 → 1.24");
+assertEq(commitSpValue("1.236"), 1.24, "commitSpValue coerces string then rounds");
+assertEq(commitSpValue("man"), null, "commitSpValue rejects non-numeric");
+
 // --- parseSpValue ---
 assertEq(parseSpValue("0.3"), 0.3, "parseSpValue accepts 0.3");
 assertEq(parseSpValue("."), null, "parseSpValue rejects bare '.'");
@@ -162,6 +175,11 @@ assert(
 );
 assertEq(good.serviceData.value, 0.3, "serviceData.value is 0.3");
 assertEq(servicePayload(spEntity, "man"), null, "label string must not become set_value");
+assertEq(
+  servicePayload(spEntity, commitSpValue(1.236)).serviceData.value,
+  1.24,
+  "Set SP service payload uses committed 2dp value"
+);
 
 const modeEntity = "number.plcassistant_level_mode";
 const modeCall = servicePayload(modeEntity, "0");

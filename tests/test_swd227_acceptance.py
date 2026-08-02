@@ -113,7 +113,9 @@ def test_unit_number_set_native_value_requires_float() -> None:
             assert ann is not None
             assert ast.unparse(ann).strip() == "float"
             body = ast.unparse(node)
-            assert "float(value)" in body
+            # SWD-230: round_display(value) coerces via float() then 2dp; still
+            # the HA number.set_value float entry point.
+            assert "round_display(value)" in body or "float(value)" in body
             found = True
             break
     assert found, "async_set_native_value not found"

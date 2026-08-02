@@ -25,12 +25,30 @@ export const PID_DISPLAY_DIGITS = 2;
 /**
  * Format a numeric faceplate value to fixed decimal places, or em-dash.
  * Always uses ``toFixed`` so float noise never leaks into the HMI.
+ * Keep digits in sync with DISPLAY_PRECISION in const.py (SWD-230).
  */
 export function formatPidValue(value, digits = PID_DISPLAY_DIGITS) {
   if (value === null || value === undefined || value === "") return "—";
   const n = typeof value === "number" ? value : Number(String(value).trim().replace(",", "."));
   if (!Number.isFinite(n)) return "—";
   return n.toFixed(digits);
+}
+
+/** True when value is present and finite (null/undefined/"" are not). */
+export function isPresentFinite(value) {
+  if (value === null || value === undefined || value === "") return false;
+  const n = typeof value === "number" ? value : Number(String(value).trim().replace(",", "."));
+  return Number.isFinite(n);
+}
+
+/**
+ * Round a parsed SP to display precision for both UI commit and number.set_value.
+ * Returns null when the input is not a finite number.
+ */
+export function commitSpValue(value, digits = PID_DISPLAY_DIGITS) {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return null;
+  return Number(n.toFixed(digits));
 }
 
 /** Parse an SP draft string into a finite number, or null if incomplete/invalid. */
@@ -199,9 +217,11 @@ class PlcAssistantPidCard extends HTMLElement {
     if (!input || !entity || String(entity).startsWith("sensor.")) return;
     const parsed = this._parseSp(input.value);
     if (parsed === null) return;
+    const committed = commitSpValue(parsed);
+    if (committed === null) return;
     this._clearDraft(key);
-    input.value = this._committedText(parsed);
-    this._setNumber(entity, parsed);
+    input.value = this._committedText(committed);
+    this._setNumber(entity, committed);
   }
 
   _openDialog() {
@@ -316,7 +336,7 @@ class PlcAssistantPidCard extends HTMLElement {
     const autoDisabled = String(spAutoEntity).startsWith("sensor.");
     const unavailable = !st;
     const err =
-      Number.isFinite(Number(sp)) && Number.isFinite(Number(pv))
+      isPresentFinite(sp) && isPresentFinite(pv)
         ? Number(sp) - Number(pv)
         : null;
 

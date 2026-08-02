@@ -16,7 +16,9 @@ from .const import (
     CONF_DYNAMICS_PRESET,
     CONF_INSTANCE_ID,
     CONF_MOCK_MODE,
+    DISPLAY_PRECISION,
     DOMAIN,
+    round_display,
 )
 from .entity_cleanup import expected_plant_sensor_unique_id
 from .mqtt_topics import parse_app_status_payload
@@ -302,7 +304,8 @@ class PlcAssistantOutSensor(SensorEntity):
         self.entity_id = f"sensor.{object_id}"
         if "unit" in meta and meta["unit"]:
             self._attr_native_unit_of_measurement = meta["unit"]
-        self._attr_suggested_display_precision = 2
+        # Match Lovelace glance / PID faceplate 2dp display (SWD-230).
+        self._attr_suggested_display_precision = DISPLAY_PRECISION
         self._attr_native_value = 0.0
 
     async def async_added_to_hass(self) -> None:
@@ -317,7 +320,9 @@ class PlcAssistantOutSensor(SensorEntity):
                 raw = (eng - self._offset) / self._scale
             except (TypeError, ValueError, ZeroDivisionError, UnicodeDecodeError):
                 return False
-            self._attr_native_value = round(raw, 2)
+            # SWD-230: store native at display precision.
+            rounded = round_display(raw)
+            self._attr_native_value = 0.0 if rounded is None else rounded
             return True
 
         store = self.hass.data.get(DOMAIN, {}).get(self._entry_id) or {}
@@ -366,8 +371,10 @@ class PlcAssistantPlantInSensor(SensorEntity):
             self._attr_native_unit_of_measurement = meta["unit"]
         if meta.get("icon"):
             self._attr_icon = meta["icon"]
-        self._attr_suggested_display_precision = 2
-        self._attr_native_value = round(float(meta.get("default", 0.0)), 2)
+        # Match Lovelace glance / PID faceplate 2dp display (SWD-230).
+        self._attr_suggested_display_precision = DISPLAY_PRECISION
+        default = round_display(meta.get("default", 0.0))
+        self._attr_native_value = 0.0 if default is None else default
 
     def _plant_simulator(self):
         store = self.hass.data.get(DOMAIN, {}).get(self._entry_id) or {}
@@ -381,7 +388,10 @@ class PlcAssistantPlantInSensor(SensorEntity):
         if not math.isfinite(value):
             return False
         display = (value - self._offset) / self._scale if self._scale else value
-        display = round(display, 2)
+        rounded = round_display(display)
+        if rounded is None:
+            return False
+        display = rounded
         if self._attr_native_value is not None and abs(
             float(self._attr_native_value) - display
         ) < 1e-12:

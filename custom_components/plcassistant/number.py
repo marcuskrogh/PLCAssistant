@@ -15,7 +15,14 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import Event, HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_BINDINGS, CONF_INSTANCE_ID, CONF_MOCK_MODE, DOMAIN
+from .const import (
+    CONF_BINDINGS,
+    CONF_INSTANCE_ID,
+    CONF_MOCK_MODE,
+    DISPLAY_PRECISION,
+    DOMAIN,
+    round_display,
+)
 from .entity_cleanup import expected_plant_number_unique_id
 from .ha_config_bridge import write_input_tag, write_input_tags
 from .mqtt_topics import tag_in_topic
@@ -383,13 +390,14 @@ class PlcAssistantRequestNumber(NumberEntity):
         if "unit" in meta:
             self._attr_native_unit_of_measurement = meta["unit"]
         if "default" in meta:
-            self._attr_native_value = round(float(meta["default"]), 2)
+            default = round_display(meta["default"])
+            self._attr_native_value = 0.0 if default is None else default
         else:
             self._attr_native_value = 0.0
         # SWD-169: box mode for readable nudge values (Process display is sensors).
         self._attr_mode = NumberMode.BOX
         # Match Lovelace glance / PID faceplate 2dp display (SWD-230).
-        self._attr_suggested_display_precision = 2
+        self._attr_suggested_display_precision = DISPLAY_PRECISION
 
     def _plant_simulator(self):
         store = self.hass.data.get(DOMAIN, {}).get(self._entry_id) or {}
@@ -410,7 +418,10 @@ class PlcAssistantRequestNumber(NumberEntity):
         if not math.isfinite(value):
             return False
         display = (value - self._offset) / self._scale if self._scale else value
-        display = round(display, 2)
+        rounded = round_display(display)
+        if rounded is None:
+            return False
+        display = rounded
         if self._attr_native_value is not None and abs(
             float(self._attr_native_value) - display
         ) < 1e-12:
@@ -477,8 +488,12 @@ class PlcAssistantRequestNumber(NumberEntity):
             )
 
     async def async_set_native_value(self, value: float) -> None:
-        self._attr_native_value = round(float(value), 2)
-        eng = (float(value) * self._scale) + self._offset
+        # SWD-230: round once so HA display and MQTT/file eng stay aligned at 2dp.
+        rounded = round_display(value)
+        if rounded is None:
+            return
+        self._attr_native_value = rounded
+        eng = (rounded * self._scale) + self._offset
         # SWD-146: plant Numbers nudge the simulator — do not compete on MQTT IN.
         if self._simulator_owns():
             self._plant_simulator().set_tag(self._tag, eng)

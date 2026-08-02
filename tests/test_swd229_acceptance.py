@@ -60,7 +60,7 @@ def test_system_engineering_tabs_retained() -> None:
     assert "/api/plcassistant/datablocks/ui" in text
 
 
-def test_system_app_version_0_1_49() -> None:
+def test_system_app_version_tracks_current() -> None:
     assert '"0.1.50"' in (ROOT / "manifest.json").read_text(encoding="utf-8")
     assert 'version: "0.1.50"' in Path("plc_assistant/config.yaml").read_text(
         encoding="utf-8"
