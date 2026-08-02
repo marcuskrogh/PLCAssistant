@@ -315,7 +315,7 @@ def test_system_lovelace_operate_has_block_list_card() -> None:
     text = Path("custom_components/plcassistant/lovelace/plcassistant.yaml").read_text(
         encoding="utf-8"
     )
-    assert "plcassistant_dashboard_version: 23" in text
+    assert "plcassistant_dashboard_version: 24" in text
     assert "custom:plcassistant-block-list-card" in text
 
 

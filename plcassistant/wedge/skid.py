@@ -404,8 +404,8 @@ class Skid:
             assert isinstance(safety, SafetyState)
             running = safety.pump_permit
 
-            if self._use_block_runtime:
-                # Block runtime path (default).
+            if self._use_block_runtime and self._cascade_instances_ready():
+                # Block runtime path (default) when level_pi/flow_pi exist.
                 # Faceplate KP/KI live on CascadeConfig; sync into executing
                 # PID instance params *before* bumpless so Start seeds with the
                 # tuned gains (SWD-224). CascadeConfig alone is not read by
@@ -461,16 +461,39 @@ class Skid:
                     return ctx.get(key)
 
                 def _set_tag(name: str, value: object) -> None:
-                    out_tags[name] = float(value or 0.0)
+                    # Do not coerce missing pins to 0 — that masked broken
+                    # programs as "running with CV=0" (SWD-225).
+                    if value is None:
+                        return
+                    out_tags[name] = float(value)
 
                 apply_io_wires_out(
                     active_wires, get_pin=_get_pin, set_tag=_set_tag
                 )
 
-                sp_flow = float(out_tags.get("SP_FLOW_AUTO", ctx.get("level_pi.cv") or 0.0))
-                cmd_speed_raw = float(
-                    out_tags.get("CMD_SPEED", ctx.get("flow_pi.cv") or 0.0)
-                )
+                level_cv = ctx.get("level_pi.cv")
+                flow_cv = ctx.get("flow_pi.cv")
+                if "SP_FLOW_AUTO" in out_tags:
+                    sp_flow = float(out_tags["SP_FLOW_AUTO"])
+                elif level_cv is not None:
+                    sp_flow = float(level_cv)
+                else:
+                    # Instance pins never wrote — fall through to CascadeController.
+                    box["cascade"] = self._cascade_controller_step(
+                        dt, mv=mv, running=running
+                    )
+                    self._was_running = running
+                    return
+                if "CMD_SPEED" in out_tags:
+                    cmd_speed_raw = float(out_tags["CMD_SPEED"])
+                elif flow_cv is not None:
+                    cmd_speed_raw = float(flow_cv)
+                else:
+                    box["cascade"] = self._cascade_controller_step(
+                        dt, mv=mv, running=running
+                    )
+                    self._was_running = running
+                    return
                 # Shell precedence: when permit is false, force CMD_SPEED safe in
                 # cascade / control.last as well as the OUT-phase process write.
                 # Defense in depth if a graph somehow overrides ``running``.
@@ -492,22 +515,10 @@ class Skid:
                 # Sync control.last for callers that use the CascadeController API.
                 self.control._last = cascade  # type: ignore[attr-defined]
             else:
-                # CascadeController fallback path (explicit injection).
-                if running and not self._was_running:
-                    if mv.lt_tank is not None and mv.ft_inlet is not None:
-                        self.control.prepare_bumpless(
-                            lt_tank=mv.lt_tank,
-                            ft_inlet=mv.ft_inlet,
-                            sp_level=self.sp_level,
-                            target_sp_flow=self.control.last.sp_flow,
-                            target_cmd_speed=0.0,
-                        )
-                box["cascade"] = self.control.step(
-                    dt,
-                    lt_tank=mv.lt_tank,
-                    ft_inlet=mv.ft_inlet,
-                    sp_level=self.sp_level,
-                    running=running,
+                # CascadeController fallback: explicit injection, or live program
+                # missing level_pi/flow_pi after Apply (SWD-225).
+                box["cascade"] = self._cascade_controller_step(
+                    dt, mv=mv, running=running
                 )
             self._was_running = running
 
@@ -622,6 +633,59 @@ class Skid:
         """Replace the external I/O map (validated)."""
         validate_tag_pin_wires(wires)
         self._io_wires = list(wires)
+
+    def _cascade_instances_ready(self) -> bool:
+        """True when the live program still exposes demo cascade instances."""
+        if not self._use_block_runtime or self._loader is None:
+            return False
+        prog = self._loader.program
+        if prog is None:
+            return False
+        return "level_pi" in prog.instances and "flow_pi" in prog.instances
+
+    def _cascade_controller_step(
+        self,
+        dt: float,
+        *,
+        mv: MeasurementView,
+        running: bool,
+    ) -> CascadeOutputs:
+        """Run CascadeController (fallback when block cascade instances absent)."""
+        if running and not self._was_running:
+            if mv.lt_tank is not None and mv.ft_inlet is not None:
+                self.control.prepare_bumpless(
+                    lt_tank=mv.lt_tank,
+                    ft_inlet=mv.ft_inlet,
+                    sp_level=self.sp_level,
+                    target_sp_flow=self.control.last.sp_flow,
+                    target_cmd_speed=0.0,
+                )
+        cascade = self.control.step(
+            dt,
+            lt_tank=mv.lt_tank,
+            ft_inlet=mv.ft_inlet,
+            sp_level=self.sp_level,
+            running=running,
+        )
+        override = self.sp_flow_override
+        if override is None or not running:
+            return cascade
+        # Flow Man/Rem without flow_pi: keep level CV as sp_flow (→ SP_FLOW_AUTO
+        # via SkidImageLogic) and drive CMD from flow KP × (override − FT).
+        # Do not publish override as sp_flow — that broke Level CV (SWD-225).
+        cfg = self.config.cascade
+        ft = mv.ft_inlet if mv.ft_inlet is not None else 0.0
+        err = float(override) - ft
+        cmd = max(
+            cfg.cmd_speed_min,
+            min(cfg.cmd_speed_max, cfg.flow_kp * err),
+        )
+        return CascadeOutputs(
+            sp_flow=cascade.sp_flow,
+            cmd_speed=float(cmd),
+            level_error=cascade.level_error,
+            flow_error=err,
+        )
 
     def _sync_cascade_gains_into_instances(self) -> None:
         """Copy CascadeConfig KP/KI into live PID instance params (SWD-224).
