@@ -300,6 +300,7 @@ class MqttScanLoop:
             "CMD_SPEED",
             "SP_LEVEL",
             "SP_FLOW",
+            "SP_FLOW_AUTO",
         ):
             if name not in self.image.names():
                 continue
@@ -516,14 +517,17 @@ class MqttScanLoop:
             self.scanning = running
             self._publish_scan_status("running" if running else "stopped")
             self._last_status_heartbeat = time.monotonic()
+            self._last_file_bridge = time.monotonic()
         self.bridge.publish_outputs(self.image)
         # Heartbeat retained status so late HA listeners recover (SWD-136).
         now = time.monotonic()
         if now - self._last_status_heartbeat >= self.STATUS_HEARTBEAT_S:
             self._publish_scan_status("running" if self.scanning else "stopped")
             self._last_status_heartbeat = now
-        elif now - self._last_file_bridge >= self.FILE_BRIDGE_PERIOD_S:
-            # Keep file snapshot fresh for HMI even between MQTT status heartbeats.
+            self._last_file_bridge = now
+        elif self.scanning or now - self._last_file_bridge >= self.FILE_BRIDGE_PERIOD_S:
+            # While RUNNING, refresh file every scan so HMI/plant see rising
+            # CVs (Start's first write is bumpless-zero) (SWD-225).
             self._write_ha_config_runtime()
             self._last_file_bridge = now
 

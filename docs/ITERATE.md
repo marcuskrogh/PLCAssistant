@@ -1,43 +1,38 @@
-# Iterate: Start does not drive PID CVs — unify tag↔pin wirings
+# Iterate: Start still leaves PID CVs at 0 (post 0.1.44)
 
 ## Prior work
-- Task: [SWD-223](https://marcusknielsen.atlassian.net/browse/SWD-223)
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/86 (App 0.1.43)
-- Spec context: prior `docs/ITERATE.md`, `docs/surface/06-wedge-migration.md`, `docs/io/06-pid-faceplate.md`
+- Task: [SWD-224](https://marcusknielsen.atlassian.net/browse/SWD-224)
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/87 (App 0.1.44)
+- Spec context: screenshot — Level Man SP=0.3 / PV=0 / CV=0 while running
 
 ## Problem
-1. Starting the process did not actually start the PID loops — underlying CVs (`SP_FLOW_AUTO`, `CMD_SPEED`) made no useful change after Start when faceplate gains were not on the live instances.
-2. Process tag ↔ PID pin bridging was hardcoded in Skid; individual wirings were hard to regression-test.
-3. Flow Man/Rem mutated `program.wires` in place each tick.
-
-## Clarifications
-- Soft-PLC Start → `MODE=RUNNING` → `pump_permit` drives both PID `running` pins via declarative tag↔pin wirings.
-- Faceplate tunings must affect the executing PID copies (instance params), not only CascadeConfig.
-- Test the **format** (apply IN/OUT once for any wire list) — not per-tag wiring tests.
+1. Pressing Start did not engage PID loops — Level/Flow CVs stayed **0.00** while status showed running.
+2. Soft-PLC file runtime omitted `SP_FLOW_AUTO` (HA file-bridge expected it).
+3. File snapshot wrote bumpless-zero on Start then throttled updates while RUNNING.
+4. `/api/apply` did not sync into the live Skid; missing `level_pi`/`flow_pi` silently published CV=0.
 
 ## Acceptance criteria
-- [x] RUNNING + Level Manual SP ≠ PV + Flow Automatic → `SP_FLOW_AUTO` and `CMD_SPEED` rise within ≤30 scans
-- [x] Tag↔pin wirings use one common `{tag, instance, pin, dir}` format applied by shared helpers
-- [x] Generic unit tests cover format apply (IN and OUT) without per-wire tests
-- [x] Writing `LEVEL_KP` / `FLOW_KP` (etc.) updates live `level_pi` / `flow_pi` instance params before the next tick
-- [x] Flow Man/Rem overrides cascade into `flow_pi.sp` via `prefer_context` (no `program.wires` mutation)
-- [x] App/integration **0.1.44**; dual trees synced; 591 pytest passed
+- [x] Soft-PLC file runtime mirror includes `SP_FLOW_AUTO`
+- [x] While RUNNING, file runtime refreshes every scan (not stuck at Start bumpless zero)
+- [x] Program Apply (hot/restart) syncs into the live Skid loader
+- [x] Missing `level_pi`/`flow_pi` falls back to CascadeController so Start still drives CVs
+- [x] Screenshot repro (Level Man SP=0.3, PV=0, Flow Auto) → CVs rise
+- [x] App/integration **0.1.45**; dual trees synced; pytest green
 
 ## Out of scope
-- Classic output Manual (operator sets CV directly)
-- Renaming demo instance ids away from `level_pi` / `flow_pi` in the App UI
+- Classic output Manual
+- Full multi-program prefer_context redesign
 
 ## Work packages
-1. Add `TagPinWire` format + apply helpers + default cascade map — done
-2. Skid: drive CONTROL I/O + gains through the format; Start→CV — done
-3. Tests + docs + version bump (0.1.44) — done (`tests/test_swd224_acceptance.py`)
-4. review-fix: sync gains before bumpless; prefer_context wire fallback — done
+1. File mirror SP_FLOW_AUTO + per-scan refresh while RUNNING — done
+2. Apply → Skid sync + cascade fallback — done
+3. Tests + version bump — done (`tests/test_swd225_acceptance.py`)
 
 ## Tracker
-- Task: [SWD-224](https://marcusknielsen.atlassian.net/browse/SWD-224)
-- Relates: SWD-223
-- Branch: `cursor/swd-224-start-pid-io-wires-5ef6`
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/87 (App 0.1.44) — **shipped**
+- Task: [SWD-225](https://marcusknielsen.atlassian.net/browse/SWD-225)
+- Relates: SWD-224
+- Branch: `cursor/swd-225-start-pid-cvs-still-zero-5ef6`
+- PR: *(opening)*
 
 ## Next
-Done — phase closed.
+`/review-fix SWD-225` — Review and auto-fix until clean

@@ -454,6 +454,8 @@ class AppState:
         live_program = _clone_project(self.saved_project).programs[program_id]
         self.loader.replace_program(program_id, live_program, restart=True)
         self._reapply_library_state()
+        # Keep scan-loop Skid aligned with App applied Programs (SWD-225).
+        self._sync_applied_project_to_runtime()
 
     def _ensure_program_logs(self) -> None:
         for pid in self.saved_project.programs:
@@ -1219,12 +1221,17 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
             if mode == "restart":
                 state.loader.restart_apply(proj)
                 state._reapply_library_state()
+                # Live MQTT Skid must run the same applied project (SWD-225).
+                state._sync_applied_project_to_runtime()
+                state._sync_scan_period_to_runtime()
                 state.persist_program()
                 state.append_log(pid, "info", "Applied with restart")
                 self._send_json({"applied": "restart"})
             elif mode == "hot":
                 state.loader.hot_apply(proj, superuser=state.superuser_hot_apply)
                 state._reapply_library_state()
+                state._sync_applied_project_to_runtime()
+                state._sync_scan_period_to_runtime()
                 state.persist_program()
                 state.append_log(pid, "info", "Hot apply succeeded")
                 self._send_json({"applied": "hot"})
