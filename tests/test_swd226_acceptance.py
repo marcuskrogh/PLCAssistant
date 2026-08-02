@@ -25,8 +25,11 @@ def test_unit_pid_card_preserves_dirty_drafts_across_hass() -> None:
     assert "Never rewrite a focused or dirty draft" in text
     assert "this._dirty[key]" in text
     assert "_captureFocusedDrafts" in text
+    # Focus alone must not freeze the field after blur.
+    assert "do not mark dirty on focus alone" in text
     # Blur must not discard drafts (prior SWD-222 cleared on focusout).
     assert "focusout" not in text
+    assert "@supports (background: color-mix" in text
 
 
 def test_unit_pid_card_climate_visual_cues() -> None:

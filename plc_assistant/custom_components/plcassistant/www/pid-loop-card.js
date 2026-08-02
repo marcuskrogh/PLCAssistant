@@ -87,9 +87,12 @@ class PlcAssistantPidCard extends HTMLElement {
     for (const key of ["man", "auto", "rem"]) {
       const input = this._root.querySelector(`input[data-sp="${key}"]`);
       if (!input) continue;
-      if (document.activeElement === input || this._dirty[key]) {
+      // Snapshot the live input while focused so a hass restomp mid-edit can
+      // restore text — but do not mark dirty on focus alone (SWD-226 review).
+      if (document.activeElement === input) {
         this._drafts[key] = input.value;
-        this._dirty[key] = true;
+      } else if (this._dirty[key]) {
+        this._drafts[key] = input.value;
       }
     }
   }
@@ -261,11 +264,8 @@ class PlcAssistantPidCard extends HTMLElement {
           gap: 12px; margin-bottom: 14px;
           padding: 12px 12px 14px;
           border-radius: 8px;
-          background:
-            linear-gradient(135deg,
-              color-mix(in srgb, var(--pid-accent) 12%, transparent),
-              color-mix(in srgb, var(--secondary-background-color, #f5f5f5) 88%, transparent));
-          border: 1px solid color-mix(in srgb, var(--pid-accent) 28%, var(--divider-color, #ddd));
+          background: var(--secondary-background-color, #f5f5f5);
+          border: 1px solid var(--divider-color, #ddd);
         }
         .pid-metric { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
         .pid-metric span {
@@ -283,7 +283,7 @@ class PlcAssistantPidCard extends HTMLElement {
         }
         .pid-cv-track {
           margin-top: 6px; height: 4px; border-radius: 2px;
-          background: color-mix(in srgb, var(--divider-color, #ccc) 55%, transparent);
+          background: var(--divider-color, #ccc);
           overflow: hidden;
         }
         .pid-cv-fill {
@@ -314,9 +314,32 @@ class PlcAssistantPidCard extends HTMLElement {
           background: var(--secondary-background-color, #f7f7f7);
         }
         .pid-row.active-source {
-          border-color: color-mix(in srgb, var(--pid-accent) 55%, transparent);
-          background: color-mix(in srgb, var(--pid-accent) 10%, var(--card-background-color, #fff));
+          border-color: var(--pid-accent);
+          background: var(--card-background-color, #fff);
           box-shadow: inset 3px 0 0 var(--pid-accent);
+        }
+        @supports (background: color-mix(in srgb, red 50%, blue)) {
+          .pid-hero {
+            background:
+              linear-gradient(135deg,
+                color-mix(in srgb, var(--pid-accent) 12%, transparent),
+                color-mix(in srgb, var(--secondary-background-color, #f5f5f5) 88%, transparent));
+            border: 1px solid color-mix(in srgb, var(--pid-accent) 28%, var(--divider-color, #ddd));
+          }
+          .pid-row.active-source {
+            border-color: color-mix(in srgb, var(--pid-accent) 55%, transparent);
+            background: color-mix(in srgb, var(--pid-accent) 10%, var(--card-background-color, #fff));
+          }
+          .pid-row input:focus {
+            outline: 2px solid color-mix(in srgb, var(--pid-accent) 45%, transparent);
+          }
+          .pid-row button {
+            border-color: color-mix(in srgb, var(--pid-accent) 40%, var(--divider-color, #ccc));
+            background: color-mix(in srgb, var(--pid-accent) 12%, transparent);
+          }
+          .pid-cv-track {
+            background: color-mix(in srgb, var(--divider-color, #ccc) 55%, transparent);
+          }
         }
         .pid-row label {
           font-size: 0.72rem; font-weight: 600; opacity: 0.8;
@@ -331,13 +354,13 @@ class PlcAssistantPidCard extends HTMLElement {
           min-width: 0;
         }
         .pid-row input:focus {
-          outline: 2px solid color-mix(in srgb, var(--pid-accent) 45%, transparent);
+          outline: 2px solid var(--pid-accent);
           outline-offset: 1px; border-color: var(--pid-accent);
         }
         .pid-row input:disabled { opacity: 0.55; }
         .pid-row button {
-          border: 1px solid color-mix(in srgb, var(--pid-accent) 40%, var(--divider-color, #ccc));
-          background: color-mix(in srgb, var(--pid-accent) 12%, transparent);
+          border: 1px solid var(--pid-accent);
+          background: var(--secondary-background-color, #f7f7f7);
           color: var(--primary-text-color);
           border-radius: 6px; padding: 7px 12px; cursor: pointer;
           font-size: 0.78rem; font-weight: 600;
@@ -463,6 +486,8 @@ class PlcAssistantPidCard extends HTMLElement {
         if (apply) apply.disabled = autoDisabled;
       }
       // Never rewrite a focused or dirty draft from live HA values.
+      // Focus alone (no typing) still skips rewrite to protect caret/selection;
+      // after blur without input, _dirty is false so live SP resumes.
       if (focused || this._dirty[key]) {
         if (this._drafts[key] !== undefined && input.value !== this._drafts[key]) {
           input.value = this._drafts[key];
