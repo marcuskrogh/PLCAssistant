@@ -1,5 +1,5 @@
 /**
- * PLCAssistant PID faceplate card (SWD-183 / SWD-222 / SWD-226).
+ * PLCAssistant PID faceplate card (SWD-183 / SWD-222 / SWD-226 / SWD-227).
  *
  * Config: { type: "custom:plcassistant-pid-card", entity: "sensor.plcassistant_pid_level" }
  * Reads climate-like attributes from the compound PID sensor and writes
@@ -8,7 +8,48 @@
  * Drafts: typed SP inputs use text + inputmode=decimal (not type=number) so
  * intermediate edits like "0." survive live hass updates without caret jumps
  * (SWD-226). Dirty drafts persist across refreshes until Set / Escape / clear.
+ *
+ * Exported helpers below are the integration↔HMI communication contract and are
+ * covered by Node regression tests (SWD-227).
  */
+
+/** Parse an SP draft string into a finite number, or null if incomplete/invalid. */
+export function parseSpValue(raw) {
+  const text = String(raw ?? "").trim().replace(",", ".");
+  if (text === "" || text === "-" || text === "." || text === "-.") {
+    return null;
+  }
+  const n = Number(text);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Coerce a value for ``number.set_value``.
+ * Returns a finite number, or null when the payload must not be sent (e.g. "man").
+ */
+export function numberServiceValue(value) {
+  const numeric = parseFloat(String(value).trim().replace(",", "."));
+  return Number.isFinite(numeric) ? numeric : null;
+}
+
+/**
+ * Resolve a faceplate click to a mode or SP-apply action.
+ *
+ * Mode switches must use ``button[data-mode]`` only — never a bare
+ * ``[data-mode]`` match — so a card-root accent attribute cannot hijack Set
+ * (SWD-227: ``data-mode="man"`` → Number("man") → NaN toast).
+ */
+export function resolveFaceplateClick(target) {
+  if (!target || typeof target.closest !== "function") return null;
+  const modeBtn = target.closest("button[data-mode]");
+  if (modeBtn) {
+    return { type: "mode", code: modeBtn.getAttribute("data-mode") };
+  }
+  const applyBtn = target.closest("[data-apply]");
+  if (!applyBtn || applyBtn.disabled) return null;
+  return { type: "apply", key: applyBtn.getAttribute("data-apply") };
+}
+
 class PlcAssistantPidCard extends HTMLElement {
   static getStubConfig() {
     return { entity: "sensor.plcassistant_pid_level" };
@@ -62,8 +103,8 @@ class PlcAssistantPidCard extends HTMLElement {
 
   async _setNumber(entityId, value) {
     if (!this._hass || !entityId) return;
-    const numeric = parseFloat(String(value).trim().replace(",", "."));
-    if (!Number.isFinite(numeric)) return;
+    const numeric = numberServiceValue(value);
+    if (numeric === null) return;
     await this._hass.callService(
       "number",
       "set_value",
@@ -77,8 +118,8 @@ class PlcAssistantPidCard extends HTMLElement {
     const modeEntity = this._attr(st, "mode_entity", null);
     if (!modeEntity) return;
     // Mode codes are 0/1/2 — never pass label strings like "man".
-    const numeric = Number(code);
-    if (!Number.isFinite(numeric)) return;
+    const numeric = numberServiceValue(code);
+    if (numeric === null) return;
     await this._setNumber(modeEntity, numeric);
   }
 
@@ -110,12 +151,7 @@ class PlcAssistantPidCard extends HTMLElement {
   }
 
   _parseSp(raw) {
-    const text = String(raw ?? "").trim().replace(",", ".");
-    if (text === "" || text === "-" || text === "." || text === "-.") {
-      return null;
-    }
-    const n = Number(text);
-    return Number.isFinite(n) ? n : null;
+    return parseSpValue(raw);
   }
 
   _applySp(key) {
@@ -139,15 +175,15 @@ class PlcAssistantPidCard extends HTMLElement {
     if (!this._root || this._bound) return;
     this._bound = true;
     this._root.addEventListener("click", (ev) => {
-      // Only mode *buttons* — not the card root `data-pid-mode` (SWD-227).
-      const modeBtn = ev.target.closest("button[data-mode]");
-      if (modeBtn) {
-        this._setMode(modeBtn.getAttribute("data-mode"));
+      const action = resolveFaceplateClick(ev.target);
+      if (!action) return;
+      if (action.type === "mode") {
+        this._setMode(action.code);
         return;
       }
-      const applyBtn = ev.target.closest("[data-apply]");
-      if (!applyBtn || applyBtn.disabled) return;
-      this._applySp(applyBtn.getAttribute("data-apply"));
+      if (action.type === "apply") {
+        this._applySp(action.key);
+      }
     });
     this._root.addEventListener("input", (ev) => {
       const input = ev.target.closest("input[data-sp]");

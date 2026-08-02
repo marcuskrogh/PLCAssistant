@@ -143,6 +143,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
+- 2026-08-02 — Fix-forward SWD-227: Node + pytest regression for HMI↔`number.set_value` float contract (PR #90). Next `/review-fix SWD-227`.
 - 2026-08-02 — Implement SWD-227: PID Set SP data-mode hijack fix (App 0.1.47); PR [#90](https://github.com/marcuskrogh/PLCAssistant/pull/90) → In Review. Next `/review-fix SWD-227`.
 - 2026-08-02 — Iterate SWD-227: PID card Set SP fails (data-mode click hijack → NaN); App 0.1.47; Relates SWD-226.
 - 2026-08-02 — Shipped SWD-226 via PR #89 (App 0.1.46); review-fix CLEAN after 2 iters; Task Done.

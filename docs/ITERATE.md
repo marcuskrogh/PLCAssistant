@@ -18,6 +18,11 @@ called `_setMode("man")` → `Number("man")` is NaN, and `_applySp` never ran.
 - [x] Mode buttons still switch via codes 0/1/2 only (`button[data-mode]`)
 - [x] Card accent uses `data-pid-mode` (not conflicting with mode buttons)
 - [x] App/integration **0.1.47**; dashboard **26**; dual trees; tests green
+- [x] **Regression tests** for integration ↔ HMI communication:
+  - Node contract (`tests/js/pid_faceplate_contract.test.mjs`): Set under ancestor
+    `data-mode` resolves to **apply** (not mode); `numberServiceValue("man")` is
+    null; finite floats build `{ value: <number> }` for `number.set_value`
+  - Pytest wraps the Node harness + asserts faceplate entity ids / float flip codes
 
 ## Out of scope
 - Further visual redesign
@@ -28,6 +33,10 @@ called `_setMode("man")` → `Number("man")` is NaN, and `_applySp` never ran.
 - Relates: SWD-226
 - Branch: `cursor/swd-227-pid-card-set-float-5ef6`
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/90
+
+## Fix-forward (open PR)
+User asked to require tests so incorrect HMI ↔ integration communication cannot
+ship again. Implemented on the same open PR #90 (not a parallel iterate Task).
 
 ## Next
 `/review-fix SWD-227` — Review and auto-fix until clean
