@@ -38,6 +38,7 @@ After 0.1.49 the PID faceplates still feel foreign next to stock Lovelace cards,
 - Task: [SWD-230](https://marcusknielsen.atlassian.net/browse/SWD-230)
 - Relates: SWD-229
 - Branch: `cursor/swd-230-pid-card-lovelace-fonts-04d5`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/93
 - App: **0.1.50**
 
 ## Next
