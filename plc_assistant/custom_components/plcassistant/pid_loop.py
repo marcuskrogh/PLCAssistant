@@ -136,6 +136,19 @@ def _as_float(value: Any, default: float = 0.0) -> float:
     return num
 
 
+def _round_display(value: Any, digits: int = 2) -> float | None:
+    """Round a numeric faceplate attribute to ``digits`` dp, or None if absent."""
+    if value is None:
+        return None
+    try:
+        num = float(value)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(num):
+        return None
+    return round(num, digits)
+
+
 async def async_setup_pid_loop_sensors(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -214,24 +227,24 @@ class PlcAssistantPidLoopSensor(SensorEntity):
         store = self.hass.data.get(DOMAIN, {}).get(self._entry_id) or {}
         spec = self._spec
         mode = _parse_mode(_cache_value(store, spec["mode"]))
-        man = _as_float(_cache_value(store, spec["sp_man"]))
-        auto = _as_float(_cache_value(store, spec["sp_auto"]))
-        rem = _as_float(_cache_value(store, spec["sp_rem"]))
+        man = _round_display(_cache_value(store, spec["sp_man"])) or 0.0
+        auto = _round_display(_cache_value(store, spec["sp_auto"])) or 0.0
+        rem = _round_display(_cache_value(store, spec["sp_rem"])) or 0.0
         # Always mux from mode + sources — never prefer stale Soft-PLC SP_* OUT
         # (that made faceplate Set look broken when OUT lagged) (SWD-222).
-        sp = _select_sp(mode, man, auto, rem)
+        sp = _round_display(_select_sp(mode, man, auto, rem)) or 0.0
         attrs = self._empty_attrs()
         attrs.update(
             {
-                "pv": _cache_value(store, spec["pv"]),
+                "pv": _round_display(_cache_value(store, spec["pv"])),
                 "sp": sp,
                 "sp_man": man,
                 "sp_auto": auto,
                 "sp_rem": rem,
-                "cv": _cache_value(store, spec["cv"]),
-                "kp": _cache_value(store, spec["kp"]),
-                "ki": _cache_value(store, spec["ki"]),
-                "kd": _cache_value(store, spec["kd"]),
+                "cv": _round_display(_cache_value(store, spec["cv"])),
+                "kp": _round_display(_cache_value(store, spec["kp"])),
+                "ki": _round_display(_cache_value(store, spec["ki"])),
+                "kd": _round_display(_cache_value(store, spec["kd"])),
             }
         )
         changed = mode != self._attr_native_value or attrs != self._attr_extra_state_attributes
@@ -272,4 +285,5 @@ __all__ = [
     "DEMO_PID_LOOPS",
     "PlcAssistantPidLoopSensor",
     "async_setup_pid_loop_sensors",
+    "_round_display",
 ]

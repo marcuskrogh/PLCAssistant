@@ -94,7 +94,7 @@ If personal boards still show unavailable plant Numbers, delete stale unavailabl
 entities in the entity registry (or remove/re-add the integration). Update any
 personal dashboards that still reference plant Numbers for Process display.
 
-**0.1.49** Operate is a SCADA HMI (status, Start/Stop/Reset, Mode, key PVs, PID cards) — not an entity dump. Tap Process values for history. Stock Lovelace refreshes to dashboard version **28**.
+**0.1.50** Operate is a SCADA HMI (status, Start/Stop/Reset, Mode, key PVs, PID cards) — not an entity dump. Tap Process values for history. Stock Lovelace refreshes to dashboard version **28**.
 
 **0.1.48** Compact PID faceplate: 2dp KPIs, single-row mobile, tap opens edit popup. Stock Lovelace refreshes to dashboard version **27**.
 

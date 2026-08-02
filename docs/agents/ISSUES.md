@@ -4,6 +4,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 | Key | Type | Title | Status | Parent | Artifact | Next |
 |-----|------|-------|--------|--------|----------|------|
+| SWD-230 | Bug | [Iterate] PID cards: match Lovelace fonts/sizes + force 2dp on all values | In Progress | Relates SWD-229 | docs/ITERATE.md | `/review-fix SWD-230` |
 | SWD-81 | Story | PLCAssistant — Virtual PLC for Home Assistant | Done | — | docs/ROADMAP.md | Done — initiative complete |
 | SWD-83 | Task | Explore theme: Lab / hobby / small-process wedge | Done | SWD-81 | docs/PLAN.md (prior), docs/wedge/, plcassistant/wedge/ | Done — phase closed |
 | SWD-88 | Sub-task | SWD-83: Reference process spec | Done | SWD-83 | docs/wedge/01-reference-process.md | — |
@@ -145,6 +146,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
+- 2026-08-02 — Iterate SWD-230: PID Lovelace typography + 2dp everywhere (App 0.1.50); Relates SWD-229. Next `/review-fix SWD-230`.
 - 2026-08-02 — Shipped SWD-229 via PR #92 (App 0.1.49); review-fix CLEAN after 2 iters; Task Done.
 - 2026-08-02 — review-fix SWD-229 CLEAN after 2 iters (iter1: run.sh/docs/tests; iter2: 0). Next `/ship SWD-229`.
 - 2026-08-02 — Implement SWD-229: Operate SCADA declutter (App 0.1.49 / dash 28); Relates SWD-228. Next `/review-fix SWD-229`.

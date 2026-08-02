@@ -379,15 +379,17 @@ class PlcAssistantRequestNumber(NumberEntity):
         self.entity_id = f"number.{object_id}"
         self._attr_native_min_value = float(meta.get("min", -1.0e6))
         self._attr_native_max_value = float(meta.get("max", 1.0e6))
-        self._attr_native_step = float(meta.get("step", 0.001))
+        self._attr_native_step = float(meta.get("step", 0.01))
         if "unit" in meta:
             self._attr_native_unit_of_measurement = meta["unit"]
         if "default" in meta:
-            self._attr_native_value = float(meta["default"])
+            self._attr_native_value = round(float(meta["default"]), 2)
         else:
             self._attr_native_value = 0.0
         # SWD-169: box mode for readable nudge values (Process display is sensors).
         self._attr_mode = NumberMode.BOX
+        # Match Lovelace glance / PID faceplate 2dp display (SWD-230).
+        self._attr_suggested_display_precision = 2
 
     def _plant_simulator(self):
         store = self.hass.data.get(DOMAIN, {}).get(self._entry_id) or {}
@@ -408,6 +410,7 @@ class PlcAssistantRequestNumber(NumberEntity):
         if not math.isfinite(value):
             return False
         display = (value - self._offset) / self._scale if self._scale else value
+        display = round(display, 2)
         if self._attr_native_value is not None and abs(
             float(self._attr_native_value) - display
         ) < 1e-12:
@@ -474,7 +477,7 @@ class PlcAssistantRequestNumber(NumberEntity):
             )
 
     async def async_set_native_value(self, value: float) -> None:
-        self._attr_native_value = value
+        self._attr_native_value = round(float(value), 2)
         eng = (float(value) * self._scale) + self._offset
         # SWD-146: plant Numbers nudge the simulator — do not compete on MQTT IN.
         if self._simulator_owns():

@@ -1,5 +1,5 @@
 /**
- * PLCAssistant PID faceplate card (SWD-183 / SWD-222 / SWD-226 / SWD-227 / SWD-228).
+ * PLCAssistant PID faceplate card (SWD-183 / SWD-222 / SWD-226 / SWD-227 / SWD-228 / SWD-230).
  *
  * Config: { type: "custom:plcassistant-pid-card", entity: "sensor.plcassistant_pid_level" }
  * Reads climate-like attributes from the compound PID sensor and writes
@@ -8,21 +8,27 @@
  * Compact faceplate (SWD-228): PV / Active SP / CV at 2dp in a single row;
  * click opens a climate-style dialog for mode + SP edits.
  *
+ * Typography (SWD-230): use HA Lovelace design tokens (--ha-font-*) so the
+ * faceplate matches surrounding entities / glance cards.
+ *
  * Drafts: typed SP inputs use text + inputmode=decimal (not type=number) so
  * intermediate edits like "0." survive live hass updates without caret jumps
  * (SWD-226). Dirty drafts persist across refreshes until Set / Escape / clear.
  *
  * Exported helpers below are the integration↔HMI communication contract and are
- * covered by Node regression tests (SWD-227 / SWD-228).
+ * covered by Node regression tests (SWD-227 / SWD-228 / SWD-230).
  */
 
-/** Display precision for faceplate KPIs (PV / SP / CV / error). */
+/** Display precision for faceplate KPIs (PV / SP / CV / error) and SP editors. */
 export const PID_DISPLAY_DIGITS = 2;
 
-/** Format a numeric faceplate value to fixed decimal places, or em-dash. */
+/**
+ * Format a numeric faceplate value to fixed decimal places, or em-dash.
+ * Always uses ``toFixed`` so float noise never leaks into the HMI.
+ */
 export function formatPidValue(value, digits = PID_DISPLAY_DIGITS) {
   if (value === null || value === undefined || value === "") return "—";
-  const n = Number(value);
+  const n = typeof value === "number" ? value : Number(String(value).trim().replace(",", "."));
   if (!Number.isFinite(n)) return "—";
   return n.toFixed(digits);
 }
@@ -123,10 +129,9 @@ class PlcAssistantPidCard extends HTMLElement {
   }
 
   _committedText(value) {
-    const n = Number(value);
-    if (!Number.isFinite(n)) return "0.00";
-    // Committed editor text matches faceplate display precision (2dp).
-    return n.toFixed(PID_DISPLAY_DIGITS);
+    // Committed editor text always matches faceplate display precision (2dp).
+    const text = formatPidValue(value, PID_DISPLAY_DIGITS);
+    return text === "—" ? "0.00" : text;
   }
 
   async _setNumber(entityId, value) {
@@ -333,9 +338,18 @@ class PlcAssistantPidCard extends HTMLElement {
           --pid-auto: #0d9488;
           --pid-rem: #3b6ea5;
           --pid-accent: var(--pid-man);
+          /* Match stock Lovelace cards (entities / glance) — HA design tokens. */
+          --pid-font: var(--ha-font-family-body, var(--paper-font-body1_-_font-family, inherit));
+          --pid-title-size: var(--ha-card-header-font-size, var(--ha-font-size-l, 1.25rem));
+          --pid-title-weight: var(--ha-card-header-font-weight, var(--ha-font-weight-medium, 500));
+          --pid-label-size: var(--ha-font-size-xs, 0.75rem);
+          --pid-value-size: var(--ha-font-size-l, 1.25rem);
+          --pid-body-size: var(--ha-font-size-m, 1rem);
+          --pid-secondary-size: var(--ha-font-size-s, 0.875rem);
           position: relative;
           padding: 0;
-          font-family: var(--paper-font-body1_-_font-family, "Segoe UI", Roboto, sans-serif);
+          font-family: var(--pid-font);
+          color: var(--primary-text-color);
         }
         .pid-shell[data-pid-mode="man"] { --pid-accent: var(--pid-man); }
         .pid-shell[data-pid-mode="auto"] { --pid-accent: var(--pid-auto); }
@@ -358,51 +372,63 @@ class PlcAssistantPidCard extends HTMLElement {
           outline: 2px solid var(--pid-accent);
           outline-offset: -2px;
         }
-        .pid-body { padding: 10px 12px 10px 14px; }
+        .pid-body { padding: 12px 16px 12px 18px; }
         .pid-head {
           display: flex; justify-content: space-between; align-items: center;
-          gap: 8px; margin-bottom: 8px;
+          gap: 8px; margin-bottom: 10px;
         }
         .pid-title {
-          font-size: 0.92rem; font-weight: 600; letter-spacing: -0.01em;
-          color: var(--primary-text-color);
+          font-family: var(--ha-card-header-font-family, var(--pid-font));
+          font-size: var(--pid-title-size);
+          font-weight: var(--pid-title-weight);
+          line-height: var(--ha-line-height-normal, 1.4);
+          color: var(--ha-card-header-color, var(--primary-text-color));
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
           min-width: 0;
         }
         .pid-badge {
           flex: 0 0 auto;
-          font-size: 0.62rem; font-weight: 700; letter-spacing: 0.07em;
-          text-transform: uppercase; padding: 3px 8px; border-radius: 999px;
+          font-family: var(--pid-font);
+          font-size: var(--pid-label-size);
+          font-weight: var(--ha-font-weight-medium, 500);
+          letter-spacing: 0.04em;
+          text-transform: uppercase; padding: 2px 8px; border-radius: 4px;
           color: #fff; background: var(--pid-accent);
         }
         .pid-hero {
           display: grid;
           grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 6px;
+          gap: 8px;
           align-items: start;
         }
         .pid-metric {
-          display: flex; flex-direction: column; gap: 1px; min-width: 0;
+          display: flex; flex-direction: column; gap: 2px; min-width: 0;
         }
         .pid-metric span {
-          font-size: 0.58rem; opacity: 0.65; text-transform: uppercase;
-          letter-spacing: 0.05em; font-weight: 600;
+          font-size: var(--pid-label-size);
+          font-weight: var(--ha-font-weight-medium, 500);
+          color: var(--secondary-text-color);
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .pid-metric strong {
-          font-size: clamp(0.95rem, 3.8vw, 1.35rem);
-          font-variant-numeric: tabular-nums; font-weight: 600;
-          letter-spacing: -0.02em; line-height: 1.1;
+          font-size: var(--pid-value-size);
+          font-weight: var(--ha-font-weight-normal, 400);
+          font-variant-numeric: tabular-nums;
+          line-height: var(--ha-line-height-normal, 1.4);
           color: var(--primary-text-color);
           white-space: nowrap;
         }
         .pid-metric[data-role="sp"] strong { color: var(--pid-accent); }
         .pid-metric .pid-sub {
-          font-size: 0.58rem; opacity: 0.6; font-variant-numeric: tabular-nums;
+          font-size: var(--pid-label-size);
+          color: var(--secondary-text-color);
+          font-variant-numeric: tabular-nums;
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
         .pid-cv-track {
-          margin-top: 8px; height: 3px; border-radius: 2px;
+          margin-top: 10px; height: 3px; border-radius: 2px;
           background: var(--divider-color, #ccc);
           overflow: hidden;
         }
@@ -411,8 +437,9 @@ class PlcAssistantPidCard extends HTMLElement {
           background: var(--pid-accent); transition: width 0.25s ease;
         }
         .pid-hint {
-          margin-top: 6px; font-size: 0.62rem; opacity: 0.5;
-          letter-spacing: 0.02em;
+          margin-top: 8px;
+          font-size: var(--pid-label-size);
+          color: var(--secondary-text-color);
         }
         .pid-dialog {
           position: fixed; inset: 0; z-index: 1000;
@@ -448,25 +475,29 @@ class PlcAssistantPidCard extends HTMLElement {
         }
         .pid-dialog-head {
           display: flex; justify-content: space-between; align-items: center;
-          gap: 10px; padding: 14px 14px 10px;
+          gap: 10px; padding: 14px 16px 10px;
           border-bottom: 1px solid var(--divider-color, #e5e5e5);
         }
         .pid-dialog-title {
-          font-size: 1rem; font-weight: 600; letter-spacing: -0.01em;
+          font-family: var(--ha-card-header-font-family, var(--pid-font));
+          font-size: var(--pid-title-size);
+          font-weight: var(--pid-title-weight);
           min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
         .pid-dialog-close {
           border: 0; background: transparent; color: var(--primary-text-color);
-          opacity: 0.65; cursor: pointer; font-size: 1.25rem; line-height: 1;
-          padding: 4px 8px; border-radius: 6px;
+          opacity: 0.65; cursor: pointer;
+          font-size: var(--ha-font-size-xl, 1.5rem); line-height: 1;
+          font-family: var(--pid-font);
+          padding: 4px 8px; border-radius: 4px;
         }
         .pid-dialog-close:hover { opacity: 1; background: var(--secondary-background-color, #f0f0f0); }
-        .pid-dialog-body { padding: 12px 14px 14px; }
+        .pid-dialog-body { padding: 12px 16px 16px; font-family: var(--pid-font); }
         .pid-dialog-summary {
           display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
           gap: 8px; margin-bottom: 12px;
-          padding: 10px;
-          border-radius: 8px;
+          padding: 10px 12px;
+          border-radius: var(--ha-card-border-radius, 8px);
           background: var(--secondary-background-color, #f5f5f5);
           border: 1px solid var(--divider-color, #ddd);
         }
@@ -474,13 +505,16 @@ class PlcAssistantPidCard extends HTMLElement {
           display: grid; grid-template-columns: repeat(3, 1fr);
           gap: 0; margin-bottom: 12px;
           border: 1px solid var(--divider-color, #c8c8c8);
-          border-radius: 8px; overflow: hidden;
+          border-radius: var(--ha-card-border-radius, 8px); overflow: hidden;
         }
         .pid-modes button {
           border: 0; border-right: 1px solid var(--divider-color, #c8c8c8);
           background: var(--card-background-color, #fff);
           color: var(--primary-text-color);
-          padding: 10px 6px; cursor: pointer; font-size: 0.82rem; font-weight: 500;
+          padding: 10px 6px; cursor: pointer;
+          font-family: var(--pid-font);
+          font-size: var(--pid-body-size);
+          font-weight: var(--ha-font-weight-medium, 500);
         }
         .pid-modes button:last-child { border-right: 0; }
         .pid-modes button[data-mode="0"].active { background: var(--pid-man); color: #fff; }
@@ -489,7 +523,8 @@ class PlcAssistantPidCard extends HTMLElement {
         .pid-editors { display: grid; gap: 8px; }
         .pid-row {
           display: grid; grid-template-columns: 56px 1fr auto; gap: 8px;
-          align-items: center; padding: 8px 10px; border-radius: 8px;
+          align-items: center; padding: 8px 10px;
+          border-radius: var(--ha-card-border-radius, 8px);
           border: 1px solid transparent;
           background: var(--secondary-background-color, #f7f7f7);
         }
@@ -499,15 +534,19 @@ class PlcAssistantPidCard extends HTMLElement {
           box-shadow: inset 3px 0 0 var(--pid-accent);
         }
         .pid-row label {
-          font-size: 0.72rem; font-weight: 600; opacity: 0.8;
+          font-size: var(--pid-label-size);
+          font-weight: var(--ha-font-weight-medium, 500);
+          color: var(--secondary-text-color);
           text-transform: uppercase; letter-spacing: 0.04em;
         }
         .pid-row input {
           border: 1px solid var(--divider-color, #c8c8c8);
-          border-radius: 6px; padding: 7px 9px;
+          border-radius: 4px; padding: 8px 10px;
           background: var(--card-background-color, #fff);
           color: var(--primary-text-color);
-          font-size: 0.95rem; font-variant-numeric: tabular-nums;
+          font-family: var(--pid-font);
+          font-size: var(--pid-body-size);
+          font-variant-numeric: tabular-nums;
           min-width: 0;
         }
         .pid-row input:focus {
@@ -519,12 +558,24 @@ class PlcAssistantPidCard extends HTMLElement {
           border: 1px solid var(--pid-accent);
           background: var(--secondary-background-color, #f7f7f7);
           color: var(--primary-text-color);
-          border-radius: 6px; padding: 7px 12px; cursor: pointer;
-          font-size: 0.78rem; font-weight: 600;
+          border-radius: 4px; padding: 8px 12px; cursor: pointer;
+          font-family: var(--pid-font);
+          font-size: var(--pid-secondary-size);
+          font-weight: var(--ha-font-weight-medium, 500);
         }
         .pid-row button:disabled { opacity: 0.45; cursor: default; }
-        .pid-note { margin-top: 10px; font-size: 0.68rem; opacity: 0.55; line-height: 1.35; }
-        .pid-missing { padding: 16px; opacity: 0.7; }
+        .pid-note {
+          margin-top: 10px;
+          font-size: var(--pid-label-size);
+          color: var(--secondary-text-color);
+          line-height: var(--ha-line-height-normal, 1.4);
+        }
+        .pid-missing {
+          padding: 16px;
+          font-family: var(--pid-font);
+          font-size: var(--pid-body-size);
+          color: var(--secondary-text-color);
+        }
         @supports (background: color-mix(in srgb, red 50%, blue)) {
           .pid-dialog-summary {
             background:

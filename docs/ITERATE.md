@@ -1,55 +1,44 @@
-# Iterate: Lovelace Operate SCADA-style declutter
+# Iterate: PID cards Lovelace typography + 2dp everywhere
 
 ## Prior work
-- Task: [SWD-228](https://marcusknielsen.atlassian.net/browse/SWD-228)
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/91 (App 0.1.48)
-- Spec context: docs/ITERATE.md (prior PID compact), lovelace/plcassistant.yaml Operate view
+- Task: [SWD-229](https://marcusknielsen.atlassian.net/browse/SWD-229) (Operate SCADA declutter)
+- Also: [SWD-228](https://marcusknielsen.atlassian.net/browse/SWD-228) (compact PID faceplate / 2dp KPIs)
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/92 (App 0.1.49)
+- Spec context: docs/ITERATE.md (prior), custom_components/.../www/pid-loop-card.js
 
 ## Problem
-The Operate dashboard is an entity dump, not a SCADA screen:
+After 0.1.49 the PID faceplates still feel foreign next to stock Lovelace cards, and some numeric values still show excessive decimal places:
 
-1. **Clutter** — changelog markdown, block-list card, PID fallback entity rows, duplicate SP / active-SP cards, and an always-on history graph show nearly every exposed tag.
-2. **Wrong job** — operators need relevant process values, PID faceplates, and clear Start / Stop / Reset / Mode controls — not a browser of every entity.
-3. **History** — important values should open HA more-info (history) on click, not force a permanent graph.
+1. **Typography** — custom rem sizes + Segoe UI / Roboto fallback do not match surrounding entities / glance cards (HA body / header tokens).
+2. **Decimals** — faceplate KPIs, dialog summary, error line, and committed SP editor text must always show exactly two decimal places; compound PID attributes still publish raw float noise into more-info.
 
 ## Clarifications
 - Invoke was rich; no further clarifying questions.
-- Skid **Mode** means `sensor.plcassistant_mode` (`STOP` / `RUNNING` / `TRIPPED`), shown with command buttons.
-- Dynamics / Datablocks engineering tabs stay; declutter is Operate-only.
-- PID cards remain the SP / mode editors (tap popup from SWD-228).
+- Scope is the PID card (+ compound PID attribute rounding that feeds it). Operate Process glance may get `suggested_display_precision: 2` so adjacent values match.
+- "Truncate to two decimals" means display with two fractional digits (`toFixed(2)` / round-half-away display), not a new control algorithm.
 
 ## Acceptance criteria
-- [x] Operate view is a compact SCADA layout: Soft-PLC status, Mode, Trip, Start / Stop / Reset, key PVs, Level + Flow PID cards
-- [x] No changelog markdown wall, block-list card, PID fallback entity dump, duplicate SP / active-SP entities cards, or always-on history-graph on Operate
-- [x] Key process values (tank / reservoir / inlet flow / pump speed) are shown; clicking opens more-info / history
-- [x] Dynamics and Datablocks tabs retained
-- [x] Stock dashboard upgrade includes version **27** → **28**; App/integration **0.1.49**; dual trees synced; tests green
+- [ ] PID card uses Home Assistant design tokens for font family and text sizes (title / labels / values / controls), so it reads as a native Lovelace card beside entities/glance
+- [ ] Every numeric value rendered on the PID card (PV, Active SP, CV, err, Man/Auto/Rem committed inputs) is formatted to exactly two decimal places
+- [ ] Compound PID sensor attributes (`pv`, `sp`, `sp_*`, `cv`, `kp`, `ki`, `kd`) are rounded to 2dp when published
+- [ ] App/integration **0.1.50**; dual trees synced; JS + Python regression tests green
 
 ## Out of scope
-- New custom SCADA graphics / P&ID drawing canvas
-- Changing Soft-PLC / Datablock / PID semantics
-- Removing Dynamics / Datablocks engineering surfaces
+- Changing Soft-PLC / PID control semantics or mode logic
+- New SCADA graphics
 - Classic output Manual (CV override)
+- Operate layout / declutter changes beyond display precision on Process PVs
 
 ## Work packages
-1. Rewrite Operate Lovelace YAML as SCADA HMI + README
-2. Bump dashboard upgrade path (27→28) + App 0.1.49 + dual-tree sync
-3. Acceptance / regression tests for declutter contract
+1. PID card CSS → HA font tokens; harden 2dp formatting paths
+2. Round compound PID attributes in `pid_loop.py`; optional Process sensor display precision
+3. Version bump 0.1.50 + dual-tree sync + acceptance tests
 
 ## Tracker
-- Task: [SWD-229](https://marcusknielsen.atlassian.net/browse/SWD-229)
-- Relates: SWD-228
-- Branch: `cursor/swd-229-lovelace-scada-declutter-566c`
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/92
-- App: **0.1.49** / dashboard **28**
-
-## Review-fix
-- Iter 1: run.sh title guard; v27/v28 ensure tests; README Operate journey; stale test names
-- Iter 2: CLEAN
-
-## Shipped
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/92
-- App: **0.1.49**
+- Task: [SWD-230](https://marcusknielsen.atlassian.net/browse/SWD-230)
+- Relates: SWD-229
+- Branch: `cursor/swd-230-pid-card-lovelace-fonts-04d5`
+- App: **0.1.50**
 
 ## Next
-Done — phase closed.
+`/review-fix SWD-230` — Review and auto-fix until clean

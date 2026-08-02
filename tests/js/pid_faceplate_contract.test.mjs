@@ -114,12 +114,19 @@ function servicePayload(entityId, value) {
   };
 }
 
-// --- formatPidValue / 2dp display (SWD-228) ---
+// --- formatPidValue / 2dp display (SWD-228 / SWD-230) ---
 assertEq(PID_DISPLAY_DIGITS, 2, "PID_DISPLAY_DIGITS is 2");
 assertEq(formatPidValue(0.2), "0.20", "formatPidValue(0.2) → 0.20");
 assertEq(formatPidValue(1.23456), "1.23", "formatPidValue truncates to 2dp");
+assertEq(formatPidValue(0.20000000000000004), "0.20", "formatPidValue kills float noise");
+assertEq(formatPidValue("1,259"), "1.26", "formatPidValue accepts comma decimal string");
 assertEq(formatPidValue(null), "—", "formatPidValue(null) → em-dash");
 assertEq(formatPidValue("bad"), "—", "formatPidValue(non-finite) → em-dash");
+assertEq(formatPidValue(""), "—", "formatPidValue('') → em-dash");
+assert(
+  !String(formatPidValue(Math.PI)).includes("3.14159"),
+  "formatPidValue never leaks long decimals"
+);
 
 // --- parseSpValue ---
 assertEq(parseSpValue("0.3"), 0.3, "parseSpValue accepts 0.3");
