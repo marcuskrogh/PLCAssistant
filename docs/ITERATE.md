@@ -41,5 +41,13 @@ After 0.1.49 the PID faceplates still feel foreign next to stock Lovelace cards,
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/93
 - App: **0.1.50**
 
+## Review-fix
+- Iter 1: 0B + 11SF (null err, Set/Number unrounded write, shared DISPLAY_PRECISION, standards/tests)
+- Iter 2: CLEAN
+
+## Shipped
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/93
+- App: **0.1.50**
+
 ## Next
-`/review-fix SWD-230` — Review and auto-fix until clean
+Done — phase closed.
