@@ -36,6 +36,15 @@ from plcassistant.surface.runtime import (
     TagContext,
     make_runtime,
 )
+from plcassistant.surface.io_wires import (
+    IoDir,
+    TagPinWire,
+    apply_io_wires_in,
+    apply_io_wires_out,
+    tag_pin_wires_from_list,
+    validate_tag_pin_wires,
+    wedge_cascade_io_wires,
+)
 from plcassistant.surface.schema import (
     classify_project_apply,
     is_legacy_program_dict,
@@ -98,6 +107,14 @@ __all__ = [
     "DictContext",
     "TagContext",
     "make_runtime",
+    # external tag↔pin wirings (SWD-224)
+    "IoDir",
+    "TagPinWire",
+    "apply_io_wires_in",
+    "apply_io_wires_out",
+    "tag_pin_wires_from_list",
+    "validate_tag_pin_wires",
+    "wedge_cascade_io_wires",
     # built-in library
     "PID_EQUATION",
     "PID_TEMPLATE_ID",

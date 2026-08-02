@@ -130,7 +130,9 @@ the runtime `exec`s it with this namespace:
 | OUT pin write | `context.set("{instance_id}.{pin_name}", value)` |
 
 Callers bridge process tags (e.g. `LT_TANK`) to instance pins by pre-loading
-the context (e.g. `context.set("level_pi.pv", image.get_value("LT_TANK"))`).
+the context (e.g. `context.set("level_pi.pv", image.get_value("LT_TANK"))`),
+or preferably via the shared `TagPinWire` helpers in
+`plcassistant.surface.io_wires` (SWD-224) so the map is one testable list.
 
 ---
 

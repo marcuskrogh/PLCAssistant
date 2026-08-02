@@ -31,6 +31,16 @@ from plcassistant.control.scan import (
 from plcassistant.io.quality import QualityStatus, ReasonCode, TagQuality, is_good
 from plcassistant.surface.apply import ProjectLoader
 from plcassistant.surface.builtin import register_builtins, wedge_softplc_project
+from plcassistant.surface.io_wires import (
+    SHELL_TAG_FLOW_SP_OVERRIDE,
+    SHELL_TAG_LEVEL_SP,
+    SHELL_TAG_RUNNING,
+    TagPinWire,
+    apply_io_wires_in,
+    apply_io_wires_out,
+    validate_tag_pin_wires,
+    wedge_cascade_io_wires,
+)
 from plcassistant.surface.model import TemplateLibrary
 from plcassistant.surface.runtime import BlockRuntime, DictContext
 from plcassistant.surface.schema import project_from_dict
@@ -189,6 +199,9 @@ class Skid:
         # When set, Flow Man/Rem SP overrides the cascade wire into flow_pi.sp
         # for that CONTROL tick (SWD-223). None → Automatic cascade wire.
         self.sp_flow_override: float | None = None
+        # Process tag ↔ pin map (SWD-224). Default = wedge cascade demo.
+        self._io_wires: list[TagPinWire] = list(wedge_cascade_io_wires())
+        validate_tag_pin_wires(self._io_wires)
         self._last: SkidSnapshot | None = None
         self._was_running = False
         self._force_quality: dict[str, TagQuality] = {}
@@ -400,37 +413,57 @@ class Skid:
                             ft_inlet=mv.ft_inlet,
                         )
 
+                # Faceplate KP/KI live on CascadeConfig; sync into executing
+                # PID instance params so Start actually drives with tuned gains
+                # (SWD-224) — CascadeConfig alone is not read by BlockRuntime.
+                self._sync_cascade_gains_into_instances()
+
                 ctx = self._block_context
-                ctx["level_pi.pv"] = mv.lt_tank if mv.lt_tank is not None else 0.0
-                ctx["level_pi.sp"] = self.sp_level
-                ctx["level_pi.running"] = running
-                ctx["flow_pi.pv"] = mv.ft_inlet if mv.ft_inlet is not None else 0.0
-                ctx["flow_pi.running"] = running
-
-                assert self._loader.program is not None
-                # Flow Man/Rem: detach cascade wire for this tick so ctx flow_pi.sp
-                # wins (BlockRuntime prefers wires over context) (SWD-223).
-                prog = self._loader.program
-                saved_wires = None
+                tag_values = {
+                    "LT_TANK": mv.lt_tank if mv.lt_tank is not None else 0.0,
+                    "FT_INLET": mv.ft_inlet if mv.ft_inlet is not None else 0.0,
+                    SHELL_TAG_LEVEL_SP: self.sp_level,
+                    SHELL_TAG_RUNNING: running,
+                }
+                prefer_context: set[tuple[str, str]] = set()
                 override = self.sp_flow_override
+                active_wires = list(self._io_wires)
                 if override is not None:
-                    saved_wires = list(prog.wires)
-                    prog.wires = [
+                    tag_values[SHELL_TAG_FLOW_SP_OVERRIDE] = float(override)
+                    prefer_context.add(("flow_pi", "sp"))
+                else:
+                    active_wires = [
                         w
-                        for w in prog.wires
-                        if not (
-                            w.dst_instance == "flow_pi" and w.dst_pin == "sp"
-                        )
+                        for w in active_wires
+                        if w.tag != SHELL_TAG_FLOW_SP_OVERRIDE
                     ]
-                    ctx["flow_pi.sp"] = float(override)
-                try:
-                    self._loader.tick(ctx, dt)
-                finally:
-                    if saved_wires is not None:
-                        prog.wires = saved_wires
 
-                sp_flow = float(ctx.get("level_pi.cv") or 0.0)
-                cmd_speed_raw = float(ctx.get("flow_pi.cv") or 0.0)
+                apply_io_wires_in(
+                    active_wires,
+                    get_tag=tag_values.__getitem__,
+                    set_pin=ctx.__setitem__,
+                )
+
+                self._loader.tick(
+                    ctx, dt, prefer_context=prefer_context or None
+                )
+
+                out_tags: dict[str, float] = {}
+
+                def _get_pin(key: str) -> object:
+                    return ctx.get(key)
+
+                def _set_tag(name: str, value: object) -> None:
+                    out_tags[name] = float(value or 0.0)
+
+                apply_io_wires_out(
+                    active_wires, get_pin=_get_pin, set_tag=_set_tag
+                )
+
+                sp_flow = float(out_tags.get("SP_FLOW_AUTO", ctx.get("level_pi.cv") or 0.0))
+                cmd_speed_raw = float(
+                    out_tags.get("CMD_SPEED", ctx.get("flow_pi.cv") or 0.0)
+                )
                 # Shell precedence: when permit is false, force CMD_SPEED safe in
                 # cascade / control.last as well as the OUT-phase process write.
                 # Defense in depth if a graph somehow overrides ``running``.
@@ -572,6 +605,38 @@ class Skid:
     def block_context(self) -> DictContext | None:
         """``DictContext`` shared between scans; ``None`` if fallback."""
         return getattr(self, "_block_context", None)
+
+    @property
+    def io_wires(self) -> list[TagPinWire]:
+        """Process tag ↔ pin wirings used each CONTROL tick (SWD-224)."""
+        return list(self._io_wires)
+
+    def set_io_wires(self, wires: list[TagPinWire]) -> None:
+        """Replace the external I/O map (validated)."""
+        validate_tag_pin_wires(wires)
+        self._io_wires = list(wires)
+
+    def _sync_cascade_gains_into_instances(self) -> None:
+        """Copy CascadeConfig KP/KI into live PID instance params (SWD-224).
+
+        Faceplate / image tags update ``Skid.config.cascade``; BlockRuntime
+        only reads ``inst.params``. Without this sync, Start appears to leave
+        CVs unchanged after retune (and docs claiming tunings apply were false).
+        """
+        prog = self._loader.program if self._loader is not None else None
+        if prog is None:
+            return
+        cfg = self.config.cascade
+        mapping = (
+            ("level_pi", (("kp", cfg.level_kp), ("ki", cfg.level_ki))),
+            ("flow_pi", (("kp", cfg.flow_kp), ("ki", cfg.flow_ki))),
+        )
+        for inst_id, pairs in mapping:
+            inst = prog.instances.get(inst_id)
+            if inst is None:
+                continue
+            for key, value in pairs:
+                inst.params[key] = float(value)
 
     # ------------------------------------------------------------------
     # Bumpless-start helper for block runtime

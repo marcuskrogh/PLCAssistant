@@ -29,25 +29,27 @@ explicitly injected via `Skid(control=…)`.
 
 ## Context Tag Mapping
 
-Each scan the skid writes these tags into `DictContext` before ticking:
+Each scan the skid applies a declarative **tag↔pin** map
+(`TagPinWire` / `wedge_cascade_io_wires()`, SWD-224) before ticking:
 
-| Context tag       | Source                         |
-|-------------------|--------------------------------|
-| `level_pi.pv`     | `mv.lt_tank` (0.0 if LOS)     |
-| `level_pi.sp`     | `skid.sp_level`                |
-| `level_pi.running`| `safety.pump_permit`           |
-| `flow_pi.pv`      | `mv.ft_inlet` (0.0 if LOS)    |
-| `flow_pi.running` | `safety.pump_permit`           |
+| Tag / shell signal | Pin | Dir |
+|--------------------|-----|-----|
+| `LT_TANK` | `level_pi.pv` | IN |
+| `_SHELL.LEVEL_SP` (`skid.sp_level`) | `level_pi.sp` | IN |
+| `_SHELL.RUNNING` (`pump_permit`) | `level_pi.running` / `flow_pi.running` | IN |
+| `FT_INLET` | `flow_pi.pv` | IN |
+| `_SHELL.FLOW_SP_OVERRIDE` (Flow Man/Rem) | `flow_pi.sp` | IN (optional) |
+| `level_pi.cv` | `SP_FLOW_AUTO` | OUT |
+| `flow_pi.cv` | `CMD_SPEED` | OUT |
 
-After `tick`, the skid reads:
+Shared helpers `apply_io_wires_in` / `apply_io_wires_out` are the only bridge —
+tests cover the format once, not each wire individually.
 
-| Context tag    | Mapped to                 |
-|----------------|---------------------------|
-| `level_pi.cv`  | `cascade.sp_flow` / `snap.sp_flow` |
-| `flow_pi.cv`   | `cascade.cmd_speed`       |
+`flow_pi.sp` is normally wired from `level_pi.cv` inside the program. Flow
+Man/Rem uses `prefer_context` on the runtime tick (no `program.wires` mutation).
 
-`flow_pi.sp` is wired from `level_pi.cv` inside the program; the skid
-does not set it directly.
+Faceplate KP/KI update `CascadeConfig` and are **synced into live instance
+params** each CONTROL tick so BlockRuntime sees the tuned gains.
 
 ---
 
