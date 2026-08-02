@@ -35,7 +35,7 @@
 - Task: [SWD-226](https://marcusknielsen.atlassian.net/browse/SWD-226)
 - Relates: SWD-225
 - Branch: `cursor/swd-226-pid-card-sp-edit-visual-5ef6`
-- PR: *(opening)*
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/89
 
 ## Next
 `/review-fix SWD-226` — Review and auto-fix until clean
