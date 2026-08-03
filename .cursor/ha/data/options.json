@@ -1,0 +1,7 @@
+{
+  "instance_id": "default",
+  "mqtt_broker": "127.0.0.1",
+  "mqtt_port": 1883,
+  "mqtt_username": "",
+  "mqtt_password": ""
+}

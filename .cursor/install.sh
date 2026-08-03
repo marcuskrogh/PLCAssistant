@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Idempotent cloud-agent / local install for PLCAssistant.
-# Syncs agent skills, creates .venv, and installs the Soft-PLC package + dev deps.
+# Syncs agent skills, Soft-PLC package, Mosquitto, and Home Assistant Core.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -23,7 +23,7 @@ if ! python3 -c "import ensurepip" 2>/dev/null; then
   fi
 fi
 
-echo "==> Python venv (.venv)"
+echo "==> Python venv (.venv) for Soft-PLC"
 # Recreate a broken partial venv (e.g. ensurepip was missing on first try).
 if [[ -d .venv ]] && [[ ! -x .venv/bin/python || ! -x .venv/bin/pip ]]; then
   rm -rf .venv
@@ -40,6 +40,12 @@ python -m pip install -e ".[dev,mqtt]"
 
 echo "==> Smoke: import Soft-PLC package"
 python -c "import plcassistant; print('plcassistant OK', getattr(plcassistant, '__file__', ''))"
+
+echo "==> Mosquitto (local MQTT broker)"
+bash .cursor/ha/scripts/ensure_mosquitto.sh
+
+echo "==> Home Assistant Core (integration test target)"
+bash .cursor/ha/scripts/install_ha.sh
 
 echo "==> Install complete"
 python -c "import sys; print(sys.executable); print(sys.version)"

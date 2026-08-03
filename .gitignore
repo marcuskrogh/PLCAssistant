@@ -10,3 +10,20 @@ dist/
 build/
 venv/
 .venv/
+
+# Local HA / Mosquitto integration-test runtime (keep scripts + config templates)
+.cursor/ha/.venv-ha/
+.cursor/ha/config/.storage/
+.cursor/ha/config/.cloud/
+.cursor/ha/config/home-assistant_v2.db*
+.cursor/ha/config/home-assistant.log*
+.cursor/ha/config/.HA_VERSION
+.cursor/ha/config/deps/
+.cursor/ha/config/tts/
+.cursor/ha/config/blueprints/
+.cursor/ha/config/custom_components/
+.cursor/ha/config/dashboards/
+.cursor/ha/config/plcassistant/
+.cursor/ha/data/ha_token.json
+.cursor/ha/data/program.json
+.cursor/ha/data/*.log

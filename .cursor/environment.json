@@ -1,17 +1,31 @@
 {
   "name": "PLCAssistant",
   "install": "bash .cursor/install.sh",
+  "start": "bash .cursor/ha/scripts/ensure_mosquitto.sh",
   "terminals": [
     {
+      "name": "homeassistant",
+      "command": "bash .cursor/ha/scripts/run_ha_with_bootstrap.sh",
+      "description": "Home Assistant Core on :8123 (bootstraps MQTT + PLCAssistant)"
+    },
+    {
       "name": "soft-plc",
-      "command": "source .venv/bin/activate && python -m plcassistant.app --host 0.0.0.0 --port 8099",
-      "description": "Soft-PLC block / program editor (HTTP on port 8099)"
+      "command": "bash .cursor/ha/scripts/run_soft_plc.sh",
+      "description": "Soft-PLC HA runtime + block editor on :8099 (MQTT to local Mosquitto)"
     }
   ],
   "ports": [
     {
+      "name": "Home Assistant",
+      "port": 8123
+    },
+    {
       "name": "Soft-PLC editor",
       "port": 8099
+    },
+    {
+      "name": "MQTT",
+      "port": 1883
     }
   ]
 }

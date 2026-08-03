@@ -1,0 +1,36 @@
+# Local cloud-agent Home Assistant for PLCAssistant integration testing.
+# Intentionally avoids default_config (native build deps like netifaces/pyspeex
+# often fail in restricted VMs). Enable only what the thin integration needs.
+
+homeassistant:
+  name: PLCAssistant Dev
+  unit_system: metric
+  time_zone: UTC
+  currency: USD
+  country: US
+
+http:
+  server_host: 0.0.0.0
+
+frontend:
+config:
+lovelace:
+api:
+system_log:
+history:
+logbook:
+recorder:
+sun:
+input_boolean:
+input_number:
+input_button:
+person:
+script: !include scripts.yaml
+scene: !include scenes.yaml
+automation: !include automations.yaml
+
+logger:
+  default: info
+  logs:
+    custom_components.plcassistant: debug
+    homeassistant.components.mqtt: info
