@@ -178,6 +178,8 @@ def wedge_cascade_program(
                     hold_when_stopped=True,
                 ),
                 "equation": PID_EQUATION,
+                "x": 60.0,
+                "y": 80.0,
             },
             "flow_pi": {
                 "template_id": PID_TEMPLATE_ID,
@@ -190,6 +192,8 @@ def wedge_cascade_program(
                     hold_when_stopped=False,
                 ),
                 "equation": PID_EQUATION,
+                "x": 280.0,
+                "y": 80.0,
             },
         },
         "wires": [

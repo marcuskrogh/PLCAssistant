@@ -4,6 +4,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 | Key | Type | Title | Status | Parent | Artifact | Next |
 |-----|------|-------|--------|--------|----------|------|
+| SWD-237 | Bug | App UI: card click, empty diagram, place blocks, built-in labels, code formatting | Done | — | docs/BUG.md | Done — shipped PR [#96](https://github.com/marcuskrogh/PLCAssistant/pull/96) (App 0.1.51) |
 | SWD-231 | Story | Cloud HA live integration & system tests (App ↔ thin integration) | Done | — | docs/ROADMAP.md | Done — initiative complete (PR [#95](https://github.com/marcuskrogh/PLCAssistant/pull/95)) |
 | SWD-232 | Task | Define & ship live cloud HA integration/system test suite | Done | Relates SWD-231 | docs/PLAN.md | Done — shipped PR [#95](https://github.com/marcuskrogh/PLCAssistant/pull/95) |
 | SWD-233 | Subtask | SWD-232: Live stack fixtures + clients | Done | SWD-232 | docs/PLAN.md, tests/live/ | — |
@@ -152,6 +153,10 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
+- 2026-08-03 — Shipped SWD-237 via PR #96 (App 0.1.51); review-fix CLEAN after 2 iters; Task Done.
+- 2026-08-03 — review-fix SWD-237 CLEAN after 2 iters (iter1: library-card/layout/tests; iter2: 0). Next `/ship SWD-237` closeout.
+- 2026-08-03 — Implement SWD-237: App UI cards/diagram/place/built-in/editors (App 0.1.51); PR [#96](https://github.com/marcuskrogh/PLCAssistant/pull/96) → In Review. Next `/review-fix SWD-237`.
+- 2026-08-03 — Bug SWD-237: App UI cards/diagram/place/built-in/code formatting; branch `cursor/swd-237-app-ui-bugs-2b92`; docs/BUG.md. Next `/implement SWD-237`.
 - 2026-08-02 — Shipped SWD-230 via PR #93 (App 0.1.50); review-fix CLEAN after 2 iters; Task Done.
 - 2026-08-02 — review-fix SWD-230 CLEAN after 2 iters (iter1: 11SF null-err/Set-round/shared-precision/standards; iter2: 0). Next `/ship SWD-230`.
 - 2026-08-02 — Implement SWD-230: PID Lovelace fonts + 2dp (App 0.1.50); PR [#93](https://github.com/marcuskrogh/PLCAssistant/pull/93) → In Review. Next `/review-fix SWD-230`.
