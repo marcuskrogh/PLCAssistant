@@ -1,3 +1,5 @@
 ha_token.json
 program.json
 *.log
+pids/
+*.pid

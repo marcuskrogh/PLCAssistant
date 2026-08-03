@@ -27,3 +27,5 @@ venv/
 .cursor/ha/data/ha_token.json
 .cursor/ha/data/program.json
 .cursor/ha/data/*.log
+.cursor/ha/data/pids/
+.cursor/ha/data/*.pid
