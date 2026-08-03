@@ -1,0 +1,12 @@
+.storage/
+.cloud/
+.HA_VERSION
+home-assistant_v2.db*
+home-assistant.log*
+deps/
+tts/
+blueprints/
+custom_components/
+dashboards/
+plcassistant/
+*.log

@@ -1,0 +1,28 @@
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: plcassistant-mosquitto
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    restart: unless-stopped
+
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: plcassistant-homeassistant
+    depends_on:
+      - mosquitto
+    ports:
+      - "8123:8123"
+    volumes:
+      - ./config:/config
+      - ../../custom_components/plcassistant:/config/custom_components/plcassistant:ro
+      # Soft-PLC / thin-integration HA config bridge (same tree as /config)
+      - ./config:/homeassistant
+    environment:
+      - TZ=UTC
+    extra_hosts:
+      # Soft-PLC runs on the host; HA container reaches it via host-gateway
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
