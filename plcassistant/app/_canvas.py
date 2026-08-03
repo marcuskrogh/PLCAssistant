@@ -150,6 +150,7 @@ _HTML = r"""<!DOCTYPE html>
     gap: 10px;
     box-shadow: 0 10px 26px rgba(18, 32, 51, 0.08);
   }
+  .program-card.nav-card, .task-card.nav-card { cursor: pointer; }
   .program-card h2 { font-family: var(--font-display); font-size: 1.35rem; letter-spacing: -0.02em; }
   .program-card .desc, .task-card .desc { color: var(--ink-soft); font-size: 0.86rem; min-height: 1.2em; }
   .card-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
@@ -208,6 +209,14 @@ _HTML = r"""<!DOCTYPE html>
     width: 100%;
   }
   textarea { resize: vertical; min-height: 84px; }
+  #lib-body, #lib-pins, #lib-params, #ue-body, #ue-pins, #ue-params,
+  #overlay textarea, #ov-fields textarea {
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    line-height: 1.45;
+    tab-size: 2;
+    white-space: pre;
+  }
   .form-row { display: flex; gap: 8px; flex-wrap: wrap; }
   .form-row > * { flex: 1 1 140px; }
   .library-section { display: grid; grid-template-columns: 1fr; gap: 10px; }
@@ -482,12 +491,12 @@ _HTML = r"""<!DOCTYPE html>
   <div class="page-head">
     <div>
       <h1>Library</h1>
-      <p class="helper">Shipped blocks and custom blocks are edited here. Placing a block copies its current equation and params onto the instance.</p>
+      <p class="helper">Built-in blocks and custom blocks are edited here. Placing a block copies its current equation and params onto the instance.</p>
     </div>
     <button class="btn primary" type="button" onclick="newCustomLibraryBlock()">Create Custom</button>
   </div>
   <section class="library-section">
-    <h2>Shipped</h2>
+    <h2>Built-in</h2>
     <div id="library-shipped" class="library-list"></div>
   </section>
   <section class="library-section">
@@ -839,7 +848,8 @@ async function loadPrograms() {
   }
   for (const p of programs) {
     const card = document.createElement('article');
-    card.className = 'program-card';
+    card.className = 'program-card nav-card';
+    const dest = programUrl(p.id, 'diagram');
     const statusClass = String(p.status || '').replace(/\s+/g, '-');
     card.innerHTML = `<h2>${esc(p.name || p.id)}</h2>
       <p class="desc">${esc(p.description || 'No description')}</p>
@@ -848,7 +858,11 @@ async function loadPrograms() {
         <span class="chip ${esc(p.health)}">health: ${esc(p.health)}</span>
         <span class="chip">${p.task_id ? 'Task ' + esc(p.task_id) : 'No task'}</span>
       </div>
-      <div><a class="btn primary" href="${programUrl(p.id, 'diagram')}">Open Diagram</a></div>`;
+      <div><a class="btn primary" href="${dest}">Open Diagram</a></div>`;
+    card.addEventListener('click', e => {
+      if (e.target.closest('a, button')) return;
+      window.location.hash = dest;
+    });
     list.appendChild(card);
   }
   setStatus('Programs loaded', true);
@@ -870,14 +884,19 @@ async function loadTasks() {
   }
   for (const t of tasks) {
     const card = document.createElement('article');
-    card.className = 'task-card';
+    card.className = 'task-card nav-card';
+    const dest = '#/tasks/' + encodeURIComponent(t.id);
     card.innerHTML = `<h2>${esc(t.id)}</h2>
       <p class="desc">${esc(t.description || 'No description')}</p>
       <div class="card-row">
         <span class="chip">priority ${esc(t.priority)}</span>
         <span class="chip">${(t.programs || []).length} Program(s)</span>
       </div>
-      <div><a class="btn primary" href="#/tasks/${encodeURIComponent(t.id)}">Edit Task</a></div>`;
+      <div><a class="btn primary" href="${dest}">Edit Task</a></div>`;
+    card.addEventListener('click', e => {
+      if (e.target.closest('a, button')) return;
+      window.location.hash = dest;
+    });
     list.appendChild(card);
   }
   setStatus('Tasks loaded', true);
@@ -1111,6 +1130,21 @@ function libraryDisplayId(t) {
   return t.kind === 'custom' ? 'custom:' + t.template_id : t.template_id;
 }
 
+function libraryKindLabel(t) {
+  return (t.kind === 'custom' || t.library === 'custom') ? 'custom' : 'built-in';
+}
+
+function libraryFormTitle(t) {
+  if (t.kind === 'custom' || t.library === 'custom') return 'Custom ' + t.template_id;
+  const desc = t.description || 'No description';
+  return t.template_id + ' (' + desc + ')';
+}
+
+function libraryCardTitle(t) {
+  if (t.kind === 'custom' || t.library === 'custom') return t.template_id;
+  return t.template_id + ' (' + (t.description || 'No description') + ')';
+}
+
 async function loadLibraryPage(selectId) {
   library = await apiFetch('api/library');
   renderLibraryPage();
@@ -1131,9 +1165,9 @@ function renderLibraryPage() {
   const addCard = (container, t) => {
     const card = document.createElement('article');
     card.className = 'library-card' + (librarySelection && libraryDisplayId(t) === libraryDisplayId(librarySelection) ? ' active' : '');
-    card.innerHTML = `<h2>${esc(t.template_id)}</h2>
+    card.innerHTML = `<h2>${esc(libraryCardTitle(t))}</h2>
       <p class="helper">${esc(t.description || 'No description')}</p>
-      <div class="card-row"><span class="chip">${esc(t.library)}</span><span class="chip">${esc(t.kind || '')}</span></div>
+      <div class="card-row"><span class="chip">${esc(libraryKindLabel(t))}</span></div>
       <div><button class="btn" type="button">Edit</button></div>`;
     card.querySelector('button').onclick = () => openLibraryTemplate(t);
     container.appendChild(card);
@@ -1147,7 +1181,7 @@ function renderLibraryPage() {
 
 function openLibraryTemplate(t) {
   librarySelection = JSON.parse(JSON.stringify(t));
-  document.getElementById('library-form-title').textContent = (t.kind === 'custom' ? 'Custom ' : 'Shipped ') + t.template_id;
+  document.getElementById('library-form-title').textContent = libraryFormTitle(t);
   document.getElementById('lib-kind').value = t.kind || (t.is_builtin ? 'shipped' : 'custom');
   document.getElementById('lib-tid').value = t.template_id || '';
   document.getElementById('lib-tid').disabled = (t.kind !== 'custom');
@@ -1208,7 +1242,7 @@ async function saveLibraryTemplate(event) {
 async function resetShippedLibraryBlock() {
   const kind = document.getElementById('lib-kind').value;
   const tid = document.getElementById('lib-tid').value.trim();
-  if (kind !== 'shipped' || !tid) { setStatus('Select a shipped block first', false); return; }
+  if (kind !== 'shipped' || !tid) { setStatus('Select a built-in block first', false); return; }
   await apiFetch('api/library/shipped/' + encodeURIComponent(tid) + '/reset', {method: 'POST'});
   await loadLibraryPage(tid);
   setStatus('Reset ' + tid + ' to factory', true);
@@ -1277,11 +1311,12 @@ function renderLibrary() {
     d.dataset.tid = t.template_id;
     d.dataset.lib = t.library;
     d.innerHTML = `<div class="lib-id">${esc(t.template_id)}</div>
-      <div class="lib-lib">${esc(t.library)}</div>
+      <div class="lib-lib">${esc(libraryKindLabel(t))}</div>
       <div class="lib-desc">${esc(t.description||'')}</div>`;
     d.addEventListener('dragstart', e => {
-      e.dataTransfer.setData('tid', t.template_id);
-      e.dataTransfer.setData('tlib', t.library);
+      const payload = JSON.stringify({tid: t.template_id, tlib: t.library});
+      e.dataTransfer.setData('text/plain', payload);
+      e.dataTransfer.setData('application/json', payload);
     });
     if (!t.is_builtin) {
       d.title = 'Double-click to edit';
@@ -1295,8 +1330,17 @@ const canvasSvg = document.getElementById('canvas');
 canvasSvg.addEventListener('dragover', e => e.preventDefault());
 canvasSvg.addEventListener('drop', async e => {
   e.preventDefault();
-  const tid = e.dataTransfer.getData('tid');
-  const tlib = e.dataTransfer.getData('tlib');
+  let tid = '', tlib = '';
+  const raw = e.dataTransfer.getData('application/json') || e.dataTransfer.getData('text/plain');
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      tid = parsed.tid || '';
+      tlib = parsed.tlib || '';
+    } catch (_) { /* fall through to legacy keys */ }
+  }
+  if (!tid) tid = e.dataTransfer.getData('tid');
+  if (!tlib) tlib = e.dataTransfer.getData('tlib');
   if (!tid) return;
   const rect = canvasSvg.getBoundingClientRect();
   const x = e.clientX - rect.left;
@@ -1334,11 +1378,29 @@ function pinY(bh, idx, count) {
   return BLOCK_H_BASE + (idx + 0.5) * (usable / Math.max(count, 1));
 }
 
+function blockPositions() {
+  const instances = program.instances || {};
+  const ids = Object.keys(instances);
+  const pos = {};
+  if (!ids.length) return pos;
+  const allOrigin = ids.every(iid => !instances[iid].x && !instances[iid].y);
+  const order = [...(program.execution_order || [])];
+  for (const iid of ids) if (!order.includes(iid)) order.push(iid);
+  order.forEach((iid, idx) => {
+    const inst = instances[iid];
+    pos[iid] = allOrigin
+      ? { x: 60 + idx * 220, y: 80, layout: true }
+      : { x: inst.x || 0, y: inst.y || 0, layout: false };
+  });
+  return pos;
+}
+
 function render() {
   const wl = document.getElementById('wires-layer');
   const bl = document.getElementById('blocks-layer');
   if (!wl || !bl) return;
   wl.innerHTML = ''; bl.innerHTML = '';
+  const positions = blockPositions();
 
   for (const w of (program.wires || [])) {
     const srcInst = program.instances[w.src_instance];
@@ -1351,10 +1413,12 @@ function render() {
     const srcIdx = srcPins.findIndex(p => p.name===w.src_pin);
     const dstIdx = dstPins.findIndex(p => p.name===w.dst_pin);
     const sh = blockHeight(srcT), dh = blockHeight(dstT);
-    const x1 = (srcInst.x||0) + BLOCK_W;
-    const y1 = (srcInst.y||0) + pinY(sh, srcIdx, srcPins.length);
-    const x2 = (dstInst.x||0);
-    const y2 = (dstInst.y||0) + pinY(dh, dstIdx, dstPins.length);
+    const srcPos = positions[w.src_instance] || { x: srcInst.x || 0, y: srcInst.y || 0 };
+    const dstPos = positions[w.dst_instance] || { x: dstInst.x || 0, y: dstInst.y || 0 };
+    const x1 = srcPos.x + BLOCK_W;
+    const y1 = srcPos.y + pinY(sh, srcIdx, srcPins.length);
+    const x2 = dstPos.x;
+    const y2 = dstPos.y + pinY(dh, dstIdx, dstPins.length);
     const cp = Math.abs(x2 - x1) * 0.5;
     const path = svgEl('path');
     path.setAttribute('d', `M${x1},${y1} C${x1+cp},${y1} ${x2-cp},${y2} ${x2},${y2}`);
@@ -1374,7 +1438,8 @@ function render() {
     if (!inst) return;
     const tmpl = templateFor(inst);
     const bh = blockHeight(tmpl);
-    const bx = inst.x || 0, by = inst.y || 0;
+    const bp = positions[iid] || { x: inst.x || 0, y: inst.y || 0, layout: false };
+    const bx = bp.x, by = bp.y;
     const g = svgEl('g');
     g.setAttribute('class', 'block-g');
     g.dataset.iid = iid;
@@ -1461,6 +1526,7 @@ function render() {
     g.addEventListener('mousedown', e => {
       if (e.target.classList.contains('pin-circle')) return;
       selectedId = iid; render(); renderLiveWatch();
+      if (bp.layout) { inst.x = bp.x; inst.y = bp.y; }
       dragging = {id: iid, ox: e.clientX - (inst.x||0), oy: e.clientY - (inst.y||0)};
       e.stopPropagation();
     });
