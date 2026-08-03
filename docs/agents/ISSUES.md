@@ -4,8 +4,8 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 | Key | Type | Title | Status | Parent | Artifact | Next |
 |-----|------|-------|--------|--------|----------|------|
-| SWD-231 | Story | Cloud HA live integration & system tests (App ↔ thin integration) | To Do | — | docs/ROADMAP.md | `/review-fix SWD-232` then `/ship` |
-| SWD-232 | Task | Define & ship live cloud HA integration/system test suite | In Review | Relates SWD-231 | docs/PLAN.md | `/review-fix SWD-232` — PR [#95](https://github.com/marcuskrogh/PLCAssistant/pull/95) |
+| SWD-231 | Story | Cloud HA live integration & system tests (App ↔ thin integration) | Done | — | docs/ROADMAP.md | Done — initiative complete (PR [#95](https://github.com/marcuskrogh/PLCAssistant/pull/95)) |
+| SWD-232 | Task | Define & ship live cloud HA integration/system test suite | Done | Relates SWD-231 | docs/PLAN.md | Done — shipped PR [#95](https://github.com/marcuskrogh/PLCAssistant/pull/95) |
 | SWD-233 | Subtask | SWD-232: Live stack fixtures + clients | Done | SWD-232 | docs/PLAN.md, tests/live/ | — |
 | SWD-234 | Subtask | SWD-232: Live integration tests (App ↔ integration) | Done | SWD-232 | docs/PLAN.md, tests/live/ | — |
 | SWD-235 | Subtask | SWD-232: Live system tests (e2e stack) | Done | SWD-232 | docs/PLAN.md, tests/live/ | — |

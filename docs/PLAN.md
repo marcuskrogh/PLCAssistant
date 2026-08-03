@@ -54,9 +54,14 @@
 - Provider: jira
 - Story: [SWD-231](https://marcusknielsen.atlassian.net/browse/SWD-231)
 - Task: [SWD-232](https://marcusknielsen.atlassian.net/browse/SWD-232)
-- Sub-tasks: SWD-233, SWD-234, SWD-235, SWD-236
+- Sub-tasks: SWD-233, SWD-234, SWD-235, SWD-236 (Done)
 - Branch: `cursor/swd-232-cloud-ha-live-tests-04fc`
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/95
 
+## Shipped
+- Live suite under `tests/live/` with markers; runner + Mosquitto port-check fix
+- review-fix CLEAN after wait/status tighten-ups
+- Verified in cloud env: 9 live passed; 637 unit passed
+
 ## Next
-`/review-fix SWD-232` — multi-axis review then ship closeout.
+Done — phase closed.
