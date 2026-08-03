@@ -34,11 +34,11 @@
 - `plcassistant/surface/schema.py` / `builtin.py` — place + tank seed layout (blocks may lack usable canvas positions).
 
 ## Acceptance criteria
-- [ ] Program and task cards are clickable end-to-end (same destinations as current actions).
-- [ ] Tank/test program diagram renders existing blocks.
-- [ ] Library place/add onto the diagram works.
-- [ ] “Shipped” replaced by built-in; referrals use name (description).
-- [ ] Equation/JSON/code editors: readable monospace + indentation (no syntax highlighting / structural redesign).
+- [x] Program and task cards are clickable end-to-end (same destinations as current actions).
+- [x] Tank/test program diagram renders existing blocks.
+- [x] Library place/add onto the diagram works.
+- [x] “Shipped” replaced by built-in; referrals use name (description).
+- [x] Equation/JSON/code editors: readable monospace + indentation (no syntax highlighting / structural redesign).
 
 ## Out of scope
 - Syntax highlighting
@@ -58,4 +58,4 @@
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/96
 
 ## Next
-`/implement SWD-237` — Fix per BUG.md (same branch/PR)
+`/review-fix SWD-237` — Review and auto-fix until clean
