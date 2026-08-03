@@ -55,7 +55,7 @@
 - Task: [SWD-237](https://marcusknielsen.atlassian.net/browse/SWD-237)
 - Sub-tasks: _(none — single PR)_
 - Branch: `cursor/swd-237-app-ui-bugs-2b92`
-- PR: _(pending)_
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/96
 
 ## Next
 `/implement SWD-237` — Fix per BUG.md (same branch/PR)
