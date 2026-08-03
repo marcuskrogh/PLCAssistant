@@ -46,16 +46,17 @@
 - Unrelated feature work
 
 ## Work packages
-1. Overview: make program and task cards clickable
-2. Diagram: render tank/test blocks; fix place/add from library
-3. Library: built-in labeling + name (description)
-4. Library editors: monospace layout + indentation readability
+1. Overview: make program and task cards clickable — done
+2. Diagram: render tank/test blocks; fix place/add from library — done
+3. Library: built-in labeling + name (description) — done
+4. Library editors: monospace layout + indentation readability — done
 
 ## Tracker
 - Task: [SWD-237](https://marcusknielsen.atlassian.net/browse/SWD-237)
 - Sub-tasks: _(none — single PR)_
 - Branch: `cursor/swd-237-app-ui-bugs-2b92`
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/96
+- Shipped: App **0.1.51** (pending merge)
 
 ## Next
-`/review-fix SWD-237` — Review and auto-fix until clean
+Done — phase closed.

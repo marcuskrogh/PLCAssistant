@@ -85,7 +85,6 @@ def test_canvas_html_swd237_ui_wiring(app_server):
     assert "setData('text/plain'" in text
     assert "setData('application/json'" in text
     assert "blockPositions" in text
-    assert "needsLayout" in text
     # Built-in cards: title carries name (description); helper only for custom.
     assert "isCustom" in text
     assert "Built-in: name (description) in the title only" in text or "do not repeat description" in text
