@@ -26,11 +26,10 @@ def test_ha_plcassistant_entities_present(ha) -> None:
 
 
 def test_ha_start_stop_drives_softplc_scan(ha, soft) -> None:
-    # Ensure stopped first.
+    # Ensure stopped first (require status — scanning alone is true for offline).
     ha.call_service("plcassistant", "stop")
     wait_until(
-        lambda: soft.runtime().get("status") == "stopped"
-        or soft.runtime().get("scanning") is False,
+        lambda: soft.runtime().get("status") == "stopped",
         timeout=45.0,
         desc="Soft-PLC stopped",
     )
@@ -38,7 +37,7 @@ def test_ha_start_stop_drives_softplc_scan(ha, soft) -> None:
     ha.call_service("plcassistant", "start")
     wait_until(
         lambda: soft.runtime().get("status") == "running"
-        or soft.runtime().get("scanning") is True,
+        and soft.runtime().get("scanning") is True,
         timeout=60.0,
         desc="Soft-PLC running after HA start",
     )
@@ -47,8 +46,7 @@ def test_ha_start_stop_drives_softplc_scan(ha, soft) -> None:
 
     ha.call_service("plcassistant", "stop")
     wait_until(
-        lambda: soft.runtime().get("status") == "stopped"
-        or soft.runtime().get("scanning") is False,
+        lambda: soft.runtime().get("status") == "stopped",
         timeout=45.0,
         desc="Soft-PLC stopped after HA stop",
     )
@@ -66,11 +64,10 @@ def test_ha_status_sensor_mirrors_softplc(ha, soft) -> None:
         state = ha.get_state("sensor.plcassistant_status")
         if not state:
             return False
+        # HA chip vocabulary: running | stopped | fault | offline (mqtt_topics).
         ha_status = str(state.get("state") or "").lower()
         soft_status = str(soft.runtime().get("status") or "").lower()
-        return ha_status == soft_status or (
-            soft_status == "running" and ha_status in {"running", "online"}
-        )
+        return ha_status == soft_status
 
     wait_until(status_matches, timeout=60.0, desc="HA status mirrors Soft-PLC")
 

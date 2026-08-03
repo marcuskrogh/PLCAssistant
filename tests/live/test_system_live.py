@@ -40,7 +40,7 @@ def test_start_path_updates_ha_status_and_plant(ha, soft) -> None:
 
     wait_until(
         lambda: (ha.get_state("sensor.plcassistant_status") or {}).get("state")
-        in {"running", "online"},
+        == "running",
         timeout=60.0,
         desc="HA status shows running",
     )
@@ -77,16 +77,13 @@ def test_level_man_sp_write_visible_on_softplc(ha, soft) -> None:
     def tag_near() -> bool:
         val = soft.tag_value("SP_LEVEL_MAN")
         if val is None:
-            # Some builds mirror as SP_LEVEL_MAN via MODE flip path; try SP_LEVEL too.
-            val = soft.tag_value("SP_LEVEL")
-        if val is None:
             return False
         try:
             return abs(float(val) - target) < 0.05
         except (TypeError, ValueError):
             return False
 
-    wait_until(tag_near, timeout=45.0, desc="Soft-PLC sees level MAN SP write")
+    wait_until(tag_near, timeout=45.0, desc="Soft-PLC sees SP_LEVEL_MAN write")
 
 
 def test_button_start_path(ha, soft) -> None:
