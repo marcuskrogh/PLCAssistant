@@ -1165,8 +1165,13 @@ function renderLibraryPage() {
   const addCard = (container, t) => {
     const card = document.createElement('article');
     card.className = 'library-card' + (librarySelection && libraryDisplayId(t) === libraryDisplayId(librarySelection) ? ' active' : '');
+    const isCustom = t.kind === 'custom' || t.library === 'custom';
+    // Built-in: name (description) in the title only — do not repeat description below.
+    const helper = isCustom
+      ? `<p class="helper">${esc(t.description || 'No description')}</p>`
+      : '';
     card.innerHTML = `<h2>${esc(libraryCardTitle(t))}</h2>
-      <p class="helper">${esc(t.description || 'No description')}</p>
+      ${helper}
       <div class="card-row"><span class="chip">${esc(libraryKindLabel(t))}</span></div>
       <div><button class="btn" type="button">Edit</button></div>`;
     card.querySelector('button').onclick = () => openLibraryTemplate(t);
@@ -1378,19 +1383,31 @@ function pinY(bh, idx, count) {
   return BLOCK_H_BASE + (idx + 0.5) * (usable / Math.max(count, 1));
 }
 
+function needsLayout(inst) {
+  // Missing or both-axes-zero → treat as unpositioned (legacy tank programs).
+  if (!inst) return true;
+  const hasX = inst.x !== undefined && inst.x !== null;
+  const hasY = inst.y !== undefined && inst.y !== null;
+  if (!hasX && !hasY) return true;
+  return !Number(inst.x) && !Number(inst.y);
+}
+
 function blockPositions() {
   const instances = program.instances || {};
   const ids = Object.keys(instances);
   const pos = {};
   if (!ids.length) return pos;
-  const allOrigin = ids.every(iid => !instances[iid].x && !instances[iid].y);
   const order = [...(program.execution_order || [])];
   for (const iid of ids) if (!order.includes(iid)) order.push(iid);
-  order.forEach((iid, idx) => {
+  let layoutIdx = 0;
+  order.forEach((iid) => {
     const inst = instances[iid];
-    pos[iid] = allOrigin
-      ? { x: 60 + idx * 220, y: 80, layout: true }
-      : { x: inst.x || 0, y: inst.y || 0, layout: false };
+    if (needsLayout(inst)) {
+      pos[iid] = { x: 60 + layoutIdx * 220, y: 80, layout: true };
+      layoutIdx += 1;
+    } else {
+      pos[iid] = { x: Number(inst.x) || 0, y: Number(inst.y) || 0, layout: false };
+    }
   });
   return pos;
 }

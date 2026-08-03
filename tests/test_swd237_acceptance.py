@@ -78,12 +78,41 @@ def test_canvas_html_swd237_ui_wiring(app_server):
     assert "<h2>Shipped</h2>" not in text
     assert "Shipped PID" not in text
     assert "libraryFormTitle" in text
+    assert "needsLayout" in text
     assert "#lib-body" in text
     assert "font-family: var(--mono)" in text
     assert "white-space: pre" in text
     assert "setData('text/plain'" in text
     assert "setData('application/json'" in text
     assert "blockPositions" in text
+    assert "needsLayout" in text
+    # Built-in cards: title carries name (description); helper only for custom.
+    assert "isCustom" in text
+    assert "Built-in: name (description) in the title only" in text or "do not repeat description" in text
+
+
+def test_program_without_canvas_positions_still_returned(app_server):
+    """API still returns instances when x/y omitted (client auto-layouts)."""
+    _, base_url, state = app_server
+    from plcassistant.surface.schema import program_from_dict
+
+    bare = {
+        "version": "1.0",
+        "name": "Bare",
+        "instances": {
+            "a": {"template_id": "PID", "library": "builtin", "params": {}},
+            "b": {"template_id": "PID", "library": "builtin", "params": {}},
+        },
+        "wires": [],
+        "execution_order": ["a", "b"],
+    }
+    state._set_program("tank", program_from_dict(bare))
+    status, prog = _json_get(base_url + "/api/program?id=tank")
+    assert status == 200
+    assert set(prog["instances"]) == {"a", "b"}
+    # Positions omitted from serialization when zero — client must layout.
+    assert "x" not in prog["instances"]["a"]
+    assert "y" not in prog["instances"]["a"]
 
 
 def test_place_still_works_via_api(app_server):
@@ -108,6 +137,8 @@ def test_app_version_0_1_51():
     from pathlib import Path
 
     root = Path("custom_components/plcassistant")
+    dual = Path("plc_assistant/custom_components/plcassistant")
     assert '"0.1.51"' in (root / "manifest.json").read_text(encoding="utf-8")
+    assert '"0.1.51"' in (dual / "manifest.json").read_text(encoding="utf-8")
     assert 'version: "0.1.51"' in Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
     assert "BUILD_VERSION=0.1.51" in Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
