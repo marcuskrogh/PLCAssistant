@@ -1,51 +1,35 @@
-# Roadmap: Industrial-parity Soft-PLC programming surface
+# Roadmap: Cloud HA live integration & system tests
 
 ## Destination
-Soft-PLC App and thin HA integration expose an industrial-style engineering surface: multi-program/task organization with matching multi-datablock tag mappings, inspectable block instances (including equations), a single generic PID library mapped into loops by instance, online visibility of what is defined vs loaded/running, and acceptance proven at unit, integration, and system levels.
+Integration and system tests run against the cloud development stack (Mosquitto + Home Assistant Core + Soft-PLC App) and prove end-to-end functionality between the thin HA integration and the Soft-PLC application.
 
 ## Notes
-- Trigger: after SWD-173 control recovered, App still showed empty canvas / empty builtin equations; integration still lacks a proper tag/datablock mapping UI.
-- Evidence: [docs/RESEARCH.md](RESEARCH.md) ([SWD-179](https://marcusknielsen.atlassian.net/browse/SWD-179)) — IEC hierarchy, vendor UIs, generic PID practice. Supportive only; does not lock product choices.
-- Route order: **full Soft-PLC program organization model first**, then App surface and library, then **integration multi-datablock / tag mapping UI** (sequential — mirrors Soft-PLC multi-model), then online visibility.
-- Prefer industrial metaphors from the brief — exact metaphor is a define probe on SWD-182.
-- Keep Soft-PLC mock-unaware; plant dynamics stay integration-owned (SWD-145 lineage).
-- **Testing bar (this initiative):** every define → implement slice must ship **unit**, **integration**, and **system**-level tests that exercise the setup path.
-- SWD-181 define extended the route with a small **scheduling editor** Task (SWD-191); keep Tasks small and well-defined.
+- Trigger: `.cursor/environment.json` HA Core stack; existing `test_integration_*` / `test_system_*` suites are mostly in-process acceptance, not live-stack.
+- Prefer pytest markers so default unit runs stay fast; live tests opt-in when the stack is up.
+- Reuse `.cursor/ha/scripts/bootstrap_ha.py` token + HA REST / Soft-PLC `/api/*`.
+- Do not replace in-process acceptance suites — add a parallel `tests/live/` suite.
 
 ## Route
 | Order | Task | Type | Blocked by | Status | Issue |
 |-------|------|------|------------|--------|-------|
-| 1 | Research: industrial PLC program organization & engineering UI capabilities | research | — | Done | [SWD-179](https://marcusknielsen.atlassian.net/browse/SWD-179) |
-| 2 | Soft-PLC program organization model (tasks → programs → instances) | define→ship | SWD-179 | Done (App 0.1.32, PR #76) | [SWD-182](https://marcusknielsen.atlassian.net/browse/SWD-182) |
-| 3 | App engineering surface (Program cards + Diagram/Log/Settings) | define→ship | SWD-182 | Done (App 0.1.33, PR #77) | [SWD-181](https://marcusknielsen.atlassian.net/browse/SWD-181) |
-| 4 | Task/Program scheduling editor | define→ship | SWD-181 | Done (App 0.1.34, PR #78) | [SWD-191](https://marcusknielsen.atlassian.net/browse/SWD-191) |
-| 5 | Library inspectability + generic PID | define→ship | SWD-182 | Done (App 0.1.35, PR #79) | [SWD-180](https://marcusknielsen.atlassian.net/browse/SWD-180) |
-| 6 | Integration Datablock tag mapping UI (mirrors Soft-PLC multi-model) | define→ship | SWD-182 | Done (App 0.1.36) | [SWD-184](https://marcusknielsen.atlassian.net/browse/SWD-184) · PR [#80](https://github.com/marcuskrogh/PLCAssistant/pull/80) |
-| 7 | Online / runtime visibility + PID HMI faceplates | define→ship | SWD-181 | Done (App 0.1.38) | [SWD-183](https://marcusknielsen.atlassian.net/browse/SWD-183) · PR [#81](https://github.com/marcuskrogh/PLCAssistant/pull/81) |
+| 1 | Define & ship live cloud HA integration/system test suite | define→ship | — | Done | [SWD-232](https://marcusknielsen.atlassian.net/browse/SWD-232) · PR [#95](https://github.com/marcuskrogh/PLCAssistant/pull/95) |
 
 ## Cleared so far
-- [Research: industrial PLC program/UI capabilities](https://marcusknielsen.atlassian.net/browse/SWD-179) — multi-axis brief in `docs/RESEARCH.md`
-- [Soft-PLC program organization model](https://marcusknielsen.atlassian.net/browse/SWD-182) — SoftPlcProject/Task/ProjectLoader; App 0.1.32; PR #76
-- [App engineering surface](https://marcusknielsen.atlassian.net/browse/SWD-181) — Program cards + Diagram/Log/Settings; App 0.1.33; PR #77
-- [Task/Program scheduling editor](https://marcusknielsen.atlassian.net/browse/SWD-191) — Save/Apply schedule; App 0.1.34; PR #78
-- [Library inspectability + generic PID](https://marcusknielsen.atlassian.net/browse/SWD-180) — shipped PID, library editor, equation-driven instances; App 0.1.35; PR #79
+- [Define & ship live cloud HA suite](https://marcusknielsen.atlassian.net/browse/SWD-232) — `tests/live/` + `run_live_tests.sh`; 9/9 live tests; review-fix CLEAN; PR #95
 
 ## Not yet specified
-- Whether Python FBD remains the only authoring language (LD/ST deferred?)
-- Classic PID **output Manual** (operator CV) — deferred from SWD-183
-- Additional specialised Lovelace cards beyond PID + generic list
+- Whether live tests should auto-start HA/Soft-PLC in CI (vs skip) when terminals are absent
+- Broader scenario matrix (cascade PID, dynamics presets, schedule apply) beyond smoke Start/Stop/SP path
 
 ## Out of scope
-- Full clone of TIA Portal / Studio 5000 / TwinCAT product surfaces
-- SIL / safety-engineering toolchain and certified force workflows
+- Replacing in-process unit/acceptance suites
+- Supervisor / HA OS production install testing
 - Physical plant / field I/O commissioning
-- Replacing Lovelace HMI with Soft-PLC-native SCADA
-- Re-opening Soft-PLC plant ODEs (mock stays integration-owned)
 
 ## Tracker
 - Provider: jira
-- Story (map): [SWD-178](https://marcusknielsen.atlassian.net/browse/SWD-178)
-- Tasks: [SWD-179](https://marcusknielsen.atlassian.net/browse/SWD-179) (Done), [SWD-182](https://marcusknielsen.atlassian.net/browse/SWD-182) (Done), [SWD-181](https://marcusknielsen.atlassian.net/browse/SWD-181) (Done), [SWD-191](https://marcusknielsen.atlassian.net/browse/SWD-191) (Done), [SWD-180](https://marcusknielsen.atlassian.net/browse/SWD-180) (Done), [SWD-184](https://marcusknielsen.atlassian.net/browse/SWD-184) (Done), [SWD-183](https://marcusknielsen.atlassian.net/browse/SWD-183) (Done)
+- Story (map): [SWD-231](https://marcusknielsen.atlassian.net/browse/SWD-231)
+- Tasks: [SWD-232](https://marcusknielsen.atlassian.net/browse/SWD-232)
 
 ## Next
-Done — initiative complete (SWD-178). Optional follow-ons: classic PID output Manual; additional specialised Lovelace cards.
+Done — initiative complete (SWD-231). Optional: broader live scenario matrix.

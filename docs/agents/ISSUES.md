@@ -4,6 +4,12 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 | Key | Type | Title | Status | Parent | Artifact | Next |
 |-----|------|-------|--------|--------|----------|------|
+| SWD-231 | Story | Cloud HA live integration & system tests (App ↔ thin integration) | Done | — | docs/ROADMAP.md | Done — initiative complete (PR [#95](https://github.com/marcuskrogh/PLCAssistant/pull/95)) |
+| SWD-232 | Task | Define & ship live cloud HA integration/system test suite | Done | Relates SWD-231 | docs/PLAN.md | Done — shipped PR [#95](https://github.com/marcuskrogh/PLCAssistant/pull/95) |
+| SWD-233 | Subtask | SWD-232: Live stack fixtures + clients | Done | SWD-232 | docs/PLAN.md, tests/live/ | — |
+| SWD-234 | Subtask | SWD-232: Live integration tests (App ↔ integration) | Done | SWD-232 | docs/PLAN.md, tests/live/ | — |
+| SWD-235 | Subtask | SWD-232: Live system tests (e2e stack) | Done | SWD-232 | docs/PLAN.md, tests/live/ | — |
+| SWD-236 | Subtask | SWD-232: Docs + run_live_tests script | Done | SWD-232 | docs/PLAN.md, .cursor/ha/ | — |
 | SWD-230 | Bug | [Iterate] PID cards: match Lovelace fonts/sizes + force 2dp on all values | Done | Relates SWD-229 | docs/ITERATE.md | Done — shipped PR [#93](https://github.com/marcuskrogh/PLCAssistant/pull/93) (App 0.1.50) |
 | SWD-81 | Story | PLCAssistant — Virtual PLC for Home Assistant | Done | — | docs/ROADMAP.md | Done — initiative complete |
 | SWD-83 | Task | Explore theme: Lab / hobby / small-process wedge | Done | SWD-81 | docs/PLAN.md (prior), docs/wedge/, plcassistant/wedge/ | Done — phase closed |

@@ -1,97 +1,67 @@
-# Implementation plan: Online / runtime visibility + PID HMI faceplates (SWD-183)
+# Implementation plan: Live cloud HA integration & system tests (SWD-232)
 
 ## Summary
-- Give Soft-PLC App **online visibility** of what is defined vs loaded/running, plus live tag/instance values on the engineering surface.
-- Give operators **Lovelace faceplates** driven by Datablock-backed compound entities: a specialised **PID** card and a **generic list card** for other/custom blocks.
-- Soft-PLC **PID mode logic** selects the active setpoint from Manual / Automatic / Remote SP sources; Datablock remains system source of truth (industrial SCADA style).
-- Acceptance: **unit**, **integration**, and **system** tests for online visibility and PID mode/HMI path.
+- Add a **live-stack** pytest suite under `tests/live/` that exercises Soft-PLC App ↔ thin HA integration against Mosquitto + HA Core + Soft-PLC in the cloud/dev environment.
+- Gate with pytest markers so default `pytest` stays fast (unit/acceptance only).
+- Provide a runner script that ensures the stack is up, then runs the live markers.
 
 ## Scope
-
 ### In
-- Soft-PLC App online: loaded vs running / saved vs applied identity; live I/O tag values; live Diagram pin/instance overlays where practical
-- PID SP-source modes: **Manual | Automatic | Remote** with Soft-PLC logic selecting `*_SP_MAN` / `*_SP_AUTO` / `*_SP_REM` → `*_SP`
-- Writing Manual SP (or Remote SP) from HMI **auto-flips** mode to that source; return to Automatic requires **explicit** mode set
-- Tunings and loop faceplate state live in the **PLC Datablock** (entities/HMI write into DB); DB is SoT
-- HA **compound loop entity** (climate-like), e.g. `PLC_PID.INLET_FLOW` / domain entity with attributes for PV, SP, SP_MAN, SP_AUTO, SP_REM, mode, CV, tunings, status
-- Lovelace **PID card** auto-configured by pointing at that one entity
-- Lovelace **generic list card** for other library + custom blocks (same entity-hook pattern where applicable)
-- Demo: rebuild tank level/flow loops to the new PID mode + Datablock + card contract
-- Tests: unit (mode select / flip rules), integration (entity ↔ DB ↔ Soft-PLC), system (HMI/card path + App online)
+- Shared HA REST + Soft-PLC HTTP clients; load token from `.cursor/ha/data/ha_token.json`
+- Markers: `live`, `live_integration`, `live_system` (default suite excludes `live`)
+- Integration scenarios: MQTT attached, entities present, HA start/stop drives Soft-PLC scan, status mirror
+- System scenarios: stack health, Start path updates HA status + plant sensors, editor APIs, SP write round-trip
+- Docs in `.cursor/ha/README.md` + `bash .cursor/ha/scripts/run_live_tests.sh`
 
 ### Out
-- Classic **output Manual** (operator sets CV/valve directly, PID bypassed) — follow-on
-- Additional specialised cards (beyond PID + generic) — later Tasks
-- Certified SIL / force tables / field commissioning toolchains
-- Replacing Lovelace with Soft-PLC-native SCADA
-- Full DCS mode set (IMAN, ROUT, Program/Operator ownership split, etc.) — document as future
+- Rewriting existing in-process `test_integration_*` / `test_system_*` acceptance tests
+- Supervisor / HA OS e2e
+- Full cascade/dynamics matrix beyond smoke path
 
 ## Decisions
 | Topic | Decision |
 |-------|----------|
-| Cards | Specialised **PID** + **generic list** for everything else; more specialised cards later |
-| SoT | **Datablock / PLC DB**; HMI and entities write into it |
-| PID modes (v1) | **SP-source** Manual \| Automatic \| Remote (research-informed; MAN≠CV override) |
-| Mode flip | Write MAN SP → Manual; write REM SP → Remote; Auto only via explicit mode |
-| Soft-PLC App | **Both** App online visibility **and** Lovelace cards in this Task |
-| Card binding | **Climate-like compound entity**; card hooks one entity and auto-configures |
-| Output Manual | Deferred |
-| Cascade as separate mode | Not a fourth faceplate mode in v1; cascade/MPC use **Remote** (or Auto writer) SP source |
+| Location | `tests/live/` (separate from in-process acceptance) |
+| Markers | `live` + `live_integration` / `live_system`; default `addopts = -m "not live"` |
+| Stack missing | Skip with clear reason unless runner starts stack |
+| Auth | Reuse bootstrap token file; runner re-bootstraps if needed |
+| Entity IDs | Prefer known defaults (`sensor.plcassistant_status`, …) with discovery fallback |
+| Start path | HA service `plcassistant.start` → Soft-PLC `scanning` / status `running` |
+| Runner | `.cursor/ha/scripts/run_live_tests.sh` starts Mosquitto + HA + Soft-PLC if down, then pytest |
 
 ## Constraints
+- Must not slow default unit CI / local `pytest`
+- Dual trees / App packaging unchanged unless version bump required (tests-only → no App version bump)
 - Soft-PLC remains mock-unaware; plant dynamics stay integration-owned
-- Extend Datablocks (SWD-184) + BindingTable; do not invent a parallel I/O language
-- Dual trees synced when shipping App/package/integration changes
-- Prefer HA patterns (climate / water_heater style entities + custom Lovelace card)
-- Keep Tasks implementable; PID faceplate + generic card + App online may be multiple Sub-tasks but one delivery PR
-- Bumpless transfer / SP-tracking niceties: implement best-effort if cheap; full DCS bumpless not required for Done
-
-## Inputs (supportive — not substitutes for decisions above)
-- `docs/ROADMAP.md` route order 7; Story [SWD-178](https://marcusknielsen.atlassian.net/browse/SWD-178)
-- `docs/RESEARCH.md` (SWD-179) — online monitor / force / identity
-- Industrial mode survey (define session): DCS MAN/AUTO/CAS/RCAS/ROUT; Rockwell PIDE; instrumentation texts — SP-source Remote is typical; MAN often means CV override (deferred here)
-- Prior: SWD-181 App surface, SWD-180 generic PID, SWD-184 Datablocks
-- Existing: `GET /api/runtime` tag snapshot; schedule saved vs applied; Program card run status
 
 ## Acceptance criteria
-- [x] App shows clear **defined / saved vs loaded/applied vs running** state for Soft-PLC / Programs
-- [x] App online path surfaces live **tag** values and meaningful **instance/pin** live values on the engineering surface
-- [x] Soft-PLC PID (demo loops) implements **Manual / Automatic / Remote** SP selection into the active SP tag
-- [x] Writing Manual SP from HMI/entity flips mode to Manual; same for Remote; Automatic requires explicit mode write
-- [x] Tunings + mode + faceplate fields persist in Datablock / entity SoT and round-trip Soft-PLC ↔ HA
-- [x] Compound **PID loop entity** exists; Lovelace **PID card** configures from that entity alone
-- [x] **Generic list card** works for non-PID / custom blocks via a documented entity hook
-- [x] Demo tank HMI uses the PID card(s) for level and/or flow loop with clean operator UX
-- [x] **Unit** tests: mode multiplexer + auto-flip rules; entity attribute schema
-- [x] **Integration** tests: Datablock/entity ↔ Soft-PLC image for mode/SP/tunings
-- [x] **System** tests: App online visibility path + Lovelace/card (or API-equivalent) end-to-end
+- [x] `pytest` (default) does not collect/run live tests
+- [x] `pytest -m live` (with stack up) passes integration + system live tests
+- [x] Live integration: Soft-PLC MQTT attached; HA has PLCAssistant entities; start/stop via HA drives Soft-PLC
+- [x] Live system: stack ports healthy; Start updates HA status sensor; plant PV sensors available; Soft-PLC `/api/runtime` + `/api/project` respond; level MAN SP write is visible on Soft-PLC tags
+- [x] `.cursor/ha/README.md` documents how to run; `run_live_tests.sh` works in this cloud env
 
 ## Work packages
-1. **PID SP-source mode logic + Datablock tag contract** — [SWD-217](https://marcusknielsen.atlassian.net/browse/SWD-217)
-2. **HA compound PID loop entity platform** — [SWD-214](https://marcusknielsen.atlassian.net/browse/SWD-214)
-3. **Lovelace PID card + generic list card** — [SWD-215](https://marcusknielsen.atlassian.net/browse/SWD-215)
-4. **Soft-PLC App online visibility** — [SWD-213](https://marcusknielsen.atlassian.net/browse/SWD-213)
-5. **Demo rebuild + docs** — [SWD-218](https://marcusknielsen.atlassian.net/browse/SWD-218)
-6. **Tests** — [SWD-216](https://marcusknielsen.atlassian.net/browse/SWD-216)
+1. **Live stack fixtures + clients** — [SWD-233](https://marcusknielsen.atlassian.net/browse/SWD-233)
+2. **Live integration tests** — [SWD-234](https://marcusknielsen.atlassian.net/browse/SWD-234)
+3. **Live system tests** — [SWD-235](https://marcusknielsen.atlassian.net/browse/SWD-235)
+4. **Docs + runner** — [SWD-236](https://marcusknielsen.atlassian.net/browse/SWD-236)
 
 ## Open items
-- Exact HA domain/platform name (`plcassistant_pid` vs extending existing platforms) — implement choice within climate-like decision
-- Whether one compound entity covers both level and flow loops as two instances or two entities — implement: **one entity per loop instance**
-- Depth of App Diagram pin overlay vs watch panel — implement may choose either as long as acceptance “live instance/pin values” is met
-- SP-tracking / bumpless on mode change — best-effort; full DCS behaviour deferred
+- Broader scenario matrix deferred to fog on SWD-231 roadmap
 
 ## Tracker
 - Provider: jira
-- Story: [SWD-178](https://marcusknielsen.atlassian.net/browse/SWD-178)
-- Task: [SWD-183](https://marcusknielsen.atlassian.net/browse/SWD-183)
-- Sub-tasks: SWD-217, SWD-214, SWD-215, SWD-213, SWD-218, SWD-216
-- Branch: `cursor/swd-183-online-visibility-a52c`
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/81
+- Story: [SWD-231](https://marcusknielsen.atlassian.net/browse/SWD-231)
+- Task: [SWD-232](https://marcusknielsen.atlassian.net/browse/SWD-232)
+- Sub-tasks: SWD-233, SWD-234, SWD-235, SWD-236 (Done)
+- Branch: `cursor/swd-232-cloud-ha-live-tests-04fc`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/95
 
 ## Shipped
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/81
-- App: **0.1.38**
-- review-fix: CLEAN after 2 iterations
+- Live suite under `tests/live/` with markers; runner + Mosquitto port-check fix
+- review-fix CLEAN after wait/status tighten-ups
+- Verified in cloud env: 9 live passed; 637 unit passed
 
 ## Next
 Done — phase closed.

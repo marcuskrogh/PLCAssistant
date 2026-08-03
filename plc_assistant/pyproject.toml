@@ -20,3 +20,9 @@ include = ["plcassistant*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+addopts = "-m \"not live\""
+markers = [
+  "live: requires cloud HA stack (Mosquitto + HA Core + Soft-PLC)",
+  "live_integration: live App ↔ thin-integration tests",
+  "live_system: live end-to-end system tests",
+]
