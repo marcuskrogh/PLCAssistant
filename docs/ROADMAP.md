@@ -12,10 +12,10 @@ Integration and system tests run against the cloud development stack (Mosquitto 
 ## Route
 | Order | Task | Type | Blocked by | Status | Issue |
 |-------|------|------|------------|--------|-------|
-| 1 | Define & ship live cloud HA integration/system test suite | define→ship | — | To Do | [SWD-232](https://marcusknielsen.atlassian.net/browse/SWD-232) |
+| 1 | Define & ship live cloud HA integration/system test suite | define→ship | — | In Review | [SWD-232](https://marcusknielsen.atlassian.net/browse/SWD-232) · PR [#95](https://github.com/marcuskrogh/PLCAssistant/pull/95) |
 
 ## Cleared so far
-- *(none yet)*
+- [Define & ship live cloud HA suite](https://marcusknielsen.atlassian.net/browse/SWD-232) — `tests/live/` + `run_live_tests.sh`; 9/9 live tests passed in cloud env (PR #95)
 
 ## Not yet specified
 - Whether live tests should auto-start HA/Soft-PLC in CI (vs skip) when terminals are absent
@@ -32,4 +32,4 @@ Integration and system tests run against the cloud development stack (Mosquitto 
 - Tasks: [SWD-232](https://marcusknielsen.atlassian.net/browse/SWD-232)
 
 ## Next
-`/define SWD-232` — define live harness, markers, scenarios; then implement & run in cloud env.
+`/review-fix SWD-232` — review PR #95 then ship.

@@ -35,11 +35,11 @@
 - Soft-PLC remains mock-unaware; plant dynamics stay integration-owned
 
 ## Acceptance criteria
-- [ ] `pytest` (default) does not collect/run live tests
-- [ ] `pytest -m live` (with stack up) passes integration + system live tests
-- [ ] Live integration: Soft-PLC MQTT attached; HA has PLCAssistant entities; start/stop via HA drives Soft-PLC
-- [ ] Live system: stack ports healthy; Start updates HA status sensor; plant PV sensors available; Soft-PLC `/api/runtime` + `/api/project` respond; level MAN SP write is visible on Soft-PLC tags
-- [ ] `.cursor/ha/README.md` documents how to run; `run_live_tests.sh` works in this cloud env
+- [x] `pytest` (default) does not collect/run live tests
+- [x] `pytest -m live` (with stack up) passes integration + system live tests
+- [x] Live integration: Soft-PLC MQTT attached; HA has PLCAssistant entities; start/stop via HA drives Soft-PLC
+- [x] Live system: stack ports healthy; Start updates HA status sensor; plant PV sensors available; Soft-PLC `/api/runtime` + `/api/project` respond; level MAN SP write is visible on Soft-PLC tags
+- [x] `.cursor/ha/README.md` documents how to run; `run_live_tests.sh` works in this cloud env
 
 ## Work packages
 1. **Live stack fixtures + clients** — [SWD-233](https://marcusknielsen.atlassian.net/browse/SWD-233)
@@ -56,7 +56,7 @@
 - Task: [SWD-232](https://marcusknielsen.atlassian.net/browse/SWD-232)
 - Sub-tasks: SWD-233, SWD-234, SWD-235, SWD-236
 - Branch: `cursor/swd-232-cloud-ha-live-tests-04fc`
-- PR: *(pending)*
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/95
 
 ## Next
-`/implement SWD-232` — build live suite and run in cloud HA environment.
+`/review-fix SWD-232` — multi-axis review then ship closeout.
