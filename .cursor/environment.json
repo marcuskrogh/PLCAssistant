@@ -1,3 +1,17 @@
 {
-  "install": "bash .agents/sync-skills.sh"
+  "name": "PLCAssistant",
+  "install": "bash .cursor/install.sh",
+  "terminals": [
+    {
+      "name": "soft-plc",
+      "command": "source .venv/bin/activate && python -m plcassistant.app --host 0.0.0.0 --port 8099",
+      "description": "Soft-PLC block / program editor (HTTP on port 8099)"
+    }
+  ],
+  "ports": [
+    {
+      "name": "Soft-PLC editor",
+      "port": 8099
+    }
+  ]
 }
