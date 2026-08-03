@@ -10,4 +10,3 @@ custom_components/
 dashboards/
 plcassistant/
 *.log
-EOF

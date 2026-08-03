@@ -5,6 +5,8 @@ set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 HA_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+bash "$HA_ROOT/scripts/ensure_mosquitto.sh"
+
 # shellcheck disable=SC1091
 source "$REPO/.venv/bin/activate"
 export PLCASSISTANT_HA_CONFIG="$HA_ROOT/config"
