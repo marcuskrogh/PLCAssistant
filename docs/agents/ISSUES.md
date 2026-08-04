@@ -4,7 +4,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 | Key | Type | Title | Status | Parent | Artifact | Next |
 |-----|------|-------|--------|--------|----------|------|
-| SWD-250 | Bug | PID diagram clipping + wrong CV max; model settings hard to edit | In Review | Relates SWD-249 | docs/BUG.md | `/ship SWD-250` — review-fix CLEAN; PR [#98](https://github.com/marcuskrogh/PLCAssistant/pull/98) (App 0.1.53) |
+| SWD-250 | Bug | PID diagram clipping + wrong CV max; model settings hard to edit | Done | Relates SWD-249 | docs/BUG.md | Done — shipped PR [#98](https://github.com/marcuskrogh/PLCAssistant/pull/98) (App 0.1.53) |
 | SWD-249 | Bug | One-tank Diagram empty; mobile cannot place blocks | Done | Relates SWD-237 | docs/BUG.md | Done — shipped PR [#97](https://github.com/marcuskrogh/PLCAssistant/pull/97) (App 0.1.52) |
 | SWD-237 | Bug | App UI: card click, empty diagram, place blocks, built-in labels, code formatting | Done | — | docs/BUG.md | Done — shipped PR [#96](https://github.com/marcuskrogh/PLCAssistant/pull/96) (App 0.1.51) |
 | SWD-231 | Story | Cloud HA live integration & system tests (App ↔ thin integration) | Done | — | docs/ROADMAP.md | Done — initiative complete (PR [#95](https://github.com/marcuskrogh/PLCAssistant/pull/95)) |
@@ -155,6 +155,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
+- 2026-08-04 — Shipped SWD-250 via PR #98 (App 0.1.53); review-fix CLEAN after 2 iters; Task Done.
 - 2026-08-04 — review-fix SWD-250 CLEAN after 2 iters (iter1: version pins/repair-on-save/CTM/NaN/tests; iter2: 0). Next `/ship SWD-250` closeout.
 - 2026-08-04 — Implement SWD-250: cascade cv_max repair + diagram viewBox + structured dynamics fields (App 0.1.53); PR [#98](https://github.com/marcuskrogh/PLCAssistant/pull/98) → In Review. Next `/review-fix SWD-250`.
 - 2026-08-04 — Bug SWD-250: PID diagram clipping + CV max both 6 (flow should be 100); model settings JSON-only for `q_pump_max`; Relates SWD-249; branch `cursor/swd-250-pid-cvmax-model-9910`; docs/BUG.md. Next `/implement SWD-250`.
