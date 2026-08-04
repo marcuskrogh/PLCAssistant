@@ -190,9 +190,16 @@ def normalize_pump_capacity(doc: Mapping[str, Any] | dict[str, Any]) -> dict[str
                 if math.isfinite(q) and q > 0.0:
                     q_global = q
                     params["q_pump_max"] = q
-            elif isinstance(raw_q, str) and raw_q.strip() and raw_q.strip() != "q_pump_max":
-                # Non-alias string refs stay; empty / alias normalized below.
-                pass
+            elif isinstance(raw_q, str) and raw_q.strip():
+                token = raw_q.strip()
+                if token != "q_pump_max":
+                    try:
+                        q = float(token)
+                    except ValueError:
+                        q = float("nan")
+                    if math.isfinite(q) and q > 0.0:
+                        q_global = q
+                        params["q_pump_max"] = q
             op_params["q_max"] = "q_pump_max"
             op_params.pop("q_pump_max", None)
 

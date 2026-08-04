@@ -453,7 +453,12 @@ class AppState:
             lifecycle.set_on_attach(_on_attach)
 
     def runtime_snapshot(self) -> dict[str, Any]:
-        """JSON-serialisable Soft-PLC status for the operator dashboard."""
+        """JSON-serialisable Soft-PLC status for the operator dashboard.
+
+        Also re-syncs cascade level CV from the plant capacity bridge so a
+        Dynamics Apply is picked up while the App UI is polling (SWD-251).
+        """
+        self.sync_plant_capacity_limits()
         return self.operator.snapshot()
 
     def issue_cmd(self, name: str) -> dict[str, Any]:

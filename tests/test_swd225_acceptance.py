@@ -252,8 +252,8 @@ def test_system_file_runtime_snapshot_includes_level_cv(tmp_path, monkeypatch) -
 
 def test_system_app_version_0_1_45() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.53"' in manifest
+    assert '"0.1.54"' in manifest
     config = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.53"' in config
+    assert 'version: "0.1.54"' in config
     docker = Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.53" in docker
+    assert "BUILD_VERSION=0.1.54" in docker

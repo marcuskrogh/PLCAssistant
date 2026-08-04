@@ -77,8 +77,17 @@ def _json_error(message: str, status: int = 400) -> web.Response:
 
 
 def _publish_plant_capacity(hass: HomeAssistant, doc: Mapping[str, Any] | None) -> None:
-    """Write Soft-PLC capacity bridge under HA config (SWD-251)."""
-    q = extract_q_pump_max(doc if isinstance(doc, dict) else None)
+    """Write Soft-PLC capacity bridge under HA config (SWD-251).
+
+    Prefer the *normalized* document (pump-block write-through) so the bridge
+    matches what was saved on disk.
+    """
+    from .store import normalize_pump_capacity
+
+    source = doc if isinstance(doc, dict) else None
+    if source is not None:
+        source = normalize_pump_capacity(source)
+    q = extract_q_pump_max(source)
     if q is None:
         return
     try:

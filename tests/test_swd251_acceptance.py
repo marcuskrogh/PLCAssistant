@@ -112,6 +112,49 @@ def test_appstate_syncs_level_cv_from_capacity(tmp_path: pathlib.Path, monkeypat
     assert tank.instances["level_pi"].params["cv_max"] == pytest.approx(22.0)
 
 
+def test_normalize_pump_capacity_string_numeric() -> None:
+    from dynamics.store import normalize_pump_capacity
+
+    bundled = CC / "dynamics" / "models" / "skid_composed.json"
+    doc = json.loads(bundled.read_text(encoding="utf-8"))
+    pump = next(op for op in doc["ops"] if op["type"] == "pump")
+    pump["params"]["q_max"] = "17"
+    out = normalize_pump_capacity(doc)
+    assert out["params"]["q_pump_max"] == pytest.approx(17.0)
+    pump_out = next(op for op in out["ops"] if op["type"] == "pump")
+    assert pump_out["params"]["q_max"] == "q_pump_max"
+
+
+def test_publish_uses_normalized_capacity(tmp_path: pathlib.Path) -> None:
+    """Bridge value follows pump-block write-through, not a stale global."""
+    from dynamics.store import extract_q_pump_max, normalize_pump_capacity
+
+    bundled = CC / "dynamics" / "models" / "skid_composed.json"
+    doc = json.loads(bundled.read_text(encoding="utf-8"))
+    doc["params"]["q_pump_max"] = 8.0
+    pump = next(op for op in doc["ops"] if op["type"] == "pump")
+    pump["params"]["q_max"] = 21.0
+    # Raw extract would still see 8; publish path must normalize first.
+    assert extract_q_pump_max(doc) == pytest.approx(8.0)
+    assert extract_q_pump_max(normalize_pump_capacity(doc)) == pytest.approx(21.0)
+
+
+def test_runtime_snapshot_syncs_capacity(tmp_path: pathlib.Path, monkeypatch) -> None:
+    from plcassistant.app.server import AppState
+    from plcassistant.io.ha_config_bridge import write_plant_capacity
+    from plcassistant.surface.builtin import wedge_softplc_project
+
+    monkeypatch.setenv("PLCASSISTANT_HA_CONFIG", str(tmp_path))
+    write_plant_capacity(10.0, root=tmp_path)
+    path = tmp_path / "program.json"
+    path.write_text(json.dumps(wedge_softplc_project()), encoding="utf-8")
+    state = AppState(program_path=str(path))
+    write_plant_capacity(19.0, root=tmp_path)
+    state.runtime_snapshot()
+    tank = state.saved_project.programs["tank"]
+    assert tank.instances["level_pi"].params["cv_max"] == pytest.approx(19.0)
+
+
 def test_editor_html_capacity_write_through_markers() -> None:
     html = (CC / "www" / "dynamics_editor.html").read_text(encoding="utf-8")
     assert "data-capacity-global" in html
