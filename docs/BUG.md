@@ -1,58 +1,62 @@
-# Bug: One-tank Diagram empty; mobile cannot place blocks
+# Bug: PID diagram clipping + wrong CV max; model settings hard to edit
 
 ## Summary
-- Soft-PLC App **Programs → Diagram** for the example one-tank system opens with an empty canvas.
-- Live tags (e.g. `LEVEL_*`, `FLOW_*`) are visible, but **PROGRAM JSON** has empty `instances` / `wires` / `execution_order`.
-- Blocks have never appeared on this install; desktop drag from Block Library does place blocks, so canvas rendering works when instances exist.
-- On mobile, blocks cannot be placed (no drag).
+- Soft-PLC App **Programs → Diagram**: PID blocks are visible again but **clipped** (bottom pins / right edge cut off), so it is hard to trust layout and wiring.
+- Both cascade PIDs show **CV max = 6**. Level (`level_pi`) should stay ~6 (outer loop → flow SP units); **flow (`flow_pi`) should be 100** (CMD_SPEED %). Same limit on both is wrong for cascade and for pump command scaling.
+- Integration **Dynamics / model settings**: changing pump maximum flow (`q_pump_max`) requires hand-editing a raw **Global params** JSON object. Modelling should be structured and simple to engage with (labeled fields, not only JSON textareas).
 
 ## Repro
-1. Open PLCAssistant in the current HA install.
-2. Open the one-tank example program **main** → **Diagram**.
-3. Observe empty grid; side panel shows tags; PROGRAM JSON shows `"instances": {}`.
-4. On desktop: drag **PID** from Block Library → block appears.
-5. On mobile: attempt to place a block from the library → cannot (drag unavailable).
+1. Open PLCAssistant App → one-tank / main program → **Diagram**.
+2. Observe `level_pi` and `flow_pi` blocks: bottoms and/or right edge clipped; inspect instance params / live behaviour — **CV max is 6 for both**.
+3. Open the Dynamics / model block editor (integration modelling UI).
+4. Try to change maximum pump flow: only path is editing `"q_pump_max"` inside the Global params JSON textarea (same pattern for other globals / initial state).
 
 ## Expected
-- Seeded / applied / running programs show their block instances (and wires) on the Diagram — including PID blocks for the one-tank example — without manual placement.
-- Mobile users can place a library block onto the Diagram without desktop drag.
+- Diagram renders each PID block **fully** (title, pins, labels) without clipping inside the canvas viewport; scroll/pan or auto-size as needed so blocks and wires remain usable on mobile and desktop.
+- Demo / cascade program params: `level_pi.params.cv_max` ≈ **6**, `flow_pi.params.cv_max` = **100**; runtime clamps CVs accordingly (level CV → flow SP range; flow CV → 0–100% speed).
+- Model settings expose **structured, labeled controls** for known global params (at least **max pump flow** / `q_pump_max`, and the other skid globals such as `h_res_max`, `k_drain`, `pump_tau`) and for initial state keys — without requiring valid JSON editing for the common path. Advanced JSON may remain as an optional escape hatch.
 
 ## Actual
-- One-tank Diagram is empty and has never shown blocks; program instances are empty while tags exist.
-- Mobile placement is not possible.
+- PID blocks are partially clipped on the Diagram.
+- Both PIDs appear to use CV max **6** (flow should be **100**).
+- Model engagement for pump max flow is raw JSON only.
 
 ## Impact
-- Cannot inspect or edit the example (or any similarly empty) program logic on the Diagram.
-- Mobile engineering is blocked for adding blocks.
+- Cascade tuning / trust in the programming surface is undermined (wrong clamp on flow loop → CMD_SPEED stuck in a tiny band if both are 6).
+- Operators cannot confidently inspect or edit the Diagram on typical viewports.
+- Changing plant capacity (`q_pump_max`) is error-prone and opaque for non-JSON users.
 
 ## Suspected area
-- Example / tank program seed or load path that should populate `instances` (and layout) for the Diagram — prior related fix **SWD-237**.
-- App Diagram UI: mobile place gesture or tap-to-place for library blocks.
-- Not a canvas paint-only bug if JSON already has no instances.
+- App Diagram canvas (`plcassistant/app/_canvas.py` / diagram layout sizing, overflow, pin geometry) — follow-on to **SWD-249** / **SWD-237**.
+- Cascade program seed / migrate / repair path for instance `params.cv_max` (`plcassistant/surface/builtin.py` — `sp_flow_max` vs `cmd_speed_max`; project YAML / heal after empty-diagram repair).
+- Integration Dynamics editor UI (`custom_components/plcassistant/www/dynamics_editor.html`) — Global params / Initial state as JSON textareas.
 
 ## Acceptance criteria
-- [x] Opening the one-tank example **Diagram** shows the program’s blocks (including PIDs) and wires consistent with a proper seeded/running program.
-- [x] A program that has instances in the engineering model is not shown as an empty Diagram.
-- [x] On mobile, a user can add a block from the Block Library onto the Diagram without desktop drag.
-- [x] Desktop drag-from-library placement continues to work.
+- [ ] On the one-tank (and equivalent cascade) Diagram, PID blocks render fully: all pins and labels visible without being cut off by the canvas or panel edges under normal mobile and desktop layouts.
+- [ ] `flow_pi` (or equivalent flow PID instance) has `cv_max` = **100**; `level_pi` retains `cv_max` ≈ **6** (or the documented SP_FLOW max). Persisted program JSON and live params agree.
+- [ ] Soft-PLC / cascade behaviour clamps flow CV to 0–100 and level CV to the flow-SP max — not both to 6.
+- [ ] Dynamics model settings provide labeled numeric (or equivalent structured) fields for skid global params including **maximum pump flow** (`q_pump_max`); changing that value and saving updates the model without hand-editing JSON for the happy path.
+- [ ] Initial state is editable in a structured way consistent with globals (not JSON-only for the common path).
+- [ ] Regression tests cover correct per-instance `cv_max` on the demo cascade and the structured model-settings persistence path where testable.
 
 ## Out of scope
-- **+ Program Block** / custom block definition editor (no-op when fields are empty is acceptable for this bug).
-- Unrelated Lovelace PID card / HMI issues.
-- Broader library labeling or code-editor formatting (covered previously under SWD-237).
+- Full redesign of the Dynamics equation / unit-op authoring surface beyond structured globals + initial state (and light Model I/O clarity).
+- Lovelace PID faceplate / HMI card changes.
+- Unrelated library “+ Program Block” editor behaviour.
+- Changing the physics defaults of `q_pump_max` itself (default may stay 8.0 L/min); this bug is about **editability** and **correct PID limits**, not mandating a new default capacity.
 
 ## Work packages
-1. Seed/load: ensure one-tank (and running) programs expose block instances + layout to the Diagram. — done (`repair_empty_demo_project_pair`)
-2. Mobile: add a non-drag way to place a library block on the Diagram. — done (tap-to-place + defer-tap)
-3. Regression coverage for empty-vs-seeded diagram and mobile place path where testable. — done (`tests/test_swd249_acceptance.py`)
+1. Diagram: fix PID block clipping / layout so blocks fully render.
+2. Params: ensure cascade seed/repair assigns distinct `cv_max` (level ≈ 6, flow = 100) and runtime uses them.
+3. Modelling UI: structured globals + initial-state editors (esp. `q_pump_max`) in `dynamics_editor.html` (+ mirrored tree); keep JSON advanced/optional if useful.
+4. Tests + version bump as needed for App/integration.
 
 ## Tracker
-- Task: [SWD-249](https://marcusknielsen.atlassian.net/browse/SWD-249)
-- Sub-tasks: _(none)_
-- Branch: `cursor/swd-249-empty-diagram-1e05`
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/97
-- Relates: [SWD-237](https://marcusknielsen.atlassian.net/browse/SWD-237)
-- Shipped: App **0.1.52** (pending merge)
+- Task: [SWD-250](https://marcusknielsen.atlassian.net/browse/SWD-250)
+- Sub-tasks: _(none yet — optional at implement)_
+- Branch: `cursor/swd-250-pid-cvmax-model-9910`
+- PR: _(draft — pending)_
+- Relates: [SWD-249](https://marcusknielsen.atlassian.net/browse/SWD-249)
 
 ## Next
-Done — phase closed.
+`/implement SWD-250` — Fix per BUG.md (same branch/PR)
