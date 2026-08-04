@@ -44,5 +44,13 @@ Operators need **one** capacity knob that keeps plant and Soft-PLC cascade limit
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/99
 - App: **0.1.54**
 
+## Review-fix
+- Iter 1: REQUEST_CHANGES (live sync, normalize-before-publish, CI version pins) → fix-forward
+- Exit: CLEAN
+
+## Shipped
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/99
+- App: **0.1.54**
+
 ## Next
-`/review-fix SWD-251` — Review and auto-fix (single pass)
+Done — phase closed.
