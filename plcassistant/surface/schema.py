@@ -8,6 +8,7 @@ No Home Assistant dependency; no hard-wired I/O.
 from __future__ import annotations
 
 import copy
+import math
 from typing import Any, Mapping
 
 from plcassistant.surface.model import (
@@ -659,13 +660,38 @@ def _is_cascade_pid_instance(inst: BlockInstance) -> bool:
     return cascade_pid_cv_limits(inst.instance_id) is not None
 
 
-def _repair_cascade_instance_limits(inst: BlockInstance) -> tuple[BlockInstance, bool]:
+def _resolve_cascade_sp_flow_max(sp_flow_max: float | None = None) -> float:
+    """Prefer explicit max, else HA-config plant capacity, else built-in default."""
+    from plcassistant.io.ha_config_bridge import read_plant_capacity
+    from plcassistant.surface.builtin import CASCADE_SP_FLOW_MAX
+
+    if sp_flow_max is not None:
+        try:
+            q = float(sp_flow_max)
+        except (TypeError, ValueError):
+            q = float("nan")
+        if math.isfinite(q) and q > 0.0:
+            return q
+    bridged = read_plant_capacity()
+    if bridged is not None:
+        return bridged
+    return CASCADE_SP_FLOW_MAX
+
+
+def _repair_cascade_instance_limits(
+    inst: BlockInstance,
+    *,
+    sp_flow_max: float | None = None,
+) -> tuple[BlockInstance, bool]:
     """Normalize cv_min/cv_max on one cascade PI instance."""
     from plcassistant.surface.builtin import cascade_pid_cv_limits
 
     if not _is_cascade_pid_instance(inst):
         return inst, False
-    limits = cascade_pid_cv_limits(inst.instance_id)
+    limits = cascade_pid_cv_limits(
+        inst.instance_id,
+        sp_flow_max=_resolve_cascade_sp_flow_max(sp_flow_max),
+    )
     assert limits is not None
     cv_min, cv_max = limits
     params = dict(inst.params)
@@ -684,22 +710,39 @@ def _repair_cascade_instance_limits(inst: BlockInstance) -> tuple[BlockInstance,
     ), True
 
 
-def repair_cascade_pid_limits(program: Program) -> bool:
-    """Normalize cv_min/cv_max on wedge cascade PID copies (SWD-250)."""
+def repair_cascade_pid_limits(
+    program: Program,
+    *,
+    sp_flow_max: float | None = None,
+) -> bool:
+    """Normalize cv_min/cv_max on wedge cascade PID copies (SWD-250/251).
+
+    Level ``cv_max`` tracks plant ``q_pump_max`` when provided or when the
+    HA-config plant capacity bridge is present; flow ``cv_max`` stays 100 %.
+    """
     repaired = False
     for iid in list(program.instances):
-        inst, changed = _repair_cascade_instance_limits(program.instances[iid])
+        inst, changed = _repair_cascade_instance_limits(
+            program.instances[iid],
+            sp_flow_max=sp_flow_max,
+        )
         if changed:
             program.instances[iid] = inst
             repaired = True
     return repaired
 
 
-def repair_cascade_pid_limits_project(project: SoftPlcProject) -> bool:
+def repair_cascade_pid_limits_project(
+    project: SoftPlcProject,
+    *,
+    sp_flow_max: float | None = None,
+) -> bool:
     """Run :func:`repair_cascade_pid_limits` on every program in *project*."""
     repaired = False
     for program in project.programs.values():
-        repaired = repair_cascade_pid_limits(program) or repaired
+        repaired = (
+            repair_cascade_pid_limits(program, sp_flow_max=sp_flow_max) or repaired
+        )
     return repaired
 
 

@@ -241,10 +241,64 @@ class AppState:
         self.loader.load(_clone_project(applied_project))
         self._reapply_library_state()
         self._ensure_program_logs()
+        self._last_plant_q_pump_max: float | None = None
+        if self.sync_plant_capacity_limits(persist=False):
+            repaired = True
         if repaired and self.program_path:
             self.persist_program()
         if "tank" in self.program_logs and not self.program_logs["tank"]:
             self.append_log("tank", "info", "Program Tank loaded")
+
+    def sync_plant_capacity_limits(self, *, persist: bool = True) -> bool:
+        """Align cascade level CV max with plant ``q_pump_max`` (SWD-251).
+
+        Reads the HA-config plant capacity bridge written by Dynamics Apply.
+        Returns True when cascade limits changed.
+        """
+        from plcassistant.io.ha_config_bridge import read_plant_capacity
+
+        q = read_plant_capacity()
+        if q is None:
+            # Still heal to built-in defaults when no bridge file exists.
+            changed = repair_cascade_pid_limits_project(self.saved_project)
+            if self.loader.project is not None:
+                changed = (
+                    repair_cascade_pid_limits_project(self.loader.project) or changed
+                )
+            if changed:
+                self._reapply_library_state()
+                self._sync_applied_project_to_runtime()
+                if persist and self.program_path:
+                    self.persist_program()
+            return changed
+        if self._last_plant_q_pump_max is not None and abs(
+            self._last_plant_q_pump_max - q
+        ) < 1e-9:
+            # Cheap no-op when already synced to this capacity.
+            level = None
+            for prog in self.saved_project.programs.values():
+                if "level_pi" in prog.instances:
+                    level = prog.instances["level_pi"].params.get("cv_max")
+                    break
+            if level is not None and abs(float(level) - q) < 1e-9:
+                return False
+        changed = repair_cascade_pid_limits_project(
+            self.saved_project, sp_flow_max=q
+        )
+        if self.loader.project is not None:
+            changed = (
+                repair_cascade_pid_limits_project(
+                    self.loader.project, sp_flow_max=q
+                )
+                or changed
+            )
+        self._last_plant_q_pump_max = q
+        if changed:
+            self._reapply_library_state()
+            self._sync_applied_project_to_runtime()
+            if persist and self.program_path:
+                self.persist_program()
+        return changed
 
     def _load_library_state(self, raw: Mapping[str, Any]) -> None:
         shipped = raw.get("shipped_overrides") or {}
@@ -440,6 +494,7 @@ class AppState:
         return self.saved_project.programs[pid]
 
     def program_dict_for(self, program_id: str | None) -> dict[str, Any]:
+        self.sync_plant_capacity_limits()
         prog = self.program_for_id(program_id)
         if prog is None:
             return {

@@ -203,7 +203,7 @@ details.advanced-json textarea { margin-top: 8px; min-height: 60px; }
     <div class="field"><label>Inputs (comma-separated)</label>
       <input id="f-inputs" class="mono" placeholder="cmd_speed, u"></div>
     <div class="section-bar"><h3>Global parameters</h3></div>
-    <p class="hint">Skid-wide constants (e.g. <strong>Max pump flow</strong> / <code>q_pump_max</code>) referenced by unit-op params.</p>
+    <p class="hint">Skid-wide constants. <strong>Max pump flow</strong> is the single plant capacity knob (L/min at 100% CMD). Soft-PLC cascade flow SP tracks this value.</p>
     <div id="global-params-fields" data-skid-param-schema="q_pump_max"></div>
     <details class="advanced-json" id="params-advanced-wrap">
       <summary>Advanced JSON (other keys)</summary>
@@ -594,8 +594,22 @@ function renderInspector() {
     });
     html += `<h3>Params</h3>`;
     (meta.params || []).forEach(k => {
-      html += `<div class="field"><label>${esc(k)}</label>
-        <input data-param="${esc(k)}" class="mono" value="${esc(String((op.params || {})[k] ?? ""))}"></div>`;
+      const capacityKey = (meta.param_capacity_keys || {})[k];
+      const label = (meta.param_labels && meta.param_labels[k]) || k;
+      if (capacityKey) {
+        const linked = String((op.params || {})[k] ?? "") === capacityKey
+          || String((op.params || {})[k] ?? "") === "";
+        const effective = linked
+          ? (doc.params && doc.params[capacityKey] != null ? doc.params[capacityKey] : "")
+          : (op.params || {})[k];
+        html += `<div class="field"><label>${esc(label)}</label>
+          <input data-param="${esc(k)}" data-capacity-global="${esc(capacityKey)}" class="mono"
+            value="${esc(String(effective ?? ""))}">
+          <p class="hint">Writes through to global <strong>Max pump flow</strong> (${esc(capacityKey)}). Keep one capacity knob.</p></div>`;
+      } else {
+        html += `<div class="field"><label>${esc(label)}</label>
+          <input data-param="${esc(k)}" class="mono" value="${esc(String((op.params || {})[k] ?? ""))}"></div>`;
+      }
     });
   }
 
@@ -626,8 +640,24 @@ function renderInspector() {
   root.querySelectorAll("[data-param]").forEach(inp => {
     inp.onchange = () => {
       op.params = op.params || {};
+      const key = inp.dataset.param;
       const v = inp.value.trim();
-      op.params[inp.dataset.param] = v === "" ? "" : (isFinite(Number(v)) ? Number(v) : v);
+      const capacityKey = inp.dataset.capacityGlobal;
+      if (capacityKey) {
+        const n = Number(v);
+        if (v === "" || !Number.isFinite(n) || n <= 0) {
+          status("Max pump flow must be a positive number", "err");
+          return;
+        }
+        doc.params = doc.params || {};
+        doc.params[capacityKey] = n;
+        op.params[key] = capacityKey;
+        try { readModelFields(); } catch (_) { /* advanced JSON may be stale */ }
+        renderModelFields();
+        status("Max pump flow updated (global)");
+      } else {
+        op.params[key] = v === "" ? "" : (isFinite(Number(v)) ? Number(v) : v);
+      }
       renderCanvas();
       renderInspector();
     };
@@ -818,11 +848,21 @@ function esc(s) {
 function stripLayout(d) {
   const copy = JSON.parse(JSON.stringify(d));
   delete copy._layout;
+  copy.params = copy.params || {};
   (copy.ops || []).forEach(op => {
     if (op.params) {
       Object.keys(op.params).forEach(k => {
         if (op.params[k] === "") delete op.params[k];
       });
+      // SWD-251: pump capacity stays aliased to global Max pump flow.
+      if (op.type === "pump") {
+        const raw = op.params.q_max;
+        if (typeof raw === "number" && Number.isFinite(raw) && raw > 0) {
+          copy.params.q_pump_max = raw;
+        }
+        op.params.q_max = "q_pump_max";
+        delete op.params.q_pump_max;
+      }
       if (op.params.algebraic && !Object.keys(op.params.algebraic).length) {
         delete op.params.algebraic;
       }

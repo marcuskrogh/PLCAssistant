@@ -365,10 +365,19 @@ def test_default_tank_program_has_distinct_cv_limits(app_server):
     )
 
 
-def test_app_version_0_1_53():
+def test_app_version_lock_still_synced():
+    """SWD-250 shipped 0.1.53; later iterates bump version — keep dual trees locked."""
     root = Path("custom_components/plcassistant")
     dual = Path("plc_assistant/custom_components/plcassistant")
-    assert '"0.1.53"' in (root / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.53"' in (dual / "manifest.json").read_text(encoding="utf-8")
-    assert 'version: "0.1.53"' in Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.53" in Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
+    man = (root / "manifest.json").read_text(encoding="utf-8")
+    dual_man = (dual / "manifest.json").read_text(encoding="utf-8")
+    cfg = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
+    docker = Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
+    assert man == dual_man
+    # Extract version from manifest
+    import json
+
+    ver = json.loads(man)["version"]
+    assert f'version: "{ver}"' in cfg
+    assert f"BUILD_VERSION={ver}" in docker
+    assert ver >= "0.1.53"

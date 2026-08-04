@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 from aiohttp import web
 from homeassistant.components.http import HomeAssistantView
@@ -23,6 +23,7 @@ from ..const import (
 from .registry import add_model_dir, get_preset, list_presets
 from .store import (
     catalog_payload,
+    extract_q_pump_max,
     list_user_models,
     load_user_model,
     save_user_model,
@@ -73,6 +74,25 @@ async def async_setup_dynamics_api(hass: HomeAssistant) -> None:
 
 def _json_error(message: str, status: int = 400) -> web.Response:
     return web.json_response({"ok": False, "error": message}, status=status)
+
+
+def _publish_plant_capacity(hass: HomeAssistant, doc: Mapping[str, Any] | None) -> None:
+    """Write Soft-PLC capacity bridge under HA config (SWD-251)."""
+    q = extract_q_pump_max(doc if isinstance(doc, dict) else None)
+    if q is None:
+        return
+    try:
+        from ..ha_config_bridge import write_plant_capacity
+    except ImportError:
+        # Fallback when mirrored tree path differs in tests.
+        try:
+            from plcassistant.io.ha_config_bridge import write_plant_capacity
+        except ImportError:
+            _LOGGER.debug("PLCAssistant: plant capacity bridge unavailable")
+            return
+    root = _config_root(hass)
+    if write_plant_capacity(q, root=root, source="dynamics"):
+        _LOGGER.info("PLCAssistant: plant capacity q_pump_max=%s published", q)
 
 
 def _first_entry(hass: HomeAssistant) -> ConfigEntry | None:
@@ -203,6 +223,7 @@ class DynamicsSaveView(HomeAssistantView):
             return _json_error(str(exc))
         except OSError as exc:
             return _json_error(f"save failed: {exc}", 500)
+        _publish_plant_capacity(hass, doc if isinstance(doc, dict) else None)
         return web.json_response({"ok": True, "path": path, "name": str(name).strip().lower()})
 
 
@@ -241,6 +262,8 @@ class DynamicsApplyView(HomeAssistantView):
             return _json_error(str(exc))
         except OSError as exc:
             return _json_error(f"save failed: {exc}", 500)
+
+        _publish_plant_capacity(hass, doc if isinstance(doc, dict) else None)
 
         entry = _first_entry(hass)
         if entry is None:
