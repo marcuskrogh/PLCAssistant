@@ -289,6 +289,7 @@ def _migrate_instance_to_pid(inst: BlockInstance) -> BlockInstance:
     from plcassistant.surface.builtin import (
         PID_EQUATION,
         PID_TEMPLATE_ID,
+        cascade_pid_cv_limits,
         pid_default_params,
     )
 
@@ -320,6 +321,11 @@ def _migrate_instance_to_pid(inst: BlockInstance) -> BlockInstance:
     params.update(copy.deepcopy(inst.params))
     if hold_when_stopped is not None:
         params["hold_when_stopped"] = hold_when_stopped
+    limits = cascade_pid_cv_limits(inst.instance_id)
+    if limits is not None:
+        cv_min, cv_max = limits
+        params["cv_min"] = cv_min
+        params["cv_max"] = cv_max
     return BlockInstance(
         instance_id=inst.instance_id,
         template_id=PID_TEMPLATE_ID,
@@ -642,6 +648,61 @@ def classify_project_apply(
     return "hot"
 
 
+def _is_cascade_pid_instance(inst: BlockInstance) -> bool:
+    """True when *inst* is a built-in cascade PI copy (SWD-250)."""
+    from plcassistant.surface.builtin import PID_TEMPLATE_ID, cascade_pid_cv_limits
+
+    if cascade_pid_cv_limits(inst.instance_id) is None:
+        return False
+    if inst.library != "builtin":
+        return False
+    return inst.template_id in (PID_TEMPLATE_ID, "level_pi", "flow_pi")
+
+
+def _repair_cascade_instance_limits(inst: BlockInstance) -> tuple[BlockInstance, bool]:
+    """Normalize cv_min/cv_max on one cascade PI instance."""
+    from plcassistant.surface.builtin import cascade_pid_cv_limits
+
+    if not _is_cascade_pid_instance(inst):
+        return inst, False
+    limits = cascade_pid_cv_limits(inst.instance_id)
+    assert limits is not None
+    cv_min, cv_max = limits
+    params = dict(inst.params)
+    if params.get("cv_min") == cv_min and params.get("cv_max") == cv_max:
+        return inst, False
+    params["cv_min"] = cv_min
+    params["cv_max"] = cv_max
+    return BlockInstance(
+        instance_id=inst.instance_id,
+        template_id=inst.template_id,
+        library=inst.library,
+        params=params,
+        equation=inst.equation,
+        x=inst.x,
+        y=inst.y,
+    ), True
+
+
+def repair_cascade_pid_limits(program: Program) -> bool:
+    """Normalize cv_min/cv_max on wedge cascade PID copies (SWD-250)."""
+    repaired = False
+    for iid in list(program.instances):
+        inst, changed = _repair_cascade_instance_limits(program.instances[iid])
+        if changed:
+            program.instances[iid] = inst
+            repaired = True
+    return repaired
+
+
+def repair_cascade_pid_limits_project(project: SoftPlcProject) -> bool:
+    """Run :func:`repair_cascade_pid_limits` on every program in *project*."""
+    repaired = False
+    for program in project.programs.values():
+        repaired = repair_cascade_pid_limits(program) or repaired
+    return repaired
+
+
 def _is_empty_demo_repair_candidate(program_id: str, program: Program) -> bool:
     """True when an empty tank/main program should be healed (SWD-249)."""
     if program.instances:
@@ -685,6 +746,8 @@ def repair_empty_demo_project_pair(
             repaired = True
     repaired = repair_empty_demo_programs(saved) or repaired
     repaired = repair_empty_demo_programs(applied) or repaired
+    repaired = repair_cascade_pid_limits_project(saved) or repaired
+    repaired = repair_cascade_pid_limits_project(applied) or repaired
     return repaired
 
 
@@ -753,6 +816,8 @@ __all__ = [
     "project_from_dict",
     "project_structure_signature",
     "project_to_dict",
+    "repair_cascade_pid_limits",
+    "repair_cascade_pid_limits_project",
     "repair_empty_demo_programs",
     "repair_empty_demo_project_pair",
     "reset_instance",
