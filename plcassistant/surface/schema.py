@@ -642,6 +642,46 @@ def classify_project_apply(
     return "hot"
 
 
+def _is_empty_demo_repair_candidate(program_id: str, program: Program) -> bool:
+    """True when an empty program should be healed with the wedge cascade demo."""
+    if program.instances:
+        return False
+    if program_id in ("tank", "main"):
+        return True
+    if "DB_Tank" in program.datablocks:
+        return True
+    if program.name.casefold() == "tank":
+        return True
+    return False
+
+
+def repair_empty_demo_programs(project: SoftPlcProject) -> bool:
+    """Repair empty demo/tank programs with wedge cascade defaults (SWD-249).
+
+    Only programs with empty ``instances`` that match demo heuristics are
+    updated; newly created user program ids are left untouched.
+    """
+    from plcassistant.surface.builtin import wedge_cascade_program
+
+    repaired = False
+    demo = program_from_dict(wedge_cascade_program())
+    for program_id, program in list(project.programs.items()):
+        if not _is_empty_demo_repair_candidate(program_id, program):
+            continue
+        project.programs[program_id] = Program(
+            name=demo.name,
+            description=demo.description,
+            instances=copy.deepcopy(demo.instances),
+            wires=copy.deepcopy(demo.wires),
+            execution_order=list(demo.execution_order),
+            user_templates=copy.deepcopy(program.user_templates),
+            datablocks=list(demo.datablocks),
+            version=demo.version,
+        )
+        repaired = True
+    return repaired
+
+
 def main_program(project: SoftPlcProject) -> Program | None:
     """Return the Program on ``MAIN_TASK_ID``, or the first scheduled Program."""
     for task in project.tasks:
@@ -680,6 +720,7 @@ __all__ = [
     "project_from_dict",
     "project_structure_signature",
     "project_to_dict",
+    "repair_empty_demo_programs",
     "reset_instance",
     "scheduled_programs",
     "validate_program",

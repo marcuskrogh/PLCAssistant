@@ -645,6 +645,7 @@ let overlayInst = null;
 let ueVisible = true;
 let runtimeSnap = { status: 'offline', tags: {} };
 let scheduleSnap = { saved_applied: null };
+let tapPlaceCount = 0;
 
 const BLOCK_W = 140, BLOCK_H_BASE = 30, PIN_ROW = 16, PIN_R = 5;
 
@@ -1315,13 +1316,31 @@ function renderLibrary() {
     d.draggable = true;
     d.dataset.tid = t.template_id;
     d.dataset.lib = t.library;
+    // SWD-249: tap-to-place
+    d.dataset.placeOnTap = '1';
     d.innerHTML = `<div class="lib-id">${esc(t.template_id)}</div>
       <div class="lib-lib">${esc(libraryKindLabel(t))}</div>
       <div class="lib-desc">${esc(t.description||'')}</div>`;
+    let dragStarted = false;
     d.addEventListener('dragstart', e => {
+      dragStarted = true;
       const payload = JSON.stringify({tid: t.template_id, tlib: t.library});
       e.dataTransfer.setData('text/plain', payload);
       e.dataTransfer.setData('application/json', payload);
+    });
+    d.addEventListener('dragend', () => {
+      setTimeout(() => { dragStarted = false; }, 0);
+    });
+    // SWD-249: tap-to-place — click library item to place near canvas centre.
+    d.addEventListener('click', async () => {
+      if (dragStarted) return;
+      const rect = canvasSvg.getBoundingClientRect();
+      const stagger = (tapPlaceCount % 5) * 24;
+      tapPlaceCount += 1;
+      const x = rect.width / 2 + stagger;
+      const y = rect.height / 2 + stagger;
+      const iid = t.template_id + '_' + Date.now();
+      await place(t.template_id, t.library, iid, x, y);
     });
     if (!t.is_builtin) {
       d.title = 'Double-click to edit';
