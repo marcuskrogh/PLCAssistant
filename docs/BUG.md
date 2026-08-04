@@ -60,4 +60,4 @@
 - App: **0.1.53**
 
 ## Next
-`/review-fix SWD-250` — multi-axis review ↔ fix-forward on PR #98
+`/ship SWD-250` — closeout (review-fix CLEAN)
