@@ -727,7 +727,24 @@ function parseNumericField(raw) {
   const v = String(raw ?? "").trim();
   if (v === "") return undefined;
   const n = Number(v);
-  return Number.isFinite(n) ? n : v;
+  if (!Number.isFinite(n)) {
+    throw new Error("Invalid number: " + v);
+  }
+  return n;
+}
+
+/** Catalog structured keys win over advanced JSON; empty field deletes the key. */
+function mergeSkidStructuredGlobals(advanced, structured, fields) {
+  const merged = { ...advanced };
+  fields.forEach(f => {
+    const key = f.key;
+    if (Object.prototype.hasOwnProperty.call(structured, key)) {
+      merged[key] = structured[key];
+    } else {
+      delete merged[key];
+    }
+  });
+  return merged;
 }
 
 function readSkidStructuredFields(fields, dataAttr) {
@@ -772,9 +789,8 @@ function readModelFields() {
   }
   const structuredParams = readSkidStructuredFields(skidParamFields(), "data-global-param");
   const structuredInitial = readSkidStructuredFields(skidInitialFields(), "data-initial-key");
-  // Structured catalog keys win; preserve unknown keys from advanced JSON.
-  doc.params = { ...advancedParams, ...structuredParams };
-  doc.initial = { ...advancedInitial, ...structuredInitial };
+  doc.params = mergeSkidStructuredGlobals(advancedParams, structuredParams, skidParamFields());
+  doc.initial = mergeSkidStructuredGlobals(advancedInitial, structuredInitial, skidInitialFields());
 }
 
 ["f-inputs", "f-params-advanced", "f-initial-advanced"].forEach(id => {

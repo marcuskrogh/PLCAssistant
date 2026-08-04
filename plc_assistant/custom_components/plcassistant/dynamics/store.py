@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -116,8 +117,22 @@ def describe_document_op(op: Mapping[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
+def _reject_non_finite_mapping(mapping: Mapping[str, Any] | None, label: str) -> None:
+    if not mapping:
+        return
+    for key, value in mapping.items():
+        try:
+            n = float(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{label}[{key!r}] must be numeric") from exc
+        if not math.isfinite(n):
+            raise ValueError(f"{label}[{key!r}] must be finite")
+
+
 def validate_document(doc: Mapping[str, Any] | dict[str, Any]) -> dict[str, Any]:
     """Parse + compile; return a JSON-serializable document or raise ValueError."""
+    _reject_non_finite_mapping(doc.get("params"), "params")
+    _reject_non_finite_mapping(doc.get("initial"), "initial")
     try:
         parsed = parse_model_document(doc)
         from .compile import document_to_model

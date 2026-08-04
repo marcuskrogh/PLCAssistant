@@ -68,6 +68,35 @@ def test_validate_rejects_unknown_op() -> None:
         )
 
 
+def test_validate_rejects_non_finite_params() -> None:
+    from dynamics.store import validate_document
+
+    bundled = CC / "dynamics" / "models" / "skid_composed.json"
+    doc = json.loads(bundled.read_text(encoding="utf-8"))
+    doc["params"]["q_pump_max"] = float("nan")
+    with pytest.raises(ValueError, match="finite"):
+        validate_document(doc)
+
+
+def test_q_pump_max_persists_round_trip(tmp_path: pathlib.Path) -> None:
+    from dynamics.store import load_user_model, save_user_model
+
+    bundled = CC / "dynamics" / "models" / "skid_composed.json"
+    doc = json.loads(bundled.read_text(encoding="utf-8"))
+    doc["params"]["q_pump_max"] = 12
+    save_user_model(tmp_path, "skid_twelve", doc)
+    reloaded = load_user_model(tmp_path, "skid_twelve")
+    assert reloaded["params"]["q_pump_max"] == 12
+
+
+def test_editor_html_finite_and_merge_contracts() -> None:
+    html = (CC / "www" / "dynamics_editor.html").read_text(encoding="utf-8")
+    assert "function parseNumericField" in html
+    assert "Number.isFinite" in html
+    assert "mergeSkidStructuredGlobals" in html
+    assert "delete merged[key]" in html
+
+
 def test_seed_skid_composed(tmp_path: pathlib.Path) -> None:
     from dynamics.store import load_user_model, seed_skid_composed
 
