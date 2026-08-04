@@ -351,3 +351,4 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 - 2026-08-04 — Iterate SWD-251: simplify pump flow limits (one Max pump flow knob + Soft-PLC sync); Relates SWD-250; branch `cursor/swd-251-simplify-pump-flow-limits-3043`; docs/ITERATE.md. PR [#99](https://github.com/marcuskrogh/PLCAssistant/pull/99) (App 0.1.54) → In Review. Next `/review-fix SWD-251`.
 - 2026-08-04 — Implement SWD-251: one Max pump flow knob + Soft-PLC cascade sync (App 0.1.54); PR [#99](https://github.com/marcuskrogh/PLCAssistant/pull/99) → In Review. Next `/review-fix SWD-251`.
 - 2026-08-04 — Ship SWD-251: review-fix CLEAN + closeout; PR [#99](https://github.com/marcuskrogh/PLCAssistant/pull/99) (App 0.1.54) → Done.
+- 2026-08-04 — Merged SWD-251 PR #99 (`135ff27`) — App 0.1.54 Done.
