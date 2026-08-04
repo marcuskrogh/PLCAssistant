@@ -32,12 +32,12 @@
 - Integration Dynamics editor UI (`custom_components/plcassistant/www/dynamics_editor.html`) — Global params / Initial state as JSON textareas.
 
 ## Acceptance criteria
-- [ ] On the one-tank (and equivalent cascade) Diagram, PID blocks render fully: all pins and labels visible without being cut off by the canvas or panel edges under normal mobile and desktop layouts.
-- [ ] `flow_pi` (or equivalent flow PID instance) has `cv_max` = **100**; `level_pi` retains `cv_max` ≈ **6** (or the documented SP_FLOW max). Persisted program JSON and live params agree.
-- [ ] Soft-PLC / cascade behaviour clamps flow CV to 0–100 and level CV to the flow-SP max — not both to 6.
-- [ ] Dynamics model settings provide labeled numeric (or equivalent structured) fields for skid global params including **maximum pump flow** (`q_pump_max`); changing that value and saving updates the model without hand-editing JSON for the happy path.
-- [ ] Initial state is editable in a structured way consistent with globals (not JSON-only for the common path).
-- [ ] Regression tests cover correct per-instance `cv_max` on the demo cascade and the structured model-settings persistence path where testable.
+- [x] On the one-tank (and equivalent cascade) Diagram, PID blocks render fully: all pins and labels visible without being cut off by the canvas or panel edges under normal mobile and desktop layouts. — dynamic SVG `viewBox` + pointer mapping
+- [x] `flow_pi` (or equivalent flow PID instance) has `cv_max` = **100**; `level_pi` retains `cv_max` ≈ **6** (or the documented SP_FLOW max). Persisted program JSON and live params agree. — `repair_cascade_pid_limits` on load
+- [x] Soft-PLC / cascade behaviour clamps flow CV to 0–100 and level CV to the flow-SP max — not both to 6.
+- [x] Dynamics model settings provide labeled numeric (or equivalent structured) fields for skid global params including **maximum pump flow** (`q_pump_max`); changing that value and saving updates the model without hand-editing JSON for the happy path.
+- [x] Initial state is editable in a structured way consistent with globals (not JSON-only for the common path).
+- [x] Regression tests cover correct per-instance `cv_max` on the demo cascade and the structured model-settings persistence path where testable.
 
 ## Out of scope
 - Full redesign of the Dynamics equation / unit-op authoring surface beyond structured globals + initial state (and light Model I/O clarity).
@@ -46,17 +46,18 @@
 - Changing the physics defaults of `q_pump_max` itself (default may stay 8.0 L/min); this bug is about **editability** and **correct PID limits**, not mandating a new default capacity.
 
 ## Work packages
-1. Diagram: fix PID block clipping / layout so blocks fully render.
-2. Params: ensure cascade seed/repair assigns distinct `cv_max` (level ≈ 6, flow = 100) and runtime uses them.
-3. Modelling UI: structured globals + initial-state editors (esp. `q_pump_max`) in `dynamics_editor.html` (+ mirrored tree); keep JSON advanced/optional if useful.
-4. Tests + version bump as needed for App/integration.
+1. Diagram: fix PID block clipping / layout so blocks fully render. — done (`updateCanvasViewBox` / `clientToSvg`)
+2. Params: ensure cascade seed/repair assigns distinct `cv_max` (level ≈ 6, flow = 100) and runtime uses them. — done (`repair_cascade_pid_limits`)
+3. Modelling UI: structured globals + initial-state editors (esp. `q_pump_max`) in `dynamics_editor.html` (+ mirrored tree); keep JSON advanced/optional if useful. — done
+4. Tests + version bump as needed for App/integration. — done (App **0.1.53**, `tests/test_swd250_acceptance.py`)
 
 ## Tracker
 - Task: [SWD-250](https://marcusknielsen.atlassian.net/browse/SWD-250)
-- Sub-tasks: _(none yet — optional at implement)_
+- Sub-tasks: _(none)_
 - Branch: `cursor/swd-250-pid-cvmax-model-9910`
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/98
 - Relates: [SWD-249](https://marcusknielsen.atlassian.net/browse/SWD-249)
+- App: **0.1.53**
 
 ## Next
-`/implement SWD-250` — Fix per BUG.md (same branch/PR)
+`/review-fix SWD-250` — multi-axis review ↔ fix-forward on PR #98
