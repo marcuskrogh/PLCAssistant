@@ -46,6 +46,31 @@ OP_UI_META: dict[str, dict[str, Any]] = {
     },
 }
 
+# Skid global param / initial-state fields for the dynamics editor (SWD-250).
+SKID_PARAM_FIELDS: list[dict[str, Any]] = [
+    {
+        "key": "q_pump_max",
+        "label": "Max pump flow",
+        "unit": "L/min",
+        "highlight": True,
+    },
+    {"key": "a_tank", "label": "Tank cross-section", "unit": "m²"},
+    {"key": "a_res", "label": "Reservoir cross-section", "unit": "m²"},
+    {"key": "h_tank_max", "label": "Max tank level", "unit": "m"},
+    {"key": "h_res_max", "label": "Max reservoir level", "unit": "m"},
+    {"key": "k_drain", "label": "Drain coefficient", "unit": "L/(min·√m)"},
+    {"key": "pump_tau", "label": "Pump time constant", "unit": "min"},
+    {"key": "speed_fb_tau", "label": "Speed feedback lag", "unit": "min"},
+    {"key": "lim_res_ll", "label": "Reservoir low-level limit", "unit": "m"},
+]
+
+SKID_INITIAL_FIELDS: list[dict[str, Any]] = [
+    {"key": "h_tank", "label": "Tank level", "unit": "m"},
+    {"key": "h_res", "label": "Reservoir level", "unit": "m"},
+    {"key": "ft_inlet", "label": "Inlet flow", "unit": "L/min"},
+    {"key": "sc_pump", "label": "Pump speed feedback", "unit": "%"},
+]
+
 
 def catalog_payload() -> dict[str, Any]:
     templates = equation_templates()
@@ -74,6 +99,8 @@ def catalog_payload() -> dict[str, Any]:
             "Measurement equations map Soft-PLC IN tags to expressions over "
             "state, inputs, and params (y = g(x, u, θ)). Distinct from ODEs."
         ),
+        "param_fields": {"skid": SKID_PARAM_FIELDS},
+        "initial_fields": {"skid": SKID_INITIAL_FIELDS},
     }
 
 
@@ -172,6 +199,8 @@ def seed_skid_composed(root: Path, bundled: Path) -> Path | None:
 
 __all__ = [
     "OP_UI_META",
+    "SKID_INITIAL_FIELDS",
+    "SKID_PARAM_FIELDS",
     "catalog_payload",
     "describe_document_op",
     "list_user_models",

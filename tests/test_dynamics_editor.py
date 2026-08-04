@@ -24,6 +24,14 @@ def test_catalog_payload_lists_unit_ops() -> None:
     pump = next(op for op in payload["ops"] if op["type"] == "pump")
     assert "cmd" in pump["binds"]
     assert "q_max" in pump["params"]
+    skid_params = payload["param_fields"]["skid"]
+    keys = [f["key"] for f in skid_params]
+    assert "q_pump_max" in keys
+    assert skid_params[0]["key"] == "q_pump_max"
+    assert skid_params[0].get("highlight") is True
+    initial_keys = [f["key"] for f in payload["initial_fields"]["skid"]]
+    assert "h_tank" in initial_keys
+    assert "h_res" in initial_keys
 
 
 def test_validate_and_save_user_model(tmp_path: pathlib.Path) -> None:
@@ -79,6 +87,11 @@ def test_editor_and_api_packaging() -> None:
     assert "/api/plcassistant/dynamics" in html
     assert "Add block" in html
     assert "Measurement equations" in html
+    assert "Max pump flow" in html
+    assert 'data-global-param="q_pump_max"' in html or 'data-skid-param-schema="q_pump_max"' in html
+    assert "Global parameters" in html
+    assert "Initial state" in html
+    assert "Advanced JSON" in html
 
     api = (CC / "dynamics" / "http_api.py").read_text(encoding="utf-8")
     assert "DynamicsEditorView" in api
