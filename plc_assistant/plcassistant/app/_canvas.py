@@ -1331,8 +1331,7 @@ function renderLibrary() {
     d.addEventListener('dragend', () => {
       setTimeout(() => { dragStarted = false; }, 0);
     });
-    // SWD-249: tap-to-place — click library item to place near canvas centre.
-    d.addEventListener('click', async () => {
+    const placeOnTap = async () => {
       if (dragStarted) return;
       const rect = canvasSvg.getBoundingClientRect();
       const stagger = (tapPlaceCount % 5) * 24;
@@ -1341,10 +1340,28 @@ function renderLibrary() {
       const y = rect.height / 2 + stagger;
       const iid = t.template_id + '_' + Date.now();
       await place(t.template_id, t.library, iid, x, y);
-    });
+    };
     if (!t.is_builtin) {
       d.title = 'Double-click to edit';
-      d.addEventListener('dblclick', () => openUserEditor(t));
+      // SWD-249: defer-tap — wait for dblclick before placing custom templates.
+      let placeClickTimer = null;
+      d.addEventListener('click', () => {
+        if (dragStarted) return;
+        if (placeClickTimer) clearTimeout(placeClickTimer);
+        placeClickTimer = setTimeout(async () => {
+          placeClickTimer = null;
+          await placeOnTap();
+        }, 280);
+      });
+      d.addEventListener('dblclick', () => {
+        if (placeClickTimer) {
+          clearTimeout(placeClickTimer);
+          placeClickTimer = null;
+        }
+        openUserEditor(t);
+      });
+    } else {
+      d.addEventListener('click', () => { void placeOnTap(); });
     }
     el.appendChild(d);
   }

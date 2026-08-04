@@ -643,16 +643,49 @@ def classify_project_apply(
 
 
 def _is_empty_demo_repair_candidate(program_id: str, program: Program) -> bool:
-    """True when an empty program should be healed with the wedge cascade demo."""
+    """True when an empty tank/main program should be healed (SWD-249)."""
     if program.instances:
         return False
-    if program_id in ("tank", "main"):
-        return True
-    if "DB_Tank" in program.datablocks:
-        return True
-    if program.name.casefold() == "tank":
-        return True
-    return False
+    return program_id in ("tank", "main")
+
+
+def _clone_program(program: Program) -> Program:
+    return program_from_dict(program_to_dict(program))
+
+
+def repair_empty_demo_project_pair(
+    saved: SoftPlcProject, applied: SoftPlcProject
+) -> bool:
+    """Repair empty tank/main demo programs across saved/applied (SWD-249).
+
+    When one side has instances and the other is an empty demo candidate, copy
+    the non-empty program into the empty side. Factory defaults are used only
+    when both sides are empty (or only one side exists and is empty).
+    """
+    repaired = False
+    program_ids = set(saved.programs) | set(applied.programs)
+    for program_id in program_ids:
+        saved_prog = saved.programs.get(program_id)
+        applied_prog = applied.programs.get(program_id)
+        saved_has = bool(saved_prog and saved_prog.instances)
+        applied_has = bool(applied_prog and applied_prog.instances)
+        if (
+            saved_has
+            and applied_prog is not None
+            and _is_empty_demo_repair_candidate(program_id, applied_prog)
+        ):
+            applied.programs[program_id] = _clone_program(saved_prog)
+            repaired = True
+        elif (
+            applied_has
+            and saved_prog is not None
+            and _is_empty_demo_repair_candidate(program_id, saved_prog)
+        ):
+            saved.programs[program_id] = _clone_program(applied_prog)
+            repaired = True
+    repaired = repair_empty_demo_programs(saved) or repaired
+    repaired = repair_empty_demo_programs(applied) or repaired
+    return repaired
 
 
 def repair_empty_demo_programs(project: SoftPlcProject) -> bool:
@@ -721,6 +754,7 @@ __all__ = [
     "project_structure_signature",
     "project_to_dict",
     "repair_empty_demo_programs",
+    "repair_empty_demo_project_pair",
     "reset_instance",
     "scheduled_programs",
     "validate_program",

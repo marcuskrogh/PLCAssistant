@@ -76,7 +76,7 @@ from plcassistant.surface.schema import (
     program_to_dict,
     project_from_dict,
     project_to_dict,
-    repair_empty_demo_programs,
+    repair_empty_demo_project_pair,
     reset_instance,
 )
 from plcassistant.surface.user_library import (
@@ -234,8 +234,7 @@ class AppState:
         except (ValueError, KeyError, TypeError):
             saved_project = project_from_dict(default_project)
             applied_project = _clone_project(saved_project)
-        repaired = repair_empty_demo_programs(saved_project)
-        repaired = repair_empty_demo_programs(applied_project) or repaired
+        repaired = repair_empty_demo_project_pair(saved_project, applied_project)
         self.saved_project = _clone_project(saved_project)
         self.loader.load(_clone_project(applied_project))
         self._reapply_library_state()
