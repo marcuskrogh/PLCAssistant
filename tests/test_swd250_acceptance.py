@@ -22,12 +22,16 @@ from plcassistant.surface.builtin import (
     wedge_softplc_project,
 )
 from plcassistant.surface.model import BlockInstance, Program
+from plcassistant.surface.runtime import BlockRuntime, DictContext
 from plcassistant.surface.schema import (
+    program_from_dict,
     project_from_dict,
     project_to_dict,
     repair_cascade_pid_limits,
     repair_empty_demo_project_pair,
 )
+from plcassistant.surface.builtin import register_builtins
+from plcassistant.surface.model import TemplateLibrary
 
 
 @pytest.fixture()
@@ -47,6 +51,88 @@ def app_server(monkeypatch):
 def _get(url: str) -> tuple[int, bytes]:
     with urllib.request.urlopen(url) as r:
         return r.status, r.read()
+
+
+def _json_request(url: str, method: str, data: object = None) -> tuple[int, object]:
+    body_bytes = json.dumps(data).encode() if data is not None else b""
+    req = urllib.request.Request(
+        url,
+        data=body_bytes,
+        method=method,
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(req) as r:
+            return r.status, json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        return e.code, json.loads(e.read())
+
+
+def test_repair_cascade_pid_limits_custom_library_instance():
+    """level_pi/flow_pi heal even when library/template are not builtin PID."""
+    prog_dict = wedge_cascade_program()
+    prog_dict["instances"]["level_pi"]["library"] = "custom"
+    prog_dict["instances"]["level_pi"]["template_id"] = "my_level"
+    prog_dict["instances"]["flow_pi"]["library"] = "custom"
+    prog_dict["instances"]["flow_pi"]["template_id"] = "my_flow"
+    prog_dict["instances"]["level_pi"]["params"]["cv_max"] = 6.0
+    prog_dict["instances"]["flow_pi"]["params"]["cv_max"] = 6.0
+    prog = program_from_dict(prog_dict)
+
+    assert repair_cascade_pid_limits(prog) is True
+    assert prog.instances["level_pi"].params["cv_max"] == pytest.approx(CASCADE_SP_FLOW_MAX)
+    assert prog.instances["flow_pi"].params["cv_max"] == pytest.approx(CASCADE_CMD_SPEED_MAX)
+
+
+def test_put_program_heals_broken_cascade_cv_max(app_server):
+    """PUT /api/program cannot re-persist flow_pi cv_max stuck at 6."""
+    _, base_url, _ = app_server
+    broken = _broken_cascade_program_dict()
+    broken["id"] = "tank"
+    status, resp = _json_request(base_url + "/api/program?id=tank", "PUT", broken)
+    assert status == 200
+    assert resp["instances"]["level_pi"]["params"]["cv_max"] == pytest.approx(
+        CASCADE_SP_FLOW_MAX
+    )
+    assert resp["instances"]["flow_pi"]["params"]["cv_max"] == pytest.approx(
+        CASCADE_CMD_SPEED_MAX
+    )
+
+    status2, data2 = _json_get(base_url + "/api/program?id=tank")
+    assert status2 == 200
+    assert data2["instances"]["flow_pi"]["params"]["cv_max"] == pytest.approx(
+        CASCADE_CMD_SPEED_MAX
+    )
+
+
+def test_cascade_runtime_flow_cv_exceeds_six_after_repair():
+    """With flow cv_max=100, large flow error yields flow_pi.cv > 6 and ≤ 100."""
+    lib = TemplateLibrary()
+    runtime = BlockRuntime(lib)
+    register_builtins(lib, runtime)
+    prog = program_from_dict(wedge_cascade_program())
+    repair_cascade_pid_limits(prog)
+
+    ctx = DictContext(
+        {
+            "level_pi.pv": 0.0,
+            "level_pi.sp": 1.0,
+            "level_pi.running": True,
+            "flow_pi.pv": 0.0,
+            "flow_pi.running": True,
+        }
+    )
+    dt = 0.1
+    level_cv = 0.0
+    flow_cv = 0.0
+    for _ in range(30):
+        runtime.tick(prog, ctx, dt)
+        level_cv = float(ctx.get("level_pi.cv"))
+        flow_cv = float(ctx.get("flow_pi.cv"))
+
+    assert level_cv <= CASCADE_SP_FLOW_MAX
+    assert flow_cv > CASCADE_SP_FLOW_MAX
+    assert flow_cv <= CASCADE_CMD_SPEED_MAX
 
 
 def _json_get(url: str) -> tuple[int, object]:
@@ -250,6 +336,7 @@ def test_dual_tree_canvas_has_swd250_viewbox_markers():
         assert "SWD-250: map screen pointer coords to SVG user units" in text, (
             f"{label} missing viewBox pointer mapping marker"
         )
+        assert "SWD-250 CTM fallback" in text, f"{label} missing CTM fallback marker"
         assert "SWD-250: resize viewBox so all blocks + padding fit" in text, (
             f"{label} missing viewBox resize marker"
         )

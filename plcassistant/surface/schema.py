@@ -649,14 +649,14 @@ def classify_project_apply(
 
 
 def _is_cascade_pid_instance(inst: BlockInstance) -> bool:
-    """True when *inst* is a built-in cascade PI copy (SWD-250)."""
-    from plcassistant.surface.builtin import PID_TEMPLATE_ID, cascade_pid_cv_limits
+    """True when *inst* is a wedge cascade PI copy (SWD-250).
 
-    if cascade_pid_cv_limits(inst.instance_id) is None:
-        return False
-    if inst.library != "builtin":
-        return False
-    return inst.template_id in (PID_TEMPLATE_ID, "level_pi", "flow_pi")
+    Matched by ``instance_id`` (``level_pi`` / ``flow_pi``) regardless of
+    library or template so custom-library copies still heal.
+    """
+    from plcassistant.surface.builtin import cascade_pid_cv_limits
+
+    return cascade_pid_cv_limits(inst.instance_id) is not None
 
 
 def _repair_cascade_instance_limits(inst: BlockInstance) -> tuple[BlockInstance, bool]:

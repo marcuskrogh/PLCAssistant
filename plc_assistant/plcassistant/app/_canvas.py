@@ -1436,9 +1436,22 @@ function clientToSvg(clientX, clientY) {
   pt.x = clientX;
   pt.y = clientY;
   const ctm = canvasSvg.getScreenCTM();
-  if (!ctm) return { x: clientX, y: clientY };
-  const svgPt = pt.matrixTransform(ctm.inverse());
-  return { x: svgPt.x, y: svgPt.y };
+  if (ctm) {
+    const svgPt = pt.matrixTransform(ctm.inverse());
+    return { x: svgPt.x, y: svgPt.y };
+  }
+  // SWD-250 CTM fallback: getScreenCTM() is null before layout — map via viewBox.
+  const rect = canvasSvg.getBoundingClientRect();
+  const vb = canvasSvg.viewBox;
+  const vbX = vb ? vb.x : 0;
+  const vbY = vb ? vb.y : 0;
+  const vbW = vb && vb.width ? vb.width : CANVAS_MIN_W;
+  const vbH = vb && vb.height ? vb.height : CANVAS_MIN_H;
+  if (!rect.width || !rect.height) return { x: vbX, y: vbY };
+  return {
+    x: vbX + ((clientX - rect.left) / rect.width) * vbW,
+    y: vbY + ((clientY - rect.top) / rect.height) * vbH,
+  };
 }
 
 // SWD-250: resize viewBox so all blocks + padding fit without clipping.

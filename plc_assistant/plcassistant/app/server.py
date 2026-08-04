@@ -76,6 +76,8 @@ from plcassistant.surface.schema import (
     program_to_dict,
     project_from_dict,
     project_to_dict,
+    repair_cascade_pid_limits,
+    repair_cascade_pid_limits_project,
     repair_empty_demo_project_pair,
     reset_instance,
 )
@@ -453,6 +455,7 @@ class AppState:
         pid = program_id or self.main_program_id()
         if pid not in self.saved_project.programs:
             raise KeyError(f"Program {pid!r} not found")
+        repair_cascade_pid_limits(new_prog)
         saved_programs = dict(self.saved_project.programs)
         saved_programs[pid] = new_prog
         self.saved_project = SoftPlcProject(
@@ -991,6 +994,7 @@ def make_handler(state: AppState) -> type[BaseHTTPRequestHandler]:
                 elif path == "/api/project":
                     data = self._read_json()
                     new_project = project_from_dict(data)
+                    repair_cascade_pid_limits_project(new_project)
                     mode = classify_project_apply(state.loader.project, new_project)
                     if mode == "hot":
                         state.loader.hot_apply(
