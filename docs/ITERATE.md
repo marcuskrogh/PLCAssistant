@@ -41,6 +41,7 @@ Operators need **one** capacity knob that keeps plant and Soft-PLC cascade limit
 - Task: [SWD-251](https://marcusknielsen.atlassian.net/browse/SWD-251)
 - Relates: SWD-250
 - Branch: `cursor/swd-251-simplify-pump-flow-limits-3043`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/99
 - App: **0.1.54**
 
 ## Next
