@@ -50,7 +50,7 @@
 - Task: [SWD-249](https://marcusknielsen.atlassian.net/browse/SWD-249)
 - Sub-tasks: _(none)_
 - Branch: `cursor/swd-249-empty-diagram-1e05`
-- PR: _(draft — pending)_
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/97
 - Relates: [SWD-237](https://marcusknielsen.atlassian.net/browse/SWD-237)
 
 ## Next
