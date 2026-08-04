@@ -55,7 +55,7 @@
 - Task: [SWD-250](https://marcusknielsen.atlassian.net/browse/SWD-250)
 - Sub-tasks: _(none yet — optional at implement)_
 - Branch: `cursor/swd-250-pid-cvmax-model-9910`
-- PR: _(draft — pending)_
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/98
 - Relates: [SWD-249](https://marcusknielsen.atlassian.net/browse/SWD-249)
 
 ## Next
