@@ -54,4 +54,4 @@
 - Relates: [SWD-237](https://marcusknielsen.atlassian.net/browse/SWD-237)
 
 ## Next
-`/implement SWD-249` — Fix per BUG.md (same branch/PR)
+`/review-fix SWD-249` — Review and auto-fix until clean
