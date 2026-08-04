@@ -1,4 +1,8 @@
-"""SWD-250 acceptance: cascade PID cv_max repair + diagram SVG viewBox."""
+"""SWD-250 acceptance: cascade PID cv_max repair + diagram SVG viewBox.
+
+Dynamics structured fields (catalog payload, editor HTML, dual-tree sync) are
+covered in tests/test_dynamics_editor.py — not duplicated here.
+"""
 
 from __future__ import annotations
 
@@ -234,12 +238,23 @@ def test_canvas_html_swd250_viewbox_and_pointer_mapping(app_server):
     assert "addEventListener('resize', scheduleCanvasViewBox)" in text
 
 
-def test_canvas_source_has_swd250_diagram_markers():
-    canvas = Path("plcassistant/app/_canvas.py").read_text(encoding="utf-8")
-    assert "SWD-250: map screen pointer coords to SVG user units" in canvas
-    assert "SWD-250: resize viewBox so all blocks + padding fit" in canvas
-    assert "function updateCanvasViewBox" in canvas
-    assert "function clientToSvg" in canvas
+def test_dual_tree_canvas_has_swd250_viewbox_markers():
+    root_canvas = Path("plcassistant/app/_canvas.py").read_text(encoding="utf-8")
+    mirror_canvas = Path("plc_assistant/plcassistant/app/_canvas.py").read_text(
+        encoding="utf-8"
+    )
+    for label, text in (
+        ("root", root_canvas),
+        ("mirror", mirror_canvas),
+    ):
+        assert "SWD-250: map screen pointer coords to SVG user units" in text, (
+            f"{label} missing viewBox pointer mapping marker"
+        )
+        assert "SWD-250: resize viewBox so all blocks + padding fit" in text, (
+            f"{label} missing viewBox resize marker"
+        )
+        assert "function updateCanvasViewBox" in text, f"{label} missing updateCanvasViewBox"
+        assert "function clientToSvg" in text, f"{label} missing clientToSvg"
 
 
 def test_default_tank_program_still_has_cascade_positions(app_server):

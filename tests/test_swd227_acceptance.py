@@ -138,11 +138,11 @@ def test_unit_sp_mode_flip_codes_are_floats() -> None:
 
 def test_system_app_version_tracks_current() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.52"' in manifest
+    assert '"0.1.53"' in manifest
     config = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.52"' in config
+    assert 'version: "0.1.53"' in config
     docker = Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.52" in docker
+    assert "BUILD_VERSION=0.1.53" in docker
     dash = (ROOT / "lovelace" / "plcassistant.yaml").read_text(encoding="utf-8")
     assert "plcassistant_dashboard_version: 28" in dash
 
