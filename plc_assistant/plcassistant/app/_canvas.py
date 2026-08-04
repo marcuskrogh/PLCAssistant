@@ -648,9 +648,11 @@ let scheduleSnap = { saved_applied: null };
 let tapPlaceCount = 0;
 
 const BLOCK_W = 140, BLOCK_H_BASE = 30, PIN_ROW = 16, PIN_R = 5;
+const CANVAS_PAD = 48, CANVAS_MIN_W = 480, CANVAS_MIN_H = 280;
 
 window.onload = () => {
   window.addEventListener('hashchange', route);
+  window.addEventListener('resize', scheduleCanvasViewBox);
   loadLibrary();
   route();
   pollOnline();
@@ -1336,8 +1338,10 @@ function renderLibrary() {
       const rect = canvasSvg.getBoundingClientRect();
       const stagger = (tapPlaceCount % 5) * 24;
       tapPlaceCount += 1;
-      const x = rect.width / 2 + stagger;
-      const y = rect.height / 2 + stagger;
+      const center = clientToSvg(rect.left + rect.width / 2, rect.top + rect.height / 2);
+      const bh = blockHeight(t);
+      const x = center.x + stagger - BLOCK_W / 2;
+      const y = center.y + stagger - bh / 2;
       const iid = t.template_id + '_' + Date.now();
       await place(t.template_id, t.library, iid, x, y);
     };
@@ -1383,11 +1387,9 @@ canvasSvg.addEventListener('drop', async e => {
   if (!tid) tid = e.dataTransfer.getData('tid');
   if (!tlib) tlib = e.dataTransfer.getData('tlib');
   if (!tid) return;
-  const rect = canvasSvg.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
+  const pt = clientToSvg(e.clientX, e.clientY);
   const iid = tid + '_' + Date.now();
-  await place(tid, tlib, iid, x, y);
+  await place(tid, tlib, iid, pt.x, pt.y);
 });
 
 async function place(tid, tlib, iid, x, y) {
@@ -1426,6 +1428,50 @@ function needsLayout(inst) {
   const hasY = inst.y !== undefined && inst.y !== null;
   if (!hasX && !hasY) return true;
   return !Number(inst.x) && !Number(inst.y);
+}
+
+// SWD-250: map screen pointer coords to SVG user units (viewBox-aware).
+function clientToSvg(clientX, clientY) {
+  const pt = canvasSvg.createSVGPoint();
+  pt.x = clientX;
+  pt.y = clientY;
+  const ctm = canvasSvg.getScreenCTM();
+  if (!ctm) return { x: clientX, y: clientY };
+  const svgPt = pt.matrixTransform(ctm.inverse());
+  return { x: svgPt.x, y: svgPt.y };
+}
+
+// SWD-250: resize viewBox so all blocks + padding fit without clipping.
+function updateCanvasViewBox(positions) {
+  const instances = program.instances || {};
+  const ids = Object.keys(instances);
+  let minX = 0, minY = 0, maxX = CANVAS_MIN_W, maxY = CANVAS_MIN_H;
+  for (const iid of ids) {
+    const inst = instances[iid];
+    const tmpl = templateFor(inst);
+    const bh = blockHeight(tmpl);
+    const bp = positions[iid] || { x: Number(inst.x) || 0, y: Number(inst.y) || 0 };
+    const bx = bp.x, by = bp.y;
+    minX = Math.min(minX, bx - CANVAS_PAD);
+    minY = Math.min(minY, by - CANVAS_PAD);
+    maxX = Math.max(maxX, bx + BLOCK_W + CANVAS_PAD);
+    maxY = Math.max(maxY, by + bh + CANVAS_PAD);
+    if (iid === selectedId) maxX = Math.max(maxX, bx + BLOCK_W + 120);
+  }
+  const w = Math.max(CANVAS_MIN_W, maxX - minX);
+  const h = Math.max(CANVAS_MIN_H, maxY - minY);
+  canvasSvg.setAttribute('viewBox', `${minX} ${minY} ${w} ${h}`);
+}
+
+let canvasViewBoxTimer = null;
+function scheduleCanvasViewBox() {
+  if (canvasViewBoxTimer) cancelAnimationFrame(canvasViewBoxTimer);
+  canvasViewBoxTimer = requestAnimationFrame(() => {
+    canvasViewBoxTimer = null;
+    if (document.getElementById('diagram-view')?.classList.contains('active')) {
+      updateCanvasViewBox(blockPositions());
+    }
+  });
 }
 
 function blockPositions() {
@@ -1580,7 +1626,8 @@ function render() {
       if (e.target.classList.contains('pin-circle')) return;
       selectedId = iid; render(); renderLiveWatch();
       if (bp.layout) { inst.x = bp.x; inst.y = bp.y; }
-      dragging = {id: iid, ox: e.clientX - (inst.x||0), oy: e.clientY - (inst.y||0)};
+      const pt = clientToSvg(e.clientX, e.clientY);
+      dragging = {id: iid, ox: pt.x - (inst.x||0), oy: pt.y - (inst.y||0)};
       e.stopPropagation();
     });
     g.addEventListener('dblclick', e => {
@@ -1590,22 +1637,24 @@ function render() {
 
     bl.appendChild(g);
   });
+  updateCanvasViewBox(positions);
 }
 
 canvasSvg.addEventListener('mousemove', e => {
   if (dragging) {
     const inst = program.instances[dragging.id];
     if (inst) {
-      inst.x = e.clientX - dragging.ox;
-      inst.y = e.clientY - dragging.oy;
+      const pt = clientToSvg(e.clientX, e.clientY);
+      inst.x = pt.x - dragging.ox;
+      inst.y = pt.y - dragging.oy;
       render();
     }
   }
   if (wiring) {
     const dw = document.getElementById('draft-wire');
-    const rect = canvasSvg.getBoundingClientRect();
-    dw.setAttribute('x2', e.clientX - rect.left);
-    dw.setAttribute('y2', e.clientY - rect.top);
+    const pt = clientToSvg(e.clientX, e.clientY);
+    dw.setAttribute('x2', pt.x);
+    dw.setAttribute('y2', pt.y);
   }
 });
 canvasSvg.addEventListener('mouseup', async () => {
@@ -1624,13 +1673,13 @@ function onPinMouseDown(e) {
   const circ = e.currentTarget;
   if (circ.dataset.dir !== 'OUT') return;
   e.stopPropagation();
-  const rect = canvasSvg.getBoundingClientRect();
   const x = parseFloat(circ.getAttribute('cx'));
   const y = parseFloat(circ.getAttribute('cy'));
   wiring = {srcInst: circ.dataset.inst, srcPin: circ.dataset.pin};
   const dw = document.getElementById('draft-wire');
+  const pt = clientToSvg(e.clientX, e.clientY);
   dw.setAttribute('x1', x); dw.setAttribute('y1', y);
-  dw.setAttribute('x2', e.clientX - rect.left); dw.setAttribute('y2', e.clientY - rect.top);
+  dw.setAttribute('x2', pt.x); dw.setAttribute('y2', pt.y);
   dw.style.display = '';
 }
 
