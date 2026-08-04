@@ -132,12 +132,12 @@ def test_place_still_works_via_api(app_server):
     assert "swd237_pid" in resp["instances"]
 
 
-def test_app_version_0_1_51():
+def test_app_version_0_1_52():
     from pathlib import Path
 
     root = Path("custom_components/plcassistant")
     dual = Path("plc_assistant/custom_components/plcassistant")
-    assert '"0.1.51"' in (root / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.51"' in (dual / "manifest.json").read_text(encoding="utf-8")
-    assert 'version: "0.1.51"' in Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.51" in Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
+    assert '"0.1.52"' in (root / "manifest.json").read_text(encoding="utf-8")
+    assert '"0.1.52"' in (dual / "manifest.json").read_text(encoding="utf-8")
+    assert 'version: "0.1.52"' in Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
+    assert "BUILD_VERSION=0.1.52" in Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")

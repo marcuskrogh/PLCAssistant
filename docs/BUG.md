@@ -1,62 +1,58 @@
-# Bug: App UI — cards, diagram, place, built-in labels, code formatting
+# Bug: One-tank Diagram empty; mobile cannot place blocks
 
 ## Summary
-- Soft-PLC App engineering surface: overview cards require a dedicated button; tank/test program diagram shows no blocks; placing blocks fails; library says “Shipped” instead of built-in with **name (description)**; library code/definition editor formatting is nearly unreadable.
-- One Bug Task / one delivery PR for all fixes.
+- Soft-PLC App **Programs → Diagram** for the example one-tank system opens with an empty canvas.
+- Live tags (e.g. `LEVEL_*`, `FLOW_*`) are visible, but **PROGRAM JSON** has empty `instances` / `wires` / `execution_order`.
+- Blocks have never appeared on this install; desktop drag from Block Library does place blocks, so canvas rendering works when instances exist.
+- On mobile, blocks cannot be placed (no drag).
 
 ## Repro
-1. Overview → Programs or Tasks: open via the action button only (card body is not clickable).
-2. Open the tank (test example) program Diagram: canvas is empty (blocks not shown).
-3. Drag/place a library block onto the diagram: placement does not work.
-4. Library: built-in blocks labeled “Shipped …” (e.g. “Shipped PID”).
-5. Open a block definition: equation / JSON / code is poorly formatted and hard to read.
+1. Open PLCAssistant in the current HA install.
+2. Open the one-tank example program **main** → **Diagram**.
+3. Observe empty grid; side panel shows tags; PROGRAM JSON shows `"instances": {}`.
+4. On desktop: drag **PID** from Block Library → block appears.
+5. On mobile: attempt to place a block from the library → cannot (drag unavailable).
 
 ## Expected
-- Clicking a program or task **card** navigates the same as today’s primary action.
-- Tank/test program diagram renders existing blocks (and wires).
-- Placing blocks from the library onto the diagram succeeds.
-- Built-in copy uses **built-in**; referrals use **name (description)** (not “Shipped PID”).
-- Library code/definition surfaces: readable **monospace layout and indentation** only.
+- Seeded / applied / running programs show their block instances (and wires) on the Diagram — including PID blocks for the one-tank example — without manual placement.
+- Mobile users can place a library block onto the Diagram without desktop drag.
 
 ## Actual
-- Cards require a specific button.
-- Diagram empty for the main/test program.
-- Adding blocks does not work.
-- “Shipped” labeling.
-- Janky, nearly unreadable formatting in the code/definition editor.
+- One-tank Diagram is empty and has never shown blocks; program instances are empty while tags exist.
+- Mobile placement is not possible.
 
 ## Impact
-- Core App engineering UX: cannot reliably view or edit the sample program diagram; library labeling and editors mislead or frustrate authors.
+- Cannot inspect or edit the example (or any similarly empty) program logic on the Diagram.
+- Mobile engineering is blocked for adding blocks.
 
 ## Suspected area
-- `plcassistant/app/_canvas.py` — overview cards (`loadPrograms` / `loadTasks`), diagram `render` / `place`, library “Shipped” copy, `#lib-body` / equation editors.
-- `plcassistant/app/server.py` — `/api/program`, `/api/place`, library APIs.
-- `plcassistant/surface/schema.py` / `builtin.py` — place + tank seed layout (blocks may lack usable canvas positions).
+- Example / tank program seed or load path that should populate `instances` (and layout) for the Diagram — prior related fix **SWD-237**.
+- App Diagram UI: mobile place gesture or tap-to-place for library blocks.
+- Not a canvas paint-only bug if JSON already has no instances.
 
 ## Acceptance criteria
-- [x] Program and task cards are clickable end-to-end (same destinations as current actions).
-- [x] Tank/test program diagram renders existing blocks.
-- [x] Library place/add onto the diagram works.
-- [x] “Shipped” replaced by built-in; referrals use name (description).
-- [x] Equation/JSON/code editors: readable monospace + indentation (no syntax highlighting / structural redesign).
+- [x] Opening the one-tank example **Diagram** shows the program’s blocks (including PIDs) and wires consistent with a proper seeded/running program.
+- [x] A program that has instances in the engineering model is not shown as an empty Diagram.
+- [x] On mobile, a user can add a block from the Block Library onto the Diagram without desktop drag.
+- [x] Desktop drag-from-library placement continues to work.
 
 ## Out of scope
-- Syntax highlighting
-- Broader editor UX redesign / clearer field-structure overhaul
-- Unrelated feature work
+- **+ Program Block** / custom block definition editor (no-op when fields are empty is acceptable for this bug).
+- Unrelated Lovelace PID card / HMI issues.
+- Broader library labeling or code-editor formatting (covered previously under SWD-237).
 
 ## Work packages
-1. Overview: make program and task cards clickable — done
-2. Diagram: render tank/test blocks; fix place/add from library — done
-3. Library: built-in labeling + name (description) — done
-4. Library editors: monospace layout + indentation readability — done
+1. Seed/load: ensure one-tank (and running) programs expose block instances + layout to the Diagram. — done (`repair_empty_demo_project_pair`)
+2. Mobile: add a non-drag way to place a library block on the Diagram. — done (tap-to-place + defer-tap)
+3. Regression coverage for empty-vs-seeded diagram and mobile place path where testable. — done (`tests/test_swd249_acceptance.py`)
 
 ## Tracker
-- Task: [SWD-237](https://marcusknielsen.atlassian.net/browse/SWD-237)
-- Sub-tasks: _(none — single PR)_
-- Branch: `cursor/swd-237-app-ui-bugs-2b92`
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/96
-- Shipped: App **0.1.51** (pending merge)
+- Task: [SWD-249](https://marcusknielsen.atlassian.net/browse/SWD-249)
+- Sub-tasks: _(none)_
+- Branch: `cursor/swd-249-empty-diagram-1e05`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/97
+- Relates: [SWD-237](https://marcusknielsen.atlassian.net/browse/SWD-237)
+- Shipped: App **0.1.52** (pending merge)
 
 ## Next
 Done — phase closed.

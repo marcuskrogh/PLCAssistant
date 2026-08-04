@@ -76,6 +76,7 @@ from plcassistant.surface.schema import (
     program_to_dict,
     project_from_dict,
     project_to_dict,
+    repair_empty_demo_project_pair,
     reset_instance,
 )
 from plcassistant.surface.user_library import (
@@ -233,10 +234,13 @@ class AppState:
         except (ValueError, KeyError, TypeError):
             saved_project = project_from_dict(default_project)
             applied_project = _clone_project(saved_project)
+        repaired = repair_empty_demo_project_pair(saved_project, applied_project)
         self.saved_project = _clone_project(saved_project)
         self.loader.load(_clone_project(applied_project))
         self._reapply_library_state()
         self._ensure_program_logs()
+        if repaired and self.program_path:
+            self.persist_program()
         if "tank" in self.program_logs and not self.program_logs["tank"]:
             self.append_log("tank", "info", "Program Tank loaded")
 
