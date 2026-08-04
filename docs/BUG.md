@@ -58,6 +58,7 @@
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/98
 - Relates: [SWD-249](https://marcusknielsen.atlassian.net/browse/SWD-249)
 - App: **0.1.53**
+- Shipped: App **0.1.53** via PR [#98](https://github.com/marcuskrogh/PLCAssistant/pull/98) (merge `9c386d1`)
 
 ## Next
-`/ship SWD-250` — closeout (review-fix CLEAN)
+Done — phase closed.
