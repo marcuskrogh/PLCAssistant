@@ -4,7 +4,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 | Key | Type | Title | Status | Parent | Artifact | Next |
 |-----|------|-------|--------|--------|----------|------|
-| SWD-249 | Bug | One-tank Diagram empty; mobile cannot place blocks | To Do | Relates SWD-237 | docs/BUG.md | `/implement SWD-249` — draft PR [#97](https://github.com/marcuskrogh/PLCAssistant/pull/97) |
+| SWD-249 | Bug | One-tank Diagram empty; mobile cannot place blocks | Done | Relates SWD-237 | docs/BUG.md | Done — shipped PR [#97](https://github.com/marcuskrogh/PLCAssistant/pull/97) (App 0.1.52) |
 | SWD-237 | Bug | App UI: card click, empty diagram, place blocks, built-in labels, code formatting | Done | — | docs/BUG.md | Done — shipped PR [#96](https://github.com/marcuskrogh/PLCAssistant/pull/96) (App 0.1.51) |
 | SWD-231 | Story | Cloud HA live integration & system tests (App ↔ thin integration) | Done | — | docs/ROADMAP.md | Done — initiative complete (PR [#95](https://github.com/marcuskrogh/PLCAssistant/pull/95)) |
 | SWD-232 | Task | Define & ship live cloud HA integration/system test suite | Done | Relates SWD-231 | docs/PLAN.md | Done — shipped PR [#95](https://github.com/marcuskrogh/PLCAssistant/pull/95) |
@@ -154,6 +154,9 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
+- 2026-08-04 — Shipped SWD-249 via PR #97 (App 0.1.52); review-fix CLEAN after 2 iters; Task Done.
+- 2026-08-04 — review-fix SWD-249 CLEAN after 2 iters (iter1: dblclick/asymmetry/heuristics/tests; iter2: 0). Next `/ship SWD-249` closeout.
+- 2026-08-04 — Implement SWD-249: heal empty demo programs + mobile tap-to-place (App 0.1.52); PR [#97](https://github.com/marcuskrogh/PLCAssistant/pull/97) → In Review. Next `/review-fix SWD-249`.
 - 2026-08-04 — Bug SWD-249: one-tank Diagram empty + mobile place; Relates SWD-237; branch `cursor/swd-249-empty-diagram-1e05`; draft PR [#97](https://github.com/marcuskrogh/PLCAssistant/pull/97); docs/BUG.md. Next `/implement SWD-249`.
 - 2026-08-03 — Shipped SWD-237 via PR #96 (App 0.1.51); review-fix CLEAN after 2 iters; Task Done.
 - 2026-08-03 — review-fix SWD-237 CLEAN after 2 iters (iter1: library-card/layout/tests; iter2: 0). Next `/ship SWD-237` closeout.

@@ -31,10 +31,10 @@
 - Not a canvas paint-only bug if JSON already has no instances.
 
 ## Acceptance criteria
-- Opening the one-tank example **Diagram** shows the program’s blocks (including PIDs) and wires consistent with a proper seeded/running program.
-- A program that has instances in the engineering model is not shown as an empty Diagram.
-- On mobile, a user can add a block from the Block Library onto the Diagram without desktop drag.
-- Desktop drag-from-library placement continues to work.
+- [x] Opening the one-tank example **Diagram** shows the program’s blocks (including PIDs) and wires consistent with a proper seeded/running program.
+- [x] A program that has instances in the engineering model is not shown as an empty Diagram.
+- [x] On mobile, a user can add a block from the Block Library onto the Diagram without desktop drag.
+- [x] Desktop drag-from-library placement continues to work.
 
 ## Out of scope
 - **+ Program Block** / custom block definition editor (no-op when fields are empty is acceptable for this bug).
@@ -42,9 +42,9 @@
 - Broader library labeling or code-editor formatting (covered previously under SWD-237).
 
 ## Work packages
-1. Seed/load: ensure one-tank (and running) programs expose block instances + layout to the Diagram.
-2. Mobile: add a non-drag way to place a library block on the Diagram.
-3. Regression coverage for empty-vs-seeded diagram and mobile place path where testable.
+1. Seed/load: ensure one-tank (and running) programs expose block instances + layout to the Diagram. — done (`repair_empty_demo_project_pair`)
+2. Mobile: add a non-drag way to place a library block on the Diagram. — done (tap-to-place + defer-tap)
+3. Regression coverage for empty-vs-seeded diagram and mobile place path where testable. — done (`tests/test_swd249_acceptance.py`)
 
 ## Tracker
 - Task: [SWD-249](https://marcusknielsen.atlassian.net/browse/SWD-249)
@@ -52,6 +52,7 @@
 - Branch: `cursor/swd-249-empty-diagram-1e05`
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/97
 - Relates: [SWD-237](https://marcusknielsen.atlassian.net/browse/SWD-237)
+- Shipped: App **0.1.52** (pending merge)
 
 ## Next
-`/review-fix SWD-249` — Review and auto-fix until clean
+Done — phase closed.
