@@ -1,53 +1,56 @@
-# Iterate: PID cards Lovelace typography + 2dp everywhere
+# Iterate: Simplify pump flow limits
 
 ## Prior work
-- Task: [SWD-229](https://marcusknielsen.atlassian.net/browse/SWD-229) (Operate SCADA declutter)
-- Also: [SWD-228](https://marcusknielsen.atlassian.net/browse/SWD-228) (compact PID faceplate / 2dp KPIs)
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/92 (App 0.1.49)
-- Spec context: docs/ITERATE.md (prior), custom_components/.../www/pid-loop-card.js
+- Task: [SWD-250](https://marcusknielsen.atlassian.net/browse/SWD-250)
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/98 (App 0.1.53)
+- Spec context: docs/BUG.md (SWD-250), cascade `cv_max` repair, structured `q_pump_max` fields
 
 ## Problem
-After 0.1.49 the PID faceplates still feel foreign next to stock Lovelace cards, and some numeric values still show excessive decimal places:
+After SWD-250, changing pump flow capacity is still hard and misleading:
 
-1. **Typography** — custom rem sizes + Segoe UI / Roboto fallback do not match surrounding entities / glance cards (HA body / header tokens).
-2. **Decimals** — faceplate KPIs, dialog summary, error line, and committed SP editor text must always show exactly two decimal places; compound PID attributes still publish raw float noise into more-info.
+1. **PID “max pump cmd”** (`flow_pi.cv_max`) is CMD_SPEED % (0–100). Raising it does not increase plant flow — inlet flow still caps at plant `q_pump_max` (~8 L/min).
+2. **Sim pump block `q_max`** can be set to a literal number, unlinking from global Max pump flow. That desyncs plant capacity from cascade `level_pi.cv_max` (flow SP clamp) and control jumps/hunts.
+
+Operators need **one** capacity knob that keeps plant and Soft-PLC cascade limits coherent.
 
 ## Clarifications
 - Invoke was rich; no further clarifying questions.
-- Scope is the PID card (+ compound PID attribute rounding that feeds it). Operate Process glance may get `suggested_display_precision: 2` so adjacent values match.
-- "Truncate to two decimals" means display with two fractional digits (`toFixed(2)` / round-half-away display), not a new control algorithm.
+- Plant capacity unit remains **L/min** (`q_pump_max`). Flow PID CV stays **% speed** (0–100).
+- Soft-PLC sync uses the existing HA-config file bridge (App mounts `homeassistant_config`).
 
 ## Acceptance criteria
-- [x] PID card uses Home Assistant design tokens for font family and text sizes (title / labels / values / controls), so it reads as a native Lovelace card beside entities/glance
-- [x] Every numeric value rendered on the PID card (PV, Active SP, CV, err, Man/Auto/Rem committed inputs) is formatted to exactly two decimal places
-- [x] Compound PID sensor attributes (`pv`, `sp`, `sp_*`, `cv`, `kp`, `ki`, `kd`) are rounded to 2dp when published
-- [x] App/integration **0.1.50**; dual trees synced; JS + Python regression tests green
+- [x] Model Settings **Max pump flow** is the single plant-capacity control
+- [x] Pump unit-op block does not create a second capacity: numeric edits write through to `q_pump_max` and keep `q_max: "q_pump_max"`; save/apply normalizes aliases
+- [x] Soft-PLC cascade `level_pi.cv_max` tracks plant `q_pump_max` via capacity bridge file; `flow_pi.cv_max` remains 100 (% CMD_SPEED)
+- [x] Soft-PLC PID overlay labels make units obvious (L/min vs %); helper points capacity changes at Max pump flow
+- [x] Changing Max pump flow + Apply updates the capacity bridge; cascade repair/load picks it up without hunting from desynced limits
+- [x] Regression tests + App/integration version bump (dual trees) — App **0.1.54**
 
 ## Out of scope
-- Changing Soft-PLC / PID control semantics or mode logic
-- New SCADA graphics
-- Classic output Manual (CV override)
-- Operate layout / declutter changes beyond display precision on Process PVs
+- Auto-retuning PID gains when capacity changes (large gain changes may still need manual tune)
+- Lovelace faceplate redesign
+- Non-cascade custom PID programs (only `level_pi` / `flow_pi` roles sync)
 
 ## Work packages
-1. PID card CSS → HA font tokens; harden 2dp formatting paths
-2. Round compound PID attributes in `pid_loop.py`; optional Process sensor display precision
-3. Version bump 0.1.50 + dual-tree sync + acceptance tests
+1. Dynamics: pump-block write-through + document normalize; capacity bridge write on save/apply — done
+2. Soft-PLC: read capacity bridge in cascade limit repair; overlay labels/helpers — done
+3. Align default `CASCADE_SP_FLOW_MAX` with default `q_pump_max` (8.0) — done
+4. Tests + version 0.1.54 + dual-tree sync — done
 
 ## Tracker
-- Task: [SWD-230](https://marcusknielsen.atlassian.net/browse/SWD-230)
-- Relates: SWD-229
-- Branch: `cursor/swd-230-pid-card-lovelace-fonts-04d5`
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/93
-- App: **0.1.50**
+- Task: [SWD-251](https://marcusknielsen.atlassian.net/browse/SWD-251)
+- Relates: SWD-250
+- Branch: `cursor/swd-251-simplify-pump-flow-limits-3043`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/99
+- App: **0.1.54**
 
 ## Review-fix
-- Iter 1: 0B + 11SF (null err, Set/Number unrounded write, shared DISPLAY_PRECISION, standards/tests)
-- Iter 2: CLEAN
+- Iter 1: REQUEST_CHANGES (live sync, normalize-before-publish, CI version pins) → fix-forward
+- Exit: CLEAN
 
 ## Shipped
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/93
-- App: **0.1.50**
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/99
+- App: **0.1.54**
 
 ## Next
 Done — phase closed.

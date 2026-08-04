@@ -32,8 +32,8 @@ class CascadeConfig:
     """Flow I gain."""
 
     sp_flow_min: float = 0.0
-    sp_flow_max: float = 6.0
-    """SP_FLOW_MAX clamp (L/min)."""
+    sp_flow_max: float = 8.0
+    """SP_FLOW_MAX clamp (L/min); default matches plant ``q_pump_max``."""
 
     cmd_speed_min: float = 0.0
     cmd_speed_max: float = 100.0

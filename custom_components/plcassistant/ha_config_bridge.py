@@ -9,6 +9,7 @@ fallback) travel via shared files.
 from __future__ import annotations
 
 import json
+import math
 import os
 import time
 from pathlib import Path
@@ -17,7 +18,9 @@ from typing import Any, Mapping
 RUNTIME_REL = "plcassistant/runtime.json"
 CMD_REL = "plcassistant/cmd.json"
 INPUTS_REL = "plcassistant/inputs.json"
+PLANT_CAPACITY_REL = "plcassistant/plant_capacity.json"
 VALID_CMDS = frozenset({"start", "stop", "reset"})
+DEFAULT_Q_PUMP_MAX = 8.0
 
 # Plant PVs on the file bridge expire when the simulator stops flushing (SWD-171).
 # Operator requests (SP_LEVEL_REQ) stay retained indefinitely.
@@ -56,6 +59,65 @@ def inputs_path(root: Path | None = None) -> Path | None:
     if base is None:
         return None
     return base / INPUTS_REL
+
+
+def plant_capacity_path(root: Path | None = None) -> Path | None:
+    base = root if root is not None else ha_config_root()
+    if base is None:
+        return None
+    return base / PLANT_CAPACITY_REL
+
+
+def write_plant_capacity(
+    q_pump_max: float,
+    *,
+    root: Path | None = None,
+    source: str | None = None,
+) -> bool:
+    """Persist plant max pump flow for Soft-PLC cascade sync (SWD-251)."""
+    path = plant_capacity_path(root)
+    if path is None:
+        return False
+    try:
+        q = float(q_pump_max)
+    except (TypeError, ValueError):
+        return False
+    if not math.isfinite(q) or q <= 0.0:
+        return False
+    body: dict[str, Any] = {
+        "q_pump_max": q,
+        "ts": time.time(),
+    }
+    if source:
+        body["source"] = str(source)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(body, separators=(",", ":")), encoding="utf-8")
+        os.replace(tmp, path)
+        return True
+    except OSError:
+        return False
+
+
+def read_plant_capacity(root: Path | None = None) -> float | None:
+    """Return ``q_pump_max`` from the capacity bridge, or None if unavailable."""
+    path = plant_capacity_path(root)
+    if path is None or not path.is_file():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+        return None
+    if not isinstance(data, dict):
+        return None
+    try:
+        q = float(data.get("q_pump_max"))
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(q) or q <= 0.0:
+        return None
+    return q
 
 
 def write_runtime_snapshot(snapshot: dict[str, Any], root: Path | None = None) -> bool:
@@ -251,7 +313,9 @@ def _unlock_file(fd: int) -> None:
 
 __all__ = [
     "CMD_REL",
+    "DEFAULT_Q_PUMP_MAX",
     "INPUTS_REL",
+    "PLANT_CAPACITY_REL",
     "PLANT_FILE_INPUT_TAGS",
     "PLANT_FILE_STALE_S",
     "RUNTIME_REL",
@@ -260,11 +324,14 @@ __all__ = [
     "drain_cmd",
     "ha_config_root",
     "inputs_path",
+    "plant_capacity_path",
     "read_inputs",
+    "read_plant_capacity",
     "read_runtime_snapshot",
     "runtime_path",
     "write_cmd",
     "write_input_tag",
     "write_input_tags",
+    "write_plant_capacity",
     "write_runtime_snapshot",
 ]

@@ -13,6 +13,8 @@ from .expr import ExpressionError
 from .ops import OP_CATALOG
 
 # Bind ports and editable params shown in the block editor UI.
+# Pump capacity is owned by global ``q_pump_max`` (SWD-251); block ``q_max``
+# stays an alias — the inspector write-throughs numeric edits to the global.
 OP_UI_META: dict[str, dict[str, Any]] = {
     "tank": {
         "label": "Tank",
@@ -24,7 +26,13 @@ OP_UI_META: dict[str, dict[str, Any]] = {
         "label": "Pump",
         "binds": ["cmd", "h_source", "q"],
         "params": ["q_max", "tau", "lim_ll"],
-        "help": "CMD/speed → flow with lag and low-level derate.",
+        "param_labels": {
+            "q_max": "Max pump flow (uses global)",
+            "tau": "Time constant",
+            "lim_ll": "Low-level derate",
+        },
+        "param_capacity_keys": {"q_max": "q_pump_max"},
+        "help": "CMD/speed → flow with lag and low-level derate. Capacity is Max pump flow.",
     },
     "orifice": {
         "label": "Orifice",
@@ -144,6 +152,80 @@ def validate_document(doc: Mapping[str, Any] | dict[str, Any]) -> dict[str, Any]
     return json.loads(json.dumps(dict(doc), sort_keys=False))
 
 
+def normalize_pump_capacity(doc: Mapping[str, Any] | dict[str, Any]) -> dict[str, Any]:
+    """Keep pump ``q_max`` aliased to global ``q_pump_max`` (SWD-251).
+
+    Numeric pump-block ``q_max`` values write through to ``params.q_pump_max``
+    and the block param is reset to the ``\"q_pump_max\"`` alias so plant and
+    Soft-PLC cascade share one capacity knob.
+    """
+    out = json.loads(json.dumps(dict(doc), sort_keys=False))
+    params = out.setdefault("params", {})
+    if not isinstance(params, dict):
+        params = {}
+        out["params"] = params
+
+    q_global: float | None = None
+    raw_global = params.get("q_pump_max")
+    if raw_global is not None and raw_global != "":
+        try:
+            q = float(raw_global)
+        except (TypeError, ValueError):
+            q = float("nan")
+        if math.isfinite(q) and q > 0.0:
+            q_global = q
+
+    ops = out.get("ops")
+    if isinstance(ops, list):
+        for op in ops:
+            if not isinstance(op, dict) or str(op.get("type") or "") != "pump":
+                continue
+            op_params = op.setdefault("params", {})
+            if not isinstance(op_params, dict):
+                op_params = {}
+                op["params"] = op_params
+            raw_q = op_params.get("q_max", op_params.get("q_pump_max"))
+            if isinstance(raw_q, (int, float)) and not isinstance(raw_q, bool):
+                q = float(raw_q)
+                if math.isfinite(q) and q > 0.0:
+                    q_global = q
+                    params["q_pump_max"] = q
+            elif isinstance(raw_q, str) and raw_q.strip():
+                token = raw_q.strip()
+                if token != "q_pump_max":
+                    try:
+                        q = float(token)
+                    except ValueError:
+                        q = float("nan")
+                    if math.isfinite(q) and q > 0.0:
+                        q_global = q
+                        params["q_pump_max"] = q
+            op_params["q_max"] = "q_pump_max"
+            op_params.pop("q_pump_max", None)
+
+    if q_global is None:
+        params.setdefault("q_pump_max", 8.0)
+    else:
+        params["q_pump_max"] = q_global
+    return out
+
+
+def extract_q_pump_max(doc: Mapping[str, Any] | None) -> float | None:
+    """Return finite positive ``q_pump_max`` from a model document, if any."""
+    if not isinstance(doc, Mapping):
+        return None
+    params = doc.get("params")
+    if not isinstance(params, Mapping):
+        return None
+    try:
+        q = float(params.get("q_pump_max"))
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(q) or q <= 0.0:
+        return None
+    return q
+
+
 def models_dir(root: Path) -> Path:
     path = Path(root) / "plcassistant" / "models"
     path.mkdir(parents=True, exist_ok=True)
@@ -192,7 +274,8 @@ def save_user_model(root: Path, name: str, doc: Mapping[str, Any]) -> Path:
         or ".." in key
     ):
         raise ValueError(f"invalid model name: {name!r}")
-    validated = validate_document(doc)
+    normalized = normalize_pump_capacity(doc)
+    validated = validate_document(normalized)
     # Keep document name in sync with file stem.
     validated["name"] = key
     validated["version"] = str(validated.get("version") or "1.0")
@@ -218,9 +301,11 @@ __all__ = [
     "SKID_PARAM_FIELDS",
     "catalog_payload",
     "describe_document_op",
+    "extract_q_pump_max",
     "list_user_models",
     "load_user_model",
     "models_dir",
+    "normalize_pump_capacity",
     "save_user_model",
     "seed_skid_composed",
     "validate_document",

@@ -29,7 +29,9 @@ PID_TEMPLATE_ID = "PID"
 CASCADE_LEVEL_INSTANCE_ID = "level_pi"
 CASCADE_FLOW_INSTANCE_ID = "flow_pi"
 CASCADE_SP_FLOW_MIN = 0.0
-CASCADE_SP_FLOW_MAX = 6.0
+# Matches default plant ``q_pump_max`` (L/min). Soft-PLC repair may override
+# from the HA-config plant capacity bridge when the model changes (SWD-251).
+CASCADE_SP_FLOW_MAX = 8.0
 CASCADE_CMD_SPEED_MIN = 0.0
 CASCADE_CMD_SPEED_MAX = 100.0
 
@@ -94,10 +96,19 @@ def pid_default_params() -> dict[str, Any]:
     }
 
 
-def cascade_pid_cv_limits(instance_id: str) -> tuple[float, float] | None:
-    """Return ``(cv_min, cv_max)`` for wedge cascade PI roles, or ``None``."""
+def cascade_pid_cv_limits(
+    instance_id: str,
+    *,
+    sp_flow_max: float | None = None,
+) -> tuple[float, float] | None:
+    """Return ``(cv_min, cv_max)`` for wedge cascade PI roles, or ``None``.
+
+    Level CV is flow SP (L/min); pass ``sp_flow_max`` to track plant
+    ``q_pump_max``. Flow CV is always CMD_SPEED % (0–100).
+    """
     if instance_id == CASCADE_LEVEL_INSTANCE_ID:
-        return CASCADE_SP_FLOW_MIN, CASCADE_SP_FLOW_MAX
+        max_flow = CASCADE_SP_FLOW_MAX if sp_flow_max is None else float(sp_flow_max)
+        return CASCADE_SP_FLOW_MIN, max_flow
     if instance_id == CASCADE_FLOW_INSTANCE_ID:
         return CASCADE_CMD_SPEED_MIN, CASCADE_CMD_SPEED_MAX
     return None

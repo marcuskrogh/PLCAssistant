@@ -4,6 +4,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 | Key | Type | Title | Status | Parent | Artifact | Next |
 |-----|------|-------|--------|--------|----------|------|
+| SWD-251 | Bug | [Iterate] Simplify pump flow limits — one capacity knob that stays in sync | Done | Relates SWD-250 | docs/ITERATE.md | Done — shipped PR [#99](https://github.com/marcuskrogh/PLCAssistant/pull/99) (App 0.1.54) |
 | SWD-250 | Bug | PID diagram clipping + wrong CV max; model settings hard to edit | Done | Relates SWD-249 | docs/BUG.md | Done — shipped PR [#98](https://github.com/marcuskrogh/PLCAssistant/pull/98) (App 0.1.53) |
 | SWD-249 | Bug | One-tank Diagram empty; mobile cannot place blocks | Done | Relates SWD-237 | docs/BUG.md | Done — shipped PR [#97](https://github.com/marcuskrogh/PLCAssistant/pull/97) (App 0.1.52) |
 | SWD-237 | Bug | App UI: card click, empty diagram, place blocks, built-in labels, code formatting | Done | — | docs/BUG.md | Done — shipped PR [#96](https://github.com/marcuskrogh/PLCAssistant/pull/96) (App 0.1.51) |
@@ -347,3 +348,6 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 - 2026-07-27 — Implement SWD-84 complete: packaging docs, HA App scaffold, MQTT bridge, bundled thin integration, GitHub App install docs, acceptance tests; Sub-tasks Done; Task → In Review; Next `/review-fix SWD-84`.
 - 2026-07-27 — review-fix SWD-84 CLEAN after 3 iterations (iter1: 3B+8SF MQTT wiring/persist; iter2: 1B+4SF writable mock IN + scan cmds/retry/locks; iter3: 0 blockers/should-fix); Next `/ship SWD-84`.
 - 2026-07-28 — Shipped SWD-84 via PR #30 (merge `3b64b33`); Task Done; all theme Tasks Done; Story SWD-81 → Done (initiative complete).
+- 2026-08-04 — Iterate SWD-251: simplify pump flow limits (one Max pump flow knob + Soft-PLC sync); Relates SWD-250; branch `cursor/swd-251-simplify-pump-flow-limits-3043`; docs/ITERATE.md. PR [#99](https://github.com/marcuskrogh/PLCAssistant/pull/99) (App 0.1.54) → In Review. Next `/review-fix SWD-251`.
+- 2026-08-04 — Implement SWD-251: one Max pump flow knob + Soft-PLC cascade sync (App 0.1.54); PR [#99](https://github.com/marcuskrogh/PLCAssistant/pull/99) → In Review. Next `/review-fix SWD-251`.
+- 2026-08-04 — Ship SWD-251: review-fix CLEAN + closeout; PR [#99](https://github.com/marcuskrogh/PLCAssistant/pull/99) (App 0.1.54) → Done.

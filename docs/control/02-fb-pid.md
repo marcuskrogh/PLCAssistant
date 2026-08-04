@@ -36,7 +36,7 @@ Code: `plcassistant.wedge.control` (`CascadeConfig`, `CascadeController`).
 
 | Signal | Range |
 |--------|-------|
-| `SP_FLOW` | `[sp_flow_min, sp_flow_max]` (default 0 … 6 L/min) |
+| `SP_FLOW` | `[sp_flow_min, sp_flow_max]` (default 0 … 8 L/min; tracks plant `q_pump_max`) |
 | `CMD_SPEED` | `[cmd_speed_min, cmd_speed_max]` (default 0 … 100 %) |
 
 ## Anti-windup (required)

@@ -1754,10 +1754,40 @@ function openOverlay(iid) {
   const eq = document.createElement('textarea');
   eq.id = 'ov_equation'; eq.rows = 10; eq.spellcheck = false; eq.value = inst.equation || '';
   fields.appendChild(eqLabel); fields.appendChild(eq);
+
+  // SWD-251: cascade capacity hints — plant L/min vs CMD % are different knobs.
+  const cascadeHints = {
+    level_pi: {
+      cv_max: 'Max flow SP (L/min)',
+      cv_min: 'Min flow SP (L/min)',
+      help: 'This is the cascade flow setpoint clamp. Plant capacity is Model Settings → Max pump flow; Soft-PLC syncs this limit from that value.'
+    },
+    flow_pi: {
+      cv_max: 'Max pump command (%)',
+      cv_min: 'Min pump command (%)',
+      help: 'CMD_SPEED percent (0–100), not L/min. Raising this does not increase plant flow — change Max pump flow in Model Settings.'
+    }
+  };
+  const hint = cascadeHints[iid];
+  if (hint && hint.help) {
+    const help = document.createElement('p');
+    help.className = 'helper';
+    help.textContent = hint.help;
+    fields.appendChild(help);
+  }
+
   for (const [k, v] of Object.entries(inst.params||{})) {
-    const lbl = document.createElement('label'); lbl.textContent = k;
+    const lbl = document.createElement('label');
+    lbl.textContent = (hint && hint[k]) ? hint[k] : k;
     const inp = document.createElement('input');
     inp.id = 'ov_' + k; inp.value = v; inp.type = typeof v === 'boolean' ? 'text' : 'number'; inp.step = 'any';
+    // Flow PID CV max is always 0–100 %; keep editable but repair restores 100.
+    if (iid === 'flow_pi' && k === 'cv_max') {
+      inp.title = 'Pump command % (not plant capacity)';
+    }
+    if (iid === 'level_pi' && k === 'cv_max') {
+      inp.title = 'Tracks Max pump flow (L/min) from the plant model';
+    }
     fields.appendChild(lbl); fields.appendChild(inp);
   }
   document.getElementById('backdrop').style.display = '';
