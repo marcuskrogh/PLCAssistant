@@ -25,6 +25,14 @@ from plcassistant.surface.runtime import BlockRuntime
 
 PID_TEMPLATE_ID = "PID"
 
+# Cascade wedge instance ids and CV limits (SWD-250).
+CASCADE_LEVEL_INSTANCE_ID = "level_pi"
+CASCADE_FLOW_INSTANCE_ID = "flow_pi"
+CASCADE_SP_FLOW_MIN = 0.0
+CASCADE_SP_FLOW_MAX = 6.0
+CASCADE_CMD_SPEED_MIN = 0.0
+CASCADE_CMD_SPEED_MAX = 100.0
+
 
 PID_EQUATION = """# Generic PID; PI when kd = td = 0.
 running_flag = bool(running)
@@ -86,6 +94,15 @@ def pid_default_params() -> dict[str, Any]:
     }
 
 
+def cascade_pid_cv_limits(instance_id: str) -> tuple[float, float] | None:
+    """Return ``(cv_min, cv_max)`` for wedge cascade PI roles, or ``None``."""
+    if instance_id == CASCADE_LEVEL_INSTANCE_ID:
+        return CASCADE_SP_FLOW_MIN, CASCADE_SP_FLOW_MAX
+    if instance_id == CASCADE_FLOW_INSTANCE_ID:
+        return CASCADE_CMD_SPEED_MIN, CASCADE_CMD_SPEED_MAX
+    return None
+
+
 def pid_params_for_pi(
     *,
     kp: float,
@@ -139,10 +156,10 @@ def wedge_cascade_program(
     level_ki: float = 5.0,
     flow_kp: float = 12.0,
     flow_ki: float = 2.0,
-    sp_flow_min: float = 0.0,
-    sp_flow_max: float = 6.0,
-    cmd_speed_min: float = 0.0,
-    cmd_speed_max: float = 100.0,
+    sp_flow_min: float = CASCADE_SP_FLOW_MIN,
+    sp_flow_max: float = CASCADE_SP_FLOW_MAX,
+    cmd_speed_min: float = CASCADE_CMD_SPEED_MIN,
+    cmd_speed_max: float = CASCADE_CMD_SPEED_MAX,
 ) -> dict:
     """Return a YAML-shaped dict for the default Level→Flow cascade program.
 
@@ -215,10 +232,10 @@ def wedge_softplc_project(
     level_ki: float = 5.0,
     flow_kp: float = 12.0,
     flow_ki: float = 2.0,
-    sp_flow_min: float = 0.0,
-    sp_flow_max: float = 6.0,
-    cmd_speed_min: float = 0.0,
-    cmd_speed_max: float = 100.0,
+    sp_flow_min: float = CASCADE_SP_FLOW_MIN,
+    sp_flow_max: float = CASCADE_SP_FLOW_MAX,
+    cmd_speed_min: float = CASCADE_CMD_SPEED_MIN,
+    cmd_speed_max: float = CASCADE_CMD_SPEED_MAX,
     scan_period_s: float = 0.1,
     program_id: str = "tank",
     task_id: str = "main",
@@ -248,8 +265,15 @@ def wedge_softplc_project(
 
 
 __all__ = [
+    "CASCADE_CMD_SPEED_MAX",
+    "CASCADE_CMD_SPEED_MIN",
+    "CASCADE_FLOW_INSTANCE_ID",
+    "CASCADE_LEVEL_INSTANCE_ID",
+    "CASCADE_SP_FLOW_MAX",
+    "CASCADE_SP_FLOW_MIN",
     "PID_EQUATION",
     "PID_TEMPLATE_ID",
+    "cascade_pid_cv_limits",
     "pid_default_params",
     "pid_params_for_pi",
     "pid_template",

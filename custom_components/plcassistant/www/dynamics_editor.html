@@ -151,6 +151,16 @@ main {
   display: flex; align-items: center; gap: 8px; margin: 14px 0 8px;
 }
 .section-bar h3 { margin: 0; flex: 1; }
+.field.highlight label { color: var(--teal); font-weight: 600; }
+.field .unit { font-size: 0.7rem; color: var(--muted); margin-left: 4px; }
+details.advanced-json {
+  margin: 8px 0 12px; border: 1px dashed var(--line); border-radius: 8px;
+  padding: 6px 10px; background: rgba(255,255,255,0.5);
+}
+details.advanced-json summary {
+  cursor: pointer; font-size: 0.78rem; color: var(--muted); user-select: none;
+}
+details.advanced-json textarea { margin-top: 8px; min-height: 60px; }
 </style>
 </head>
 <body>
@@ -192,10 +202,20 @@ main {
     </div>
     <div class="field"><label>Inputs (comma-separated)</label>
       <input id="f-inputs" class="mono" placeholder="cmd_speed, u"></div>
-    <div class="field"><label>Global params (JSON object)</label>
-      <textarea id="f-params" class="mono" style="min-height:70px" placeholder='{"tau": 0.5}'></textarea></div>
-    <div class="field"><label>Initial state (JSON object)</label>
-      <textarea id="f-initial" class="mono" style="min-height:70px" placeholder='{"y": 0}'></textarea></div>
+    <div class="section-bar"><h3>Global parameters</h3></div>
+    <p class="hint">Skid-wide constants (e.g. <strong>Max pump flow</strong> / <code>q_pump_max</code>) referenced by unit-op params.</p>
+    <div id="global-params-fields" data-skid-param-schema="q_pump_max"></div>
+    <details class="advanced-json" id="params-advanced-wrap">
+      <summary>Advanced JSON (other keys)</summary>
+      <textarea id="f-params-advanced" class="mono" placeholder="{}"></textarea>
+    </details>
+    <div class="section-bar"><h3>Initial state</h3></div>
+    <p class="hint">Starting values for integrated state variables.</p>
+    <div id="initial-state-fields"></div>
+    <details class="advanced-json" id="initial-advanced-wrap">
+      <summary>Advanced JSON (other keys)</summary>
+      <textarea id="f-initial-advanced" class="mono" placeholder="{}"></textarea>
+    </details>
   </aside>
 </main>
 <script>
@@ -662,33 +682,132 @@ document.getElementById("btn-add-meas").onclick = () => {
   renderMeasurements();
 };
 
+function skidParamFields() {
+  return (catalog.param_fields && catalog.param_fields.skid) || [];
+}
+
+function skidInitialFields() {
+  return (catalog.initial_fields && catalog.initial_fields.skid) || [];
+}
+
+function knownParamKeys() {
+  return new Set(skidParamFields().map(f => f.key));
+}
+
+function knownInitialKeys() {
+  return new Set(skidInitialFields().map(f => f.key));
+}
+
+function pickUnknown(obj, known) {
+  const out = {};
+  Object.entries(obj || {}).forEach(([k, v]) => {
+    if (!known.has(k)) out[k] = v;
+  });
+  return out;
+}
+
+function renderSkidFieldRows(containerId, fields, obj, dataAttr) {
+  const root = document.getElementById(containerId);
+  if (!root) return;
+  let html = "";
+  fields.forEach(f => {
+    const val = (obj || {})[f.key];
+    const shown = val === undefined || val === null ? "" : String(val);
+    const cls = f.highlight ? "field highlight" : "field";
+    const unit = f.unit ? `<span class="unit">${esc(f.unit)}</span>` : "";
+    html += `<div class="${cls}"><label>${esc(f.label)}${unit}</label>
+      <input type="number" step="any" ${dataAttr}="${esc(f.key)}" class="mono"
+        value="${esc(shown)}" placeholder="—"></div>`;
+    // e.g. data-global-param="q_pump_max" for Max pump flow
+  });
+  root.innerHTML = html || `<p class="empty">No structured fields in catalog.</p>`;
+}
+
+function parseNumericField(raw) {
+  const v = String(raw ?? "").trim();
+  if (v === "") return undefined;
+  const n = Number(v);
+  if (!Number.isFinite(n)) {
+    throw new Error("Invalid number: " + v);
+  }
+  return n;
+}
+
+/** Catalog structured keys win over advanced JSON; empty field deletes the key. */
+function mergeSkidStructuredGlobals(advanced, structured, fields) {
+  const merged = { ...advanced };
+  fields.forEach(f => {
+    const key = f.key;
+    if (Object.prototype.hasOwnProperty.call(structured, key)) {
+      merged[key] = structured[key];
+    } else {
+      delete merged[key];
+    }
+  });
+  return merged;
+}
+
+function readSkidStructuredFields(fields, dataAttr) {
+  const out = {};
+  fields.forEach(f => {
+    const inp = document.querySelector(`[${dataAttr}="${f.key}"]`);
+    if (!inp) return;
+    const parsed = parseNumericField(inp.value);
+    if (parsed !== undefined) out[f.key] = parsed;
+  });
+  return out;
+}
+
 function renderModelFields() {
   document.getElementById("f-inputs").value = (doc.inputs || []).join(", ");
-  document.getElementById("f-params").value = JSON.stringify(doc.params || {}, null, 2);
-  document.getElementById("f-initial").value = JSON.stringify(doc.initial || {}, null, 2);
+  renderSkidFieldRows("global-params-fields", skidParamFields(), doc.params || {}, "data-global-param");
+  renderSkidFieldRows("initial-state-fields", skidInitialFields(), doc.initial || {}, "data-initial-key");
+  const unknownParams = pickUnknown(doc.params, knownParamKeys());
+  const unknownInitial = pickUnknown(doc.initial, knownInitialKeys());
+  document.getElementById("f-params-advanced").value =
+    Object.keys(unknownParams).length ? JSON.stringify(unknownParams, null, 2) : "";
+  document.getElementById("f-initial-advanced").value =
+    Object.keys(unknownInitial).length ? JSON.stringify(unknownInitial, null, 2) : "";
 }
 
 function readModelFields() {
   const inputs = document.getElementById("f-inputs").value.split(",").map(s => s.trim()).filter(Boolean);
   doc.inputs = inputs;
+  let advancedParams = {};
+  let advancedInitial = {};
   try {
-    doc.params = JSON.parse(document.getElementById("f-params").value || "{}");
+    const rawParams = document.getElementById("f-params-advanced").value.trim();
+    if (rawParams) advancedParams = JSON.parse(rawParams);
   } catch (err) {
-    throw new Error("Global params JSON: " + err.message);
+    throw new Error("Global params advanced JSON: " + err.message);
   }
   try {
-    doc.initial = JSON.parse(document.getElementById("f-initial").value || "{}");
+    const rawInitial = document.getElementById("f-initial-advanced").value.trim();
+    if (rawInitial) advancedInitial = JSON.parse(rawInitial);
   } catch (err) {
-    throw new Error("Initial state JSON: " + err.message);
+    throw new Error("Initial state advanced JSON: " + err.message);
   }
+  const structuredParams = readSkidStructuredFields(skidParamFields(), "data-global-param");
+  const structuredInitial = readSkidStructuredFields(skidInitialFields(), "data-initial-key");
+  doc.params = mergeSkidStructuredGlobals(advancedParams, structuredParams, skidParamFields());
+  doc.initial = mergeSkidStructuredGlobals(advancedInitial, structuredInitial, skidInitialFields());
 }
 
-["f-inputs", "f-params", "f-initial"].forEach(id => {
+["f-inputs", "f-params-advanced", "f-initial-advanced"].forEach(id => {
   document.getElementById(id).onchange = () => {
     try { readModelFields(); status("Model I/O updated"); }
     catch (err) { status(String(err.message || err), "err"); }
   };
 });
+
+function wireSkidFieldListeners() {
+  document.querySelectorAll("[data-global-param],[data-initial-key]").forEach(inp => {
+    inp.onchange = () => {
+      try { readModelFields(); status("Model settings updated"); }
+      catch (err) { status(String(err.message || err), "err"); }
+    };
+  });
+}
 
 function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, c => ({
@@ -731,6 +850,7 @@ function render() {
   renderInspector();
   renderMeasurements();
   renderModelFields();
+  wireSkidFieldListeners();
 }
 
 async function loadModel() {

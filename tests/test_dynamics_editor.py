@@ -24,6 +24,14 @@ def test_catalog_payload_lists_unit_ops() -> None:
     pump = next(op for op in payload["ops"] if op["type"] == "pump")
     assert "cmd" in pump["binds"]
     assert "q_max" in pump["params"]
+    skid_params = payload["param_fields"]["skid"]
+    keys = [f["key"] for f in skid_params]
+    assert "q_pump_max" in keys
+    assert skid_params[0]["key"] == "q_pump_max"
+    assert skid_params[0].get("highlight") is True
+    initial_keys = [f["key"] for f in payload["initial_fields"]["skid"]]
+    assert "h_tank" in initial_keys
+    assert "h_res" in initial_keys
 
 
 def test_validate_and_save_user_model(tmp_path: pathlib.Path) -> None:
@@ -60,6 +68,35 @@ def test_validate_rejects_unknown_op() -> None:
         )
 
 
+def test_validate_rejects_non_finite_params() -> None:
+    from dynamics.store import validate_document
+
+    bundled = CC / "dynamics" / "models" / "skid_composed.json"
+    doc = json.loads(bundled.read_text(encoding="utf-8"))
+    doc["params"]["q_pump_max"] = float("nan")
+    with pytest.raises(ValueError, match="finite"):
+        validate_document(doc)
+
+
+def test_q_pump_max_persists_round_trip(tmp_path: pathlib.Path) -> None:
+    from dynamics.store import load_user_model, save_user_model
+
+    bundled = CC / "dynamics" / "models" / "skid_composed.json"
+    doc = json.loads(bundled.read_text(encoding="utf-8"))
+    doc["params"]["q_pump_max"] = 12
+    save_user_model(tmp_path, "skid_twelve", doc)
+    reloaded = load_user_model(tmp_path, "skid_twelve")
+    assert reloaded["params"]["q_pump_max"] == 12
+
+
+def test_editor_html_finite_and_merge_contracts() -> None:
+    html = (CC / "www" / "dynamics_editor.html").read_text(encoding="utf-8")
+    assert "function parseNumericField" in html
+    assert "Number.isFinite" in html
+    assert "mergeSkidStructuredGlobals" in html
+    assert "delete merged[key]" in html
+
+
 def test_seed_skid_composed(tmp_path: pathlib.Path) -> None:
     from dynamics.store import load_user_model, seed_skid_composed
 
@@ -79,6 +116,11 @@ def test_editor_and_api_packaging() -> None:
     assert "/api/plcassistant/dynamics" in html
     assert "Add block" in html
     assert "Measurement equations" in html
+    assert "Max pump flow" in html
+    assert 'data-global-param="q_pump_max"' in html or 'data-skid-param-schema="q_pump_max"' in html
+    assert "Global parameters" in html
+    assert "Initial state" in html
+    assert "Advanced JSON" in html
 
     api = (CC / "dynamics" / "http_api.py").read_text(encoding="utf-8")
     assert "DynamicsEditorView" in api
