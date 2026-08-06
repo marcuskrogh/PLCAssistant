@@ -1,7 +1,7 @@
 {
   "name": "PLCAssistant",
   "install": "bash .cursor/install.sh",
-  "start": "bash .cursor/ha/scripts/ensure_mosquitto.sh",
+  "start": "bash .agents/sync-skills.sh; bash .cursor/ha/scripts/ensure_mosquitto.sh",
   "terminals": [
     {
       "name": "homeassistant",

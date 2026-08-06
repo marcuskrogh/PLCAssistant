@@ -6,6 +6,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+# Pull latest marcuskrogh/skills into .agents/skills/ (gitignored).
+# Also re-run from environment.json `start` so cloud boots are not stuck
+# on a snapshotted install from an older Build.
 echo "==> Syncing agent skills"
 bash .agents/sync-skills.sh
 
