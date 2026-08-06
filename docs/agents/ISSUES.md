@@ -4,6 +4,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 | Key | Type | Title | Status | Parent | Artifact | Next |
 |-----|------|-------|--------|--------|----------|------|
+| SWD-252 | Task | Cloud agents refresh marcuskrogh/skills on every boot | In Progress | — | AGENTS.md, .cursor/environment.json | implement → review-fix → ship |
 | SWD-251 | Bug | [Iterate] Simplify pump flow limits — one capacity knob that stays in sync | Done | Relates SWD-250 | docs/ITERATE.md | Done — shipped PR [#99](https://github.com/marcuskrogh/PLCAssistant/pull/99) (App 0.1.54) |
 | SWD-250 | Bug | PID diagram clipping + wrong CV max; model settings hard to edit | Done | Relates SWD-249 | docs/BUG.md | Done — shipped PR [#98](https://github.com/marcuskrogh/PLCAssistant/pull/98) (App 0.1.53) |
 | SWD-249 | Bug | One-tank Diagram empty; mobile cannot place blocks | Done | Relates SWD-237 | docs/BUG.md | Done — shipped PR [#97](https://github.com/marcuskrogh/PLCAssistant/pull/97) (App 0.1.52) |
@@ -156,6 +157,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
+- 2026-08-06 — Implement SWD-252: cloud start sync for skills + prefer-workflow wiring; branch `swd-252-cloud-skills-boot-sync`. Next `/review-fix SWD-252`.
 - 2026-08-04 — Shipped SWD-250 via PR #98 (App 0.1.53); review-fix CLEAN after 2 iters; Task Done.
 - 2026-08-04 — review-fix SWD-250 CLEAN after 2 iters (iter1: version pins/repair-on-save/CTM/NaN/tests; iter2: 0). Next `/ship SWD-250` closeout.
 - 2026-08-04 — Implement SWD-250: cascade cv_max repair + diagram viewBox + structured dynamics fields (App 0.1.53); PR [#98](https://github.com/marcuskrogh/PLCAssistant/pull/98) → In Review. Next `/review-fix SWD-250`.
