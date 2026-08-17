@@ -4,11 +4,11 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 | Key | Type | Title | Status | Parent | Artifact | Next |
 |-----|------|-------|--------|--------|----------|------|
-| SWD-368 | Story | ISA-101 / DCS-standard PID faceplates | In Progress | Relates SWD-366 | docs/ROADMAP.md, docs/RESEARCH.md | `/implement SWD-369` |
+| SWD-368 | Story | ISA-101 / DCS-standard PID faceplates | In Progress | Relates SWD-366 | docs/ROADMAP.md, docs/RESEARCH.md | `/review-fix SWD-369` |
 | SWD-369 | Task | Define & ship ISA-101 DCS PID faceplate | In Review | Relates SWD-368 | docs/PLAN.md | `/review-fix SWD-369` |
-| SWD-370 | Subtask | SWD-369: Controller-mode contract + CO_MAN + auto/uman wiring | In Progress | SWD-369 | docs/PLAN.md, plcassistant/io/pid_loop.py | — |
-| SWD-371 | Subtask | SWD-369: Lovelace analog-controller PID card | In Progress | SWD-369 | docs/PLAN.md, custom_components/plcassistant/www/pid-loop-card.js | — |
-| SWD-372 | Subtask | SWD-369: Tests, docs, dual-tree, App 0.1.58 | In Progress | SWD-369 | docs/PLAN.md, tests/test_swd369_acceptance.py | — |
+| SWD-370 | Subtask | SWD-369: Controller-mode contract + CO_MAN + auto/uman wiring | In Review | SWD-369 | docs/PLAN.md, plcassistant/io/pid_loop.py | — |
+| SWD-371 | Subtask | SWD-369: Lovelace analog-controller PID card | In Review | SWD-369 | docs/PLAN.md, custom_components/plcassistant/www/pid-loop-card.js | — |
+| SWD-372 | Subtask | SWD-369: Tests, docs, dual-tree, App 0.1.58 | In Review | SWD-369 | docs/PLAN.md, tests/test_swd369_acceptance.py | — |
 | SWD-367 | Task | Iterate: Align builtin PID with IFAC 2024 reference implementation | Done | Relates SWD-360, SWD-366 | docs/ITERATE.md | Done — shipped PR [#103](https://github.com/marcuskrogh/PLCAssistant/pull/103) |
 | SWD-366 | Task | Iterate: Lovelace PID cards ISA-5.1 look and ISA-101 highlighting | Done | Relates SWD-360 | docs/ITERATE.md | Done — shipped PR [#102](https://github.com/marcuskrogh/PLCAssistant/pull/102) |
 | SWD-359 | Story | Standardised PID blocks — ISA visualisation and structure | Done | — | docs/ROADMAP.md, docs/RESEARCH.md | Done — shipped PR [#101](https://github.com/marcuskrogh/PLCAssistant/pull/101) |
