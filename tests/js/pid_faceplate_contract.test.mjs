@@ -4,7 +4,7 @@
  * null-safe err gating, commit rounding).
  *
  * Exercises the exported helpers in pid-loop-card.js (parse / coerce / click
- * routing / display format). Run via pytest or:
+ * routing / display format / ISA-101 highlight severity). Run via pytest or:
  *   node --experimental-default-type=module tests/js/pid_faceplate_contract.test.mjs
  */
 
@@ -27,9 +27,17 @@ const {
   numberServiceValue,
   resolveFaceplateClick,
   formatPidValue,
+  formatPidError,
   commitSpValue,
   isPresentFinite,
+  pidError,
+  pidHighlightSeverity,
+  pidCvBarPct,
+  pidCvHighlightSeverity,
+  pidFaceplateHighlight,
   PID_DISPLAY_DIGITS,
+  PID_CV_MAX_LEVEL,
+  PID_CV_MAX_FLOW,
 } = await import(cardUrl);
 
 let failed = 0;
@@ -235,6 +243,54 @@ const panel = node("div", { class: "pid-dialog-panel" });
 const panelInput = node("input", { "data-sp": "man" }, panel);
 assertEq(resolveFaceplateClick(panelInput), null, "dialog input does not re-open");
 assertEq(resolveFaceplateClick(panel), null, "dialog panel click is ignored");
+
+// --- ISA-101 highlight helpers ---
+assertEq(pidError(0.3, 0.15), 0.15, "pidError is SP − PV");
+assertEq(pidError(null, 0.15), null, "pidError null when SP missing");
+assertEq(formatPidError(0.15), "+0.15", "formatPidError prefixes positive");
+assertEq(formatPidError(-0.02), "-0.02", "formatPidError keeps minus");
+assertEq(formatPidError(0), "0.00", "formatPidError zero is unsigned");
+assertEq(formatPidError(null), "—", "formatPidError missing is em-dash");
+
+assertEq(pidHighlightSeverity(null, 1, 1), "normal", "missing ε is normal");
+assertEq(pidHighlightSeverity(0, 1, 1), "normal", "zero ε is normal");
+assertEq(pidHighlightSeverity(0.015, 1, 0.985), "normal", "1.5% ε is normal");
+assertEq(pidHighlightSeverity(0.02, 1, 0.98), "caution", "2% ε is caution");
+assertEq(pidHighlightSeverity(0.099, 1, 0.901), "caution", "9.9% ε is caution");
+assertEq(pidHighlightSeverity(0.1, 1, 0.9), "abnormal", "10% ε is abnormal");
+assertEq(pidHighlightSeverity(0.15, 0.3, 0.15), "abnormal", "startup ε is abnormal");
+assertEq(pidHighlightSeverity(0, 0, 0), "normal", "zero/zero ε is normal");
+
+assertEq(PID_CV_MAX_LEVEL, 8, "level CO scale is 8 L/min");
+assertEq(PID_CV_MAX_FLOW, 100, "flow CO scale is 100%");
+assertEq(pidCvBarPct(4, "level"), 50, "level CO 4 L/min is 50% of 8");
+assertEq(pidCvBarPct(6, "level"), 75, "level CO 6 L/min is 75% of 8 (not 100% of 6)");
+assertEq(pidCvBarPct(8, "level"), 100, "level CO 8 L/min is 100%");
+assertEq(pidCvBarPct(50, "flow"), 50, "flow CO 50% is 50% of 100");
+assertEq(pidCvHighlightSeverity(4, "level"), "normal", "mid-scale CO is normal");
+assertEq(pidCvHighlightSeverity(0, "level"), "caution", "CO at 0 is clamp caution");
+assertEq(pidCvHighlightSeverity(8, "level"), "caution", "CO at max is clamp caution");
+assertEq(pidCvHighlightSeverity(null, "level"), "normal", "missing CO is not clamp");
+assertEq(
+  pidFaceplateHighlight(0.015, 1, 0.985, 4, "level"),
+  "normal",
+  "small ε and mid CO is normal"
+);
+assertEq(
+  pidFaceplateHighlight(0.02, 1, 0.98, 4, "level"),
+  "caution",
+  "caution ε wins over mid CO"
+);
+assertEq(
+  pidFaceplateHighlight(0, 1, 1, 0, "level"),
+  "caution",
+  "clamp CO is caution when ε is 0"
+);
+assertEq(
+  pidFaceplateHighlight(0.2, 1, 0.8, 0, "level"),
+  "abnormal",
+  "abnormal ε outranks clamp CO"
+);
 
 if (failed > 0) {
   console.error(`\n${failed} assertion(s) failed`);

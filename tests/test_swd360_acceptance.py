@@ -201,6 +201,7 @@ def test_unit_faceplate_labels_pv_sp_co() -> None:
     assert "<span>CO</span>" in text
     assert "<span>CV</span>" not in text
     assert "<span>PV</span>" in text
+    assert "<span>ε</span>" in text
     assert "Active SP" in text
     assert 'data-mode="' in text
 
@@ -211,14 +212,14 @@ def test_unit_default_pytest_still_excludes_live() -> None:
     assert "addopts" in text
 
 
-def test_unit_app_version_is_0_1_55() -> None:
-    assert 'version: "0.1.55"' in (ROOT / "plc_assistant" / "config.yaml").read_text(
+def test_unit_app_version_is_0_1_56() -> None:
+    assert 'version: "0.1.56"' in (ROOT / "plc_assistant" / "config.yaml").read_text(
         encoding="utf-8"
     )
     manifest = (ROOT / "custom_components" / "plcassistant" / "manifest.json").read_text(
         encoding="utf-8"
     )
-    assert '"0.1.55"' in manifest
+    assert '"0.1.56"' in manifest
 
 
 def test_unit_incremental_includes_constant_uff() -> None:
@@ -335,3 +336,5 @@ def test_dual_tree_isa_pid_glyph_and_faceplate() -> None:
     for label, text in (("root", root_card), ("mirror", mirror_card)):
         assert "<span>CO</span>" in text, label
         assert "<span>CV</span>" not in text, label
+        assert "pid-isa-eps" in text, label
+        assert "--pid-man" not in text, label

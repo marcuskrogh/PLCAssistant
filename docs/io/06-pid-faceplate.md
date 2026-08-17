@@ -83,13 +83,19 @@ YAML mode falls back to `frontend.add_extra_js_url`). Stock Operate (SWD-229)
 is a SCADA layout with PID cards only — no fallback entity dump. Custom boards
 may still list the underlying Number/sensor entities if cards fail to load.
 
-The PID card (SWD-226 / SWD-228 / SWD-230) uses climate-inspired mode colours
-(Man / Auto / Rem), a hero strip for PV / active SP / CO at **two decimal places**,
-and text+`inputmode=decimal` SP editors so intermediate edits survive live Soft-PLC
-hass updates. Typography uses Home Assistant Lovelace design tokens
-(`--ha-font-family-body`, `--ha-card-header-font-size`, `--ha-font-size-*`) so the
-faceplate matches surrounding entities / glance cards. Compound PID attributes are
-rounded to 2dp when published. **Set** (or Enter) commits; Esc cancels a dirty draft.
+The PID card uses an ISA-5.1 three-mode chrome strip (ε / P / I / D) matching the
+App Diagram glyph, and a hero strip for **PV / SP / ε / CO** at **two decimal
+places**. Man / Auto / Rem remain SP-source modes; the mode badge and active
+button are grayscale (outlined / inverted), not colour-coded. Colour follows
+ISA-101 high-performance HMI practice: caution uses Home Assistant
+`--warning-color`, abnormal uses `--error-color`, applied to relative |ε| and to
+a CO bar at clamp (~0% or ~100% of scale). Level CO scale is 8 L/min (cascade
+flow request); flow CO scale is 100%. Text+`inputmode=decimal` SP editors keep
+intermediate edits alive across live Soft-PLC hass updates. Typography uses
+Home Assistant Lovelace design tokens (`--ha-font-family-body`,
+`--ha-card-header-font-size`, `--ha-font-size-*`) so the faceplate matches
+surrounding entities / glance cards. Compound PID attributes are rounded to 2dp
+when published. **Set** (or Enter) commits; Esc cancels a dirty draft.
 
 Cascade demo defaults (SWD-221): Level **Manual**, Flow **Automatic**.
 Operator IN defaults are batch-seeded once at setup (no per-Number MQTT/file

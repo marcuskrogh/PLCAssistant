@@ -136,7 +136,9 @@ def test_unit_pid_card_null_safe_err_and_commit() -> None:
     text = CARD.read_text(encoding="utf-8")
     assert "export function isPresentFinite" in text
     assert "export function commitSpValue" in text
-    assert "isPresentFinite(sp) && isPresentFinite(pv)" in text
+    assert "export function pidError" in text
+    assert "isPresentFinite(sp) || !isPresentFinite(pv)" in text
+    assert "const err = pidError(sp, pv);" in text
     assert "commitSpValue(parsed)" in text
     assert "DISPLAY_PRECISION in const.py" in text
 
@@ -162,13 +164,13 @@ def test_system_faceplate_js_contract() -> None:
 
 
 def test_system_app_version_0_1_50() -> None:
-    assert '"0.1.55"' in (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert 'version: "0.1.55"' in Path("plc_assistant/config.yaml").read_text(
+    assert '"0.1.56"' in (ROOT / "manifest.json").read_text(encoding="utf-8")
+    assert 'version: "0.1.56"' in Path("plc_assistant/config.yaml").read_text(
         encoding="utf-8"
     )
-    assert "BUILD_VERSION=0.1.55" in Path("plc_assistant/Dockerfile").read_text(
+    assert "BUILD_VERSION=0.1.56" in Path("plc_assistant/Dockerfile").read_text(
         encoding="utf-8"
     )
     dual = Path("plc_assistant/custom_components/plcassistant")
-    assert '"0.1.55"' in (dual / "manifest.json").read_text(encoding="utf-8")
+    assert '"0.1.56"' in (dual / "manifest.json").read_text(encoding="utf-8")
     assert CARD.read_bytes() == (dual / "www" / "pid-loop-card.js").read_bytes()
