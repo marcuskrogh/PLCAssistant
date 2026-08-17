@@ -9,8 +9,10 @@ Operator faceplates for Soft-PLC PID loops use **SP-source modes**
 (Manual / Automatic / Remote). The Datablock is system source of truth;
 HA entities and Lovelace cards write into it.
 
-Classic **output Manual** (operator sets CO directly) is deferred. The `cv`
-pin name is unchanged; faceplates label that signal **CO**.
+Classic **output Manual** (`auto` / `uman` on the function block) is available
+on the Soft-PLC PID (IFAC 2024). Lovelace still uses **SP-source** Man / Auto /
+Rem; wiring `auto` / `uman` from the HMI is later work. The `cv` pin name is
+unchanged; faceplates label that signal **CO**.
 
 ## Modes
 

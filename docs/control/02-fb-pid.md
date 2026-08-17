@@ -41,9 +41,11 @@ Code: `plcassistant.wedge.control` (`CascadeConfig`, `CascadeController`).
 
 ## Anti-windup (required)
 
-**Incremental clamp** on the builtin PID (`PID_EQUATION`): when `ki ≠ 0`, the
-output is updated as `last_cv + Δ` then clamped, so the integrator cannot wind
-past `cv_min` / `cv_max`. When `ki = 0`, the positional form has no integrator.
+**Incremental clamp** on the builtin PID (`PID_EQUATION`): listing 1 of the
+IFAC 2024 reference adds `Δu` to `u_old` then saturates, so the integrator
+cannot wind past `cv_min` / `cv_max`. When `ki = 0`, `u_old` is reset to bias
+`u0` each auto scan (P / PD). External `windup` can also freeze the integral
+increment in one or both directions.
 
 The legacy `CascadeController` fallback (no block instances) still uses
 **conditional integration**: accumulate integral only when the unsaturated
@@ -69,13 +71,14 @@ When `running` is false (STOP / TRIPPED / no permit):
 - Hold last `SP_FLOW`
 - Force `CMD_SPEED = 0`
 
-## Builtin PID (SWD-360)
+## Builtin PID (SWD-367)
 
-The Soft-PLC **PID** template is ISA-TR5.9 Parallel with Bauer hybrid
-incremental/positional updates (`plcassistant.surface.builtin.PID_EQUATION`).
-The wedge cascade still places two **PI** copies (`kd = 0`) at `level_pi` /
-`flow_pi`. Incremental clamp replaces conditional integration for those copies.
-ISA-TR5.9 Series form and external-reset feedback remain later work.
+The Soft-PLC **PID** template is ISA-TR5.9 Parallel with the IFAC 2024
+incremental reference (`plcassistant.control.pid.pid_scan` /
+`plcassistant.surface.builtin.PID_EQUATION`). The wedge cascade still places
+two **PI** copies (`kd = 0`, `tf_ts = 0`) at `level_pi` / `flow_pi`. Filter
+bypass keeps those copies from needing retuning. ISA-TR5.9 Series form and
+external-reset feedback remain later work.
 
 ## Non-goals
 

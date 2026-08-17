@@ -12,6 +12,7 @@ import math
 from collections.abc import Mapping
 from typing import Any
 
+from plcassistant.control.pid import anti_windup, zoh_fy
 from plcassistant.surface.model import BlockTemplate, PinDirection
 
 
@@ -46,6 +47,10 @@ def clamp(value: Any, lo: Any, hi: Any) -> float:
     return v
 
 
+def _zoh_coeff(tf_ts: Any, tx: Any, index: int) -> float:
+    return zoh_fy(float(tf_ts), float(tx))[index]
+
+
 _FUNCTIONS: dict[str, Any] = {
     "abs": abs,
     "bool": bool,
@@ -59,6 +64,13 @@ _FUNCTIONS: dict[str, Any] = {
     "log": math.log,
     "max": max,
     "min": min,
+    "pid_anti_windup": anti_windup,
+    "pid_zoh_a11": lambda tf_ts, tx: _zoh_coeff(tf_ts, tx, 0),
+    "pid_zoh_a12": lambda tf_ts, tx: _zoh_coeff(tf_ts, tx, 1),
+    "pid_zoh_a21": lambda tf_ts, tx: _zoh_coeff(tf_ts, tx, 2),
+    "pid_zoh_a22": lambda tf_ts, tx: _zoh_coeff(tf_ts, tx, 3),
+    "pid_zoh_b1": lambda tf_ts, tx: _zoh_coeff(tf_ts, tx, 4),
+    "pid_zoh_b2": lambda tf_ts, tx: _zoh_coeff(tf_ts, tx, 5),
     "pow": pow,
     "round": round,
     "sqrt": math.sqrt,
@@ -237,8 +249,12 @@ def evaluate_equation(
     """
     values: dict[str, Any] = {}
     values.update(state)
+    values.update(template.params)
     values.update(params)
     values.update(input_pins)
+    for pin in template.pins:
+        if pin.direction is PinDirection.IN and pin.name not in values:
+            values[pin.name] = pin.default
     values.update(_FUNCTIONS)
     values["state"] = _state_reader(state)
     values["dt"] = float(dt)

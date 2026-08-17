@@ -51,18 +51,24 @@ def test_unit_pid_declares_parallel_form_and_2dof_defaults() -> None:
     assert params["beta"] == pytest.approx(1.0)
     assert params["gamma"] == pytest.approx(0.0)
     assert params["u0"] == pytest.approx(0.0)
+    assert params["ts"] == pytest.approx(0.1)
+    assert params["tf_ts"] == pytest.approx(10.0)
     assert params["direct_acting"] is False
     pin_names = [p.name for p in tmpl.pins]
     assert pin_names[:3] == ["pv", "sp", "running"]
     assert pin_names[-1] == "cv"
-    assert {"uff", "track", "utrack"} <= set(pin_names)
+    assert {"uff", "track", "utrack", "auto", "uman", "windup"} <= set(pin_names)
     defaults = {p.name: p.default for p in tmpl.pins}
     assert defaults["uff"] == pytest.approx(0.0)
     assert defaults["track"] is False
     assert defaults["utrack"] == pytest.approx(0.0)
+    assert defaults["auto"] is True
+    assert defaults["uman"] == pytest.approx(0.0)
+    assert defaults["windup"] == pytest.approx(0.0)
     assert tmpl.body == PID_EQUATION
     assert "ISA Technical Report 5.9" in tmpl.description
     assert "Parallel" in tmpl.description
+    assert "IFAC 2024" in tmpl.description
     assert is_factory_pid_equation(PID_EQUATION_LEGACY)
     assert is_factory_pid_equation("")
     assert not is_factory_pid_equation("cv = 42.0")
@@ -174,6 +180,8 @@ def test_unit_wedge_cascade_keeps_pi_gains_and_isa_tags() -> None:
     assert prog.instances["level_pi"].params["kp"] == pytest.approx(40.0)
     assert prog.instances["level_pi"].params["ki"] == pytest.approx(5.0)
     assert prog.instances["level_pi"].params["kd"] == pytest.approx(0.0)
+    assert prog.instances["level_pi"].params["tf_ts"] == pytest.approx(0.0)
+    assert prog.instances["flow_pi"].params["tf_ts"] == pytest.approx(0.0)
     assert prog.instances["level_pi"].params["isa_tag"] == "LIC"
     assert prog.instances["flow_pi"].params["isa_tag"] == "FIC"
     assert prog.instances["level_pi"].equation == PID_EQUATION
@@ -212,14 +220,14 @@ def test_unit_default_pytest_still_excludes_live() -> None:
     assert "addopts" in text
 
 
-def test_unit_app_version_is_0_1_56() -> None:
-    assert 'version: "0.1.56"' in (ROOT / "plc_assistant" / "config.yaml").read_text(
+def test_unit_app_version_is_0_1_57() -> None:
+    assert 'version: "0.1.57"' in (ROOT / "plc_assistant" / "config.yaml").read_text(
         encoding="utf-8"
     )
     manifest = (ROOT / "custom_components" / "plcassistant" / "manifest.json").read_text(
         encoding="utf-8"
     )
-    assert '"0.1.56"' in manifest
+    assert '"0.1.57"' in manifest
 
 
 def test_unit_incremental_includes_constant_uff() -> None:
@@ -284,7 +292,7 @@ def test_unit_upgrade_shipped_pid_adds_bauer_pins() -> None:
     )
     up = upgrade_builtin_pid_template(old)
     names = [p.name for p in up.pins]
-    assert {"uff", "track", "utrack", "cv"} <= set(names)
+    assert {"uff", "track", "utrack", "auto", "uman", "windup", "cv"} <= set(names)
     assert up.params["form"] == "parallel"
     assert up.params["kp"] == pytest.approx(3.0)
     assert up.body == PID_EQUATION

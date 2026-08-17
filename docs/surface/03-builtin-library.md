@@ -22,14 +22,20 @@ only. Soft-PLC evaluates instance math equations each scan (see
 ### `PID` — ISA-TR5.9 Parallel controller
 
 ISA-TR5.9 **Parallel** form (`form: parallel`) with independent `kp` / `ki` /
-`kd`. Bauer hybrid math: incremental when `ki ≠ 0` (clamp anti-windup),
-positional + bias `u0` when `ki = 0`. Default two-degree-of-freedom weights
-are `beta=1` (P on error) and `gamma=0` (derivative on PV). Required pins stay
-`pv`, `sp`, `running`, `cv` so existing wires and tags remain valid. Optional
-Bauer pins `uff`, `track`, and `utrack` default safe when unwired.
+`kd`. Incremental law follows the IFAC 2024 reference implementation
+(Sundström, Hägglund, Bauer, Eker, Soltesz, *IFAC-PapersOnLine* 58(7)):
+control-signal increments, critically damped second-order measurement filter,
+`Tx` jitter scale, tracking, feed-forward inside the clamp, output Manual
+(`auto` / `uman`), and external `windup`. When `ki = 0` the bias `u0` is applied
+each scan (P / PD). Default two-degree-of-freedom weight is `beta=1` (P on
+error). Derivative is on filtered PV. Required pins stay `pv`, `sp`, `running`,
+`cv` so existing wires and tags remain valid. Optional pins default safe when
+unwired.
 
 `running` is the permit/enable pin (wedge Start), not output Manual. Lovelace
 Man / Auto / Rem remains a setpoint-source mux outside the function block.
+Wedge cascade PI copies set `tf_ts = 0` (filter bypass) so existing tunings
+still settle.
 
 | Pin | Direction | Type | Default | Notes |
 |---|---|---|---|---|
@@ -37,8 +43,11 @@ Man / Auto / Rem remains a setpoint-source mux outside the function block.
 | `sp` | IN | float | 0.0 | Setpoint |
 | `running` | IN | bool | False | When false: hold last `cv` or force 0 per `hold_when_stopped` |
 | `uff` | IN | float | 0.0 | Feed-forward (inside the clamp) |
-| `track` | IN | bool | False | When true, `cv` follows `utrack` |
-| `utrack` | IN | float | 0.0 | Tracking target |
+| `track` | IN | bool | False | When true, increments are added to `utrack` |
+| `utrack` | IN | float | 0.0 | Tracking target (paper: only meaningful in auto) |
+| `auto` | IN | bool | True | Output Manual when false: `cv` follows `uman` |
+| `uman` | IN | float | 0.0 | Manual CO when `auto` is false |
+| `windup` | IN | float | 0.0 | External I-increment clamp: 0 none, 1 upper, 2 lower, 3 both |
 | `cv` | OUT | float | 0.0 | Controller output (CO); clamped |
 
 | Param | Default | Notes |
@@ -50,14 +59,17 @@ Man / Auto / Rem remains a setpoint-source mux outside the function block.
 | `td` | 0.0 | Legacy; unused in Parallel form (kept so old copies load) |
 | `beta` | 1.0 | Setpoint weight on P |
 | `gamma` | 0.0 | Setpoint weight on D (`0` = D on PV) |
-| `u0` | 0.0 | Positional bias when `ki = 0` |
+| `u0` | 0.0 | Bias when `ki = 0` (P / PD) |
 | `direct_acting` | false | Default reverse (`SP − PV`) |
 | `cv_min` / `cv_max` | 0 / 100 | Output clamps |
 | `hold_when_stopped` | false | true → hold last `cv` when stopped; false → `cv=0` |
+| `ts` | 0.1 | Nominal sample time (s). `Tx = dt / ts` |
+| `tf_ts` | 10.0 | Filter `Tf / Ts` (paper default). `<= 0` bypasses the filter |
 | `isa_tag` | `""` | Optional Diagram tag (e.g. LIC, FIC) |
 
 Default math equation: `PID_EQUATION` in `plcassistant.surface.builtin`.
-Stock copies that still have the pre-hybrid factory equation are rewritten on
+Python oracle: `plcassistant.control.pid.pid_scan`.
+Stock copies that still have a pre-IFAC factory equation are rewritten on
 load; custom instance equations are kept, with missing params filled.
 
 ---
