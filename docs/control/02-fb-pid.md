@@ -41,7 +41,12 @@ Code: `plcassistant.wedge.control` (`CascadeConfig`, `CascadeController`).
 
 ## Anti-windup (required)
 
-**Conditional integration:** accumulate integral only when the unsaturated
+**Incremental clamp** on the builtin PID (`PID_EQUATION`): when `ki ≠ 0`, the
+output is updated as `last_cv + Δ` then clamped, so the integrator cannot wind
+past `cv_min` / `cv_max`. When `ki = 0`, the positional form has no integrator.
+
+The legacy `CascadeController` fallback (no block instances) still uses
+**conditional integration**: accumulate integral only when the unsaturated
 output is inside the clamp, or when error drives **out** of saturation.
 When saturated and error would push further into the clamp, **freeze** I.
 
@@ -64,8 +69,16 @@ When `running` is false (STOP / TRIPPED / no permit):
 - Hold last `SP_FLOW`
 - Force `CMD_SPEED = 0`
 
+## Builtin PID (SWD-360)
+
+The Soft-PLC **PID** template is ISA-TR5.9 Parallel with Bauer hybrid
+incremental/positional updates (`plcassistant.surface.builtin.PID_EQUATION`).
+The wedge cascade still places two **PI** copies (`kd = 0`) at `level_pi` /
+`flow_pi`. Incremental clamp replaces conditional integration for those copies.
+ISA-TR5.9 Series form and external-reset feedback remain later work.
+
 ## Non-goals
 
 - Autotune / quantitative gain scheduling
-- Full ISA PID form variants beyond this PI contract
-- Derivative action in v1
+- ISA-TR5.9 Series form and external-reset feedback
+- Classic output Manual on the Lovelace card

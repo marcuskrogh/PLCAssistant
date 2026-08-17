@@ -291,6 +291,7 @@ def _migrate_instance_to_pid(inst: BlockInstance) -> BlockInstance:
         PID_EQUATION,
         PID_TEMPLATE_ID,
         cascade_pid_cv_limits,
+        is_factory_pid_equation,
         pid_default_params,
     )
 
@@ -303,15 +304,21 @@ def _migrate_instance_to_pid(inst: BlockInstance) -> BlockInstance:
     elif inst.template_id == "flow_pi":
         hold_when_stopped = False
     elif inst.template_id == PID_TEMPLATE_ID:
-        # Already a PID copy — only fill missing equation on empty instances.
-        if inst.equation:
+        params = pid_default_params()
+        params.update(copy.deepcopy(inst.params))
+        equation = (
+            PID_EQUATION
+            if is_factory_pid_equation(inst.equation)
+            else inst.equation
+        )
+        if params == inst.params and equation == inst.equation:
             return inst
         return BlockInstance(
             instance_id=inst.instance_id,
             template_id=PID_TEMPLATE_ID,
             library="builtin",
-            params=dict(inst.params),
-            equation=PID_EQUATION,
+            params=params,
+            equation=equation,
             x=inst.x,
             y=inst.y,
         )
@@ -327,12 +334,17 @@ def _migrate_instance_to_pid(inst: BlockInstance) -> BlockInstance:
         cv_min, cv_max = limits
         params["cv_min"] = cv_min
         params["cv_max"] = cv_max
+    equation = (
+        PID_EQUATION
+        if is_factory_pid_equation(inst.equation)
+        else inst.equation
+    )
     return BlockInstance(
         instance_id=inst.instance_id,
         template_id=PID_TEMPLATE_ID,
         library="builtin",
         params=params,
-        equation=inst.equation or PID_EQUATION,
+        equation=equation,
         x=inst.x,
         y=inst.y,
     )
