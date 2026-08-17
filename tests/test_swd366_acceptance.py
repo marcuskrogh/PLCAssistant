@@ -10,7 +10,6 @@ import pytest
 ROOT = Path("custom_components/plcassistant")
 CARD = ROOT / "www" / "pid-loop-card.js"
 FACEPLATE = Path("docs/io/06-pid-faceplate.md")
-ITERATE = Path("docs/ITERATE.md")
 JS_CONTRACT = Path("tests/js/pid_faceplate_contract.test.mjs")
 
 
@@ -59,12 +58,13 @@ def test_unit_faceplate_doc_isa_not_climate() -> None:
 
 
 def test_unit_iterate_tracks_swd366() -> None:
-    text = ITERATE.read_text(encoding="utf-8")
-    assert "SWD-366" in text
-    assert "SWD-360" in text
-    assert "pidHighlightSeverity" in text
-    assert "https://github.com/marcuskrogh/PLCAssistant/pull/102" in text
-    assert "Done — shipped PR" in text
+    issues = Path("docs/agents/ISSUES.md").read_text(encoding="utf-8")
+    assert "SWD-366" in issues
+    assert "pull/102" in issues
+    text = CARD.read_text(encoding="utf-8")
+    assert "export function pidHighlightSeverity" in text
+    face = FACEPLATE.read_text(encoding="utf-8")
+    assert "ISA-101" in face
 
 
 def test_system_faceplate_js_highlight_contract() -> None:
@@ -87,15 +87,15 @@ def test_system_faceplate_js_highlight_contract() -> None:
         )
 
 
-def test_system_app_version_is_0_1_56() -> None:
+def test_system_app_version_is_0_1_57() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.56"' in manifest
+    assert '"0.1.57"' in manifest
     config = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.56"' in config
+    assert 'version: "0.1.57"' in config
     docker = Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.56" in docker
+    assert "BUILD_VERSION=0.1.57" in docker
     dual = Path("plc_assistant/custom_components/plcassistant/manifest.json")
-    assert '"0.1.56"' in dual.read_text(encoding="utf-8")
+    assert '"0.1.57"' in dual.read_text(encoding="utf-8")
 
 
 def test_dual_tree_pid_card_synced() -> None:

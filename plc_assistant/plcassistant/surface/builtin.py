@@ -1,12 +1,12 @@
-"""Built-in block library for the wedge cascade (SWD-115 / SWD-180 / SWD-360).
+"""Built-in block library for the wedge cascade (SWD-115 / SWD-180 / SWD-367).
 
 Registers one generic ``PID`` template.  The default tank program places two
 PID copies (kept at instance ids ``level_pi`` and ``flow_pi`` for stable tags).
 
-The factory equation is ISA-TR5.9 Parallel form with Bauer hybrid updates:
-incremental when ``ki != 0`` (clamp anti-windup), positional + ``u0`` when
-``ki = 0``. Default derivative on PV (``gamma = 0``). Required pins stay
-``pv`` / ``sp`` / ``running`` / ``cv``.
+The factory equation is ISA-TR5.9 Parallel form with the IFAC 2024 incremental
+reference (Sundström et al.): listing-1 increments, second-order measurement
+filter, Tx jitter scale, tracking, feed-forward, output Manual, and external
+windup. Required pins stay ``pv`` / ``sp`` / ``running`` / ``cv``.
 
 No Home Assistant dependency; no hard-wired Skid.
 """
@@ -60,9 +60,8 @@ last_error = error if running_flag else state("last_error", error)
 last_cv = cv
 """
 
-# ISA-TR5.9 Parallel + Bauer hybrid (incremental when ki != 0).
-# td is retained for compatibility and is unused (Parallel uses kd only).
-PID_EQUATION = """# ISA-TR5.9 Parallel; Bauer hybrid incremental/positional.
+# SWD-360 hybrid (pre-IFAC listing 1). Kept so stock copies rewrite on load.
+PID_EQUATION_HYBRID = """# ISA-TR5.9 Parallel; Bauer hybrid incremental/positional.
 dir_sign = -1.0 if bool(direct_acting) else 1.0
 dt_ok = bool(dt > 0.0)
 ep = dir_sign * (beta * sp - pv)
@@ -94,13 +93,77 @@ last_uff = uff
 last_cv = cv
 """
 
+# ISA-TR5.9 Parallel + IFAC 2024 incremental reference (listings 1–4).
+# td / gamma are retained for compatibility; D is on filtered PV (paper §3.2).
+PID_EQUATION = """# ISA-TR5.9 Parallel; IFAC 2024 incremental PID.
+dir_sign = -1.0 if bool(direct_acting) else 1.0
+dt_ok = bool(dt > 0.0)
+ts_ok = bool(ts > 0.0)
+tx = dt / ts if (dt_ok and ts_ok) else 1.0
+tx_safe = tx if bool(tx > 0.0) else 1.0
+use_filter = bool(tf_ts > 0.0)
+ki_on = bool((ki > 0.0) or (ki < 0.0))
+b = 1.0 if (not ki_on) else beta
+pending = bool(state("bumpless_pending", False))
+in_auto = bool(auto) and bool(running)
+a11 = pid_zoh_a11(tf_ts, tx_safe)
+a12 = pid_zoh_a12(tf_ts, tx_safe)
+a21 = pid_zoh_a21(tf_ts, tx_safe)
+a22 = pid_zoh_a22(tf_ts, tx_safe)
+b1 = pid_zoh_b1(tf_ts, tx_safe)
+b2 = pid_zoh_b2(tf_ts, tx_safe)
+yf1 = state("yf", pv)
+dyf_prev = state("dyf", 0.0)
+primed = bool(state("filter_primed", False))
+yf_start = pv if (not primed) else yf1
+dyf_start = 0.0 if (not primed) else dyf_prev
+yf = (a11 * yf_start + a12 * dyf_start + b1 * pv) if dt_ok else yf_start
+dyf_filt = (a21 * yf_start + a22 * dyf_start + b2 * pv) if dt_ok else dyf_start
+dyf_fd = (pv - yf_start) / dt if dt_ok else 0.0
+dyf = dyf_filt if use_filter else dyf_fd
+filter_primed = True if dt_ok else primed
+up_old = state("up_old", kp * state("last_ep", state("last_error", 0.0)))
+ud_old = state("ud_old", 0.0)
+uff_old = state("uff_old", 0.0)
+u_old = state("u_old", state("last_cv", u0))
+ep = dir_sign * (b * sp - yf)
+ei = dir_sign * (sp - yf)
+ud_now = dir_sign * (0.0 - kd * dyf)
+u_old_run = utrack if bool(track) else (u0 if (not ki_on) else u_old)
+up_old_run = 0.0 if (bool(track) or (not ki_on)) else up_old
+ud_old_run = 0.0 if (bool(track) or (not ki_on)) else ud_old
+uff_old_run = 0.0 if (bool(track) or (not ki_on)) else uff_old
+dup = kp * ep - up_old_run
+dui_raw = ki * ei * dt if (dt_ok and (not pending) and ki_on) else 0.0
+dui = pid_anti_windup(dui_raw, windup)
+dud = (ud_now - ud_old_run) / tx_safe if dt_ok else 0.0
+duff = uff - uff_old_run
+du = dup + dui + dud + duff
+u_auto = u_old_run + du
+u_permit = u_auto if in_auto else uman
+stopped_u = u_old if bool(hold_when_stopped) else 0.0
+u_unsat = u_permit if bool(running) else stopped_u
+cv = clamp(u_unsat, cv_min, cv_max)
+bumpless_pending = False
+u_old = cv
+up_old = kp * ep
+ud_old = ud_now
+uff_old = uff
+last_cv = cv
+last_ep = ep
+"""
+
 
 def is_factory_pid_equation(equation: str) -> bool:
     """Return True when *equation* is empty or a known factory PID body."""
     text = str(equation or "").strip()
     if not text:
         return True
-    known = {PID_EQUATION.strip(), PID_EQUATION_LEGACY.strip()}
+    known = {
+        PID_EQUATION.strip(),
+        PID_EQUATION_LEGACY.strip(),
+        PID_EQUATION_HYBRID.strip(),
+    }
     return text in known
 
 
@@ -146,8 +209,8 @@ def pid_template() -> BlockTemplate:
         library="builtin",
         description=(
             "PID controller (ISA Technical Report 5.9 Parallel). "
-            "Hybrid incremental/positional; set kd=0 for PI. "
-            "Derivative on PV by default (gamma=0)."
+            "IFAC 2024 incremental reference; set kd=0 for PI. "
+            "Derivative on filtered PV; measurement filter Tf/Ts = tf_ts."
         ),
         pins=[
             PinSpec("pv", PinDirection.IN, "float", 0.0),
@@ -156,6 +219,9 @@ def pid_template() -> BlockTemplate:
             PinSpec("uff", PinDirection.IN, "float", 0.0),
             PinSpec("track", PinDirection.IN, "bool", False),
             PinSpec("utrack", PinDirection.IN, "float", 0.0),
+            PinSpec("auto", PinDirection.IN, "bool", True),
+            PinSpec("uman", PinDirection.IN, "float", 0.0),
+            PinSpec("windup", PinDirection.IN, "float", 0.0),
             PinSpec("cv", PinDirection.OUT, "float", 0.0),
         ],
         params=pid_default_params(),
@@ -179,6 +245,8 @@ def pid_default_params() -> dict[str, Any]:
         "cv_min": 0.0,
         "cv_max": 100.0,
         "hold_when_stopped": False,
+        "ts": 0.1,
+        "tf_ts": 10.0,
         "isa_tag": "",
     }
 
@@ -220,6 +288,7 @@ def pid_params_for_pi(
             "cv_min": cv_min,
             "cv_max": cv_max,
             "hold_when_stopped": hold_when_stopped,
+            "tf_ts": 0.0,
         }
     )
     return params
@@ -376,6 +445,7 @@ __all__ = [
     "CASCADE_SP_FLOW_MAX",
     "CASCADE_SP_FLOW_MIN",
     "PID_EQUATION",
+    "PID_EQUATION_HYBRID",
     "PID_EQUATION_LEGACY",
     "PID_TEMPLATE_ID",
     "cascade_pid_cv_limits",

@@ -306,6 +306,7 @@ def _migrate_instance_to_pid(inst: BlockInstance) -> BlockInstance:
     elif inst.template_id == PID_TEMPLATE_ID:
         params = pid_default_params()
         params.update(copy.deepcopy(inst.params))
+        _apply_cascade_tf_ts_bypass(params, inst.instance_id)
         equation = (
             PID_EQUATION
             if is_factory_pid_equation(inst.equation)
@@ -334,6 +335,7 @@ def _migrate_instance_to_pid(inst: BlockInstance) -> BlockInstance:
         cv_min, cv_max = limits
         params["cv_min"] = cv_min
         params["cv_max"] = cv_max
+    _apply_cascade_tf_ts_bypass(params, inst.instance_id)
     equation = (
         PID_EQUATION
         if is_factory_pid_equation(inst.equation)
@@ -672,6 +674,25 @@ def _is_cascade_pid_instance(inst: BlockInstance) -> bool:
     return cascade_pid_cv_limits(inst.instance_id) is not None
 
 
+def _apply_cascade_tf_ts_bypass(params: dict[str, Any], instance_id: str) -> None:
+    """Force measurement-filter bypass on wedge cascade PI copies (SWD-367)."""
+    from plcassistant.surface.builtin import cascade_pid_cv_limits
+
+    if cascade_pid_cv_limits(instance_id) is not None:
+        params["tf_ts"] = 0.0
+
+
+def _cascade_tf_ts_is_bypass(params: Mapping[str, Any]) -> bool:
+    """True when cascade ``tf_ts`` is already the filter-bypass value."""
+    raw = params.get("tf_ts")
+    if raw is None:
+        return False
+    try:
+        return float(raw) == 0.0
+    except (TypeError, ValueError):
+        return False
+
+
 def _resolve_cascade_sp_flow_max(sp_flow_max: float | None = None) -> float:
     """Prefer explicit max, else HA-config plant capacity, else built-in default."""
     from plcassistant.io.ha_config_bridge import read_plant_capacity
@@ -695,7 +716,7 @@ def _repair_cascade_instance_limits(
     *,
     sp_flow_max: float | None = None,
 ) -> tuple[BlockInstance, bool]:
-    """Normalize cv_min/cv_max on one cascade PI instance."""
+    """Normalize cv_min/cv_max and ``tf_ts=0`` on one cascade PI instance."""
     from plcassistant.surface.builtin import cascade_pid_cv_limits
 
     if not _is_cascade_pid_instance(inst):
@@ -707,10 +728,16 @@ def _repair_cascade_instance_limits(
     assert limits is not None
     cv_min, cv_max = limits
     params = dict(inst.params)
-    if params.get("cv_min") == cv_min and params.get("cv_max") == cv_max:
+    changed = False
+    if params.get("cv_min") != cv_min or params.get("cv_max") != cv_max:
+        params["cv_min"] = cv_min
+        params["cv_max"] = cv_max
+        changed = True
+    if not _cascade_tf_ts_is_bypass(params):
+        params["tf_ts"] = 0.0
+        changed = True
+    if not changed:
         return inst, False
-    params["cv_min"] = cv_min
-    params["cv_max"] = cv_max
     return BlockInstance(
         instance_id=inst.instance_id,
         template_id=inst.template_id,
@@ -727,10 +754,12 @@ def repair_cascade_pid_limits(
     *,
     sp_flow_max: float | None = None,
 ) -> bool:
-    """Normalize cv_min/cv_max on wedge cascade PID copies (SWD-250/251).
+    """Normalize cv_min/cv_max and ``tf_ts=0`` on wedge cascade PID copies.
 
     Level ``cv_max`` tracks plant ``q_pump_max`` when provided or when the
     HA-config plant capacity bridge is present; flow ``cv_max`` stays 100 %.
+    Cascade copies keep the measurement filter bypassed (SWD-367) so stored
+    tunings still settle after load.
     """
     repaired = False
     for iid in list(program.instances):

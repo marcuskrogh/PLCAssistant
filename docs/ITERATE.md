@@ -1,55 +1,54 @@
-# Iterate: Lovelace PID cards ISA look and highlighting
+# Iterate: Align builtin PID with IFAC 2024 reference implementation
 
 ## Prior work
-- Task: [SWD-360](https://marcusknielsen.atlassian.net/browse/SWD-360)
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/101 (App 0.1.55)
-- Spec context: docs/PLAN.md, docs/RESEARCH.md, docs/io/06-pid-faceplate.md
+- Task: [SWD-360](https://marcusknielsen.atlassian.net/browse/SWD-360) (algorithm); [SWD-366](https://marcusknielsen.atlassian.net/browse/SWD-366) (latest ship)
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/101 (App 0.1.55); https://github.com/marcuskrogh/PLCAssistant/pull/102 (App 0.1.56)
+- Spec context: docs/PLAN.md, docs/RESEARCH.md, IFAC-PapersOnLine 58(7) 370–375 (doi:10.1016/j.ifacol.2024.08.090)
 
 ## Problem
-Shipped ISA-5.1 Diagram glyph and ISA-TR5.9 PID structure, but Lovelace PID cards still look like a climate card:
+The shipped builtin PID follows ISA-TR5.9 names and a simplified hybrid update. It does not implement the IFAC 2024 reference (Sundström, Hägglund, Bauer, Eker, Soltesz) that this iterate takes as the standardisation source:
 
-- Man / Auto / Rem are colour-coded (amber / teal / blue)
-- Active SP is always accent-coloured
-- CO bar uses the same mode hue
-- Error is a subtitle (`err ±…`) under SP, not a first-class KPI
-- No ISA-5.1 three-mode chrome (ε / P / I / D)
-- Level CO bar still scales to max 6 instead of cascade 8 L/min
+- Listing 1 incremental law with `u_old` / `up_old` / `ud_old` / `uff_old`
+- Listings 2–3 critically damped second-order measurement filter and ZOH
+- Jitter scale `Tx`
+- Output Manual (`auto` / `uman`) and external `windup` on the integral increment
 
 ## Clarifications
-- Invoke was rich; no further clarifying questions.
-- ISA-5.1 supplies the **look** (three-mode glyph names and PV / SP / ε / CO).
-- ISA-101 high-performance HMI supplies **colour highlighting**: grayscale in normal operation; colour only for caution / abnormal. Not ISA-5.1 P&ID line colours.
-- Man / Auto / Rem remain **SP-source** modes (not Bauer output Manual).
+- Invoke named the paper as the standardisation reference; no further questions.
+- ISA-TR5.9 names stay: `pv` ≈ y, `sp` ≈ r, `cv` ≈ u, `beta` ≈ b.
+- `ki` stays in 1/s so wedge tunings do not change (`Dui = ki * e * dt`).
+- `running` stays the permit pin. Lovelace Man / Auto / Rem stays the setpoint-source mux.
+- Wedge cascade PI copies bypass the measurement filter (`tf_ts = 0`) so they do not need retuning.
+- Reimplement from the paper; do not vendor github.com/copybit/pid.
 
 ## Acceptance criteria
-- [x] Lovelace PID card shows a compact ISA-5.1 chrome strip (ε / P / I / D) matching the Diagram glyph
-- [x] Hero KPIs are PV / SP / ε / CO at 2dp; ε is first-class (not a subtitle)
-- [x] Normal operation uses grayscale / Home Assistant tokens; mode is an outlined badge and inverted grayscale active button — no `--pid-man` / `--pid-auto` / `--pid-rem`
-- [x] Colour only for attention: caution → `--warning-color`; abnormal → `--error-color`
-- [x] Exported `pidHighlightSeverity(err, sp, pv)`: `|err| / max(|sp|, |pv|, floor)` &lt; 2% normal, &lt; 10% caution, else abnormal
-- [x] CO bar highlights at clamp (~0% or ~100% of scale); level scale max is 8 L/min; flow remains 100%
-- [x] Regression tests (Python + Node contract) + dual-tree sync + App **0.1.56**
+- [x] Builtin PID listing-1 incremental update, including `ki = 0` bias `u0` and tracking
+- [x] Second-order measurement filter (paper `TfTs` default 10) with ZOH; `tf_ts <= 0` bypasses
+- [x] `Tx = dt / ts` scales derivative and documents jitter; integral uses `ki * dt`
+- [x] Pins `auto` (default true), `uman`, `windup` (0 none / 1 upper / 2 lower / 3 both)
+- [x] `running` false still holds or zeros CO; Lovelace SP-source modes unchanged
+- [x] Wedge `level_pi` / `flow_pi` still settle without retuning
+- [x] Unit tests cover filter, auto/manual, windup, Tx, and equation ≡ Python reference
+- [x] Docs + dual-tree sync + App **0.1.57**
 
 ## Out of scope
-- Full ISA-101 rewrite of Operate
-- Bauer output Manual (`auto` / `uman`)
-- Series form / ERF / percent-of-range scaling
-- Changing pin name `cv` (label stays CO)
+- Lovelace UI for output Manual
+- Series form / external-reset feedback / percent-of-range scaling
+- Threaded listing-5 runtime (Soft-PLC scan is the runtime)
+- Autotune
+- Vendoring copybit/pid
 
 ## Work packages
-1. Faceplate look + highlighting helpers in `pid-loop-card.js` — done
-2. Docs (`06-pid-faceplate.md`) + tests + version 0.1.56 + dual-tree sync — done
+1. Python reference (`plcassistant/control/pid.py`) + equation helpers
+2. Builtin PID equation, pins/params, bumpless seed
+3. Tests, docs, App 0.1.57, dual-tree sync
 
 ## Tracker
-- Task: [SWD-366](https://marcusknielsen.atlassian.net/browse/SWD-366)
-- Relates: SWD-360
-- Branch: `cursor/swd-366-isa-pid-cards-25fc`
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/102
-- App: **0.1.56**
-
-## Review-fix
-- Iter 1: REQUEST_CHANGES (dead `.pid-cv-fill[data-hi="abnormal"]`) → fix-forward
-- Exit: CLEAN
+- Task: [SWD-367](https://marcusknielsen.atlassian.net/browse/SWD-367)
+- Relates: SWD-360, SWD-366
+- Branch: `cursor/swd-367-ifac-pid-reference-6900`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/103
+- App: **0.1.57**
 
 ## Next
-Done — shipped PR [#102](https://github.com/marcuskrogh/PLCAssistant/pull/102)
+Done — shipped PR [#103](https://github.com/marcuskrogh/PLCAssistant/pull/103)
