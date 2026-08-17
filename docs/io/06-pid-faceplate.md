@@ -9,7 +9,8 @@ Operator faceplates for Soft-PLC PID loops use **SP-source modes**
 (Manual / Automatic / Remote). The Datablock is system source of truth;
 HA entities and Lovelace cards write into it.
 
-Classic **output Manual** (operator sets CV directly) is deferred.
+Classic **output Manual** (operator sets CO directly) is deferred. The `cv`
+pin name is unchanged; faceplates label that signal **CO**.
 
 ## Modes
 
@@ -21,15 +22,15 @@ Classic **output Manual** (operator sets CV directly) is deferred.
 
 Writing Man / Auto / Rem SP Set flips the loop into that source mode (SWD-222).
 
-Level loop **CV** is published as `SP_FLOW_AUTO` (cascade request into flow).
+Level loop **CO** is published as `SP_FLOW_AUTO` (cascade request into flow).
 Active flow SP is muxed onto `SP_FLOW` (Manual / Automatic / Remote). Flow Manual
 or Remote SP is applied to the flow PI each scan (SWD-223) — not display-only.
 
 ## Demo tags (`DB_Tank`)
 
-| Loop | Mode | SP Man / Auto / Rem | Active SP | PV | CV |
+| Loop | Mode | SP Man / Auto / Rem | Active SP | PV | CO |
 |------|------|---------------------|-----------|----|----|
-| Level | `LEVEL_MODE` | `SP_LEVEL_MAN` / `SP_LEVEL_AUTO` / `SP_LEVEL_REM` | `SP_LEVEL` | `LT_TANK` | `SP_FLOW_AUTO` (level CV) |
+| Level | `LEVEL_MODE` | `SP_LEVEL_MAN` / `SP_LEVEL_AUTO` / `SP_LEVEL_REM` | `SP_LEVEL` | `LT_TANK` | `SP_FLOW_AUTO` (level CO / `cv`) |
 | Flow | `FLOW_MODE` | `SP_FLOW_MAN` / `SP_FLOW_AUTO` / `SP_FLOW_REM` | `SP_FLOW` | `FT_INLET` | `CMD_SPEED` |
 
 Legacy `SP_LEVEL_REQ` is the **Automatic writer** for the level loop when
@@ -43,8 +44,8 @@ uses `SP_LEVEL_AUTO`. Writing REQ from the HMI also mirrors into
 When flow SP-source mode is Manual or Remote, Soft-PLC applies the muxed
 `SP_FLOW` to `flow_pi.sp` for that scan via runtime `prefer_context` (cascade
 wire left intact on the Program) so `CMD_SPEED` tracks the operator SP.
-Automatic mode keeps the level CV → flow SP wire. Level faceplate CV reads
-`SP_FLOW_AUTO` (true level CV), not the muxed active `SP_FLOW`.
+Automatic mode keeps the level CO → flow SP wire. Level faceplate CO reads
+`SP_FLOW_AUTO` (true level `cv`), not the muxed active `SP_FLOW`.
 
 ### Tunings
 

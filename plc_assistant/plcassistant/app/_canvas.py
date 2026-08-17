@@ -350,6 +350,12 @@ _HTML = r"""<!DOCTYPE html>
   .block-g { cursor: move; }
   .block-rect { fill: #fffcf7; stroke: var(--line); stroke-width: 1.5; rx: 4; ry: 4; }
   .block-rect.selected { stroke: var(--teal); stroke-width: 2; }
+  .isa-pid { fill: #fffcf7; stroke: var(--line); stroke-width: 1.5; }
+  .isa-pid.selected { stroke: var(--teal); stroke-width: 2; }
+  .isa-pid-div { stroke: var(--line); stroke-width: 1; }
+  .isa-pid-diff, .isa-pid-p, .isa-pid-i, .isa-pid-d {
+    fill: var(--ink-soft); font-size: 11px; font-weight: 700; font-family: var(--font-ui);
+  }
   .block-title { fill: var(--wire); font-size: 11px; font-weight: 600; font-family: var(--font-ui); }
   .block-id { fill: var(--muted); font-size: 9px; font-family: var(--font-ui); }
   .pin-circle { cursor: crosshair; }
@@ -1507,6 +1513,62 @@ function blockPositions() {
   return pos;
 }
 
+function appendIsaPidChrome(g, bx, by, bh, selected, inst, iid) {
+  const frame = svgEl('rect');
+  frame.setAttribute('x', bx); frame.setAttribute('y', by);
+  frame.setAttribute('width', BLOCK_W); frame.setAttribute('height', bh);
+  frame.setAttribute('class', 'isa-pid' + (selected ? ' selected' : ''));
+  frame.setAttribute('rx', 4); frame.setAttribute('ry', 4);
+  g.appendChild(frame);
+
+  const headerH = BLOCK_H_BASE;
+  const footerH = 12;
+  const bodyY = by + headerH;
+  const bodyH = Math.max(bh - headerH - footerH, 24);
+  const splitY = bodyY + bodyH * 0.38;
+  const colW = BLOCK_W / 3;
+  const bodyBottom = by + headerH + bodyH;
+
+  const mkLine = (x1, y1, x2, y2) => {
+    const ln = svgEl('line');
+    ln.setAttribute('x1', x1); ln.setAttribute('y1', y1);
+    ln.setAttribute('x2', x2); ln.setAttribute('y2', y2);
+    ln.setAttribute('class', 'isa-pid-div');
+    g.appendChild(ln);
+  };
+  mkLine(bx, by + headerH, bx + BLOCK_W, by + headerH);
+  mkLine(bx, splitY, bx + BLOCK_W, splitY);
+  mkLine(bx + colW, splitY, bx + colW, bodyBottom);
+  mkLine(bx + 2 * colW, splitY, bx + 2 * colW, bodyBottom);
+  mkLine(bx, bodyBottom, bx + BLOCK_W, bodyBottom);
+
+  const mkCell = (x, y, text, cls) => {
+    const t = svgEl('text');
+    t.setAttribute('x', x); t.setAttribute('y', y);
+    t.setAttribute('text-anchor', 'middle');
+    t.setAttribute('class', cls);
+    t.textContent = text;
+    g.appendChild(t);
+  };
+  const tag = (inst.params && inst.params.isa_tag) ? String(inst.params.isa_tag).trim() : '';
+  const title = svgEl('text');
+  title.setAttribute('x', bx+6); title.setAttribute('y', by+14);
+  title.setAttribute('class', 'block-title');
+  title.textContent = tag || 'PID';
+  g.appendChild(title);
+  const idTxt = svgEl('text');
+  idTxt.setAttribute('x', bx+6); idTxt.setAttribute('y', by+24);
+  idTxt.setAttribute('class', 'block-id');
+  idTxt.textContent = iid;
+  g.appendChild(idTxt);
+
+  mkCell(bx + BLOCK_W/2, (bodyY + splitY)/2 + 4, '\u03b5', 'isa-pid-diff');
+  const midY = splitY + (bodyBottom - splitY)/2 + 4;
+  mkCell(bx + colW/2, midY, 'P', 'isa-pid-p');
+  mkCell(bx + colW + colW/2, midY, 'I', 'isa-pid-i');
+  mkCell(bx + 2*colW + colW/2, midY, 'D', 'isa-pid-d');
+}
+
 function render() {
   const wl = document.getElementById('wires-layer');
   const bl = document.getElementById('blocks-layer');
@@ -1556,12 +1618,27 @@ function render() {
     g.setAttribute('class', 'block-g');
     g.dataset.iid = iid;
 
-    const rect = svgEl('rect');
-    rect.setAttribute('x', bx); rect.setAttribute('y', by);
-    rect.setAttribute('width', BLOCK_W); rect.setAttribute('height', bh);
-    rect.setAttribute('class', 'block-rect' + (iid===selectedId?' selected':''));
-    rect.setAttribute('rx', 4); rect.setAttribute('ry', 4);
-    g.appendChild(rect);
+    const isPid = inst.library === 'builtin' && inst.template_id === 'PID';
+    if (isPid) {
+      appendIsaPidChrome(g, bx, by, bh, iid===selectedId, inst, iid);
+    } else {
+      const rect = svgEl('rect');
+      rect.setAttribute('x', bx); rect.setAttribute('y', by);
+      rect.setAttribute('width', BLOCK_W); rect.setAttribute('height', bh);
+      rect.setAttribute('class', 'block-rect' + (iid===selectedId?' selected':''));
+      rect.setAttribute('rx', 4); rect.setAttribute('ry', 4);
+      g.appendChild(rect);
+      const title = svgEl('text');
+      title.setAttribute('x', bx+6); title.setAttribute('y', by+14);
+      title.setAttribute('class', 'block-title');
+      title.textContent = inst.template_id;
+      g.appendChild(title);
+      const idTxt = svgEl('text');
+      idTxt.setAttribute('x', bx+6); idTxt.setAttribute('y', by+24);
+      idTxt.setAttribute('class', 'block-id');
+      idTxt.textContent = iid;
+      g.appendChild(idTxt);
+    }
 
     const badge = svgEl('rect');
     badge.setAttribute('x', bx+BLOCK_W-22); badge.setAttribute('y', by+2);
@@ -1573,17 +1650,6 @@ function render() {
     badgeTxt.setAttribute('class', 'exec-text'); badgeTxt.setAttribute('text-anchor', 'middle');
     badgeTxt.textContent = (program.execution_order||[]).indexOf(iid)+1 || '?';
     g.appendChild(badgeTxt);
-
-    const title = svgEl('text');
-    title.setAttribute('x', bx+6); title.setAttribute('y', by+14);
-    title.setAttribute('class', 'block-title');
-    title.textContent = inst.template_id;
-    g.appendChild(title);
-    const idTxt = svgEl('text');
-    idTxt.setAttribute('x', bx+6); idTxt.setAttribute('y', by+24);
-    idTxt.setAttribute('class', 'block-id');
-    idTxt.textContent = iid;
-    g.appendChild(idTxt);
 
     const inPins = (tmpl?.pins||[]).filter(p=>p.direction==='IN');
     const outPins = (tmpl?.pins||[]).filter(p=>p.direction==='OUT');

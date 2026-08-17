@@ -1,11 +1,12 @@
-"""Built-in block library for the wedge cascade (SWD-115 / SWD-180).
+"""Built-in block library for the wedge cascade (SWD-115 / SWD-180 / SWD-360).
 
 Registers one generic ``PID`` template.  The default tank program places two
 PID copies (kept at instance ids ``level_pi`` and ``flow_pi`` for stable tags).
 
-PID equation math mirrors ``CascadeController`` PI behavior when ``kd = td = 0``:
-clamps, conditional anti-windup, level-loop hold when stopped, and flow-loop
-zero when stopped.
+The factory equation is ISA-TR5.9 Parallel form with Bauer hybrid updates:
+incremental when ``ki != 0`` (clamp anti-windup), positional + ``u0`` when
+``ki = 0``. Default derivative on PV (``gamma = 0``). Required pins stay
+``pv`` / ``sp`` / ``running`` / ``cv``.
 
 No Home Assistant dependency; no hard-wired Skid.
 """
@@ -36,7 +37,9 @@ CASCADE_CMD_SPEED_MIN = 0.0
 CASCADE_CMD_SPEED_MAX = 100.0
 
 
-PID_EQUATION = """# Generic PID; PI when kd = td = 0.
+# Pre-SWD-360 factory equation (positional + conditional integration).
+# Kept so program migration can recognise stock copies and rewrite them.
+PID_EQUATION_LEGACY = """# Generic PID; PI when kd = td = 0.
 running_flag = bool(running)
 prev_integral = state("integral", 0.0)
 integral = 0.0 if not running_flag else prev_integral
@@ -57,6 +60,49 @@ last_error = error if running_flag else state("last_error", error)
 last_cv = cv
 """
 
+# ISA-TR5.9 Parallel + Bauer hybrid (incremental when ki != 0).
+# td is retained for compatibility and is unused (Parallel uses kd only).
+PID_EQUATION = """# ISA-TR5.9 Parallel; Bauer hybrid incremental/positional.
+dir_sign = -1.0 if bool(direct_acting) else 1.0
+dt_ok = bool(dt > 0.0)
+ep = dir_sign * (beta * sp - pv)
+ei = dir_sign * (sp - pv)
+yd = gamma * sp - pv
+last_ep = state("last_ep", 0.0)
+last_yd = state("last_yd", yd)
+last_uff = state("last_uff", uff)
+last_cv = state("last_cv", u0)
+pending = bool(state("bumpless_pending", False))
+dt_safe = dt if dt_ok else 1.0
+dup = kp * (ep - last_ep)
+dui = ki * ei * dt if dt_ok and (not pending) else 0.0
+dud = kd * dir_sign * (yd - last_yd) / dt_safe if dt_ok else 0.0
+duff = uff - last_uff
+use_inc = bool((ki > 0.0) or (ki < 0.0))
+raw_inc = last_cv + dup + dui + dud + duff
+raw_pos = u0 + kp * ep + dud + uff
+raw = raw_inc if use_inc else raw_pos
+clamped = clamp(raw, cv_min, cv_max)
+tracked = clamp(utrack, cv_min, cv_max)
+cv_run = tracked if bool(track) else clamped
+cv_stop = last_cv if bool(hold_when_stopped) else 0.0
+cv = cv_run if bool(running) else cv_stop
+bumpless_pending = False
+last_ep = ep
+last_yd = yd
+last_uff = uff
+last_cv = cv
+"""
+
+
+def is_factory_pid_equation(equation: str) -> bool:
+    """Return True when *equation* is empty or a known factory PID body."""
+    text = str(equation or "").strip()
+    if not text:
+        return True
+    known = {PID_EQUATION.strip(), PID_EQUATION_LEGACY.strip()}
+    return text in known
+
 
 # ---------------------------------------------------------------------------
 # Shared helpers (removed native PI callables — equation-driven PID only)
@@ -69,12 +115,16 @@ def pid_template() -> BlockTemplate:
         template_id=PID_TEMPLATE_ID,
         library="builtin",
         description=(
-            "PID controller. Full PID with kp/ki/kd/td; set kd=0 and td=0 for PI."
+            "PID controller (ISA-TR5.9 Parallel). Hybrid incremental/positional; "
+            "set kd=0 for PI. Derivative on PV by default (gamma=0)."
         ),
         pins=[
             PinSpec("pv", PinDirection.IN, "float", 0.0),
             PinSpec("sp", PinDirection.IN, "float", 0.0),
             PinSpec("running", PinDirection.IN, "bool", False),
+            PinSpec("uff", PinDirection.IN, "float", 0.0),
+            PinSpec("track", PinDirection.IN, "bool", False),
+            PinSpec("utrack", PinDirection.IN, "float", 0.0),
             PinSpec("cv", PinDirection.OUT, "float", 0.0),
         ],
         params=pid_default_params(),
@@ -86,13 +136,19 @@ def pid_template() -> BlockTemplate:
 def pid_default_params() -> dict[str, Any]:
     """Generic PID defaults used for new placements."""
     return {
+        "form": "parallel",
         "kp": 1.0,
         "ki": 0.0,
         "kd": 0.0,
         "td": 0.0,
+        "beta": 1.0,
+        "gamma": 0.0,
+        "u0": 0.0,
+        "direct_acting": False,
         "cv_min": 0.0,
         "cv_max": 100.0,
         "hold_when_stopped": False,
+        "isa_tag": "",
     }
 
 
@@ -198,13 +254,16 @@ def wedge_cascade_program(
             "level_pi": {
                 "template_id": PID_TEMPLATE_ID,
                 "library": "builtin",
-                "params": pid_params_for_pi(
-                    kp=level_kp,
-                    ki=level_ki,
-                    cv_min=sp_flow_min,
-                    cv_max=sp_flow_max,
-                    hold_when_stopped=True,
-                ),
+                "params": {
+                    **pid_params_for_pi(
+                        kp=level_kp,
+                        ki=level_ki,
+                        cv_min=sp_flow_min,
+                        cv_max=sp_flow_max,
+                        hold_when_stopped=True,
+                    ),
+                    "isa_tag": "LIC",
+                },
                 "equation": PID_EQUATION,
                 "x": 60.0,
                 "y": 80.0,
@@ -212,13 +271,16 @@ def wedge_cascade_program(
             "flow_pi": {
                 "template_id": PID_TEMPLATE_ID,
                 "library": "builtin",
-                "params": pid_params_for_pi(
-                    kp=flow_kp,
-                    ki=flow_ki,
-                    cv_min=cmd_speed_min,
-                    cv_max=cmd_speed_max,
-                    hold_when_stopped=False,
-                ),
+                "params": {
+                    **pid_params_for_pi(
+                        kp=flow_kp,
+                        ki=flow_ki,
+                        cv_min=cmd_speed_min,
+                        cv_max=cmd_speed_max,
+                        hold_when_stopped=False,
+                    ),
+                    "isa_tag": "FIC",
+                },
                 "equation": PID_EQUATION,
                 "x": 280.0,
                 "y": 80.0,
@@ -283,8 +345,10 @@ __all__ = [
     "CASCADE_SP_FLOW_MAX",
     "CASCADE_SP_FLOW_MIN",
     "PID_EQUATION",
+    "PID_EQUATION_LEGACY",
     "PID_TEMPLATE_ID",
     "cascade_pid_cv_limits",
+    "is_factory_pid_equation",
     "pid_default_params",
     "pid_params_for_pi",
     "pid_template",

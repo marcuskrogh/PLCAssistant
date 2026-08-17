@@ -94,6 +94,8 @@ If personal boards still show unavailable plant Numbers, delete stale unavailabl
 entities in the entity registry (or remove/re-add the integration). Update any
 personal dashboards that still reference plant Numbers for Process display.
 
+**0.1.55** ISA-5.1 three-mode PID glyph on the Diagram; ISA-TR5.9 Parallel + Bauer hybrid PID; Lovelace faceplate labels PV / SP / CO. Stock Lovelace still dashboard version **28**.
+
 **0.1.54** One Max pump flow knob: plant capacity writes Soft-PLC cascade level CV; pump block no longer desyncs. Stock Lovelace still dashboard version **28**.
 
 **0.1.53** Operate is a SCADA HMI (status, Start/Stop/Reset, Mode, key PVs, PID cards) — not an entity dump. Tap Process values for history. Stock Lovelace refreshes to dashboard version **28**.

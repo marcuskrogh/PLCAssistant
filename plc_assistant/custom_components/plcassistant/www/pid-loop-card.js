@@ -5,7 +5,7 @@
  * Reads climate-like attributes from the compound PID sensor and writes
  * Manual/Auto/Remote mode + SP sources via number.* entities.
  *
- * Compact faceplate (SWD-228): PV / Active SP / CV at 2dp in a single row;
+ * Compact faceplate (SWD-228 / SWD-360): PV / Active SP / CO at 2dp in a single row;
  * click opens a climate-style dialog for mode + SP edits.
  *
  * Typography (SWD-230): use HA Lovelace design tokens (--ha-font-*) so the
@@ -19,7 +19,7 @@
  * covered by Node regression tests (SWD-227 / SWD-228 / SWD-230).
  */
 
-/** Display precision for faceplate KPIs (PV / SP / CV / error) and SP editors. */
+/** Display precision for faceplate KPIs (PV / SP / CO / error) and SP editors. */
 export const PID_DISPLAY_DIGITS = 2;
 
 /**
@@ -643,7 +643,7 @@ class PlcAssistantPidCard extends HTMLElement {
                 <div class="pid-sub" data-metric="err"></div>
               </div>
               <div class="pid-metric" data-role="cv">
-                <span>CV</span>
+                <span>CO</span>
                 <strong data-metric="cv"></strong>
               </div>
             </div>
@@ -671,7 +671,7 @@ class PlcAssistantPidCard extends HTMLElement {
                   <div class="pid-sub" data-metric="dlg-err"></div>
                 </div>
                 <div class="pid-metric" data-role="cv">
-                  <span>CV</span>
+                  <span>CO</span>
                   <strong data-metric="dlg-cv"></strong>
                 </div>
               </div>

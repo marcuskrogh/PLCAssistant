@@ -19,27 +19,46 @@ only. Soft-PLC evaluates instance math equations each scan (see
 
 ## Blocks
 
-### `PID` — Generic PID Controller
+### `PID` — ISA-TR5.9 Parallel controller
 
-Full PID with optional D (`kd`/`td` = 0 → PI). Pins and params:
+ISA-TR5.9 **Parallel** form (`form: parallel`) with independent `kp` / `ki` /
+`kd`. Bauer hybrid math: incremental when `ki ≠ 0` (clamp anti-windup),
+positional + bias `u0` when `ki = 0`. Default two-degree-of-freedom weights
+are `beta=1` (P on error) and `gamma=0` (derivative on PV). Required pins stay
+`pv`, `sp`, `running`, `cv` so existing wires and tags remain valid. Optional
+Bauer pins `uff`, `track`, and `utrack` default safe when unwired.
+
+`running` is the permit/enable pin (wedge Start), not output Manual. Lovelace
+Man / Auto / Rem remains a setpoint-source mux outside the function block.
 
 | Pin | Direction | Type | Default | Notes |
 |---|---|---|---|---|
 | `pv` | IN | float | 0.0 | Process value |
 | `sp` | IN | float | 0.0 | Setpoint |
-| `running` | IN | bool | False | When false: reset integral; hold or zero `cv` per `hold_when_stopped` |
-| `cv` | OUT | float | 0.0 | Manipulated variable (clamped) |
+| `running` | IN | bool | False | When false: hold last `cv` or force 0 per `hold_when_stopped` |
+| `uff` | IN | float | 0.0 | Feed-forward (inside the clamp) |
+| `track` | IN | bool | False | When true, `cv` follows `utrack` |
+| `utrack` | IN | float | 0.0 | Tracking target |
+| `cv` | OUT | float | 0.0 | Controller output (CO); clamped |
 
 | Param | Default | Notes |
 |---|---|---|
+| `form` | `parallel` | ISA-TR5.9 algorithm name (Standard/Series later) |
 | `kp` | 1.0 | Proportional gain |
-| `ki` | 0.0 | Integral gain (1/s) |
+| `ki` | 0.0 | Integral gain (1/s). `ki = 0` selects positional form |
 | `kd` | 0.0 | Derivative gain |
-| `td` | 0.0 | Derivative time (combined with `kd`) |
+| `td` | 0.0 | Legacy; unused in Parallel form (kept so old copies load) |
+| `beta` | 1.0 | Setpoint weight on P |
+| `gamma` | 0.0 | Setpoint weight on D (`0` = D on PV) |
+| `u0` | 0.0 | Positional bias when `ki = 0` |
+| `direct_acting` | false | Default reverse (`SP − PV`) |
 | `cv_min` / `cv_max` | 0 / 100 | Output clamps |
 | `hold_when_stopped` | false | true → hold last `cv` when stopped; false → `cv=0` |
+| `isa_tag` | `""` | Optional Diagram tag (e.g. LIC, FIC) |
 
 Default math equation: `PID_EQUATION` in `plcassistant.surface.builtin`.
+Stock copies that still have the pre-hybrid factory equation are rewritten on
+load; custom instance equations are kept, with missing params filled.
 
 ---
 
@@ -48,8 +67,8 @@ Default math equation: `PID_EQUATION` in `plcassistant.surface.builtin`.
 The wedge tank program places **two PID copies** at stable instance ids
 `level_pi` and `flow_pi` (tags stay stable; template id is `PID`):
 
-- `level_pi`: level loop (`hold_when_stopped=true`, cascade gains)
-- `flow_pi`: flow loop (`hold_when_stopped=false`)
+- `level_pi`: level loop (`hold_when_stopped=true`, cascade gains, `isa_tag=LIC`)
+- `flow_pi`: flow loop (`hold_when_stopped=false`, `isa_tag=FIC`)
 - Wire: `level_pi.cv → flow_pi.sp`
 
 Legacy YAML with `template_id: level_pi|flow_pi` is auto-migrated by

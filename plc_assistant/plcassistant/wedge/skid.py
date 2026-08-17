@@ -732,8 +732,9 @@ class Skid:
         respected; falls back to ``SkidConfig.cascade`` if the instance or
         param is absent.
 
-        Sets ``bumpless_pending=True`` on both PI instances so that the first
-        RUNNING scan skips the I-advance and matches the target outputs.
+        Sets ``bumpless_pending=True`` and seeds ``last_cv`` / ``last_ep`` so the
+        first RUNNING scan holds the target outputs (incremental P and I stay
+        quiet until the next change).
         """
         cfg = self.config.cascade
 
@@ -764,6 +765,18 @@ class Skid:
         level_error = self.sp_level - lt_tank
         flow_error = target_sp_flow - ft_inlet
 
+        def _pid_errors(inst: object, sp: float, pv: float) -> tuple[float, float]:
+            params = getattr(inst, "params", {}) or {}
+            beta = float(params.get("beta", 1.0))
+            gamma = float(params.get("gamma", 0.0))
+            dir_sign = -1.0 if bool(params.get("direct_acting", False)) else 1.0
+            ep = dir_sign * (beta * sp - pv)
+            yd = gamma * sp - pv
+            return ep, yd
+
+        level_ep, level_yd = _pid_errors(level_inst, self.sp_level, lt_tank)
+        flow_ep, flow_yd = _pid_errors(flow_inst, target_sp_flow, ft_inlet)
+
         level_integral = (
             (target_sp_flow - level_kp * level_error) / level_ki
             if level_ki != 0.0
@@ -775,6 +788,9 @@ class Skid:
                 "integral": level_integral,
                 "bumpless_pending": True,
                 "last_cv": target_sp_flow,
+                "last_ep": level_ep,
+                "last_yd": level_yd,
+                "last_uff": 0.0,
             },
         )
 
@@ -789,6 +805,9 @@ class Skid:
                 "integral": flow_integral,
                 "bumpless_pending": True,
                 "last_cv": target_cmd_speed,
+                "last_ep": flow_ep,
+                "last_yd": flow_yd,
+                "last_uff": 0.0,
             },
         )
 

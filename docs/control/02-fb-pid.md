@@ -64,8 +64,16 @@ When `running` is false (STOP / TRIPPED / no permit):
 - Hold last `SP_FLOW`
 - Force `CMD_SPEED = 0`
 
+## Builtin PID (SWD-360)
+
+The Soft-PLC **PID** template is ISA-TR5.9 Parallel with Bauer hybrid
+incremental/positional updates (`plcassistant.surface.builtin.PID_EQUATION`).
+The wedge cascade still places two **PI** copies (`kd = 0`) at `level_pi` /
+`flow_pi`. Incremental clamp replaces conditional integration for those copies.
+ISA-TR5.9 Series form and external-reset feedback remain later work.
+
 ## Non-goals
 
 - Autotune / quantitative gain scheduling
-- Full ISA PID form variants beyond this PI contract
-- Derivative action in v1
+- ISA-TR5.9 Series form and external-reset feedback
+- Classic output Manual on the Lovelace card

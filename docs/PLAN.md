@@ -72,13 +72,13 @@
 - Default `pytest` stays fast (no live marker on new tests unless they need the stack)
 
 ## Acceptance criteria
-- [ ] PID instances on the App Diagram use the ISA-5.1 three-mode glyph (P, I, D compartments visible; generic `block-rect` is not the PID chrome)
-- [ ] Builtin PID declares ISA-TR5.9 Parallel form and 2DoF `beta` / `gamma` (defaults 1 / 0)
-- [ ] Required pins remain `pv`, `sp`, `running`, `cv`; optional Bauer pins default safe
-- [ ] Hybrid algorithm: `ki ≠ 0` uses incremental updates; `ki = 0` uses positional + `u0`; derivative uses PV (`gamma=0`) so a setpoint step does not spike D
-- [ ] Existing `level_pi` / `flow_pi` programs migrate without retuning for the PI (`kd=0`) case
-- [ ] Lovelace PID card labels PV, SP, CO; Man/Auto/Rem SP-source behaviour unchanged
-- [ ] Unit tests cover form/pins/glyph contract, incremental clamp, D-on-PV, and migration; default `pytest` still excludes `live`
+- [x] PID instances on the App Diagram use the ISA-5.1 three-mode glyph (P, I, D compartments visible; generic `block-rect` is not the PID chrome)
+- [x] Builtin PID declares ISA-TR5.9 Parallel form and 2DoF `beta` / `gamma` (defaults 1 / 0)
+- [x] Required pins remain `pv`, `sp`, `running`, `cv`; optional Bauer pins default safe
+- [x] Hybrid algorithm: `ki ≠ 0` uses incremental updates; `ki = 0` uses positional + `u0`; derivative uses PV (`gamma=0`) so a setpoint step does not spike D
+- [x] Existing `level_pi` / `flow_pi` programs migrate without retuning for the PI (`kd=0`) case
+- [x] Lovelace PID card labels PV, SP, CO; Man/Auto/Rem SP-source behaviour unchanged
+- [x] Unit tests cover form/pins/glyph contract, incremental clamp, D-on-PV, and migration; default `pytest` still excludes `live`
 
 ## Work packages
 1. **ISA-5.1 three-mode PID glyph on App Diagram** — [SWD-361](https://marcusknielsen.atlassian.net/browse/SWD-361)
@@ -103,4 +103,4 @@
 - Workflow: feature-heavy
 
 ## Next
-`/implement SWD-360` — Build per PLAN.md workflow binding (same branch/PR)
+`/review-fix SWD-360` — Review and auto-fix per Workflow binding (same branch/PR)

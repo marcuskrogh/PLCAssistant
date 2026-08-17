@@ -9,9 +9,8 @@ library.
 | [`docs/ROADMAP.md`](../ROADMAP.md) | Destination and route |
 | [`docs/RESEARCH.md`](../RESEARCH.md) | ISA-5.1 / ISA-TR5.9 / Bauer evidence |
 | [`docs/PLAN.md`](../PLAN.md) | Implementation plan (SWD-360) |
-| [`docs/surface/03-builtin-library.md`](../surface/03-builtin-library.md) | Current generic PID template |
-| [`docs/io/06-pid-faceplate.md`](../io/06-pid-faceplate.md) | Current operator faceplate |
-| [`docs/control/02-fb-pid.md`](../control/02-fb-pid.md) | Wedge PI contract (ISA forms deferred) |
+| [`docs/surface/03-builtin-library.md`](../surface/03-builtin-library.md) | Builtin PID (ISA-TR5.9 Parallel + Bauer hybrid) |
+| [`docs/io/06-pid-faceplate.md`](../io/06-pid-faceplate.md) | Operator faceplate (PV / SP / CO) |
+| [`docs/control/02-fb-pid.md`](../control/02-fb-pid.md) | Wedge cascade PI on the PID template |
 
 Delivery Task: [SWD-360](https://marcusknielsen.atlassian.net/browse/SWD-360).
-Next: `/implement SWD-360`.
