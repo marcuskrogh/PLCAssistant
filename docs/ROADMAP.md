@@ -1,35 +1,47 @@
-# Roadmap: Cloud HA live integration & system tests
+# Roadmap: Standardised PID blocks (ISA visualisation and structure)
 
 ## Destination
-Integration and system tests run against the cloud development stack (Mosquitto + Home Assistant Core + Soft-PLC App) and prove end-to-end functionality between the thin HA integration and the Soft-PLC application.
+PID function blocks on the Soft-PLC Diagram and operator faceplates use one
+ISA-aligned glyph and one named algorithm structure, so every loop looks and
+behaves like the same industrial PID rather than a generic rectangle with
+ad-hoc pins.
 
 ## Notes
-- Trigger: `.cursor/environment.json` HA Core stack; existing `test_integration_*` / `test_system_*` suites are mostly in-process acceptance, not live-stack.
-- Prefer pytest markers so default unit runs stay fast; live tests opt-in when the stack is up.
-- Reuse `.cursor/ha/scripts/bootstrap_ha.py` token + HA REST / Soft-PLC `/api/*`.
-- Do not replace in-process acceptance suites — add a parallel `tests/live/` suite.
+- Visualisation follows ANSI/ISA-5.1-2024 functional diagrams (Table 15
+  three-mode controller + Table 16 P / I / D symbols).
+- Algorithm names follow ISA-TR5.9-2023 (Parallel / Standard / Series;
+  two-degree-of-freedom β / γ; signals PV, SP, CO).
+- Practical code follows Bauer, Sundström, Guzmán, Hägglund, Soltesz
+  (IFAC 2024; arXiv:2604.15918, 2026): hybrid incremental / positional PID.
+- Existing wedge cascade instances `level_pi` / `flow_pi` must keep working.
+- Research findings: [`docs/RESEARCH.md`](RESEARCH.md). Plan: [`docs/PLAN.md`](PLAN.md).
 
 ## Route
 | Order | Task | Type | Blocked by | Status | Issue |
 |-------|------|------|------------|--------|-------|
-| 1 | Define & ship live cloud HA integration/system test suite | define→ship | — | Done | [SWD-232](https://marcusknielsen.atlassian.net/browse/SWD-232) · PR [#95](https://github.com/marcuskrogh/PLCAssistant/pull/95) |
+| 1 | Define & ship standardised PID visualisation and structure | define | — | To Do | [SWD-360](https://marcusknielsen.atlassian.net/browse/SWD-360) |
 
 ## Cleared so far
-- [Define & ship live cloud HA suite](https://marcusknielsen.atlassian.net/browse/SWD-232) — `tests/live/` + `run_live_tests.sh`; 9/9 live tests; review-fix CLEAN; PR #95
+- Research pass on ISA-5.1 / ISA-TR5.9 and Bauer et al. 2024–2026 — `docs/RESEARCH.md`
 
 ## Not yet specified
-- Whether live tests should auto-start HA/Soft-PLC in CI (vs skip) when terminals are absent
-- Broader scenario matrix (cascade PID, dynamics presets, schedule apply) beyond smoke Start/Stop/SP path
+- Whether later slices add ISA-TR5.9 Series form, external-reset feedback, or
+  classic output Manual on the Lovelace card
+- Whether internal calculation should move from engineering units to percent of
+  range (ISA-TR5.9 preference)
 
 ## Out of scope
-- Replacing in-process unit/acceptance suites
-- Supervisor / HA OS production install testing
-- Physical plant / field I/O commissioning
+- Autotune / gain scheduling
+- ISA-5.5 process-equipment glyphs (pumps, vessels) on the Diagram
+- Replacing Lovelace with a full ISA-101 HMI
+- Vendor-copying the copybit/pid GitHub listing into the App
+- Fractional-order or PIDD2 extensions
 
 ## Tracker
 - Provider: jira
-- Story (map): [SWD-231](https://marcusknielsen.atlassian.net/browse/SWD-231)
-- Tasks: [SWD-232](https://marcusknielsen.atlassian.net/browse/SWD-232)
+- Story (map): [SWD-359](https://marcusknielsen.atlassian.net/browse/SWD-359)
+- Tasks: [SWD-360](https://marcusknielsen.atlassian.net/browse/SWD-360)
+- Sub-tasks: SWD-361, SWD-362, SWD-363, SWD-364, SWD-365
 
 ## Next
-Done — initiative complete (SWD-231). Optional: broader live scenario matrix.
+`/implement SWD-360` — Build per PLAN.md (ISA-5.1 glyph, TR5.9 contract, Bauer hybrid algorithm)
