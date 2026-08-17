@@ -17,10 +17,11 @@ def test_system_flow_manual_sp_drives_cmd_when_level_error_zero() -> None:
     image = declare_default_image()
     image.begin_inputs()
     for tag, val in (
-        ("LEVEL_MODE", 0.0),
+        ("LEVEL_MODE", 1.0),
         ("FLOW_MODE", 0.0),
-        ("SP_LEVEL_MAN", 0.15),  # SP ≈ PV → level CV ≈ 0
+        ("SP_LEVEL_REQ", 0.15),  # SP ≈ PV → level CV ≈ 0
         ("SP_FLOW_MAN", 5.0),
+        ("CO_FLOW_MAN", 40.0),
         ("LT_TANK", 0.15),
         ("LT_RES", 0.20),
         ("FT_INLET", 0.0),
@@ -45,10 +46,11 @@ def test_system_flow_manual_zero_does_not_hide_level_cv() -> None:
     image = declare_default_image()
     image.begin_inputs()
     for tag, val in (
-        ("LEVEL_MODE", 0.0),
+        ("LEVEL_MODE", 1.0),
         ("FLOW_MODE", 0.0),
-        ("SP_LEVEL_MAN", 0.30),
+        ("SP_LEVEL_REQ", 0.30),
         ("SP_FLOW_MAN", 0.0),
+        ("CO_FLOW_MAN", 0.0),
         ("LT_TANK", 0.15),
         ("LT_RES", 0.20),
         ("FT_INLET", 0.0),
@@ -61,7 +63,7 @@ def test_system_flow_manual_zero_does_not_hide_level_cv() -> None:
         logic(image)
     assert float(image.get_value("SP_FLOW")) == pytest.approx(0.0)
     assert float(image.get_value("SP_FLOW_AUTO")) > 0.5
-    # Flow Man SP=0 → CMD tracks 0, but level CV remains visible on AUTO tag.
+    # Flow Man CO=0 → CMD tracks 0, but level CV remains visible on AUTO tag.
     assert float(image.get_value("CMD_SPEED")) == pytest.approx(0.0, abs=0.5)
 
 
@@ -73,9 +75,9 @@ def test_system_flow_auto_cascade_still_engages() -> None:
     image = declare_default_image()
     image.begin_inputs()
     for tag, val in (
-        ("LEVEL_MODE", 0.0),
+        ("LEVEL_MODE", 1.0),
         ("FLOW_MODE", 1.0),
-        ("SP_LEVEL_MAN", 0.30),
+        ("SP_LEVEL_REQ", 0.30),
         ("LT_TANK", 0.15),
         ("LT_RES", 0.20),
         ("FT_INLET", 0.0),
@@ -105,6 +107,6 @@ def test_integration_level_cv_is_sp_flow_auto() -> None:
 
 def test_system_app_version_0_1_43() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.57"' in manifest
+    assert '"0.1.58"' in manifest
     config = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.57"' in config
+    assert 'version: "0.1.58"' in config

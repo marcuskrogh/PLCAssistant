@@ -4,6 +4,11 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 | Key | Type | Title | Status | Parent | Artifact | Next |
 |-----|------|-------|--------|--------|----------|------|
+| SWD-368 | Story | ISA-101 / DCS-standard PID faceplates | In Progress | Relates SWD-366 | docs/ROADMAP.md, docs/RESEARCH.md | `/implement SWD-369` |
+| SWD-369 | Task | Define & ship ISA-101 DCS PID faceplate | In Progress | Relates SWD-368 | docs/PLAN.md | `/review-fix SWD-369` |
+| SWD-370 | Subtask | SWD-369: Controller-mode contract + CO_MAN + auto/uman wiring | In Progress | SWD-369 | docs/PLAN.md, plcassistant/io/pid_loop.py | — |
+| SWD-371 | Subtask | SWD-369: Lovelace analog-controller PID card | In Progress | SWD-369 | docs/PLAN.md, custom_components/plcassistant/www/pid-loop-card.js | — |
+| SWD-372 | Subtask | SWD-369: Tests, docs, dual-tree, App 0.1.58 | In Progress | SWD-369 | docs/PLAN.md, tests/test_swd369_acceptance.py | — |
 | SWD-367 | Task | Iterate: Align builtin PID with IFAC 2024 reference implementation | Done | Relates SWD-360, SWD-366 | docs/ITERATE.md | Done — shipped PR [#103](https://github.com/marcuskrogh/PLCAssistant/pull/103) |
 | SWD-366 | Task | Iterate: Lovelace PID cards ISA-5.1 look and ISA-101 highlighting | Done | Relates SWD-360 | docs/ITERATE.md | Done — shipped PR [#102](https://github.com/marcuskrogh/PLCAssistant/pull/102) |
 | SWD-359 | Story | Standardised PID blocks — ISA visualisation and structure | Done | — | docs/ROADMAP.md, docs/RESEARCH.md | Done — shipped PR [#101](https://github.com/marcuskrogh/PLCAssistant/pull/101) |
@@ -166,6 +171,8 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
+- 2026-08-17 — Implement SWD-369: ISA-101 DCS PID faceplate (PV/SP bars, CO bar, MAN writes CO); App 0.1.58. Next `/review-fix SWD-369`.
+- 2026-08-17 — Explore+research+define SWD-368/SWD-369: ISA-112 vs ISA-101; analog-controller geometry; PLAN on `cursor/swd-369-isa101-pid-faceplate-5304`.
 - 2026-08-17 — Ship SWD-367: review-fix CLEAN + closeout; PR [#103](https://github.com/marcuskrogh/PLCAssistant/pull/103) (App 0.1.57) → Done.
 - 2026-08-17 — Iterate SWD-367: IFAC 2024 incremental PID (filter, Tx, auto/uman, windup); Relates SWD-360/366; PR [#103](https://github.com/marcuskrogh/PLCAssistant/pull/103) (App 0.1.57) → In Review. Next `/review-fix SWD-367`.
 - 2026-08-17 — Ship SWD-366: review-fix CLEAN + closeout; PR [#102](https://github.com/marcuskrogh/PLCAssistant/pull/102) (App 0.1.56) → Done.

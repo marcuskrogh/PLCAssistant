@@ -37,7 +37,7 @@ def test_unit_ha_parse_mode_aliases_match_sp_source_mode() -> None:
     """HA _parse_mode valid aliases must match Soft-PLC SpSourceMode.parse."""
     text = Path("custom_components/plcassistant/pid_loop.py").read_text(encoding="utf-8")
     assert "_parse_mode" in text
-    assert "SpSourceMode.parse" in text or "fall back to manual" in text
+    assert "SpSourceMode.parse" in text or "fall back to automatic" in text or "fall back to manual" in text
     for alias, expected in (
         ("manual", SpSourceMode.MANUAL),
         ("man", SpSourceMode.MANUAL),
@@ -143,7 +143,7 @@ def test_integration_datablock_has_mode_tags() -> None:
     assert "SP_FLOW_AUTO" in tags
     assert "LEVEL_KD" in tags
     assert "FLOW_KD" in tags
-    assert len(block.bindings) == 24
+    assert len(block.bindings) == 26
 
 
 def test_integration_softplc_ha_pid_loop_tag_parity() -> None:
@@ -151,7 +151,7 @@ def test_integration_softplc_ha_pid_loop_tag_parity() -> None:
     text = Path("custom_components/plcassistant/pid_loop.py").read_text(encoding="utf-8")
     for loop in DEMO_PID_LOOPS:
         assert f'"loop_id": "{loop.loop_id}"' in text
-        for field in ("pv", "sp", "sp_man", "sp_auto", "sp_rem", "mode", "cv", "kp", "ki", "kd"):
+        for field in ("pv", "sp", "sp_man", "sp_auto", "sp_rem", "mode", "cv", "co_man", "kp", "ki", "kd"):
             assert f'"{field}": "{getattr(loop, field)}"' in text
 
 
@@ -261,6 +261,7 @@ def test_system_flow_man_publishes_sp_flow_override() -> None:
         ("FLOW_MODE", 0.0),
         ("SP_LEVEL_REQ", 0.20),
         ("SP_FLOW_MAN", 4.5),
+        ("CO_FLOW_MAN", 35.0),
         ("LT_TANK", 0.15),
         ("LT_RES", 0.20),
         ("FT_INLET", 0.0),

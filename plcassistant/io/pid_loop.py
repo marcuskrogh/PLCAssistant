@@ -1,19 +1,25 @@
-"""PID loop SP-source modes and faceplate helpers (SWD-183).
+"""PID loop controller modes and faceplate helpers (SWD-183 / SWD-369).
 
-Industrial SP-source pattern (not classic CV Manual):
-Manual / Automatic / Remote select which source writes the active SP tag.
-Writing a Manual or Remote SP auto-flips mode; Automatic requires explicit mode.
+DCS analog-controller modes (ISA-101 chrome, ISA-TR5.9 names):
+
+- Manual — output Manual. Operator writes CO (Bauer ``uman``); PID ``auto`` is false.
+- Automatic — local SP. Operator writes SP; PID computes CO.
+- Remote — cascade/remote SP. PID computes CO; operator does not write SP or CO
+  from the faceplate.
+
+Legacy Man/Auto/Rem *SP source* tags remain on the Datablock. Manual no longer
+means “a third SP while the PID still computes CO”.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Mapping
+from typing import Any, Literal, Mapping
 
 
 class SpSourceMode(str, Enum):
-    """Who owns the active setpoint while the PID still computes CV."""
+    """Controller mode: output Manual / local Auto / remote-cascade."""
 
     MANUAL = "manual"
     AUTOMATIC = "automatic"
@@ -37,6 +43,8 @@ class SpSourceMode(str, Enum):
             "automatic": cls.AUTOMATIC,
             "rem": cls.REMOTE,
             "remote": cls.REMOTE,
+            "cas": cls.REMOTE,
+            "cascade": cls.REMOTE,
             "0": cls.MANUAL,
             "1": cls.AUTOMATIC,
             "2": cls.REMOTE,
@@ -48,6 +56,24 @@ class SpSourceMode(str, Enum):
     @property
     def code(self) -> int:
         return {self.MANUAL: 0, self.AUTOMATIC: 1, self.REMOTE: 2}[self]
+
+
+WriteTarget = Literal["co", "sp"]
+
+
+def is_output_manual(mode: SpSourceMode | str) -> bool:
+    """True when the operator supplies CO (Bauer auto=false)."""
+    return SpSourceMode.parse(mode) is SpSourceMode.MANUAL
+
+
+def operator_write_target(mode: SpSourceMode | str) -> WriteTarget | None:
+    """Which analog the operator may set on the faceplate, or None (REM)."""
+    resolved = SpSourceMode.parse(mode)
+    if resolved is SpSourceMode.MANUAL:
+        return "co"
+    if resolved is SpSourceMode.AUTOMATIC:
+        return "sp"
+    return None
 
 
 @dataclass(frozen=True)
@@ -62,6 +88,7 @@ class PidLoopTags:
     sp_rem: str
     mode: str
     cv: str
+    co_man: str
     kp: str
     ki: str
     kd: str
@@ -82,6 +109,7 @@ LEVEL_LOOP = PidLoopTags(
     sp_rem="SP_LEVEL_REM",
     mode="LEVEL_MODE",
     cv="SP_FLOW_AUTO",  # true level CV (not muxed active SP_FLOW) (SWD-223)
+    co_man="CO_LEVEL_MAN",
     kp="LEVEL_KP",
     ki="LEVEL_KI",
     kd="LEVEL_KD",
@@ -96,6 +124,7 @@ FLOW_LOOP = PidLoopTags(
     sp_rem="SP_FLOW_REM",
     mode="FLOW_MODE",
     cv="CMD_SPEED",
+    co_man="CO_FLOW_MAN",
     kp="FLOW_KP",
     ki="FLOW_KI",
     kd="FLOW_KD",
@@ -111,7 +140,11 @@ def select_active_sp(
     sp_auto: float,
     sp_rem: float,
 ) -> float:
-    """Return the active SP for the given SP-source mode."""
+    """Return the displayed / closed-loop SP for the mode.
+
+    Manual still reports ``sp_man`` for faceplate history; the PID does not use
+    it while output Manual is active.
+    """
     resolved = SpSourceMode.parse(mode)
     if resolved is SpSourceMode.MANUAL:
         return float(sp_man)
@@ -127,7 +160,9 @@ def mode_after_sp_source_write(
 ) -> SpSourceMode:
     """Mode after an HMI/entity write to a source SP tag.
 
-    Writing Man / Auto / Rem SP auto-flips to that source mode (SWD-183 / SWD-222).
+    Writing Auto / Rem SP auto-flips to that mode (SWD-183 / SWD-222).
+    Writing the legacy Manual SP tag still flips to Manual (lab back-compat)
+    but the live MAN write target is CO.
     """
     del current_mode  # reserved for future bumpless / tracking rules
     return SpSourceMode.parse(source)
@@ -173,25 +208,42 @@ def apply_sp_write(
     }
 
 
+def apply_co_write(
+    *,
+    value: float,
+    current_cv: float = 0.0,
+) -> dict[str, Any]:
+    """Apply an output-Manual CO write (DCS MAN / Bauer ``uman``)."""
+    del current_cv
+    return {
+        "mode": SpSourceMode.MANUAL.value,
+        "cv": float(value),
+        "write_target": "co",
+    }
+
+
 def faceplate_from_image_tags(
     tags: PidLoopTags,
     values: Mapping[str, Any],
 ) -> dict[str, Any]:
     """Build a climate-like faceplate dict from a tag value map."""
-    mode = SpSourceMode.parse(values.get(tags.mode, SpSourceMode.MANUAL))
+    mode = SpSourceMode.parse(values.get(tags.mode, SpSourceMode.AUTOMATIC))
     man = float(values.get(tags.sp_man, 0.0) or 0.0)
     auto = float(values.get(tags.sp_auto, 0.0) or 0.0)
     rem = float(values.get(tags.sp_rem, 0.0) or 0.0)
     sp = select_active_sp(mode, sp_man=man, sp_auto=auto, sp_rem=rem)
+    co_man = float(values.get(tags.co_man, 0.0) or 0.0)
     return {
         "loop_id": tags.loop_id,
         "mode": mode.value,
+        "write_target": operator_write_target(mode),
         "pv": values.get(tags.pv),
         "sp": sp,
         "sp_man": man,
         "sp_auto": auto,
         "sp_rem": rem,
         "cv": values.get(tags.cv),
+        "co_man": co_man,
         "kp": values.get(tags.kp),
         "ki": values.get(tags.ki),
         "kd": values.get(tags.kd),
@@ -203,6 +255,7 @@ def faceplate_from_image_tags(
             "sp_rem": tags.sp_rem,
             "mode": tags.mode,
             "cv": tags.cv,
+            "co_man": tags.co_man,
         },
     }
 
@@ -213,9 +266,12 @@ __all__ = [
     "LEVEL_LOOP",
     "PidLoopTags",
     "SpSourceMode",
+    "apply_co_write",
     "apply_explicit_mode",
     "apply_sp_write",
     "faceplate_from_image_tags",
+    "is_output_manual",
     "mode_after_sp_source_write",
+    "operator_write_target",
     "select_active_sp",
 ]

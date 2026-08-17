@@ -131,6 +131,10 @@ def apply_io_wires_out(
 SHELL_TAG_LEVEL_SP = "_SHELL.LEVEL_SP"
 SHELL_TAG_RUNNING = "_SHELL.RUNNING"
 SHELL_TAG_FLOW_SP_OVERRIDE = "_SHELL.FLOW_SP_OVERRIDE"
+SHELL_TAG_LEVEL_AUTO = "_SHELL.LEVEL_AUTO"
+SHELL_TAG_LEVEL_UMAN = "_SHELL.LEVEL_UMAN"
+SHELL_TAG_FLOW_AUTO = "_SHELL.FLOW_AUTO"
+SHELL_TAG_FLOW_UMAN = "_SHELL.FLOW_UMAN"
 
 
 def wedge_cascade_io_wires() -> list[TagPinWire]:
@@ -143,8 +147,12 @@ def wedge_cascade_io_wires() -> list[TagPinWire]:
         TagPinWire("LT_TANK", "level_pi", "pv", IoDir.IN),
         TagPinWire(SHELL_TAG_LEVEL_SP, "level_pi", "sp", IoDir.IN),
         TagPinWire(SHELL_TAG_RUNNING, "level_pi", "running", IoDir.IN),
+        TagPinWire(SHELL_TAG_LEVEL_AUTO, "level_pi", "auto", IoDir.IN),
+        TagPinWire(SHELL_TAG_LEVEL_UMAN, "level_pi", "uman", IoDir.IN),
         TagPinWire("FT_INLET", "flow_pi", "pv", IoDir.IN),
         TagPinWire(SHELL_TAG_RUNNING, "flow_pi", "running", IoDir.IN),
+        TagPinWire(SHELL_TAG_FLOW_AUTO, "flow_pi", "auto", IoDir.IN),
+        TagPinWire(SHELL_TAG_FLOW_UMAN, "flow_pi", "uman", IoDir.IN),
         # Optional: when present, overrides cascade wire into flow_pi.sp.
         TagPinWire(SHELL_TAG_FLOW_SP_OVERRIDE, "flow_pi", "sp", IoDir.IN),
         TagPinWire("SP_FLOW_AUTO", "level_pi", "cv", IoDir.OUT),
@@ -154,8 +162,12 @@ def wedge_cascade_io_wires() -> list[TagPinWire]:
 
 __all__ = [
     "IoDir",
+    "SHELL_TAG_FLOW_AUTO",
     "SHELL_TAG_FLOW_SP_OVERRIDE",
+    "SHELL_TAG_FLOW_UMAN",
+    "SHELL_TAG_LEVEL_AUTO",
     "SHELL_TAG_LEVEL_SP",
+    "SHELL_TAG_LEVEL_UMAN",
     "SHELL_TAG_RUNNING",
     "TagPinWire",
     "apply_io_wires_in",

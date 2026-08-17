@@ -33,6 +33,10 @@ def test_unit_tag_pin_wire_format_round_trip_and_apply() -> None:
         "_SHELL.LEVEL_SP": 0.30,
         "_SHELL.RUNNING": True,
         "_SHELL.FLOW_SP_OVERRIDE": 4.0,
+        "_SHELL.LEVEL_AUTO": True,
+        "_SHELL.LEVEL_UMAN": 0.0,
+        "_SHELL.FLOW_AUTO": True,
+        "_SHELL.FLOW_UMAN": 0.0,
     }
     pins: dict[str, object] = {}
     n_in = apply_io_wires_in(
@@ -74,7 +78,7 @@ def test_unit_duplicate_in_wire_rejected() -> None:
 
 
 def test_system_start_drives_pid_cvs_via_io_wires() -> None:
-    """RUNNING + Level Man SP≠PV + Flow Auto → SP_FLOW_AUTO and CMD_SPEED rise."""
+    """RUNNING + Level Auto SP≠PV + Flow Auto → SP_FLOW_AUTO and CMD_SPEED rise."""
     from plcassistant.app.default_image import declare_default_image
     from plcassistant.app.skid_scan import SkidImageLogic
     from plcassistant.io.quality import QualityStatus
@@ -83,9 +87,9 @@ def test_system_start_drives_pid_cvs_via_io_wires() -> None:
     image = declare_default_image()
     image.begin_inputs()
     for tag, val in (
-        ("LEVEL_MODE", 0.0),
+        ("LEVEL_MODE", 1.0),
         ("FLOW_MODE", 1.0),
-        ("SP_LEVEL_MAN", 0.30),
+        ("SP_LEVEL_REQ", 0.30),
         ("LT_TANK", 0.15),
         ("LT_RES", 0.20),
         ("FT_INLET", 0.0),
@@ -116,9 +120,9 @@ def test_system_faceplate_gains_reach_live_pid_instances() -> None:
     image = declare_default_image()
     image.begin_inputs()
     for tag, val in (
-        ("LEVEL_MODE", 0.0),
+        ("LEVEL_MODE", 1.0),
         ("FLOW_MODE", 1.0),
-        ("SP_LEVEL_MAN", 0.30),
+        ("SP_LEVEL_REQ", 0.30),
         ("LEVEL_KP", 55.0),
         ("LEVEL_KI", 7.0),
         ("FLOW_KP", 18.0),
@@ -179,10 +183,11 @@ def test_system_flow_manual_prefer_context_does_not_mutate_wires() -> None:
     image = declare_default_image()
     image.begin_inputs()
     for tag, val in (
-        ("LEVEL_MODE", 0.0),
+        ("LEVEL_MODE", 1.0),
         ("FLOW_MODE", 0.0),
-        ("SP_LEVEL_MAN", 0.15),
+        ("SP_LEVEL_REQ", 0.15),
         ("SP_FLOW_MAN", 5.0),
+        ("CO_FLOW_MAN", 40.0),
         ("LT_TANK", 0.15),
         ("LT_RES", 0.20),
         ("FT_INLET", 0.0),
@@ -201,10 +206,10 @@ def test_system_flow_manual_prefer_context_does_not_mutate_wires() -> None:
 
 def test_system_app_version_0_1_44() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.57"' in manifest
+    assert '"0.1.58"' in manifest
     config = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.57"' in config
+    assert 'version: "0.1.58"' in config
     docker = Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.57" in docker
+    assert "BUILD_VERSION=0.1.58" in docker
     dash = (ROOT / "lovelace" / "plcassistant.yaml").read_text(encoding="utf-8")
     assert "plcassistant_dashboard_version: 28" in dash

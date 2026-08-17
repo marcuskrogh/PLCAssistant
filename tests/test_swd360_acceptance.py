@@ -222,13 +222,13 @@ def test_unit_default_pytest_still_excludes_live() -> None:
 
 
 def test_unit_app_version_is_0_1_57() -> None:
-    assert 'version: "0.1.57"' in (ROOT / "plc_assistant" / "config.yaml").read_text(
+    assert 'version: "0.1.58"' in (ROOT / "plc_assistant" / "config.yaml").read_text(
         encoding="utf-8"
     )
     manifest = (ROOT / "custom_components" / "plcassistant" / "manifest.json").read_text(
         encoding="utf-8"
     )
-    assert '"0.1.57"' in manifest
+    assert '"0.1.58"' in manifest
 
 
 def test_unit_incremental_includes_constant_uff() -> None:
@@ -307,9 +307,9 @@ def test_system_hybrid_cascade_cvs_move() -> None:
     image = declare_default_image()
     image.begin_inputs()
     for tag, val in (
-        ("LEVEL_MODE", 0.0),
+        ("LEVEL_MODE", 1.0),
         ("FLOW_MODE", 1.0),
-        ("SP_LEVEL_MAN", 0.30),
+        ("SP_LEVEL_REQ", 0.30),
         ("LT_TANK", 0.15),
         ("LT_RES", 0.20),
         ("FT_INLET", 0.0),

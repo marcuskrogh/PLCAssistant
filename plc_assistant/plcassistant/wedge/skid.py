@@ -32,8 +32,12 @@ from plcassistant.io.quality import QualityStatus, ReasonCode, TagQuality, is_go
 from plcassistant.surface.apply import ProjectLoader
 from plcassistant.surface.builtin import register_builtins, wedge_softplc_project
 from plcassistant.surface.io_wires import (
+    SHELL_TAG_FLOW_AUTO,
     SHELL_TAG_FLOW_SP_OVERRIDE,
+    SHELL_TAG_FLOW_UMAN,
+    SHELL_TAG_LEVEL_AUTO,
     SHELL_TAG_LEVEL_SP,
+    SHELL_TAG_LEVEL_UMAN,
     SHELL_TAG_RUNNING,
     TagPinWire,
     apply_io_wires_in,
@@ -196,9 +200,12 @@ class Skid:
         # Re-sync in case injected process/safety carried stale thresholds
         self._apply_limits()
         self.sp_level = self.config.sp_level
-        # When set, Flow Man/Rem SP overrides the cascade wire into flow_pi.sp
+        # When set, Flow Rem SP overrides the cascade wire into flow_pi.sp
         # for that CONTROL tick (SWD-223). None → Automatic cascade wire.
         self.sp_flow_override: float | None = None
+        # Output Manual (DCS MAN / Bauer uman). None → PID auto=true.
+        self.level_uman: float | None = None
+        self.flow_uman: float | None = None
         # Process tag ↔ pin map (SWD-224). Default = wedge cascade demo.
         self._io_wires: list[TagPinWire] = list(wedge_cascade_io_wires())
         validate_tag_pin_wires(self._io_wires)
@@ -424,6 +431,14 @@ class Skid:
                     "FT_INLET": mv.ft_inlet if mv.ft_inlet is not None else 0.0,
                     SHELL_TAG_LEVEL_SP: self.sp_level,
                     SHELL_TAG_RUNNING: running,
+                    SHELL_TAG_LEVEL_AUTO: self.level_uman is None,
+                    SHELL_TAG_LEVEL_UMAN: float(
+                        self.level_uman if self.level_uman is not None else 0.0
+                    ),
+                    SHELL_TAG_FLOW_AUTO: self.flow_uman is None,
+                    SHELL_TAG_FLOW_UMAN: float(
+                        self.flow_uman if self.flow_uman is not None else 0.0
+                    ),
                 }
                 prefer_context: set[tuple[str, str]] = set()
                 override = self.sp_flow_override

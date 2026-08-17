@@ -5,8 +5,11 @@
  * Reads climate-like attributes from the compound PID sensor and writes
  * Manual/Auto/Remote mode + SP sources via number.* entities.
  *
- * Compact faceplate: PV / SP / ε / CO at 2dp in a single row; ISA-5.1 three-mode
- * chrome (ε / P / I / D); tap opens a dialog for mode + SP edits.
+ * Analog-controller faceplate: ISA-5.1 ε/P/I/D chrome; PV / SP / ε / CO at 2dp;
+ * vertical PV/SP bars and a horizontal CO bar; MAN / AUTO / REM on the face.
+ * Highlighted bar is the writable analog (CO in MAN, SP in AUTO when the Auto
+ * entity is a Number). Tap the bar to set from pointer position; typed Set
+ * remains in the dialog.
  *
  * Colour (ISA-101 high-performance HMI): grayscale / Home Assistant tokens in
  * normal operation. Colour is reserved for caution (--warning-color) and
@@ -126,6 +129,55 @@ export function pidFaceplateHighlight(err, sp, pv, cv, loopId) {
   return "normal";
 }
 
+/** Level PV / SP engineering range (tank height, m). */
+export const PID_PV_MAX_LEVEL = 0.4;
+
+/** Flow PV / SP engineering range (pump capacity, L/min). */
+export const PID_PV_MAX_FLOW = 8;
+
+/** PV/SP bar scale max for a loop. */
+export function pidPvScaleMax(loopId) {
+  return loopId === "flow" ? PID_PV_MAX_FLOW : PID_PV_MAX_LEVEL;
+}
+
+/** Analog fill 0–100 from a value and scale max. */
+export function pidBarPct(value, max) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || !(max > 0)) return 0;
+  return Math.max(0, Math.min(100, (n / max) * 100));
+}
+
+/**
+ * DCS analog-controller write target.
+ * MAN → CO; AUTO → SP when the Auto entity is a Number; REM → none.
+ */
+export function pidOperatorWriteTarget(mode, { spWritable = true, coWritable = true } = {}) {
+  const m = String(mode ?? "").toLowerCase();
+  if ((m === "manual" || m === "man" || m === "0") && coWritable) return "co";
+  if ((m === "automatic" || m === "auto" || m === "1") && spWritable) return "sp";
+  return null;
+}
+
+/**
+ * Map a pointer position on a bar track to an engineering value.
+ * Vertical bars: 0 at the bottom. Horizontal bars: 0 at the left.
+ */
+export function pidBarValueFromPointer(rect, clientX, clientY, min, max, orientation) {
+  if (!rect || !(rect.width > 0) || !(rect.height > 0)) return null;
+  const lo = Number(min);
+  const hi = Number(max);
+  if (!Number.isFinite(lo) || !Number.isFinite(hi) || hi === lo) return null;
+  let frac;
+  if (orientation === "horizontal") {
+    frac = (Number(clientX) - rect.left) / rect.width;
+  } else {
+    frac = 1 - (Number(clientY) - rect.top) / rect.height;
+  }
+  if (!Number.isFinite(frac)) return null;
+  frac = Math.max(0, Math.min(1, frac));
+  return lo + frac * (hi - lo);
+}
+
 /**
  * Round a parsed SP to display precision for both UI commit and number.set_value.
  * Returns null when the input is not a finite number.
@@ -177,6 +229,11 @@ export function resolveFaceplateClick(target) {
     if (applyBtn.disabled) return null;
     return { type: "apply", key: applyBtn.getAttribute("data-apply") };
   }
+  const barBtn = target.closest("[data-bar]");
+  if (barBtn) {
+    if (barBtn.getAttribute("data-writable") !== "1") return null;
+    return { type: "bar", key: barBtn.getAttribute("data-bar") };
+  }
   // Dialog chrome (inputs/labels/panel) must not re-trigger open.
   if (target.closest(".pid-dialog-panel") || target.closest("input[data-sp]")) {
     return null;
@@ -218,7 +275,7 @@ class PlcAssistantPidCard extends HTMLElement {
   }
 
   getCardSize() {
-    return 2;
+    return 3;
   }
 
   _attr(stateObj, key, fallback) {
@@ -268,7 +325,7 @@ class PlcAssistantPidCard extends HTMLElement {
 
   _captureFocusedDrafts() {
     if (!this._root) return;
-    for (const key of ["man", "auto", "rem"]) {
+    for (const key of ["co", "auto", "rem"]) {
       const input = this._root.querySelector(`input[data-sp="${key}"]`);
       if (!input) continue;
       // Snapshot the live input while focused so a hass restomp mid-edit can
@@ -294,7 +351,7 @@ class PlcAssistantPidCard extends HTMLElement {
     const input = this._root?.querySelector(`input[data-sp="${key}"]`);
     const st = this._hass?.states?.[this._config.entity];
     const entityFor = {
-      man: this._attr(st, "sp_man_entity", ""),
+      co: this._attr(st, "cv_man_entity", ""),
       auto: this._attr(st, "sp_auto_entity", ""),
       rem: this._attr(st, "sp_rem_entity", ""),
     };
@@ -306,6 +363,43 @@ class PlcAssistantPidCard extends HTMLElement {
     if (committed === null) return;
     this._clearDraft(key);
     input.value = this._committedText(committed);
+    this._setNumber(entity, committed);
+  }
+
+  _applyBarClick(ev, key) {
+    const barBtn = ev.target?.closest?.("[data-bar]");
+    const track = barBtn?.querySelector?.(".pid-vbar-track, .pid-cv-track");
+    if (!track || typeof track.getBoundingClientRect !== "function") return;
+    const st = this._hass?.states?.[this._config.entity];
+    const loopId = this._attr(st, "loop_id", "loop");
+    let min = 0;
+    let max;
+    let orientation;
+    if (key === "co") {
+      max = pidCvScaleMax(loopId);
+      orientation = "horizontal";
+    } else if (key === "sp") {
+      max = pidPvScaleMax(loopId);
+      orientation = "vertical";
+    } else {
+      return;
+    }
+    const rect = track.getBoundingClientRect();
+    const raw = pidBarValueFromPointer(
+      rect,
+      ev.clientX,
+      ev.clientY,
+      min,
+      max,
+      orientation
+    );
+    const committed = commitSpValue(raw);
+    if (committed === null) return;
+    const entity =
+      key === "co"
+        ? this._attr(st, "cv_man_entity", "")
+        : this._attr(st, "sp_auto_entity", "");
+    if (!entity || String(entity).startsWith("sensor.")) return;
     this._setNumber(entity, committed);
   }
 
@@ -341,6 +435,10 @@ class PlcAssistantPidCard extends HTMLElement {
       }
       if (action.type === "apply") {
         this._applySp(action.key);
+        return;
+      }
+      if (action.type === "bar") {
+        this._applyBarClick(ev, action.key);
       }
     });
     this._root.addEventListener("input", (ev) => {
@@ -373,7 +471,7 @@ class PlcAssistantPidCard extends HTMLElement {
         this._clearDraft(key);
         const st = this._hass?.states?.[this._config.entity];
         const values = {
-          man: this._attr(st, "sp_man", 0),
+          co: this._attr(st, "co_man", this._attr(st, "cv", 0)),
           auto: this._attr(st, "sp_auto", 0),
           rem: this._attr(st, "sp_rem", 0),
         };
@@ -399,7 +497,7 @@ class PlcAssistantPidCard extends HTMLElement {
     if (!this._config) return;
     const hass = this._hass;
     const st = hass?.states?.[this._config.entity];
-    const mode = (st?.state || "manual").toLowerCase();
+    const mode = (st?.state || "automatic").toLowerCase();
     const modeKey = this._modeKey(mode);
     const loopId = this._attr(st, "loop_id", "loop");
     const title =
@@ -415,7 +513,10 @@ class PlcAssistantPidCard extends HTMLElement {
     const spRem = this._attr(st, "sp_rem", 0);
     const modeEntity = this._attr(st, "mode_entity", "");
     const spAutoEntity = this._attr(st, "sp_auto_entity", "");
+    const cvManEntity = this._attr(st, "cv_man_entity", "");
     const autoDisabled = String(spAutoEntity).startsWith("sensor.");
+    const remDisabled = true;
+    const coMan = this._attr(st, "co_man", cv);
     const unavailable = !st;
     const err = pidError(sp, pv);
     const errHi = pidHighlightSeverity(err, sp, pv);
@@ -560,8 +661,62 @@ class PlcAssistantPidCard extends HTMLElement {
         }
         .pid-metric[data-hi="caution"] strong { color: var(--pid-hi-caution); }
         .pid-metric[data-hi="abnormal"] strong { color: var(--pid-hi-abnormal); }
+        .pid-analog {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          margin: 8px 0 4px;
+        }
+        .pid-vbars {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+          min-height: 88px;
+        }
+        .pid-vbar,
+        .pid-hbar {
+          display: flex;
+          flex-direction: column;
+          align-items: stretch;
+          gap: 4px;
+          min-width: 0;
+          padding: 4px;
+          margin: 0;
+          border: 1px solid transparent;
+          background: transparent;
+          color: inherit;
+          cursor: default;
+          font: inherit;
+          border-radius: 6px;
+        }
+        .pid-vbar-track {
+          flex: 1;
+          min-height: 72px;
+          border-radius: 4px;
+          background: var(--divider-color, #ccc);
+          position: relative;
+          overflow: hidden;
+        }
+        .pid-vbar-fill {
+          position: absolute;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          height: 0%;
+          background: var(--primary-text-color);
+          opacity: 0.45;
+          transition: height 0.25s ease;
+        }
+        .pid-vbar-lab,
+        .pid-cv-lab {
+          font-size: var(--pid-label-size);
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+          text-align: center;
+          color: var(--secondary-text-color);
+        }
         .pid-cv-track {
-          margin-top: 10px; height: 3px; border-radius: 2px;
+          height: 10px; border-radius: 4px;
           background: var(--divider-color, #ccc);
           overflow: hidden;
         }
@@ -573,10 +728,35 @@ class PlcAssistantPidCard extends HTMLElement {
         .pid-cv-fill[data-hi="caution"] {
           background: var(--pid-hi-caution); opacity: 1;
         }
+        .pid-vbar[data-writable="1"],
+        .pid-hbar[data-writable="1"] {
+          cursor: pointer;
+          border-color: var(--primary-text-color);
+          box-shadow: inset 0 0 0 1px var(--primary-text-color);
+        }
+        .pid-vbar[data-writable="0"],
+        .pid-hbar[data-writable="0"] {
+          pointer-events: none;
+        }
+        .pid-face-modes {
+          margin-top: 6px;
+          margin-bottom: 0;
+        }
         .pid-hint {
           margin-top: 8px;
           font-size: var(--pid-label-size);
           color: var(--secondary-text-color);
+          border: 0;
+          background: transparent;
+          padding: 0;
+          cursor: pointer;
+          font-family: var(--pid-font);
+          text-align: left;
+          width: 100%;
+        }
+        .pid-hint:focus-visible {
+          outline: 2px solid var(--pid-focus);
+          outline-offset: 2px;
         }
         .pid-dialog {
           position: fixed; inset: 0; z-index: 1000;
@@ -737,7 +917,6 @@ class PlcAssistantPidCard extends HTMLElement {
           : `<div class="pid-shell" data-pid-mode="man" data-pid-hi="normal">
         <div class="pid-card">
         <div class="pid-accent" aria-hidden="true"></div>
-        <button type="button" class="pid-face" data-open-editor aria-haspopup="dialog">
           <div class="pid-body">
             <div class="pid-head">
               <div class="pid-isa" aria-hidden="true">
@@ -771,10 +950,29 @@ class PlcAssistantPidCard extends HTMLElement {
                 <strong data-metric="cv"></strong>
               </div>
             </div>
-            <div class="pid-cv-track"><div class="pid-cv-fill" data-cv-bar></div></div>
-            <div class="pid-hint">Tap to adjust</div>
+            <div class="pid-analog">
+              <div class="pid-vbars">
+                <button type="button" class="pid-vbar" data-bar="pv" data-writable="0" aria-label="PV">
+                  <div class="pid-vbar-track"><div class="pid-vbar-fill" data-pv-bar></div></div>
+                  <span class="pid-vbar-lab">PV</span>
+                </button>
+                <button type="button" class="pid-vbar" data-bar="sp" data-writable="0" aria-label="SP">
+                  <div class="pid-vbar-track"><div class="pid-vbar-fill" data-sp-bar></div></div>
+                  <span class="pid-vbar-lab">SP</span>
+                </button>
+              </div>
+              <button type="button" class="pid-hbar" data-bar="co" data-writable="0" aria-label="CO">
+                <div class="pid-cv-track"><div class="pid-cv-fill" data-cv-bar></div></div>
+                <span class="pid-cv-lab">CO</span>
+              </button>
+            </div>
+            <div class="pid-modes pid-face-modes">
+              <button type="button" data-mode="0">Man</button>
+              <button type="button" data-mode="1">Auto</button>
+              <button type="button" data-mode="2">Rem</button>
+            </div>
+            <button type="button" class="pid-hint" data-open-editor aria-haspopup="dialog">Tap to adjust</button>
           </div>
-        </button>
         </div>
         <div class="pid-dialog" hidden role="dialog" aria-modal="true">
           <button type="button" class="pid-dialog-backdrop" data-close-editor aria-label="Dismiss"></button>
@@ -808,10 +1006,10 @@ class PlcAssistantPidCard extends HTMLElement {
                 <button type="button" data-mode="2">Rem</button>
               </div>
               <div class="pid-editors">
-                <div class="pid-row" data-source="man">
-                  <label>Man</label>
-                  <input data-sp="man" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" />
-                  <button type="button" data-apply="man">Set</button>
+                <div class="pid-row" data-source="co">
+                  <label>CO</label>
+                  <input data-sp="co" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" />
+                  <button type="button" data-apply="co">Set</button>
                 </div>
                 <div class="pid-row" data-source="auto">
                   <label>Auto</label>
@@ -874,11 +1072,28 @@ class PlcAssistantPidCard extends HTMLElement {
       el.setAttribute("data-hi", errHi);
     });
 
+    const pvScale = pidPvScaleMax(loopId);
+    const pvBar = this._root.querySelector("[data-pv-bar]");
+    if (pvBar) pvBar.style.height = `${pidBarPct(pv, pvScale)}%`;
+    const spBar = this._root.querySelector("[data-sp-bar]");
+    if (spBar) spBar.style.height = `${pidBarPct(sp, pvScale)}%`;
     const barEl = this._root.querySelector("[data-cv-bar]");
     if (barEl) {
       barEl.style.width = `${this._cvBarPct(cv, loopId)}%`;
       barEl.setAttribute("data-hi", cvHi);
     }
+
+    const writeTarget = pidOperatorWriteTarget(mode, {
+      spWritable: !autoDisabled,
+      coWritable: Boolean(cvManEntity),
+    });
+    this._root.querySelectorAll("[data-bar]").forEach((el) => {
+      const barKey = el.getAttribute("data-bar");
+      const writable =
+        (barKey === "sp" && writeTarget === "sp") ||
+        (barKey === "co" && writeTarget === "co");
+      el.setAttribute("data-writable", writable ? "1" : "0");
+    });
 
     const dialog = this._root.querySelector(".pid-dialog");
     if (dialog) {
@@ -895,15 +1110,16 @@ class PlcAssistantPidCard extends HTMLElement {
       btn.classList.toggle("active", active);
     });
 
+    const sourceKey = modeKey === "man" ? "co" : modeKey;
     this._root.querySelectorAll("[data-source]").forEach((row) => {
       row.classList.toggle(
         "active-source",
-        row.getAttribute("data-source") === modeKey
+        row.getAttribute("data-source") === sourceKey
       );
     });
 
-    const values = { man: spMan, auto: spAuto, rem: spRem };
-    for (const key of ["man", "auto", "rem"]) {
+    const values = { co: coMan, auto: spAuto, rem: spRem };
+    for (const key of ["co", "auto", "rem"]) {
       const input = this._root.querySelector(`input[data-sp="${key}"]`);
       if (!input) continue;
       const focused = document.activeElement === input;
@@ -911,6 +1127,16 @@ class PlcAssistantPidCard extends HTMLElement {
         input.disabled = autoDisabled;
         const apply = this._root.querySelector('[data-apply="auto"]');
         if (apply) apply.disabled = autoDisabled;
+      }
+      if (key === "rem") {
+        input.disabled = remDisabled;
+        const apply = this._root.querySelector('[data-apply="rem"]');
+        if (apply) apply.disabled = remDisabled;
+      }
+      if (key === "co") {
+        input.disabled = !cvManEntity;
+        const apply = this._root.querySelector('[data-apply="co"]');
+        if (apply) apply.disabled = !cvManEntity;
       }
       // Never rewrite a focused or dirty draft from live HA values.
       // Focus alone (no typing) still skips rewrite to protect caret/selection;
@@ -927,7 +1153,7 @@ class PlcAssistantPidCard extends HTMLElement {
     const note = this._root.querySelector(".pid-note");
     if (note) {
       note.textContent =
-        `Mode via ${modeEntity || "—"}. Set writes the SP and flips to that source. Enter commits · Esc cancels draft (or closes).`;
+        `Mode via ${modeEntity || "—"}. MAN writes CO; AUTO writes local SP; REM is cascade/remote (read-only). Click the highlighted bar or Set. Enter commits · Esc cancels draft (or closes).`;
     }
   }
 }

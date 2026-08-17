@@ -1,106 +1,102 @@
-# Implementation plan: Standardised PID visualisation and structure (SWD-360)
+# Implementation plan: ISA-101 DCS PID faceplate (SWD-369)
 
 ## Summary
-- Give the built-in **PID** block an ISA-5.1 three-mode Diagram glyph and an
-  ISA-TR5.9 named structure (Parallel form, 2DoF weights, PV / SP / CO labels).
-- Implement the Bauer hybrid algorithm (incremental when `ki ≠ 0`, positional
-  when `ki = 0`) so anti-windup and bumpless transfer are intrinsic.
-- Keep the existing setpoint-source Manual / Automatic / Remote mux as HMI
-  outside the function block. Do not treat it as Bauer output Manual.
+- Replace the compact climate-style PID card with an **analog-controller faceplate**: two vertical bars (PV, SP), a horizontal **CO** bar, MAN / AUTO / REM, grayscale emphasis of the writable analog.
+- Conform the original ask to the standards: **CO not MV**; MAN is **output Manual** (Bauer `auto`/`uman`); AUTO writes local SP; REM is remote/cascade (not operator-writable); no mode hues (ISA-101).
+- Keep ISA-5.1 ε/P/I/D chrome and ISA-101 caution/abnormal colour from SWD-366.
 
 ## Scope
 ### In
-- App Diagram: ISA-5.1 Table 15 automatic three-mode controller glyph for
-  `template_id == "PID"` (error/difference + P, I, D compartments)
-- Builtin PID pin/param contract: ISA-TR5.9 names + Bauer optional pins
-- Hybrid incremental / positional equation (or native builtin) with default
-  derivative on PV (`gamma = 0`)
-- Faceplate / Datablock **labels** PV, SP, CO (existing `pv` / `sp` / `cv` pins stay)
-- Migration: existing `level_pi` / `flow_pi` copies keep cascade PI behaviour
-- Tests + surface/control/faceplate docs + App version if runtime/UI ships
+- Lovelace `plcassistant-pid-card`: analog bars on the card face; click-to-set on the writable bar; typed numeric still available (dialog)
+- Mode semantics: MAN = CO write (`auto=false`, `uman`); AUTO = local SP; REM = remote/cascade SP, PID running, bar not operator-writable
+- Wedge scan: wire Bauer `auto`/`uman` from mode; flow AUTO stays cascade (slave CAS behaviour, existing SWD-221 default); flow MAN writes pump CO; level MAN writes level CO (cascade request)
+- Compound PID sensor: `cv_man_entity`, scale attributes; CO Number IN tags `CO_LEVEL_MAN` / `CO_FLOW_MAN`
+- Bumpless MAN entry: seed CO_MAN from last live CO when the operator selects MAN
+- Tests + faceplate docs + dual-tree sync + App **0.1.58**
 
 ### Out
-- ISA-TR5.9 Series form and external-reset feedback
-- Classic output Manual on the Lovelace card (Bauer `auto` / `uman`)
-- Forcing internal percent-of-range scaling
-- ISA-5.5 equipment symbols; ISA-101 HMI rewrite
-- Vendoring github.com/copybit/pid
-- Autotune
+- Full ISA-101 four-level Operate rewrite
+- Colour-coding modes; green AVEVA-style mode buttons
+- Relabelling flow AUTO as CAS on the button (keep AUTO; slave AUTO remains cascade)
+- Alarm-limit colour bands on PV (later)
+- Series form / ERF / percent-of-range / autotune
+- Changing pin name `cv` (label stays CO)
 
 ## Decisions
 | Topic | Decision |
 |-------|----------|
-| Visualisation | ANSI/ISA-5.1-2024 Table 15 three-mode glyph + Table 16 P/I/D symbols. Generic rectangle remains for non-PID blocks. |
-| Identification | Optional instance param `isa_tag` (e.g. LIC, FIC) drawn on the glyph. P&ID bubbles are not the programming-surface default. |
-| Algorithm form | ISA-TR5.9 **Parallel** (independent `kp`, `ki`, `kd`) — matches today’s template. Declare `form: parallel` on the instance. Standard/Series conversion is later. |
-| 2DoF structure | Params `beta` (P setpoint weight) and `gamma` (D setpoint weight). Defaults `beta=1`, `gamma=0` (D on PV). |
-| Action | Reverse acting (`SP − PV`) remains default for the wedge; optional `direct_acting` param. |
-| Implementation | Bauer hybrid: incremental when `ki ≠ 0`; positional + bias `u0` when `ki = 0`. Reimplement in Soft-PLC; do not copy GitHub listings. |
-| Pins (required) | Keep `pv`, `sp`, `running`, `cv` so existing wires and tags stay valid. |
-| Pins (optional, defaulted) | `uff` (feed-forward, default 0), `track` (bool, default false), `utrack` (default 0). Unwired = Bauer defaults. |
-| `running` vs `auto` | `running` stays the permit/enable pin (wedge Start). When false: today’s hold-or-zero CV behaviour. Do not overload it as output Manual. |
-| SP-source Man/Auto/Rem | Unchanged HMI mux **outside** the FB (`docs/io/06-pid-faceplate.md`). |
-| Scaling | Keep engineering units for the lab wedge. Document ISA-TR5.9 % of range as a later option. |
-| Faceplate | Relabel hero strip to PV / SP / CO; keep climate-inspired Man/Auto/Rem colours. |
+| ISA-112 vs ISA-101 | Linked announcement is ISA-112 (lifecycle/terminology). Faceplate chrome follows ISA-101 + DCS analog-controller convention. |
+| Geometry | Two vertical bars PV (left) and SP (right); horizontal CO below. Numeric PV / SP / ε / CO stay on one row (SWD-228). |
+| Output name | **CO** (ISA-TR5.9). User “MV” maps to this bar. |
+| MAN | Output Manual. Highlight CO (grayscale selected chrome). Click CO bar / numeric writes `CO_*_MAN` → `uman`. PID `auto=false`. |
+| AUTO | Local SP on the primary (level). Highlight SP. Click SP bar writes Auto SP. Flow AUTO remains cascade (SP entity is a sensor; SP bar not writable). |
+| REM | Remote/cascade SP. No operator write from the faceplate. PID stays in auto. |
+| Highlight | Outline / invert / stronger gray on the writable analog only. Colour still caution/abnormal only. |
+| Click | Click on writable bar sets value from click position (clamped to scale). Typed Set remains in the dialog. |
+| Scales | Level PV/SP 0–0.40 m; flow PV/SP 0–8 L/min; level CO 0–8 L/min; flow CO 0–100 %. |
+| Defaults | Level AUTO (PID computes cascade request from `SP_LEVEL_REQ`); Flow AUTO (cascade). Level MAN is available for operator CO. |
+| Bumpless | Selecting MAN copies live CO into `CO_*_MAN` before the algorithm holds. |
+| Demo tags | New IN `CO_LEVEL_MAN`, `CO_FLOW_MAN`. Existing Man SP tags remain but are not the MAN write target. |
 
 ## Classification
 - Class: feature
 - Confidence: high
-- Why: new ISA glyph, named PID structure, and hybrid algorithm are a buildable product slice, not a defect fix
+- Why: new analog-controller faceplate plus controller-mode semantics (output Manual) are a buildable product slice, not a defect fix
 
 ## Workflow
-- Template: feature-heavy
+- Template: feature-standard
 - Parameters:
   - implement.mode: single
   - implement.verify: tests
   - implement.iteration: one-shot
-  - review.mode: multiagent
-  - review.depth: full
-  - side_paths: none
+  - review.mode: single
+  - review.depth: focused
+  - side_paths: research
 - Chain: implement → review-fix → ship
-- Rationale: schema/migration of the public PID template plus Diagram and faceplate; research already done on this Task; sequential implement, full review
+- Rationale: localised to faceplate JS + PID mode wiring; research already on this branch; not a new layer/API surface that needs multiagent full review
 
 ## Inputs
 - Research: [`docs/RESEARCH.md`](RESEARCH.md)
 - Model: —
 
 ## Constraints
-- Dual trees (`plcassistant/` and `custom_components/plcassistant/`) stay in sync when the faceplate or builtin contract ships
-- Wedge cascade must still settle: level CV → flow SP, flow CV → `CMD_SPEED`
-- Conditional-integration PI behaviour at `kd=0` must remain acceptable for the demo (incremental clamp is the intended replacement, with a cascade settle test)
-- copybit/pid has no license — reimplement from the papers, do not paste listings
-- Default `pytest` stays fast (no live marker on new tests unless they need the stack)
+- Dual trees (`plcassistant/` and `custom_components/plcassistant/`) stay in sync; run `scripts/sync-ha-app-package.sh`
+- Wedge cascade must still settle: level CO → flow SP, flow CO → `CMD_SPEED`
+- Do not reintroduce `--pid-man` / `--pid-auto` / `--pid-rem` hues
+- Keep SWD-227 click routing: mode only from `button[data-mode]`; Set never hijacked
+- Dialog stays a sibling of `.pid-card` (overflow:hidden on the card only)
+- Default `pytest` stays fast (no live marker unless the stack is required)
+- Issue keys stay off product surfaces (card copy, Lovelace yaml)
 
 ## Acceptance criteria
-- [x] PID instances on the App Diagram use the ISA-5.1 three-mode glyph (P, I, D compartments visible; generic `block-rect` is not the PID chrome)
-- [x] Builtin PID declares ISA-TR5.9 Parallel form and 2DoF `beta` / `gamma` (defaults 1 / 0)
-- [x] Required pins remain `pv`, `sp`, `running`, `cv`; optional Bauer pins default safe
-- [x] Hybrid algorithm: `ki ≠ 0` uses incremental updates; `ki = 0` uses positional + `u0`; derivative uses PV (`gamma=0`) so a setpoint step does not spike D
-- [x] Existing `level_pi` / `flow_pi` programs migrate without retuning for the PI (`kd=0`) case
-- [x] Lovelace PID card labels PV, SP, CO; Man/Auto/Rem SP-source behaviour unchanged
-- [x] Unit tests cover form/pins/glyph contract, incremental clamp, D-on-PV, and migration; default `pytest` still excludes `live`
+- [ ] PID card shows two vertical bars (PV, SP) and a horizontal CO bar
+- [ ] MAN highlights CO (grayscale); click/set writes CO; algorithm holds `uman`
+- [ ] AUTO highlights SP when the Auto SP entity is a Number; click/set writes local SP
+- [ ] REM does not highlight a writable analog; PID remains in auto
+- [ ] Colour still only caution/abnormal (ε bands, CO clamp); no mode hues
+- [ ] ISA-5.1 ε/P/I/D chrome retained; KPIs PV / SP / ε / CO at 2dp
+- [ ] Level AUTO + Flow AUTO cascade still settles after Start
+- [ ] Unit/JS tests cover writable target, bar click mapping, MAN hold, and faceplate contract
+- [ ] Dual-tree sync + App **0.1.58**
 
 ## Work packages
-1. **ISA-5.1 three-mode PID glyph on App Diagram** — [SWD-361](https://marcusknielsen.atlassian.net/browse/SWD-361)
-2. **ISA-TR5.9 / Bauer PID pin and parameter contract** — [SWD-362](https://marcusknielsen.atlassian.net/browse/SWD-362)
-3. **Hybrid incremental/positional PID algorithm** — [SWD-363](https://marcusknielsen.atlassian.net/browse/SWD-363)
-4. **Faceplate and Datablock PV/SP/CO alignment** — [SWD-364](https://marcusknielsen.atlassian.net/browse/SWD-364)
-5. **Tests, docs, and App version** — [SWD-365](https://marcusknielsen.atlassian.net/browse/SWD-365)
+1. **Controller-mode contract + CO_MAN tags + Bauer auto/uman wiring**
+2. **Lovelace analog-controller PID card (bars, highlight, click-to-set)**
+3. **Tests, docs, dual-tree, App 0.1.58**
 
 ## Open items
-- Output Manual (`auto` / `uman`) on the Lovelace card — later iterate, not this slice
-- Series form and external-reset feedback — later
-- Percent-of-range internal scaling — later, after the lab wedge still uses engineering units
+- Alarm-limit colour bands on PV — later
+- Relabel flow AUTO as CAS — later if operators find AUTO on the slave confusing
 
 ## Tracker
 - Provider: jira
-- Story: [SWD-359](https://marcusknielsen.atlassian.net/browse/SWD-359)
-- Task: [SWD-360](https://marcusknielsen.atlassian.net/browse/SWD-360)
-- Sub-tasks: SWD-361, SWD-362, SWD-363, SWD-364, SWD-365
-- Branch: `cursor/swd-360-isa-pid-blocks-25fc`
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/101
+- Story: [SWD-368](https://marcusknielsen.atlassian.net/browse/SWD-368)
+- Task: [SWD-369](https://marcusknielsen.atlassian.net/browse/SWD-369)
+- Sub-tasks: [SWD-370](https://marcusknielsen.atlassian.net/browse/SWD-370), [SWD-371](https://marcusknielsen.atlassian.net/browse/SWD-371), [SWD-372](https://marcusknielsen.atlassian.net/browse/SWD-372)
+- Branch: `cursor/swd-369-isa101-pid-faceplate-5304`
+- PR: (opened at define)
 - Classification: feature
-- Workflow: feature-heavy
+- Workflow: feature-standard
 
 ## Next
-Done — shipped PR [#101](https://github.com/marcuskrogh/PLCAssistant/pull/101)
+`/review-fix SWD-369` — after implement lands on the draft PR

@@ -30,21 +30,22 @@ Operate is a compact SCADA screen — not an entity browser:
 | **Status** | Soft-PLC, Mode (`STOP` / `RUNNING` / `TRIPPED`), Trip |
 | **Commands** | Start / Stop / Reset |
 | **Process** | Glance PVs (tank, reservoir, inlet flow, pump speed) — tap opens more-info / history |
-| **PID** | Level + Flow faceplates (tap card to edit mode / SP) |
+| **PID** | Level + Flow analog-controller faceplates (PV/SP bars, CO bar; MAN writes CO, AUTO writes SP) |
 
 Engineering surfaces stay on the **Dynamics** and **Datablocks** tabs.
 
 Press **Start** → Soft-PLC status `running`, MODE `RUNNING`, and Soft-PLC CVs
 update. Plant PVs are Soft-PLC **IN** sensors from the integration simulator;
-PID cards edit SP / mode (entities still exist for automation / custom boards).
+PID cards edit mode / SP / CO (entities still exist for automation / custom boards).
 
 ## Writable vs read-only
 
 | Entity | Role |
 |--------|------|
-| `number.plcassistant_sp_level_req` | Operator **level setpoint request** (writable; Automatic source; via PID popup) |
-| `number.plcassistant_sp_level_man` / `_rem` / `level_mode` | Level PID Manual/Remote SP + mode (0/1/2) |
-| `number.plcassistant_sp_flow_man` / `_rem` / `flow_mode` | Flow PID Manual/Remote SP + mode |
+| `number.plcassistant_sp_level_req` | Operator **level setpoint request** (writable; Automatic source; click SP bar or dialog) |
+| `number.plcassistant_co_level_man` / `_co_flow_man` | Output Manual CO (writable in MAN; click CO bar or dialog) |
+| `number.plcassistant_sp_level_man` / `_rem` / `level_mode` | Level PID legacy Manual/Remote SP + mode (0/1/2) |
+| `number.plcassistant_sp_flow_man` / `_rem` / `flow_mode` | Flow PID Remote SP + mode (flow AUTO is cascade; MAN writes CO) |
 | `sensor.plcassistant_pid_level` / `_pid_flow` | Compound PID faceplate (mode + attributes) |
 | `sensor.plcassistant_lt_tank_in` / `_lt_res_in` / `_ft_inlet_in` | Plant PVs as Soft-PLC **IN** (Operate Process glance) |
 | `number.plcassistant_lt_tank_in` / `_lt_res_in` / `_ft_inlet_in` | Plant PV **nudges** (writable; same tags) |
@@ -93,6 +94,8 @@ After App Update + Core restart: stock Lovelace refreshes to dashboard version *
 If personal boards still show unavailable plant Numbers, delete stale unavailable
 entities in the entity registry (or remove/re-add the integration). Update any
 personal dashboards that still reference plant Numbers for Process display.
+
+**0.1.58** Lovelace PID cards: analog-controller face (vertical PV/SP, horizontal CO), DCS MAN/AUTO/REM (MAN writes CO). Stock Lovelace still dashboard version **28**.
 
 **0.1.57** Builtin PID follows the IFAC 2024 incremental reference (filter, Tx, auto/uman, windup). Lovelace faceplates unchanged. Stock Lovelace still dashboard version **28**.
 

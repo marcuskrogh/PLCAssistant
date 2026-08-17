@@ -52,9 +52,9 @@ def test_system_missing_cascade_instances_still_drive_cv_on_start() -> None:
     image = declare_default_image()
     image.begin_inputs()
     for tag, val in (
-        ("LEVEL_MODE", 0.0),
+        ("LEVEL_MODE", 1.0),
         ("FLOW_MODE", 1.0),
-        ("SP_LEVEL_MAN", 0.30),
+        ("SP_LEVEL_REQ", 0.30),
         ("LT_TANK", 0.0),
         ("LT_RES", 0.20),
         ("FT_INLET", 0.0),
@@ -84,7 +84,7 @@ def test_system_missing_cascade_instances_still_drive_cv_on_start() -> None:
 
 
 def test_system_screenshot_level_man_pv0_drives_cvs() -> None:
-    """Reproduce HMI screenshot: Level Man SP=0.3, PV=0, Flow Auto → CVs rise."""
+    """Reproduce HMI: Level Auto SP=0.3, PV=0, Flow Auto → CVs rise."""
     from plcassistant.app.default_image import declare_default_image
     from plcassistant.app.skid_scan import SkidImageLogic
     from plcassistant.io.quality import QualityStatus
@@ -92,9 +92,9 @@ def test_system_screenshot_level_man_pv0_drives_cvs() -> None:
     image = declare_default_image()
     image.begin_inputs()
     for tag, val in (
-        ("LEVEL_MODE", 0.0),
+        ("LEVEL_MODE", 1.0),
         ("FLOW_MODE", 1.0),
-        ("SP_LEVEL_MAN", 0.30),
+        ("SP_LEVEL_REQ", 0.30),
         ("LT_TANK", 0.0),
         ("LT_RES", 0.20),
         ("FT_INLET", 0.0),
@@ -164,9 +164,9 @@ def test_system_hot_sync_does_not_rebumpless_while_running() -> None:
     image = declare_default_image()
     image.begin_inputs()
     for tag, val in (
-        ("LEVEL_MODE", 0.0),
+        ("LEVEL_MODE", 1.0),
         ("FLOW_MODE", 1.0),
-        ("SP_LEVEL_MAN", 0.30),
+        ("SP_LEVEL_REQ", 0.30),
         ("LT_TANK", 0.0),
         ("LT_RES", 0.20),
         ("FT_INLET", 0.0),
@@ -227,9 +227,9 @@ def test_system_file_runtime_snapshot_includes_level_cv(tmp_path, monkeypatch) -
     image = declare_default_image()
     image.begin_inputs()
     for tag, val in (
-        ("LEVEL_MODE", 0.0),
+        ("LEVEL_MODE", 1.0),
         ("FLOW_MODE", 1.0),
-        ("SP_LEVEL_MAN", 0.30),
+        ("SP_LEVEL_REQ", 0.30),
         ("LT_TANK", 0.0),
         ("LT_RES", 0.20),
         ("FT_INLET", 0.0),
@@ -252,8 +252,8 @@ def test_system_file_runtime_snapshot_includes_level_cv(tmp_path, monkeypatch) -
 
 def test_system_app_version_0_1_45() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.57"' in manifest
+    assert '"0.1.58"' in manifest
     config = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.57"' in config
+    assert 'version: "0.1.58"' in config
     docker = Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.57" in docker
+    assert "BUILD_VERSION=0.1.58" in docker

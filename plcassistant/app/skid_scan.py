@@ -11,7 +11,13 @@ SWD-183: SP-source mode mux selects Manual / Automatic / Remote into active SP.
 from __future__ import annotations
 
 from plcassistant.io.image import IoImage
-from plcassistant.io.pid_loop import FLOW_LOOP, LEVEL_LOOP, SpSourceMode, select_active_sp
+from plcassistant.io.pid_loop import (
+    FLOW_LOOP,
+    LEVEL_LOOP,
+    SpSourceMode,
+    is_output_manual,
+    select_active_sp,
+)
 from plcassistant.io.quality import QualityStatus, ReasonCode
 from plcassistant.wedge.process import HeldProcess
 from plcassistant.wedge.skid import Mode, OperatorCommand, Skid
@@ -49,11 +55,11 @@ def _resolve_level_sp(image: IoImage) -> float:
         auto = 0.20
     man = _tag_float(image, LEVEL_LOOP.sp_man, auto)
     rem = _tag_float(image, LEVEL_LOOP.sp_rem, auto)
-    mode_raw = image.get_value(LEVEL_LOOP.mode) if LEVEL_LOOP.mode in names else 0
+    mode_raw = image.get_value(LEVEL_LOOP.mode) if LEVEL_LOOP.mode in names else 1
     try:
         mode = SpSourceMode.parse(mode_raw)
     except ValueError:
-        mode = SpSourceMode.MANUAL
+        mode = SpSourceMode.AUTOMATIC
     return select_active_sp(mode, sp_man=man, sp_auto=auto, sp_rem=rem)
 
 
@@ -77,14 +83,31 @@ def _resolve_flow_sp(image: IoImage, *, cascade_auto: float) -> float:
 
 
 def _flow_sp_override_from_image(image: IoImage) -> float | None:
-    """Manual/Remote flow SP for the flow PI this scan; None keeps cascade wire."""
+    """Remote flow SP for the flow PI this scan; None keeps cascade wire.
+
+    Automatic keeps the level-CO cascade. Manual is output Manual (CO), not an
+    SP override. Remote still supplies ``SP_FLOW_REM``.
+    """
     mode = _resolve_flow_mode(image)
-    if mode is SpSourceMode.AUTOMATIC:
+    if mode is SpSourceMode.AUTOMATIC or mode is SpSourceMode.MANUAL:
         return None
-    names = image.names()
-    man = _tag_float(image, FLOW_LOOP.sp_man, 0.0)
     rem = _tag_float(image, FLOW_LOOP.sp_rem, 0.0)
-    return select_active_sp(mode, sp_man=man, sp_auto=0.0, sp_rem=rem)
+    return float(rem)
+
+
+def _uman_from_image(image: IoImage, *, loop) -> float | None:
+    """Operator CO when the loop is in output Manual; else None."""
+    names = image.names()
+    mode_raw = image.get_value(loop.mode) if loop.mode in names else 1
+    try:
+        mode = SpSourceMode.parse(mode_raw)
+    except ValueError:
+        mode = SpSourceMode.AUTOMATIC
+    if not is_output_manual(mode):
+        return None
+    if loop.co_man in names:
+        return _tag_float(image, loop.co_man, _tag_float(image, loop.cv, 0.0))
+    return _tag_float(image, loop.cv, 0.0)
 
 
 class SkidImageLogic:
@@ -165,8 +188,10 @@ class SkidImageLogic:
         if FLOW_LOOP.ki in names:
             cascade.flow_ki = _tag_float(image, FLOW_LOOP.ki, cascade.flow_ki)
         self.skid.sp_level = _resolve_level_sp(image)
-        # Apply Flow Man/Rem to the flow PI this scan (not display-only) (SWD-223).
+        # Remote flow SP overrides cascade; Manual is output Manual (SWD-369).
         self.skid.sp_flow_override = _flow_sp_override_from_image(image)
+        self.skid.level_uman = _uman_from_image(image, loop=LEVEL_LOOP)
+        self.skid.flow_uman = _uman_from_image(image, loop=FLOW_LOOP)
         self._feed_plant_from_image(image)
         pending = self._pending
         self._pending = []

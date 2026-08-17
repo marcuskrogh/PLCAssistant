@@ -14,20 +14,20 @@ def test_unit_mode_defaults_are_manual() -> None:
 
     block = default_tank_datablock_catalog().get("DB_Tank")
     assert block is not None
-    assert float(block.tags["LEVEL_MODE"].default) == pytest.approx(0.0)
+    assert float(block.tags["LEVEL_MODE"].default) == pytest.approx(1.0)
     assert float(block.tags["FLOW_MODE"].default) == pytest.approx(1.0)  # cascade slave (SWD-221)
 
     meta = (ROOT / "number.py").read_text(encoding="utf-8")
     assert '"object_id": "plcassistant_level_mode"' in meta
     assert '"object_id": "plcassistant_flow_mode"' in meta
-    level_block = meta.split('"LEVEL_MODE":', 1)[1].split('"SP_FLOW_MAN"', 1)[0]
-    assert '"default": 0.0' in level_block
+    level_block = meta.split('"LEVEL_MODE":', 1)[1].split('"CO_LEVEL_MAN":', 1)[0]
+    assert '"default": 1.0' in level_block
     flow_block = meta.split('"FLOW_MODE":', 1)[1].split('"LEVEL_KP"', 1)[0]
     assert '"default": 1.0' in flow_block
 
 
-def test_unit_skid_missing_mode_defaults_manual() -> None:
-    """Missing or invalid LEVEL_MODE must select Manual SP (mux fallback)."""
+def test_unit_skid_missing_mode_defaults_automatic() -> None:
+    """Missing or invalid LEVEL_MODE must select Automatic SP (mux fallback)."""
     from plcassistant.app.skid_scan import _resolve_level_sp
 
     class _FakeImage:
@@ -45,7 +45,7 @@ def test_unit_skid_missing_mode_defaults_manual() -> None:
         ("SP_LEVEL_MAN", "SP_LEVEL_REQ", "SP_LEVEL_REM"),
         {"SP_LEVEL_MAN": 0.25, "SP_LEVEL_REQ": 0.20, "SP_LEVEL_REM": 0.99},
     )
-    assert _resolve_level_sp(missing_mode) == pytest.approx(0.25)
+    assert _resolve_level_sp(missing_mode) == pytest.approx(0.20)
 
     invalid_mode = _FakeImage(
         ("SP_LEVEL_MAN", "SP_LEVEL_REQ", "SP_LEVEL_REM", "LEVEL_MODE"),
@@ -56,7 +56,7 @@ def test_unit_skid_missing_mode_defaults_manual() -> None:
             "LEVEL_MODE": "bogus",
         },
     )
-    assert _resolve_level_sp(invalid_mode) == pytest.approx(0.25)
+    assert _resolve_level_sp(invalid_mode) == pytest.approx(0.20)
 
 
 def test_integration_hydrate_publish_does_not_reference_flip_path() -> None:
@@ -88,12 +88,12 @@ def test_system_lovelace_resource_registration() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
     assert '"after_dependencies"' in manifest
     assert '"lovelace"' in manifest
-    assert '"0.1.57"' in manifest
+    assert '"0.1.58"' in manifest
 
     pid = (ROOT / "www" / "pid-loop-card.js").read_text(encoding="utf-8")
     assert 'customElements.get("plcassistant-pid-card")' in pid
     assert "getConfigElement" not in pid
-    assert 'mode = (st?.state || "manual")' in pid
+    assert 'mode = (st?.state || "automatic")' in pid
 
     block = (ROOT / "www" / "block-list-card.js").read_text(encoding="utf-8")
     assert 'customElements.get("plcassistant-block-list-card")' in block
@@ -129,7 +129,7 @@ def test_integration_ha_catalog_mode_default_parity() -> None:
     ha_block = mod_c.default_tank_datablock_catalog().get("DB_Tank")
     assert float(soft_block.tags["LEVEL_MODE"].default) == float(
         ha_block.tags["LEVEL_MODE"].default
-    ) == pytest.approx(0.0)
+    ) == pytest.approx(1.0)
     assert float(soft_block.tags["FLOW_MODE"].default) == float(
         ha_block.tags["FLOW_MODE"].default
     ) == pytest.approx(1.0)
