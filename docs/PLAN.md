@@ -98,7 +98,7 @@
 - Task: [SWD-360](https://marcusknielsen.atlassian.net/browse/SWD-360)
 - Sub-tasks: SWD-361, SWD-362, SWD-363, SWD-364, SWD-365
 - Branch: `cursor/swd-360-isa-pid-blocks-25fc`
-- PR: (opened by define)
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/101
 - Classification: feature
 - Workflow: feature-heavy
 
