@@ -573,9 +573,6 @@ class PlcAssistantPidCard extends HTMLElement {
         .pid-cv-fill[data-hi="caution"] {
           background: var(--pid-hi-caution); opacity: 1;
         }
-        .pid-cv-fill[data-hi="abnormal"] {
-          background: var(--pid-hi-abnormal); opacity: 1;
-        }
         .pid-hint {
           margin-top: 8px;
           font-size: var(--pid-label-size);

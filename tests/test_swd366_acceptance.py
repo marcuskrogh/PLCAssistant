@@ -43,6 +43,8 @@ def test_unit_pid_card_isa101_colour_not_mode_hues() -> None:
     assert 'data-pid-hi="normal"' in text
     assert ".pid-modes button.active" in text
     assert "background: var(--primary-text-color)" in text
+    assert ".pid-cv-fill[data-hi=\"caution\"]" in text
+    assert ".pid-cv-fill[data-hi=\"abnormal\"]" not in text
     # SP value is not permanently accent-coloured.
     assert '.pid-metric[data-role="sp"] strong { color: var(--pid-accent); }' not in text
     assert "climate-inspired" not in text
