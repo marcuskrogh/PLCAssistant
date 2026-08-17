@@ -61,7 +61,8 @@ def test_unit_pid_declares_parallel_form_and_2dof_defaults() -> None:
     assert defaults["track"] is False
     assert defaults["utrack"] == pytest.approx(0.0)
     assert tmpl.body == PID_EQUATION
-    assert "ISA-TR5.9 Parallel" in tmpl.description
+    assert "ISA Technical Report 5.9" in tmpl.description
+    assert "Parallel" in tmpl.description
     assert is_factory_pid_equation(PID_EQUATION_LEGACY)
     assert is_factory_pid_equation("")
     assert not is_factory_pid_equation("cv = 42.0")
@@ -208,6 +209,110 @@ def test_unit_default_pytest_still_excludes_live() -> None:
     text = PYPROJECT.read_text(encoding="utf-8")
     assert "not live" in text
     assert "addopts" in text
+
+
+def test_unit_app_version_is_0_1_55() -> None:
+    assert 'version: "0.1.55"' in (ROOT / "plc_assistant" / "config.yaml").read_text(
+        encoding="utf-8"
+    )
+    manifest = (ROOT / "custom_components" / "plcassistant" / "manifest.json").read_text(
+        encoding="utf-8"
+    )
+    assert '"0.1.55"' in manifest
+
+
+def test_unit_incremental_includes_constant_uff() -> None:
+    params = pid_default_params()
+    params.update({"kp": 0.0, "ki": 1.0, "kd": 0.0, "cv_min": 0.0, "cv_max": 100.0})
+    cv = _eval(params, _pid_pins(pv=0.0, sp=0.0, running=True, uff=25.0), {}, 0.1)
+    assert cv == pytest.approx(25.0)
+
+
+def test_unit_legacy_last_error_prevents_p_kick() -> None:
+    params = pid_default_params()
+    params.update({"kp": 10.0, "ki": 0.1, "kd": 0.0, "cv_min": -100.0, "cv_max": 100.0})
+    pins = _pid_pins(pv=0.0, sp=5.0, running=True)
+    cv = _eval(params, pins, {"last_error": 5.0}, 0.1)
+    assert cv == pytest.approx(0.05)
+
+
+def test_unit_direct_acting_flips_error_sign() -> None:
+    params = pid_default_params()
+    params.update(
+        {
+            "kp": 2.0,
+            "ki": 0.0,
+            "kd": 0.0,
+            "u0": 0.0,
+            "direct_acting": True,
+            "cv_min": -50.0,
+            "cv_max": 50.0,
+        }
+    )
+    cv = _eval(params, _pid_pins(pv=0.0, sp=10.0, running=True), {}, 0.1)
+    assert cv == pytest.approx(-20.0)
+
+
+def test_unit_dt_zero_skips_integral_keeps_p() -> None:
+    params = pid_default_params()
+    params.update({"kp": 2.0, "ki": 100.0, "kd": 0.0, "cv_min": -100.0, "cv_max": 100.0})
+    cv = _eval(params, _pid_pins(pv=0.0, sp=10.0, running=True), {}, 0.0)
+    assert cv == pytest.approx(20.0)
+
+
+def test_unit_upgrade_shipped_pid_adds_bauer_pins() -> None:
+    from plcassistant.surface.builtin import (
+        PID_EQUATION_LEGACY,
+        upgrade_builtin_pid_template,
+    )
+    from plcassistant.surface.model import BlockTemplate, PinDirection, PinSpec
+
+    old = BlockTemplate(
+        template_id=PID_TEMPLATE_ID,
+        library="builtin",
+        description="old",
+        pins=[
+            PinSpec("pv", PinDirection.IN, "float", 0.0),
+            PinSpec("sp", PinDirection.IN, "float", 0.0),
+            PinSpec("running", PinDirection.IN, "bool", False),
+            PinSpec("cv", PinDirection.OUT, "float", 0.0),
+        ],
+        params={"kp": 3.0, "ki": 1.0},
+        body=PID_EQUATION_LEGACY,
+        is_builtin=True,
+    )
+    up = upgrade_builtin_pid_template(old)
+    names = [p.name for p in up.pins]
+    assert {"uff", "track", "utrack", "cv"} <= set(names)
+    assert up.params["form"] == "parallel"
+    assert up.params["kp"] == pytest.approx(3.0)
+    assert up.body == PID_EQUATION
+
+
+def test_system_hybrid_cascade_cvs_move() -> None:
+    from plcassistant.app.default_image import declare_default_image
+    from plcassistant.app.skid_scan import SkidImageLogic
+    from plcassistant.io.quality import QualityStatus
+
+    image = declare_default_image()
+    image.begin_inputs()
+    for tag, val in (
+        ("LEVEL_MODE", 0.0),
+        ("FLOW_MODE", 1.0),
+        ("SP_LEVEL_MAN", 0.30),
+        ("LT_TANK", 0.15),
+        ("LT_RES", 0.20),
+        ("FT_INLET", 0.0),
+    ):
+        image.apply_input(tag, val, QualityStatus.GOOD)
+    logic = SkidImageLogic(period_s=0.1)
+    logic.enqueue_operator("start")
+    for _ in range(40):
+        logic(image)
+    assert float(image.get_value("SP_FLOW_AUTO")) > 0.5
+    assert float(image.get_value("CMD_SPEED")) > 0.0
+    assert float(image.get_value("SP_FLOW_AUTO")) <= 8.0
+    assert float(image.get_value("CMD_SPEED")) <= 100.0
 
 
 def test_dual_tree_isa_pid_glyph_and_faceplate() -> None:

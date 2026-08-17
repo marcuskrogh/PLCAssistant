@@ -84,7 +84,7 @@ is a SCADA layout with PID cards only — no fallback entity dump. Custom boards
 may still list the underlying Number/sensor entities if cards fail to load.
 
 The PID card (SWD-226 / SWD-228 / SWD-230) uses climate-inspired mode colours
-(Man / Auto / Rem), a hero strip for PV / active SP / CV at **two decimal places**,
+(Man / Auto / Rem), a hero strip for PV / active SP / CO at **two decimal places**,
 and text+`inputmode=decimal` SP editors so intermediate edits survive live Soft-PLC
 hass updates. Typography uses Home Assistant Lovelace design tokens
 (`--ha-font-family-body`, `--ha-card-header-font-size`, `--ha-font-size-*`) so the

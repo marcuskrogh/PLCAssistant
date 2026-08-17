@@ -68,9 +68,9 @@ dt_ok = bool(dt > 0.0)
 ep = dir_sign * (beta * sp - pv)
 ei = dir_sign * (sp - pv)
 yd = gamma * sp - pv
-last_ep = state("last_ep", 0.0)
+last_ep = state("last_ep", state("last_error", 0.0))
 last_yd = state("last_yd", yd)
-last_uff = state("last_uff", uff)
+last_uff = state("last_uff", 0.0)
 last_cv = state("last_cv", u0)
 pending = bool(state("bumpless_pending", False))
 dt_safe = dt if dt_ok else 1.0
@@ -104,6 +104,36 @@ def is_factory_pid_equation(equation: str) -> bool:
     return text in known
 
 
+def upgrade_builtin_pid_template(tmpl: BlockTemplate) -> BlockTemplate:
+    """Fill missing ISA/Bauer pins and params on a persisted shipped PID copy."""
+    if tmpl.template_id != PID_TEMPLATE_ID or tmpl.library != "builtin":
+        return tmpl
+    factory = pid_template()
+    have = {pin.name: pin for pin in tmpl.pins}
+    pins = [have.pop(fp.name, fp) for fp in factory.pins]
+    pins.extend(have.values())
+    params = dict(factory.params)
+    params.update(dict(tmpl.params))
+    body = PID_EQUATION if is_factory_pid_equation(tmpl.body) else tmpl.body
+    description = tmpl.description or factory.description
+    if (
+        pins == tmpl.pins
+        and params == tmpl.params
+        and body == tmpl.body
+        and description == tmpl.description
+    ):
+        return tmpl
+    return BlockTemplate(
+        template_id=tmpl.template_id,
+        library=tmpl.library,
+        description=description,
+        pins=pins,
+        params=params,
+        body=body,
+        is_builtin=True,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Shared helpers (removed native PI callables — equation-driven PID only)
 # ---------------------------------------------------------------------------
@@ -115,8 +145,9 @@ def pid_template() -> BlockTemplate:
         template_id=PID_TEMPLATE_ID,
         library="builtin",
         description=(
-            "PID controller (ISA-TR5.9 Parallel). Hybrid incremental/positional; "
-            "set kd=0 for PI. Derivative on PV by default (gamma=0)."
+            "PID controller (ISA Technical Report 5.9 Parallel). "
+            "Hybrid incremental/positional; set kd=0 for PI. "
+            "Derivative on PV by default (gamma=0)."
         ),
         pins=[
             PinSpec("pv", PinDirection.IN, "float", 0.0),
@@ -349,6 +380,7 @@ __all__ = [
     "PID_TEMPLATE_ID",
     "cascade_pid_cv_limits",
     "is_factory_pid_equation",
+    "upgrade_builtin_pid_template",
     "pid_default_params",
     "pid_params_for_pi",
     "pid_template",

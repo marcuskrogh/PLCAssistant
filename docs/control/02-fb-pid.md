@@ -41,7 +41,12 @@ Code: `plcassistant.wedge.control` (`CascadeConfig`, `CascadeController`).
 
 ## Anti-windup (required)
 
-**Conditional integration:** accumulate integral only when the unsaturated
+**Incremental clamp** on the builtin PID (`PID_EQUATION`): when `ki ≠ 0`, the
+output is updated as `last_cv + Δ` then clamped, so the integrator cannot wind
+past `cv_min` / `cv_max`. When `ki = 0`, the positional form has no integrator.
+
+The legacy `CascadeController` fallback (no block instances) still uses
+**conditional integration**: accumulate integral only when the unsaturated
 output is inside the clamp, or when error drives **out** of saturation.
 When saturated and error would push further into the clamp, **freeze** I.
 

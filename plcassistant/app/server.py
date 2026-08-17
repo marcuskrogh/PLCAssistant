@@ -56,6 +56,7 @@ from plcassistant.surface.builtin import (
     PID_TEMPLATE_ID,
     pid_template,
     register_builtins,
+    upgrade_builtin_pid_template,
     wedge_softplc_project,
 )
 from plcassistant.surface.model import (
@@ -315,6 +316,7 @@ class AppState:
                     library="builtin",
                     is_builtin=True,
                 )
+                tmpl = upgrade_builtin_pid_template(tmpl)
             except (ValueError, KeyError, TypeError):
                 continue
             self.library_state["shipped_overrides"][tmpl.template_id] = _template_payload(tmpl)
@@ -349,6 +351,7 @@ class AppState:
                 library="builtin",
                 is_builtin=True,
             )
+            tmpl = upgrade_builtin_pid_template(tmpl)
             library.register(tmpl)
         for payload in self.library_state["custom"].values():
             tmpl = _template_from_payload(
@@ -699,6 +702,7 @@ class AppState:
             library="builtin",
             is_builtin=True,
         )
+        tmpl = upgrade_builtin_pid_template(tmpl)
         self._dry_run_equation(tmpl.body, tmpl, tmpl.params)
         self.library.register(tmpl)
         self.library_state["shipped_overrides"][template_id] = _template_payload(tmpl)

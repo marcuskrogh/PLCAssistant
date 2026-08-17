@@ -5,7 +5,7 @@
  * Reads climate-like attributes from the compound PID sensor and writes
  * Manual/Auto/Remote mode + SP sources via number.* entities.
  *
- * Compact faceplate (SWD-228 / SWD-360): PV / Active SP / CO at 2dp in a single row;
+ * Compact faceplate (SWD-228): PV / Active SP / CO at 2dp in a single row;
  * click opens a climate-style dialog for mode + SP edits.
  *
  * Typography (SWD-230): use HA Lovelace design tokens (--ha-font-*) so the
