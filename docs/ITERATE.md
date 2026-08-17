@@ -47,6 +47,8 @@ The shipped builtin PID follows ISA-TR5.9 names and a simplified hybrid update. 
 - Task: [SWD-367](https://marcusknielsen.atlassian.net/browse/SWD-367)
 - Relates: SWD-360, SWD-366
 - Branch: `cursor/swd-367-ifac-pid-reference-6900`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/103
+- App: **0.1.57**
 
 ## Next
 `/review-fix SWD-367` — Review and auto-fix on the new delivery PR
