@@ -751,19 +751,14 @@ class Skid:
             return fallback
 
         level_kp = _p(level_inst, "kp", cfg.level_kp)
-        level_ki = _p(level_inst, "ki", cfg.level_ki)
         sp_flow_min = _p(level_inst, "cv_min", cfg.sp_flow_min)
         sp_flow_max = _p(level_inst, "cv_max", cfg.sp_flow_max)
         flow_kp = _p(flow_inst, "kp", cfg.flow_kp)
-        flow_ki = _p(flow_inst, "ki", cfg.flow_ki)
 
         last_cv = self._block_context.get("level_pi.cv")
         target_sp_flow = float(last_cv) if last_cv is not None else 0.0
         target_sp_flow = max(sp_flow_min, min(sp_flow_max, target_sp_flow))
         target_cmd_speed = 0.0
-
-        level_error = self.sp_level - lt_tank
-        flow_error = target_sp_flow - ft_inlet
 
         def _pid_ep(inst: object, sp: float, pv: float) -> float:
             params = getattr(inst, "params", {}) or {}
@@ -776,15 +771,9 @@ class Skid:
         level_ep = _pid_ep(level_inst, self.sp_level, lt_tank)
         flow_ep = _pid_ep(flow_inst, target_sp_flow, ft_inlet)
 
-        level_integral = (
-            (target_sp_flow - level_kp * level_error) / level_ki
-            if level_ki != 0.0
-            else 0.0
-        )
         self._block_runtime.set_instance_state(
             "level_pi",
             {
-                "integral": level_integral,
                 "bumpless_pending": True,
                 "last_cv": target_sp_flow,
                 "u_old": target_sp_flow,
@@ -797,16 +786,9 @@ class Skid:
                 "filter_primed": True,
             },
         )
-
-        flow_integral = (
-            (target_cmd_speed - flow_kp * flow_error) / flow_ki
-            if flow_ki != 0.0
-            else 0.0
-        )
         self._block_runtime.set_instance_state(
             "flow_pi",
             {
-                "integral": flow_integral,
                 "bumpless_pending": True,
                 "last_cv": target_cmd_speed,
                 "u_old": target_cmd_speed,

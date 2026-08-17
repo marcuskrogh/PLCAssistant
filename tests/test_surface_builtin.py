@@ -3,9 +3,9 @@
 Covers:
 - register_builtins populates library and runtime callables
 - LevelPI: running=True produces correct PI output
-- LevelPI: running=False holds last cv, resets integral
+- LevelPI: running=False holds last cv and incremental state
 - FlowPI: running=True produces correct PI output
-- FlowPI: running=False forces cv=0, resets integral
+- FlowPI: running=False forces cv=0 and clears incremental pending
 - Anti-windup: integral frozen when output is clamped into saturation
 - Cascade parity: [level_pi → flow_pi] numerically matches CascadeController
   for several scenarios (running, not-running, clamps)
@@ -167,8 +167,8 @@ def test_level_pi_not_running_holds_last_cv():
     assert ctx.get("lp.cv") == pytest.approx(held_cv)
 
 
-def test_level_pi_not_running_resets_integral():
-    """running=False resets integral; next running step starts from zero integral."""
+def test_level_pi_not_running_holds_incremental_state():
+    """running=False holds last cv (level) and clears bumpless_pending."""
     lib, runtime = _make_runtime()
     prog = program_from_dict({
         "version": "1.0",
@@ -183,13 +183,16 @@ def test_level_pi_not_running_resets_integral():
         "execution_order": ["lp"],
     })
     ctx = DictContext({"lp.pv": 0.10, "lp.sp": 0.20, "lp.running": True})
-    # Run a few ticks to build up integral
     for _ in range(10):
         runtime.tick(prog, ctx, 0.1)
-    # Stop — integral should be cleared
+    held_cv = ctx.get("lp.cv")
     ctx.set("lp.running", False)
     runtime.tick(prog, ctx, 0.1)
-    assert runtime.state.get("lp", {}).get("integral", 0.0) == pytest.approx(0.0)
+    state = runtime.state.get("lp", {})
+    assert ctx.get("lp.cv") == pytest.approx(held_cv)
+    assert state.get("u_old") == pytest.approx(held_cv)
+    assert state.get("bumpless_pending") is False
+    assert "integral" not in state
 
 
 def test_level_pi_cv_clamped_to_cv_max():
@@ -258,7 +261,8 @@ def test_flow_pi_not_running_forces_cv_zero():
     assert ctx.get("fp.cv") == pytest.approx(0.0)
 
 
-def test_flow_pi_not_running_resets_integral():
+def test_flow_pi_not_running_zeros_incremental_state():
+    """running=False forces cv=0 (flow) and clears bumpless_pending."""
     lib, runtime = _make_runtime()
     prog = program_from_dict({
         "version": "1.0",
@@ -277,7 +281,11 @@ def test_flow_pi_not_running_resets_integral():
         runtime.tick(prog, ctx, 0.1)
     ctx.set("fp.running", False)
     runtime.tick(prog, ctx, 0.1)
-    assert runtime.state.get("fp", {}).get("integral", 0.0) == pytest.approx(0.0)
+    state = runtime.state.get("fp", {})
+    assert ctx.get("fp.cv") == pytest.approx(0.0)
+    assert state.get("u_old") == pytest.approx(0.0)
+    assert state.get("bumpless_pending") is False
+    assert "integral" not in state
 
 
 # ---------------------------------------------------------------------------

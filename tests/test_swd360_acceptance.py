@@ -169,6 +169,7 @@ def test_unit_migrates_legacy_factory_pid_equation_and_fills_params() -> None:
     assert level.params["beta"] == pytest.approx(1.0)
     assert level.params["gamma"] == pytest.approx(0.0)
     assert level.params["kp"] == pytest.approx(40.0)
+    assert level.params["tf_ts"] == pytest.approx(0.0)
     assert level.equation == PID_EQUATION
     custom = prog.instances["custom_pid"]
     assert custom.equation == "cv = 7.0"

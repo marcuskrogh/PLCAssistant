@@ -215,6 +215,129 @@ def test_unit_iterate_tracks_swd367() -> None:
     assert "tf_ts" in text
 
 
+def test_unit_legacy_cascade_without_tf_ts_bypasses_filter() -> None:
+    from plcassistant.surface.schema import program_from_dict
+
+    raw = {
+        "version": "1.0",
+        "name": "Tank",
+        "instances": {
+            "level_pi": {
+                "template_id": "level_pi",
+                "library": "builtin",
+                "params": {"kp": 40.0, "ki": 5.0, "cv_min": 0.0, "cv_max": 6.0},
+            },
+            "flow_pi": {
+                "template_id": "flow_pi",
+                "library": "builtin",
+                "params": {"kp": 12.0, "ki": 2.0, "cv_min": 0.0, "cv_max": 100.0},
+            },
+        },
+        "wires": [
+            {
+                "src_instance": "level_pi",
+                "src_pin": "cv",
+                "dst_instance": "flow_pi",
+                "dst_pin": "sp",
+            }
+        ],
+        "execution_order": ["level_pi", "flow_pi"],
+    }
+    prog = program_from_dict(raw)
+    assert prog.instances["level_pi"].params["tf_ts"] == pytest.approx(0.0)
+    assert prog.instances["flow_pi"].params["tf_ts"] == pytest.approx(0.0)
+
+
+def test_unit_repair_forces_cascade_tf_ts_zero() -> None:
+    from plcassistant.surface.builtin import (
+        CASCADE_CMD_SPEED_MAX,
+        CASCADE_SP_FLOW_MAX,
+        PID_TEMPLATE_ID,
+    )
+    from plcassistant.surface.model import BlockInstance, Program
+    from plcassistant.surface.schema import repair_cascade_pid_limits
+
+    prog = Program(
+        name="Tank",
+        instances={
+            "level_pi": BlockInstance(
+                instance_id="level_pi",
+                template_id=PID_TEMPLATE_ID,
+                library="builtin",
+                params={
+                    "kp": 40.0,
+                    "ki": 5.0,
+                    "cv_min": 0.0,
+                    "cv_max": CASCADE_SP_FLOW_MAX,
+                    "tf_ts": 10.0,
+                },
+            ),
+            "flow_pi": BlockInstance(
+                instance_id="flow_pi",
+                template_id=PID_TEMPLATE_ID,
+                library="builtin",
+                params={
+                    "kp": 12.0,
+                    "ki": 2.0,
+                    "cv_min": 0.0,
+                    "cv_max": CASCADE_CMD_SPEED_MAX,
+                },
+            ),
+        },
+        execution_order=["level_pi", "flow_pi"],
+    )
+    assert repair_cascade_pid_limits(prog) is True
+    assert prog.instances["level_pi"].params["tf_ts"] == pytest.approx(0.0)
+    assert prog.instances["flow_pi"].params["tf_ts"] == pytest.approx(0.0)
+    assert repair_cascade_pid_limits(prog) is False
+
+
+def test_system_start_seeds_ifac_bumpless_state() -> None:
+    from plcassistant.wedge.control import CascadeConfig
+    from plcassistant.wedge.process import ProcessConfig
+    from plcassistant.wedge.safety import Mode
+    from plcassistant.wedge.skid import OperatorCommand, Skid, SkidConfig
+
+    skid = Skid(
+        SkidConfig(
+            cascade=CascadeConfig(
+                level_kp=80.0, level_ki=20.0, flow_kp=25.0, flow_ki=10.0
+            ),
+            process=ProcessConfig(
+                pump_tau=0.5,
+                q_pump_max=8.0,
+                k_drain=2.0,
+                initial_h_tank=0.10,
+                initial_h_res=0.20,
+            ),
+            sp_level=0.30,
+        )
+    )
+    rt = skid.block_runtime
+    assert rt is not None
+    skid._prepare_bumpless_blocks(lt_tank=0.10, ft_inlet=0.0)
+    level = rt.state["level_pi"]
+    flow = rt.state["flow_pi"]
+    assert level["bumpless_pending"] is True
+    assert flow["bumpless_pending"] is True
+    assert level["u_old"] == pytest.approx(0.0)
+    assert flow["u_old"] == pytest.approx(0.0)
+    assert "up_old" in level and "up_old" in flow
+    assert level["yf"] == pytest.approx(0.10)
+    assert flow["yf"] == pytest.approx(0.0)
+    assert level["filter_primed"] is True
+    assert flow["filter_primed"] is True
+    assert "integral" not in level
+    assert "integral" not in flow
+
+    first = skid.step(0.1, OperatorCommand.START)
+    assert first.mode is Mode.RUNNING
+    assert first.sp_flow == pytest.approx(0.0, abs=1e-9)
+    assert first.cmd_speed == pytest.approx(0.0, abs=1e-6)
+    assert rt.state["level_pi"]["bumpless_pending"] is False
+    assert rt.state["flow_pi"]["bumpless_pending"] is False
+
+
 def test_system_app_version_is_0_1_57() -> None:
     assert 'version: "0.1.57"' in (ROOT / "plc_assistant" / "config.yaml").read_text(
         encoding="utf-8"

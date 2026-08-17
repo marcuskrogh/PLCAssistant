@@ -58,19 +58,27 @@ still settle.
 | `kd` | 0.0 | Derivative gain |
 | `td` | 0.0 | Legacy; unused in Parallel form (kept so old copies load) |
 | `beta` | 1.0 | Setpoint weight on P |
-| `gamma` | 0.0 | Setpoint weight on D (`0` = D on PV) |
+| `gamma` | 0.0 | Retained unused (compat). D is always on filtered PV |
 | `u0` | 0.0 | Bias when `ki = 0` (P / PD) |
 | `direct_acting` | false | Default reverse (`SP − PV`) |
 | `cv_min` / `cv_max` | 0 / 100 | Output clamps |
 | `hold_when_stopped` | false | true → hold last `cv` when stopped; false → `cv=0` |
 | `ts` | 0.1 | Nominal sample time (s). `Tx = dt / ts` |
-| `tf_ts` | 10.0 | Filter `Tf / Ts` (paper default). `<= 0` bypasses the filter |
+| `tf_ts` | 10.0 | Filter `Tf / Ts` (paper default). `<= 0` bypasses the filter; derivative then uses finite difference of PV |
 | `isa_tag` | `""` | Optional Diagram tag (e.g. LIC, FIC) |
 
 Default math equation: `PID_EQUATION` in `plcassistant.surface.builtin`.
 Python oracle: `plcassistant.control.pid.pid_scan`.
 Stock copies that still have a pre-IFAC factory equation are rewritten on
 load; custom instance equations are kept, with missing params filled.
+
+Equation helpers (whitelisted in `plcassistant.surface.equations`):
+
+| Helper | Role |
+|---|---|
+| `pid_anti_windup(dui, windup)` | Clamp the integral increment (listing 4) |
+| `pid_zoh_a11` … `pid_zoh_a22` | Measurement-filter ZOH `A` coefficients (listing 3) |
+| `pid_zoh_b1`, `pid_zoh_b2` | Measurement-filter ZOH `B` coefficients |
 
 ---
 

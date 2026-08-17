@@ -38,8 +38,10 @@ def anti_windup(dui: float, windup: float | int) -> float:
 def zoh_fy(tf_ts: float, tx: float) -> tuple[float, float, float, float, float, float]:
     """Zero-order-hold coefficients for the measurement filter (listing 3).
 
-    Returns ``(a11, a12, a21, a22, b1, b2)``. When ``tf_ts <= 0`` the filter
-    is a bypass: ``yf = y``, ``dyf = 0``.
+    Returns ``(a11, a12, a21, a22, b1, b2)``. When ``tf_ts <= 0`` the ZOH
+    coefficients are a pass-through (``yf = y``). The Soft-PLC scan still
+    forms a finite-difference derivative ``dyf = (y - yf_start) / dt`` so D
+    works with the filter bypassed.
     """
     if tf_ts <= 0.0:
         return (0.0, 0.0, 0.0, 0.0, 1.0, 0.0)
