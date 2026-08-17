@@ -4,7 +4,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 | Key | Type | Title | Status | Parent | Artifact | Next |
 |-----|------|-------|--------|--------|----------|------|
-| SWD-366 | Task | Iterate: Lovelace PID cards ISA-5.1 look and ISA-101 highlighting | In Progress | Relates SWD-360 | docs/ITERATE.md | `/review-fix SWD-366` after delivery PR |
+| SWD-366 | Task | Iterate: Lovelace PID cards ISA-5.1 look and ISA-101 highlighting | In Review | Relates SWD-360 | docs/ITERATE.md | `/review-fix SWD-366` |
 | SWD-359 | Story | Standardised PID blocks — ISA visualisation and structure | Done | — | docs/ROADMAP.md, docs/RESEARCH.md | Done — shipped PR [#101](https://github.com/marcuskrogh/PLCAssistant/pull/101) |
 | SWD-360 | Task | Define & ship standardised PID visualisation and structure | Done | Relates SWD-359 | docs/PLAN.md | Done — shipped PR [#101](https://github.com/marcuskrogh/PLCAssistant/pull/101) |
 | SWD-361 | Subtask | SWD-360: ISA-5.1 three-mode PID glyph on App Diagram | Done | SWD-360 | docs/PLAN.md, plcassistant/app/_canvas.py | — |
@@ -165,7 +165,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
-- 2026-08-17 — Iterate SWD-366: Lovelace PID cards ISA-5.1 look + ISA-101 highlighting; Relates SWD-360; branch `cursor/swd-366-isa-pid-cards-25fc`. Next `/review-fix SWD-366`.
+- 2026-08-17 — Iterate SWD-366: Lovelace PID cards ISA-5.1 look + ISA-101 highlighting; Relates SWD-360; PR [#102](https://github.com/marcuskrogh/PLCAssistant/pull/102) (App 0.1.56) → In Review. Next `/review-fix SWD-366`.
 - 2026-08-17 — Ship SWD-360: review-fix CLEAN + closeout; PR [#101](https://github.com/marcuskrogh/PLCAssistant/pull/101) (App 0.1.55) → Done.
 - 2026-08-17 — review-fix SWD-360 CLEAN after 1 iter (uff/last_ep/shipped pins/docs/tests). Next `/ship SWD-360` closeout.
 - 2026-08-17 — Implement SWD-360: ISA-5.1 PID glyph, TR5.9 Parallel + Bauer hybrid, faceplate CO, App 0.1.55; PR [#101](https://github.com/marcuskrogh/PLCAssistant/pull/101) → In Review. Next `/review-fix SWD-360`.

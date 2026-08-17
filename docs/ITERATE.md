@@ -44,6 +44,8 @@ Shipped ISA-5.1 Diagram glyph and ISA-TR5.9 PID structure, but Lovelace PID card
 - Task: [SWD-366](https://marcusknielsen.atlassian.net/browse/SWD-366)
 - Relates: SWD-360
 - Branch: `cursor/swd-366-isa-pid-cards-25fc`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/102
+- App: **0.1.56**
 
 ## Next
 `/review-fix SWD-366` — Review and auto-fix (single pass)
