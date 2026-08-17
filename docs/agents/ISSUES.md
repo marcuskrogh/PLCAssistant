@@ -4,8 +4,8 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 | Key | Type | Title | Status | Parent | Artifact | Next |
 |-----|------|-------|--------|--------|----------|------|
-| SWD-359 | Story | Standardised PID blocks — ISA visualisation and structure | To Do | — | docs/ROADMAP.md, docs/RESEARCH.md | `/review-fix SWD-360` |
-| SWD-360 | Task | Define & ship standardised PID visualisation and structure | In Review | Relates SWD-359 | docs/PLAN.md | `/review-fix SWD-360` |
+| SWD-359 | Story | Standardised PID blocks — ISA visualisation and structure | Done | — | docs/ROADMAP.md, docs/RESEARCH.md | Done — shipped PR [#101](https://github.com/marcuskrogh/PLCAssistant/pull/101) |
+| SWD-360 | Task | Define & ship standardised PID visualisation and structure | Done | Relates SWD-359 | docs/PLAN.md | Done — shipped PR [#101](https://github.com/marcuskrogh/PLCAssistant/pull/101) |
 | SWD-361 | Subtask | SWD-360: ISA-5.1 three-mode PID glyph on App Diagram | Done | SWD-360 | docs/PLAN.md, plcassistant/app/_canvas.py | — |
 | SWD-362 | Subtask | SWD-360: ISA-TR5.9 / Bauer PID pin and parameter contract | Done | SWD-360 | docs/PLAN.md, docs/surface/03-builtin-library.md | — |
 | SWD-363 | Subtask | SWD-360: Hybrid incremental/positional PID algorithm | Done | SWD-360 | docs/PLAN.md, plcassistant/surface/builtin.py | — |
@@ -164,6 +164,8 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
+- 2026-08-17 — Ship SWD-360: review-fix CLEAN + closeout; PR [#101](https://github.com/marcuskrogh/PLCAssistant/pull/101) (App 0.1.55) → Done.
+- 2026-08-17 — review-fix SWD-360 CLEAN after 1 iter (uff/last_ep/shipped pins/docs/tests). Next `/ship SWD-360` closeout.
 - 2026-08-17 — Implement SWD-360: ISA-5.1 PID glyph, TR5.9 Parallel + Bauer hybrid, faceplate CO, App 0.1.55; PR [#101](https://github.com/marcuskrogh/PLCAssistant/pull/101) → In Review. Next `/review-fix SWD-360`.
 - 2026-08-17 — Explore+research+define SWD-359/SWD-360: ISA-5.1 / ISA-TR5.9 / Bauer PID blocks; ROADMAP + RESEARCH + PLAN; Sub-tasks SWD-361..365; Next `/implement SWD-360`.
 - 2026-08-06 — Shipped SWD-252 via PR #100; review-fix CLEAN after 1 iter; Task Done.

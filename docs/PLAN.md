@@ -103,4 +103,4 @@
 - Workflow: feature-heavy
 
 ## Next
-`/review-fix SWD-360` — Review and auto-fix per Workflow binding (same branch/PR)
+Done — shipped PR [#101](https://github.com/marcuskrogh/PLCAssistant/pull/101)

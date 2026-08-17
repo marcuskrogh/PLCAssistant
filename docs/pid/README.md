@@ -13,4 +13,4 @@ library.
 | [`docs/io/06-pid-faceplate.md`](../io/06-pid-faceplate.md) | Operator faceplate (PV / SP / CO) |
 | [`docs/control/02-fb-pid.md`](../control/02-fb-pid.md) | Wedge cascade PI on the PID template |
 
-Delivery Task: [SWD-360](https://marcusknielsen.atlassian.net/browse/SWD-360).
+Delivery Task: [SWD-360](https://marcusknielsen.atlassian.net/browse/SWD-360) — shipped PR [#101](https://github.com/marcuskrogh/PLCAssistant/pull/101).

@@ -19,10 +19,11 @@ ad-hoc pins.
 ## Route
 | Order | Task | Type | Blocked by | Status | Issue |
 |-------|------|------|------------|--------|-------|
-| 1 | Define & ship standardised PID visualisation and structure | define | — | To Do | [SWD-360](https://marcusknielsen.atlassian.net/browse/SWD-360) |
+| 1 | Define & ship standardised PID visualisation and structure | define | — | Done | [SWD-360](https://marcusknielsen.atlassian.net/browse/SWD-360) |
 
 ## Cleared so far
 - Research pass on ISA-5.1 / ISA-TR5.9 and Bauer et al. 2024–2026 — `docs/RESEARCH.md`
+- ISA-5.1 glyph, ISA-TR5.9 Parallel contract, Bauer hybrid algorithm, faceplate CO — PR [#101](https://github.com/marcuskrogh/PLCAssistant/pull/101)
 
 ## Not yet specified
 - Whether later slices add ISA-TR5.9 Series form, external-reset feedback, or
@@ -44,4 +45,4 @@ ad-hoc pins.
 - Sub-tasks: SWD-361, SWD-362, SWD-363, SWD-364, SWD-365
 
 ## Next
-`/implement SWD-360` — Build per PLAN.md (ISA-5.1 glyph, TR5.9 contract, Bauer hybrid algorithm)
+Done — shipped PR [#101](https://github.com/marcuskrogh/PLCAssistant/pull/101)
