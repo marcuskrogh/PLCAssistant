@@ -51,4 +51,4 @@ The shipped builtin PID follows ISA-TR5.9 names and a simplified hybrid update. 
 - App: **0.1.57**
 
 ## Next
-`/review-fix SWD-367` — Review and auto-fix on the new delivery PR
+Done — shipped PR [#103](https://github.com/marcuskrogh/PLCAssistant/pull/103)
