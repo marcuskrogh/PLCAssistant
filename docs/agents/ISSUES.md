@@ -5,7 +5,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | Key | Type | Title | Status | Parent | Artifact | Next |
 |-----|------|-------|--------|--------|----------|------|
 | SWD-368 | Story | ISA-101 / DCS-standard PID faceplates | In Progress | Relates SWD-366 | docs/ROADMAP.md, docs/RESEARCH.md | `/implement SWD-369` |
-| SWD-369 | Task | Define & ship ISA-101 DCS PID faceplate | In Progress | Relates SWD-368 | docs/PLAN.md | `/review-fix SWD-369` |
+| SWD-369 | Task | Define & ship ISA-101 DCS PID faceplate | In Review | Relates SWD-368 | docs/PLAN.md | `/review-fix SWD-369` |
 | SWD-370 | Subtask | SWD-369: Controller-mode contract + CO_MAN + auto/uman wiring | In Progress | SWD-369 | docs/PLAN.md, plcassistant/io/pid_loop.py | — |
 | SWD-371 | Subtask | SWD-369: Lovelace analog-controller PID card | In Progress | SWD-369 | docs/PLAN.md, custom_components/plcassistant/www/pid-loop-card.js | — |
 | SWD-372 | Subtask | SWD-369: Tests, docs, dual-tree, App 0.1.58 | In Progress | SWD-369 | docs/PLAN.md, tests/test_swd369_acceptance.py | — |
@@ -171,7 +171,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
-- 2026-08-17 — Implement SWD-369: ISA-101 DCS PID faceplate (PV/SP bars, CO bar, MAN writes CO); App 0.1.58. Next `/review-fix SWD-369`.
+- 2026-08-17 — Implement SWD-369: ISA-101 DCS PID faceplate (PV/SP bars, CO bar, MAN writes CO); App 0.1.58; PR [#104](https://github.com/marcuskrogh/PLCAssistant/pull/104) → In Review. Next `/review-fix SWD-369`.
 - 2026-08-17 — Explore+research+define SWD-368/SWD-369: ISA-112 vs ISA-101; analog-controller geometry; PLAN on `cursor/swd-369-isa101-pid-faceplate-5304`.
 - 2026-08-17 — Ship SWD-367: review-fix CLEAN + closeout; PR [#103](https://github.com/marcuskrogh/PLCAssistant/pull/103) (App 0.1.57) → Done.
 - 2026-08-17 — Iterate SWD-367: IFAC 2024 incremental PID (filter, Tx, auto/uman, windup); Relates SWD-360/366; PR [#103](https://github.com/marcuskrogh/PLCAssistant/pull/103) (App 0.1.57) → In Review. Next `/review-fix SWD-367`.

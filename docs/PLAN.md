@@ -94,7 +94,7 @@
 - Task: [SWD-369](https://marcusknielsen.atlassian.net/browse/SWD-369)
 - Sub-tasks: [SWD-370](https://marcusknielsen.atlassian.net/browse/SWD-370), [SWD-371](https://marcusknielsen.atlassian.net/browse/SWD-371), [SWD-372](https://marcusknielsen.atlassian.net/browse/SWD-372)
 - Branch: `cursor/swd-369-isa101-pid-faceplate-5304`
-- PR: (opened at define)
+- PR: [#104](https://github.com/marcuskrogh/PLCAssistant/pull/104)
 - Classification: feature
 - Workflow: feature-standard
 
