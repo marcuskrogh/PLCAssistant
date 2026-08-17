@@ -63,7 +63,8 @@ def test_unit_iterate_tracks_swd366() -> None:
     assert "SWD-366" in text
     assert "SWD-360" in text
     assert "pidHighlightSeverity" in text
-    assert "`/review-fix SWD-366`" in text
+    assert "https://github.com/marcuskrogh/PLCAssistant/pull/102" in text
+    assert "Done — shipped PR" in text
 
 
 def test_system_faceplate_js_highlight_contract() -> None:

@@ -47,5 +47,9 @@ Shipped ISA-5.1 Diagram glyph and ISA-TR5.9 PID structure, but Lovelace PID card
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/102
 - App: **0.1.56**
 
+## Review-fix
+- Iter 1: REQUEST_CHANGES (dead `.pid-cv-fill[data-hi="abnormal"]`) → fix-forward
+- Exit: CLEAN
+
 ## Next
-`/review-fix SWD-366` — Review and auto-fix (single pass)
+Done — shipped PR [#102](https://github.com/marcuskrogh/PLCAssistant/pull/102)
