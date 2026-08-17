@@ -1,31 +1,53 @@
 /**
- * PLCAssistant PID faceplate card (SWD-183 / SWD-222 / SWD-226 / SWD-227 / SWD-228 / SWD-230).
+ * PLCAssistant PID faceplate card.
  *
  * Config: { type: "custom:plcassistant-pid-card", entity: "sensor.plcassistant_pid_level" }
  * Reads climate-like attributes from the compound PID sensor and writes
  * Manual/Auto/Remote mode + SP sources via number.* entities.
  *
- * Compact faceplate (SWD-228): PV / Active SP / CO at 2dp in a single row;
- * click opens a climate-style dialog for mode + SP edits.
+ * Compact faceplate: PV / SP / ε / CO at 2dp in a single row; ISA-5.1 three-mode
+ * chrome (ε / P / I / D); tap opens a dialog for mode + SP edits.
  *
- * Typography (SWD-230): use HA Lovelace design tokens (--ha-font-*) so the
- * faceplate matches surrounding entities / glance cards.
+ * Colour (ISA-101 high-performance HMI): grayscale / Home Assistant tokens in
+ * normal operation. Colour is reserved for caution (--warning-color) and
+ * abnormal (--error-color) — never for Man / Auto / Rem identity.
+ *
+ * Typography: use HA Lovelace design tokens (--ha-font-*) so the faceplate
+ * matches surrounding entities / glance cards.
  *
  * Drafts: typed SP inputs use text + inputmode=decimal (not type=number) so
- * intermediate edits like "0." survive live hass updates without caret jumps
- * (SWD-226). Dirty drafts persist across refreshes until Set / Escape / clear.
+ * intermediate edits like "0." survive live hass updates without caret jumps.
+ * Dirty drafts persist across refreshes until Set / Escape / clear.
  *
  * Exported helpers below are the integration↔HMI communication contract and are
- * covered by Node regression tests (SWD-227 / SWD-228 / SWD-230).
+ * covered by Node regression tests.
  */
 
 /** Display precision for faceplate KPIs (PV / SP / CO / error) and SP editors. */
 export const PID_DISPLAY_DIGITS = 2;
 
+/** Relative |ε| vs max(|SP|, |PV|, floor) below this fraction is normal. */
+export const PID_ERR_CAUTION_FRAC = 0.02;
+
+/** Relative |ε| at or above this fraction is abnormal (between is caution). */
+export const PID_ERR_ABNORMAL_FRAC = 0.1;
+
+/** Floor so a zero SP/PV pair does not divide by zero. */
+export const PID_ERR_SCALE_FLOOR = 1e-9;
+
+/** Flow-loop CO scale (CMD_SPEED %). */
+export const PID_CV_MAX_FLOW = 100;
+
+/** Level-loop CO scale (cascade flow request, L/min). */
+export const PID_CV_MAX_LEVEL = 8;
+
+/** Bar fraction from 0% or 100% treated as clamp. */
+export const PID_CV_CLAMP_FRAC = 0.005;
+
 /**
  * Format a numeric faceplate value to fixed decimal places, or em-dash.
  * Always uses ``toFixed`` so float noise never leaks into the HMI.
- * Keep digits in sync with DISPLAY_PRECISION in const.py (SWD-230).
+ * Keep digits in sync with DISPLAY_PRECISION in const.py.
  */
 export function formatPidValue(value, digits = PID_DISPLAY_DIGITS) {
   if (value === null || value === undefined || value === "") return "—";
@@ -34,11 +56,74 @@ export function formatPidValue(value, digits = PID_DISPLAY_DIGITS) {
   return n.toFixed(digits);
 }
 
+/** Signed ε display: +0.15 / -0.02 / 0.00, or em-dash. */
+export function formatPidError(value, digits = PID_DISPLAY_DIGITS) {
+  const text = formatPidValue(value, digits);
+  if (text === "—") return text;
+  const n = typeof value === "number" ? value : Number(String(value).trim().replace(",", "."));
+  if (Number.isFinite(n) && n > 0) return `+${text}`;
+  return text;
+}
+
 /** True when value is present and finite (null/undefined/"" are not). */
 export function isPresentFinite(value) {
   if (value === null || value === undefined || value === "") return false;
   const n = typeof value === "number" ? value : Number(String(value).trim().replace(",", "."));
   return Number.isFinite(n);
+}
+
+/** ε = SP − PV, or null when either is missing. */
+export function pidError(sp, pv) {
+  if (!isPresentFinite(sp) || !isPresentFinite(pv)) return null;
+  return Number(sp) - Number(pv);
+}
+
+/**
+ * ISA-101 severity for loop error.
+ * ``|err| / max(|sp|, |pv|, floor)``: &lt; 2% normal, &lt; 10% caution, else abnormal.
+ */
+export function pidHighlightSeverity(err, sp, pv) {
+  if (!isPresentFinite(err)) return "normal";
+  const mag = Math.abs(Number(err));
+  const spN = isPresentFinite(sp) ? Math.abs(Number(sp)) : 0;
+  const pvN = isPresentFinite(pv) ? Math.abs(Number(pv)) : 0;
+  const scale = Math.max(spN, pvN, PID_ERR_SCALE_FLOOR);
+  const frac = mag / scale;
+  if (frac < PID_ERR_CAUTION_FRAC) return "normal";
+  if (frac < PID_ERR_ABNORMAL_FRAC) return "caution";
+  return "abnormal";
+}
+
+/** CO bar scale max for a loop (flow % vs level L/min). */
+export function pidCvScaleMax(loopId) {
+  return loopId === "flow" ? PID_CV_MAX_FLOW : PID_CV_MAX_LEVEL;
+}
+
+/** CO bar width 0–100. Missing/non-finite CV → 0. */
+export function pidCvBarPct(cv, loopId) {
+  const n = Number(cv);
+  if (!Number.isFinite(n)) return 0;
+  const max = pidCvScaleMax(loopId);
+  if (!(max > 0)) return 0;
+  return Math.max(0, Math.min(100, (Math.abs(n) / max) * 100));
+}
+
+/** Clamp attention when the bar is at ~0% or ~100% of scale. */
+export function pidCvHighlightSeverity(cv, loopId) {
+  if (!isPresentFinite(cv)) return "normal";
+  const pct = pidCvBarPct(cv, loopId);
+  const band = PID_CV_CLAMP_FRAC * 100;
+  if (pct <= band || pct >= 100 - band) return "caution";
+  return "normal";
+}
+
+/** Worst of error vs CO-clamp for the card chrome. */
+export function pidFaceplateHighlight(err, sp, pv, cv, loopId) {
+  const errHi = pidHighlightSeverity(err, sp, pv);
+  if (errHi === "abnormal") return "abnormal";
+  const cvHi = pidCvHighlightSeverity(cv, loopId);
+  if (errHi === "caution" || cvHi === "caution") return "caution";
+  return "normal";
 }
 
 /**
@@ -75,7 +160,7 @@ export function numberServiceValue(value) {
  *
  * Mode switches must use ``button[data-mode]`` only — never a bare
  * ``[data-mode]`` match — so a card-root accent attribute cannot hijack Set
- * (SWD-227: ``data-mode="man"`` → Number("man") → NaN toast).
+ * (``data-mode="man"`` → Number("man") → NaN toast).
  */
 export function resolveFaceplateClick(target) {
   if (!target || typeof target.closest !== "function") return null;
@@ -187,7 +272,7 @@ class PlcAssistantPidCard extends HTMLElement {
       const input = this._root.querySelector(`input[data-sp="${key}"]`);
       if (!input) continue;
       // Snapshot the live input while focused so a hass restomp mid-edit can
-      // restore text — but do not mark dirty on focus alone (SWD-226 review).
+      // restore text — but do not mark dirty on focus alone.
       if (document.activeElement === input) {
         this._drafts[key] = input.value;
       } else if (this._dirty[key]) {
@@ -297,7 +382,7 @@ class PlcAssistantPidCard extends HTMLElement {
       }
     });
     // Do not clear dirty drafts on blur — live hass updates must not reformat
-    // an in-progress edit after an accidental focus loss (SWD-226).
+    // an in-progress edit after an accidental focus loss.
   }
 
   _modeKey(mode) {
@@ -307,10 +392,7 @@ class PlcAssistantPidCard extends HTMLElement {
   }
 
   _cvBarPct(cv, loopId) {
-    const n = Number(cv);
-    if (!Number.isFinite(n)) return 0;
-    const max = loopId === "flow" ? 100 : 6;
-    return Math.max(0, Math.min(100, (Math.abs(n) / max) * 100));
+    return pidCvBarPct(cv, loopId);
   }
 
   _render(forceRebuild) {
@@ -335,10 +417,10 @@ class PlcAssistantPidCard extends HTMLElement {
     const spAutoEntity = this._attr(st, "sp_auto_entity", "");
     const autoDisabled = String(spAutoEntity).startsWith("sensor.");
     const unavailable = !st;
-    const err =
-      isPresentFinite(sp) && isPresentFinite(pv)
-        ? Number(sp) - Number(pv)
-        : null;
+    const err = pidError(sp, pv);
+    const errHi = pidHighlightSeverity(err, sp, pv);
+    const cvHi = pidCvHighlightSeverity(cv, loopId);
+    const faceHi = pidFaceplateHighlight(err, sp, pv, cv, loopId);
 
     if (!this._root) {
       this.innerHTML = "";
@@ -354,10 +436,11 @@ class PlcAssistantPidCard extends HTMLElement {
       this._root.innerHTML = `
       <style>
         .pid-shell {
-          --pid-man: #c47800;
-          --pid-auto: #0d9488;
-          --pid-rem: #3b6ea5;
-          --pid-accent: var(--pid-man);
+          --pid-chrome: var(--primary-text-color);
+          --pid-hi-caution: var(--warning-color, #f59e0b);
+          --pid-hi-abnormal: var(--error-color, #dc2626);
+          --pid-accent: var(--pid-chrome);
+          --pid-focus: var(--primary-color, var(--pid-chrome));
           /* Match stock Lovelace cards (entities / glance) — HA design tokens. */
           --pid-font: var(--ha-font-family-body, var(--paper-font-body1_-_font-family, inherit));
           --pid-title-size: var(--ha-card-header-font-size, var(--ha-font-size-l, 1.25rem));
@@ -371,17 +454,20 @@ class PlcAssistantPidCard extends HTMLElement {
           font-family: var(--pid-font);
           color: var(--primary-text-color);
         }
-        .pid-shell[data-pid-mode="man"] { --pid-accent: var(--pid-man); }
-        .pid-shell[data-pid-mode="auto"] { --pid-accent: var(--pid-auto); }
-        .pid-shell[data-pid-mode="rem"] { --pid-accent: var(--pid-rem); }
+        .pid-shell[data-pid-hi="caution"] { --pid-accent: var(--pid-hi-caution); }
+        .pid-shell[data-pid-hi="abnormal"] { --pid-accent: var(--pid-hi-abnormal); }
         .pid-card {
           position: relative;
           overflow: hidden;
         }
         .pid-accent {
           position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
-          background: var(--pid-accent);
+          background: var(--divider-color, #c8c8c8);
           transition: background 0.2s ease;
+        }
+        .pid-shell[data-pid-hi="caution"] .pid-accent,
+        .pid-shell[data-pid-hi="abnormal"] .pid-accent {
+          background: var(--pid-accent);
         }
         .pid-face {
           display: block; width: 100%; border: 0; background: transparent;
@@ -389,13 +475,43 @@ class PlcAssistantPidCard extends HTMLElement {
           font: inherit;
         }
         .pid-face:focus-visible {
-          outline: 2px solid var(--pid-accent);
+          outline: 2px solid var(--pid-focus);
           outline-offset: -2px;
         }
         .pid-body { padding: 12px 16px 12px 18px; }
         .pid-head {
           display: flex; justify-content: space-between; align-items: center;
           gap: 8px; margin-bottom: 10px;
+        }
+        .pid-isa {
+          flex: 0 0 auto;
+        }
+        .pid-isa-frame {
+          width: 52px;
+          border: 1.5px solid var(--divider-color, #c8c8c8);
+          border-radius: 3px;
+          background: #fffcf7;
+          overflow: hidden;
+          color: var(--primary-text-color);
+          font-weight: 700;
+          font-size: 9px;
+          line-height: 1;
+          text-align: center;
+          font-family: var(--pid-font);
+        }
+        .pid-isa-eps {
+          padding: 4px 0 3px;
+          border-bottom: 1px solid var(--divider-color, #c8c8c8);
+        }
+        .pid-isa-terms {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+        }
+        .pid-isa-terms span {
+          padding: 4px 0 3px;
+        }
+        .pid-isa-terms span + span {
+          border-left: 1px solid var(--divider-color, #c8c8c8);
         }
         .pid-title {
           font-family: var(--ha-card-header-font-family, var(--pid-font));
@@ -404,7 +520,7 @@ class PlcAssistantPidCard extends HTMLElement {
           line-height: var(--ha-line-height-normal, 1.4);
           color: var(--ha-card-header-color, var(--primary-text-color));
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-          min-width: 0;
+          min-width: 0; flex: 1 1 auto;
         }
         .pid-badge {
           flex: 0 0 auto;
@@ -413,11 +529,13 @@ class PlcAssistantPidCard extends HTMLElement {
           font-weight: var(--ha-font-weight-medium, 500);
           letter-spacing: 0.04em;
           text-transform: uppercase; padding: 2px 8px; border-radius: 4px;
-          color: #fff; background: var(--pid-accent);
+          color: var(--primary-text-color);
+          background: transparent;
+          border: 1px solid var(--divider-color, #c8c8c8);
         }
         .pid-hero {
           display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
+          grid-template-columns: repeat(4, minmax(0, 1fr));
           gap: 8px;
           align-items: start;
         }
@@ -440,13 +558,8 @@ class PlcAssistantPidCard extends HTMLElement {
           color: var(--primary-text-color);
           white-space: nowrap;
         }
-        .pid-metric[data-role="sp"] strong { color: var(--pid-accent); }
-        .pid-metric .pid-sub {
-          font-size: var(--pid-label-size);
-          color: var(--secondary-text-color);
-          font-variant-numeric: tabular-nums;
-          white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
+        .pid-metric[data-hi="caution"] strong { color: var(--pid-hi-caution); }
+        .pid-metric[data-hi="abnormal"] strong { color: var(--pid-hi-abnormal); }
         .pid-cv-track {
           margin-top: 10px; height: 3px; border-radius: 2px;
           background: var(--divider-color, #ccc);
@@ -454,7 +567,14 @@ class PlcAssistantPidCard extends HTMLElement {
         }
         .pid-cv-fill {
           height: 100%; width: 0%; border-radius: 2px;
-          background: var(--pid-accent); transition: width 0.25s ease;
+          background: var(--primary-text-color); opacity: 0.45;
+          transition: width 0.25s ease, background 0.2s ease, opacity 0.2s ease;
+        }
+        .pid-cv-fill[data-hi="caution"] {
+          background: var(--pid-hi-caution); opacity: 1;
+        }
+        .pid-cv-fill[data-hi="abnormal"] {
+          background: var(--pid-hi-abnormal); opacity: 1;
         }
         .pid-hint {
           margin-top: 8px;
@@ -514,7 +634,7 @@ class PlcAssistantPidCard extends HTMLElement {
         .pid-dialog-close:hover { opacity: 1; background: var(--secondary-background-color, #f0f0f0); }
         .pid-dialog-body { padding: 12px 16px 16px; font-family: var(--pid-font); }
         .pid-dialog-summary {
-          display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+          display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
           gap: 8px; margin-bottom: 12px;
           padding: 10px 12px;
           border-radius: var(--ha-card-border-radius, 8px);
@@ -537,9 +657,10 @@ class PlcAssistantPidCard extends HTMLElement {
           font-weight: var(--ha-font-weight-medium, 500);
         }
         .pid-modes button:last-child { border-right: 0; }
-        .pid-modes button[data-mode="0"].active { background: var(--pid-man); color: #fff; }
-        .pid-modes button[data-mode="1"].active { background: var(--pid-auto); color: #fff; }
-        .pid-modes button[data-mode="2"].active { background: var(--pid-rem); color: #fff; }
+        .pid-modes button.active {
+          background: var(--primary-text-color);
+          color: var(--card-background-color, #fff);
+        }
         .pid-editors { display: grid; gap: 8px; }
         .pid-row {
           display: grid; grid-template-columns: 56px 1fr auto; gap: 8px;
@@ -549,9 +670,9 @@ class PlcAssistantPidCard extends HTMLElement {
           background: var(--secondary-background-color, #f7f7f7);
         }
         .pid-row.active-source {
-          border-color: var(--pid-accent);
+          border-color: var(--primary-text-color);
           background: var(--card-background-color, #fff);
-          box-shadow: inset 3px 0 0 var(--pid-accent);
+          box-shadow: inset 3px 0 0 var(--primary-text-color);
         }
         .pid-row label {
           font-size: var(--pid-label-size);
@@ -570,12 +691,12 @@ class PlcAssistantPidCard extends HTMLElement {
           min-width: 0;
         }
         .pid-row input:focus {
-          outline: 2px solid var(--pid-accent);
-          outline-offset: 1px; border-color: var(--pid-accent);
+          outline: 2px solid var(--pid-focus);
+          outline-offset: 1px; border-color: var(--pid-focus);
         }
         .pid-row input:disabled { opacity: 0.55; }
         .pid-row button {
-          border: 1px solid var(--pid-accent);
+          border: 1px solid var(--divider-color, #c8c8c8);
           background: var(--secondary-background-color, #f7f7f7);
           color: var(--primary-text-color);
           border-radius: 4px; padding: 8px 12px; cursor: pointer;
@@ -598,22 +719,15 @@ class PlcAssistantPidCard extends HTMLElement {
         }
         @supports (background: color-mix(in srgb, red 50%, blue)) {
           .pid-dialog-summary {
-            background:
-              linear-gradient(135deg,
-                color-mix(in srgb, var(--pid-accent) 12%, transparent),
-                color-mix(in srgb, var(--secondary-background-color, #f5f5f5) 88%, transparent));
-            border: 1px solid color-mix(in srgb, var(--pid-accent) 28%, var(--divider-color, #ddd));
+            background: var(--secondary-background-color, #f5f5f5);
+            border: 1px solid var(--divider-color, #ddd);
           }
           .pid-row.active-source {
-            border-color: color-mix(in srgb, var(--pid-accent) 55%, transparent);
-            background: color-mix(in srgb, var(--pid-accent) 10%, var(--card-background-color, #fff));
+            border-color: color-mix(in srgb, var(--primary-text-color) 45%, transparent);
+            background: color-mix(in srgb, var(--primary-text-color) 6%, var(--card-background-color, #fff));
           }
           .pid-row input:focus {
-            outline: 2px solid color-mix(in srgb, var(--pid-accent) 45%, transparent);
-          }
-          .pid-row button {
-            border-color: color-mix(in srgb, var(--pid-accent) 40%, var(--divider-color, #ccc));
-            background: color-mix(in srgb, var(--pid-accent) 12%, transparent);
+            outline: 2px solid color-mix(in srgb, var(--pid-focus) 45%, transparent);
           }
           .pid-cv-track {
             background: color-mix(in srgb, var(--divider-color, #ccc) 55%, transparent);
@@ -623,12 +737,22 @@ class PlcAssistantPidCard extends HTMLElement {
       ${
         unavailable
           ? `<div class="pid-missing">Entity ${this._config.entity} unavailable</div>`
-          : `<div class="pid-shell" data-pid-mode="man">
+          : `<div class="pid-shell" data-pid-mode="man" data-pid-hi="normal">
         <div class="pid-card">
         <div class="pid-accent" aria-hidden="true"></div>
         <button type="button" class="pid-face" data-open-editor aria-haspopup="dialog">
           <div class="pid-body">
             <div class="pid-head">
+              <div class="pid-isa" aria-hidden="true">
+                <div class="pid-isa-frame">
+                  <div class="pid-isa-eps">ε</div>
+                  <div class="pid-isa-terms">
+                    <span class="pid-isa-p">P</span>
+                    <span class="pid-isa-i">I</span>
+                    <span class="pid-isa-d">D</span>
+                  </div>
+                </div>
+              </div>
               <div class="pid-title"></div>
               <div class="pid-badge" data-badge></div>
             </div>
@@ -640,7 +764,10 @@ class PlcAssistantPidCard extends HTMLElement {
               <div class="pid-metric" data-role="sp">
                 <span>SP</span>
                 <strong data-metric="sp"></strong>
-                <div class="pid-sub" data-metric="err"></div>
+              </div>
+              <div class="pid-metric" data-role="err">
+                <span>ε</span>
+                <strong data-metric="err"></strong>
               </div>
               <div class="pid-metric" data-role="cv">
                 <span>CO</span>
@@ -668,7 +795,10 @@ class PlcAssistantPidCard extends HTMLElement {
                 <div class="pid-metric" data-role="sp">
                   <span>Active SP</span>
                   <strong data-metric="dlg-sp"></strong>
-                  <div class="pid-sub" data-metric="dlg-err"></div>
+                </div>
+                <div class="pid-metric" data-role="err">
+                  <span>ε</span>
+                  <strong data-metric="dlg-err"></strong>
                 </div>
                 <div class="pid-metric" data-role="cv">
                   <span>CO</span>
@@ -714,7 +844,10 @@ class PlcAssistantPidCard extends HTMLElement {
     }
 
     const shell = this._root.querySelector(".pid-shell");
-    if (shell) shell.setAttribute("data-pid-mode", modeKey);
+    if (shell) {
+      shell.setAttribute("data-pid-mode", modeKey);
+      shell.setAttribute("data-pid-hi", faceHi);
+    }
 
     const titleEl = this._root.querySelector(".pid-title");
     const badgeEl = this._root.querySelector("[data-badge]");
@@ -734,15 +867,21 @@ class PlcAssistantPidCard extends HTMLElement {
     setMetric('[data-metric="dlg-sp"]', sp);
     setMetric('[data-metric="dlg-cv"]', cv);
 
-    const errText =
-      err === null ? "err —" : `err ${err >= 0 ? "+" : ""}${this._fmt(err)}`;
+    const errText = formatPidError(err);
     for (const sel of ['[data-metric="err"]', '[data-metric="dlg-err"]']) {
       const errEl = this._root.querySelector(sel);
       if (errEl) errEl.textContent = errText;
     }
 
+    this._root.querySelectorAll('.pid-metric[data-role="err"]').forEach((el) => {
+      el.setAttribute("data-hi", errHi);
+    });
+
     const barEl = this._root.querySelector("[data-cv-bar]");
-    if (barEl) barEl.style.width = `${this._cvBarPct(cv, loopId)}%`;
+    if (barEl) {
+      barEl.style.width = `${this._cvBarPct(cv, loopId)}%`;
+      barEl.setAttribute("data-hi", cvHi);
+    }
 
     const dialog = this._root.querySelector(".pid-dialog");
     if (dialog) {
