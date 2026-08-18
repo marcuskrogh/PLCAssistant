@@ -1,47 +1,39 @@
-# Implementation plan: ISA-101 DCS PID faceplate (SWD-369)
+# Implementation plan: Isolate PID faceplate elements (SWD-373)
 
 ## Summary
-- Replace the compact climate-style PID card with an **analog-controller faceplate**: two vertical bars (PV, SP), a horizontal **CO** bar, MAN / AUTO / REM, grayscale emphasis of the writable analog.
-- Conform the original ask to the standards: **CO not MV**; MAN is **output Manual** (Bauer `auto`/`uman`); AUTO writes local SP; REM is remote/cascade (not operator-writable); no mode hues (ISA-101).
-- Keep ISA-5.1 ε/P/I/D chrome and ISA-101 caution/abnormal colour from SWD-366.
+- Split the Lovelace PID faceplate into **named visual elements** (ISA-5.1 glyph, KPI row, PV/SP bars, CO bar, MAN/AUTO/REM) in a shared ES module.
+- Add a **developer sandbox** that mounts those elements in isolation (and as assembled Level/Flow mocks) in a browser — no Home Assistant, no App, no MQTT.
+- Lovelace `plcassistant-pid-card` consumes the same module so sandbox chrome is shipping chrome.
 
 ## Scope
 ### In
-- Lovelace `plcassistant-pid-card`: analog bars on the card face; click-to-set on the writable bar; typed numeric still available (dialog)
-- Mode semantics: MAN = CO write (`auto=false`, `uman`); AUTO = local SP; REM = remote/cascade SP, PID running, bar not operator-writable
-- Wedge scan: wire Bauer `auto`/`uman` from mode; flow AUTO stays cascade (slave CAS behaviour, existing SWD-221 default); flow MAN writes pump CO; level MAN writes level CO (cascade request)
-- Compound PID sensor: `cv_man_entity`, scale attributes; CO Number IN tags `CO_LEVEL_MAN` / `CO_FLOW_MAN`
-- Bumpless MAN entry: seed CO_MAN from last live CO when the operator selects MAN
-- Tests + faceplate docs + dual-tree sync + App **0.1.58**
+- `custom_components/plcassistant/www/pid-faceplate-elements.js` — CSS, markup, `applyPidFaceplateState`, and existing faceplate helpers
+- Lovelace card becomes HA glue (hass, services, dialog drafts) importing that module
+- `tools/pid-faceplate/` sandbox gallery + local static server script
+- Tests, faceplate-doc note, dual-tree sync, App **0.1.59** (new www module the card imports)
 
 ### Out
-- Full ISA-101 four-level Operate rewrite
-- Colour-coding modes; green AVEVA-style mode buttons
-- Relabelling flow AUTO as CAS on the button (keep AUTO; slave AUTO remains cascade)
-- Alarm-limit colour bands on PV (later)
-- Series form / ERF / percent-of-range / autotune
-- Changing pin name `cv` (label stays CO)
+- Operator Lovelace behaviour changes (geometry, modes, writes, ISA-101 colour)
+- New Lovelace resource registration for the elements file (the card module imports it)
+- Alarm-limit colour bands, CAS relabel, series form / autotune
+- Replacing Lovelace with a dedicated SCADA HMI
 
 ## Decisions
 | Topic | Decision |
 |-------|----------|
-| ISA-112 vs ISA-101 | Linked announcement is ISA-112 (lifecycle/terminology). Faceplate chrome follows ISA-101 + DCS analog-controller convention. |
-| Geometry | Two vertical bars PV (left) and SP (right); horizontal CO below. Numeric PV / SP / ε / CO stay on one row (SWD-228). |
-| Output name | **CO** (ISA-TR5.9). User “MV” maps to this bar. |
-| MAN | Output Manual. Highlight CO (grayscale selected chrome). Click CO bar / numeric writes `CO_*_MAN` → `uman`. PID `auto=false`. |
-| AUTO | Local SP on the primary (level). Highlight SP. Click SP bar writes Auto SP. Flow AUTO remains cascade (SP entity is a sensor; SP bar not writable). |
-| REM | Remote/cascade SP. No operator write from the faceplate. PID stays in auto. |
-| Highlight | Outline / invert / stronger gray on the writable analog only. Colour still caution/abnormal only. |
-| Click | Click on writable bar sets value from click position (clamped to scale). Typed Set remains in the dialog. |
-| Scales | Level PV/SP 0–0.40 m; flow PV/SP 0–8 L/min; level CO 0–8 L/min; flow CO 0–100 %. |
-| Defaults | Level AUTO (PID computes cascade request from `SP_LEVEL_REQ`); Flow AUTO (cascade). Level MAN is available for operator CO. |
-| Bumpless | Selecting MAN copies live CO into `CO_*_MAN` before the algorithm holds. |
-| Demo tags | New IN `CO_LEVEL_MAN`, `CO_FLOW_MAN`. Existing Man SP tags remain but are not the MAN write target. |
+| Why isolate | Iterate faceplate chrome in a browser without deploying the HA App or the rest of the Soft-PLC. |
+| Source of truth | One module: `pid-faceplate-elements.js`. Card and sandbox both import it. |
+| Elements | `isa-glyph`, `kpi-row`, `analog-bars`, `mode-row`, plus assembled face (+ dialog markup for the card). |
+| Sandbox location | `tools/pid-faceplate/` — developer-only; not an operator Lovelace surface; not a Supervisor App file. |
+| How to open | Serve the repo root over HTTP (ES modules). `tools/pid-faceplate/serve.sh`. |
+| Lovelace load | Card stays the registered module resource. Relative `import` of `./pid-faceplate-elements.js` from `/plcassistant_static/` (already `res_type: module`). |
+| Helpers | Move exported contract helpers into the elements module; card re-exports so existing JS tests keep working. |
+| App version | **0.1.59** — operators need the new sibling file next to the card. |
 
 ## Classification
 - Class: feature
 - Confidence: high
-- Why: new analog-controller faceplate plus controller-mode semantics (output Manual) are a buildable product slice, not a defect fix
+- Why: new developer sandbox plus a shared element module is a buildable slice; operator HMI behaviour is preserved, not a defect
 
 ## Workflow
 - Template: feature-standard
@@ -51,52 +43,47 @@
   - implement.iteration: one-shot
   - review.mode: single
   - review.depth: focused
-  - side_paths: research
+  - side_paths: none
 - Chain: implement → review-fix → ship
-- Rationale: localised to faceplate JS + PID mode wiring; research already on this branch; not a new layer/API surface that needs multiagent full review
+- Rationale: localised to www JS + a tools sandbox; Lovelace already loads the card as a module; no new HA API/schema
 
 ## Inputs
-- Research: [`docs/RESEARCH.md`](RESEARCH.md)
+- Research: —
 - Model: —
 
 ## Constraints
-- Dual trees (`plcassistant/` and `custom_components/plcassistant/`) stay in sync; run `scripts/sync-ha-app-package.sh`
-- Wedge cascade must still settle: level CO → flow SP, flow CO → `CMD_SPEED`
-- Do not reintroduce `--pid-man` / `--pid-auto` / `--pid-rem` hues
-- Keep SWD-227 click routing: mode only from `button[data-mode]`; Set never hijacked
+- Dual trees (`custom_components/plcassistant/` and `plc_assistant/custom_components/plcassistant/`) stay in sync; run `scripts/sync-ha-app-package.sh`
+- Do not change MAN/AUTO/REM write targets, bar click mapping, or ISA-101 colour rules
+- Keep SWD-227 click routing: mode only from `button[data-mode]`
 - Dialog stays a sibling of `.pid-card` (overflow:hidden on the card only)
-- Default `pytest` stays fast (no live marker unless the stack is required)
-- Issue keys stay off product surfaces (card copy, Lovelace yaml)
+- Issue keys stay off product surfaces (card copy, Lovelace yaml, sandbox visible labels)
+- Default `pytest` stays fast (no live marker)
 
 ## Acceptance criteria
-- [x] PID card shows two vertical bars (PV, SP) and a horizontal CO bar
-- [x] MAN highlights CO (grayscale); click/set writes CO; algorithm holds `uman`
-- [x] AUTO highlights SP when the Auto SP entity is a Number; click/set writes local SP
-- [x] REM does not highlight a writable analog; PID remains in auto
-- [x] Colour still only caution/abnormal (ε bands, CO clamp); no mode hues
-- [x] ISA-5.1 ε/P/I/D chrome retained; KPIs PV / SP / ε / CO at 2dp
-- [x] Level AUTO + Flow AUTO cascade still settles after Start
-- [x] Unit/JS tests cover writable target, bar click mapping, MAN hold, and faceplate contract
-- [x] Dual-tree sync + App **0.1.58**
+- [ ] Named elements `isa-glyph`, `kpi-row`, `analog-bars`, `mode-row` can be mounted one-at-a-time from the shared module
+- [ ] Sandbox shows those isolates plus assembled Level and Flow mocks; openable without HA/App
+- [ ] Lovelace card imports the shared module; operator geometry, modes, and writes match SWD-369
+- [ ] Existing JS faceplate contract tests still pass (re-exports from the card)
+- [ ] Dual-tree includes `pid-faceplate-elements.js`; App **0.1.59**
+- [ ] Docs note the sandbox path and that chrome iteration does not require an App deploy until ship
 
 ## Work packages
-1. **Controller-mode contract + CO_MAN tags + Bauer auto/uman wiring**
-2. **Lovelace analog-controller PID card (bars, highlight, click-to-set)**
-3. **Tests, docs, dual-tree, App 0.1.58**
+1. **Shared faceplate elements module + Lovelace wiring** ([SWD-374](https://marcusknielsen.atlassian.net/browse/SWD-374))
+2. **Isolated element sandbox (no HA/App)** ([SWD-375](https://marcusknielsen.atlassian.net/browse/SWD-375))
+3. **Tests, docs, dual-tree, App 0.1.59** ([SWD-376](https://marcusknielsen.atlassian.net/browse/SWD-376))
 
 ## Open items
-- Alarm-limit colour bands on PV — later
-- Relabel flow AUTO as CAS — later if operators find AUTO on the slave confusing
+- Whether a later slice adds alarm-limit colour bands on the PV bar — still later (SWD-368)
 
 ## Tracker
 - Provider: jira
-- Story: [SWD-368](https://marcusknielsen.atlassian.net/browse/SWD-368)
-- Task: [SWD-369](https://marcusknielsen.atlassian.net/browse/SWD-369)
-- Sub-tasks: [SWD-370](https://marcusknielsen.atlassian.net/browse/SWD-370), [SWD-371](https://marcusknielsen.atlassian.net/browse/SWD-371), [SWD-372](https://marcusknielsen.atlassian.net/browse/SWD-372)
-- Branch: `cursor/swd-369-isa101-pid-faceplate-5304`
-- PR: [#104](https://github.com/marcuskrogh/PLCAssistant/pull/104)
+- Story: [SWD-368](https://marcusknielsen.atlassian.net/browse/SWD-368) (Relates)
+- Task: [SWD-373](https://marcusknielsen.atlassian.net/browse/SWD-373)
+- Sub-tasks: [SWD-374](https://marcusknielsen.atlassian.net/browse/SWD-374), [SWD-375](https://marcusknielsen.atlassian.net/browse/SWD-375), [SWD-376](https://marcusknielsen.atlassian.net/browse/SWD-376)
+- Branch: `cursor/swd-373-pid-faceplate-sandbox-a582`
+- PR: (draft — opened with this plan)
 - Classification: feature
 - Workflow: feature-standard
 
 ## Next
-Done — shipped PR [#104](https://github.com/marcuskrogh/PLCAssistant/pull/104)
+`/implement SWD-373` — Build per PLAN.md workflow binding (same branch/PR)
