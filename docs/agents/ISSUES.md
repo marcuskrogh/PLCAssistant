@@ -4,10 +4,10 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 | Key | Type | Title | Status | Parent | Artifact | Next |
 |-----|------|-------|--------|--------|----------|------|
-| SWD-373 | Task | Isolate PID faceplate elements for sandbox iteration | In Progress | Relates SWD-368, SWD-369 | docs/PLAN.md | `/implement SWD-373` |
-| SWD-374 | Subtask | SWD-373: Shared faceplate elements module + Lovelace wiring | To Do | SWD-373 | docs/PLAN.md, custom_components/plcassistant/www/pid-faceplate-elements.js | — |
-| SWD-375 | Subtask | SWD-373: Isolated element sandbox (no HA/App) | To Do | SWD-373 | docs/PLAN.md, tools/pid-faceplate/ | — |
-| SWD-376 | Subtask | SWD-373: Tests, docs, dual-tree, App 0.1.59 | To Do | SWD-373 | docs/PLAN.md, tests/test_swd373_acceptance.py | — |
+| SWD-373 | Task | Isolate PID faceplate elements for sandbox iteration | In Review | Relates SWD-368, SWD-369 | docs/PLAN.md | `/review-fix SWD-373` |
+| SWD-374 | Subtask | SWD-373: Shared faceplate elements module + Lovelace wiring | Done | SWD-373 | docs/PLAN.md, custom_components/plcassistant/www/pid-faceplate-elements.js | — |
+| SWD-375 | Subtask | SWD-373: Isolated element sandbox (no HA/App) | Done | SWD-373 | docs/PLAN.md, tools/pid-faceplate/ | — |
+| SWD-376 | Subtask | SWD-373: Tests, docs, dual-tree, App 0.1.59 | Done | SWD-373 | docs/PLAN.md, tests/test_swd373_acceptance.py | — |
 | SWD-368 | Story | ISA-101 / DCS-standard PID faceplates | Done | Relates SWD-366 | docs/ROADMAP.md, docs/RESEARCH.md | Done — shipped PR [#104](https://github.com/marcuskrogh/PLCAssistant/pull/104) |
 | SWD-369 | Task | Define & ship ISA-101 DCS PID faceplate | Done | Relates SWD-368 | docs/PLAN.md | Done — shipped PR [#104](https://github.com/marcuskrogh/PLCAssistant/pull/104) |
 | SWD-370 | Subtask | SWD-369: Controller-mode contract + CO_MAN + auto/uman wiring | Done | SWD-369 | docs/PLAN.md, plcassistant/io/pid_loop.py | — |
@@ -175,7 +175,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
-- 2026-08-18 — Implement SWD-373 in progress: shared `pid-faceplate-elements.js` + `tools/pid-faceplate` sandbox; PR [#105](https://github.com/marcuskrogh/PLCAssistant/pull/105) (App 0.1.59).
+- 2026-08-18 — Implement SWD-373: shared elements module + sandbox; App 0.1.59; PR [#105](https://github.com/marcuskrogh/PLCAssistant/pull/105) → In Review. Next `/review-fix SWD-373`.
 - 2026-08-18 — Define SWD-373: isolate PID faceplate elements + sandbox; Relates SWD-368/369; Sub-tasks SWD-374..376; branch `cursor/swd-373-pid-faceplate-sandbox-a582`. Next `/implement SWD-373`.
 - 2026-08-18 — Ship SWD-369: review-fix CLEAN + closeout; PR [#104](https://github.com/marcuskrogh/PLCAssistant/pull/104) (App 0.1.58) → Done.
 - 2026-08-18 — review-fix SWD-369 CLEAN after 1 iter (pid_loop parse / seed-before-MODE=0 / persist CO_MAN). Next `/ship SWD-369` closeout.

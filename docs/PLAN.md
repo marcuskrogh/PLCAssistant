@@ -60,12 +60,12 @@
 - Default `pytest` stays fast (no live marker)
 
 ## Acceptance criteria
-- [ ] Named elements `isa-glyph`, `kpi-row`, `analog-bars`, `mode-row` can be mounted one-at-a-time from the shared module
-- [ ] Sandbox shows those isolates plus assembled Level and Flow mocks; openable without HA/App
-- [ ] Lovelace card imports the shared module; operator geometry, modes, and writes match SWD-369
-- [ ] Existing JS faceplate contract tests still pass (re-exports from the card)
-- [ ] Dual-tree includes `pid-faceplate-elements.js`; App **0.1.59**
-- [ ] Docs note the sandbox path and that chrome iteration does not require an App deploy until ship
+- [x] Named elements `isa-glyph`, `kpi-row`, `analog-bars`, `mode-row` can be mounted one-at-a-time from the shared module
+- [x] Sandbox shows those isolates plus assembled Level and Flow mocks; openable without HA/App
+- [x] Lovelace card imports the shared module; operator geometry, modes, and writes match SWD-369
+- [x] Existing JS faceplate contract tests still pass (re-exports from the card)
+- [x] Dual-tree includes `pid-faceplate-elements.js`; App **0.1.59**
+- [x] Docs note the sandbox path and that chrome iteration does not require an App deploy until ship
 
 ## Work packages
 1. **Shared faceplate elements module + Lovelace wiring** ([SWD-374](https://marcusknielsen.atlassian.net/browse/SWD-374))
@@ -86,4 +86,4 @@
 - Workflow: feature-standard
 
 ## Next
-`/implement SWD-373` — Build per PLAN.md workflow binding (same branch/PR)
+`/review-fix SWD-373` — Review and auto-fix per Workflow binding
