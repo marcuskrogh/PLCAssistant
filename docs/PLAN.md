@@ -97,11 +97,11 @@
 - [x] Form is read-only Parallel; unused td/gamma are omitted
 - [x] Extra params are wired like Kp (Datablock IN, Number entities, compound sensor, file-bridge, scan sync)
 - [x] Dual-tree + App **0.1.63**
-- [ ] Ramp settings pane edits `sp_ramp_max` (0 = instant)
-- [ ] Soft-PLC ramps the SP fed to each PID when `|ΔSP|` exceeds the rate
-- [ ] Compound sensor publishes `sp` (ramped OUT when rate > 0) and `sp_target` (mux)
-- [ ] SP bar shows an orange segment between current SP and target while ramping
-- [ ] Dual-tree + App **0.1.64**
+- [x] Ramp settings pane edits `sp_ramp_max` (0 = instant)
+- [x] Soft-PLC ramps the SP fed to each PID when `|ΔSP|` exceeds the rate
+- [x] Compound sensor publishes `sp` (ramped OUT when rate > 0) and `sp_target` (mux)
+- [x] SP bar shows an orange segment between current SP and target while ramping
+- [x] Dual-tree + App **0.1.64**
 
 ## Work packages
 1. **Shared faceplate elements module + Lovelace wiring** ([SWD-374](https://marcusknielsen.atlassian.net/browse/SWD-374))
@@ -111,7 +111,7 @@
 5. **Focused MV popup and ε between PV/SP** ([SWD-378](https://marcusknielsen.atlassian.net/browse/SWD-378)) — Done
 6. **Calm activity green on writable analog bars** ([SWD-379](https://marcusknielsen.atlassian.net/browse/SWD-379)) — Done
 7. **Paned settings for all standardised PID parameters** ([SWD-380](https://marcusknielsen.atlassian.net/browse/SWD-380)) — Done
-8. **SP ramping in backend, settings, and orange SP bar** ([SWD-381](https://marcusknielsen.atlassian.net/browse/SWD-381))
+8. **SP ramping in backend, settings, and orange SP bar** ([SWD-381](https://marcusknielsen.atlassian.net/browse/SWD-381)) — Done
 
 ## Open items
 - Whether a later slice adds alarm-limit colour bands on the PV bar — still later (SWD-368)
