@@ -125,8 +125,12 @@ def test_system_faceplate_gains_reach_live_pid_instances() -> None:
         ("SP_LEVEL_REQ", 0.30),
         ("LEVEL_KP", 55.0),
         ("LEVEL_KI", 7.0),
+        ("LEVEL_U0", 1.5),
+        ("LEVEL_BETA", 0.6),
+        ("LEVEL_TF_TS", 4.0),
         ("FLOW_KP", 18.0),
         ("FLOW_KI", 3.0),
+        ("FLOW_CV_MAX", 80.0),
         ("LT_TANK", 0.15),
         ("LT_RES", 0.20),
         ("FT_INLET", 0.0),
@@ -138,8 +142,12 @@ def test_system_faceplate_gains_reach_live_pid_instances() -> None:
     prog = logic.skid.program_loader.program  # type: ignore[union-attr]
     assert prog.instances["level_pi"].params["kp"] == pytest.approx(55.0)
     assert prog.instances["level_pi"].params["ki"] == pytest.approx(7.0)
+    assert prog.instances["level_pi"].params["u0"] == pytest.approx(1.5)
+    assert prog.instances["level_pi"].params["beta"] == pytest.approx(0.6)
+    assert prog.instances["level_pi"].params["tf_ts"] == pytest.approx(4.0)
     assert prog.instances["flow_pi"].params["kp"] == pytest.approx(18.0)
     assert prog.instances["flow_pi"].params["ki"] == pytest.approx(3.0)
+    assert prog.instances["flow_pi"].params["cv_max"] == pytest.approx(80.0)
     # Sync-before-bumpless: retuned Start must move level CV quickly.
     for _ in range(3):
         logic(image)
@@ -206,10 +214,10 @@ def test_system_flow_manual_prefer_context_does_not_mutate_wires() -> None:
 
 def test_system_app_version_0_1_44() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.58"' in manifest
+    assert '"0.1.64"' in manifest
     config = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.58"' in config
+    assert 'version: "0.1.64"' in config
     docker = Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.58" in docker
+    assert "BUILD_VERSION=0.1.64" in docker
     dash = (ROOT / "lovelace" / "plcassistant.yaml").read_text(encoding="utf-8")
     assert "plcassistant_dashboard_version: 28" in dash

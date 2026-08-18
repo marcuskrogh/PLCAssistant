@@ -19,6 +19,8 @@ from plcassistant.io.pid_loop import (
     operator_write_target,
 )
 
+from tests.pid_faceplate_chrome import ELEMENTS, faceplate_chrome_source
+
 ROOT = Path("custom_components/plcassistant")
 CARD = ROOT / "www" / "pid-loop-card.js"
 FACEPLATE = Path("docs/io/06-pid-faceplate.md")
@@ -72,7 +74,7 @@ def test_unit_level_and_flow_mode_defaults_are_automatic() -> None:
 
 
 def test_unit_pid_card_analog_controller_geometry() -> None:
-    text = CARD.read_text(encoding="utf-8")
+    text = faceplate_chrome_source()
     assert 'data-bar="pv"' in text
     assert 'data-bar="sp"' in text
     assert 'data-bar="co"' in text
@@ -88,7 +90,13 @@ def test_unit_pid_card_analog_controller_geometry() -> None:
     assert "--pid-rem" not in text
     assert "grid-template-columns: repeat(4, minmax(0, 1fr))" in text
     assert "Tap to adjust" in text
-    assert 'getCardSize() {\n    return 3;' in text or "return 3;" in text
+    assert 'getCardSize() {\n    return 4;' in text or "return 4;" in text
+    assert "_applyBarClick" not in text
+    assert "data-nudge" in text
+    assert 'data-settings="open"' in text
+    assert ".pid-vbar-fill[data-writable=\"1\"]" in text
+    assert "min-height: 120px" in text
+    assert "height: 16px" in text
     assert 'closest("button[data-mode]")' in text
     # Face modes plus dialog modes; still button[data-mode] only.
     assert 'data-mode="0"' in text
@@ -205,18 +213,20 @@ def test_system_faceplate_js_write_target_contract() -> None:
 
 def test_system_app_version_is_0_1_58() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.58"' in manifest
+    assert '"0.1.64"' in manifest
     config = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.58"' in config
+    assert 'version: "0.1.64"' in config
     docker = Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.58" in docker
+    assert "BUILD_VERSION=0.1.64" in docker
     dual = Path("plc_assistant/custom_components/plcassistant/manifest.json")
-    assert '"0.1.58"' in dual.read_text(encoding="utf-8")
+    assert '"0.1.64"' in dual.read_text(encoding="utf-8")
 
 
 def test_dual_tree_pid_card_synced() -> None:
     app_card = Path("plc_assistant/custom_components/plcassistant/www/pid-loop-card.js")
     assert CARD.read_bytes() == app_card.read_bytes()
+    app_el = Path("plc_assistant/custom_components/plcassistant/www/pid-faceplate-elements.js")
+    assert ELEMENTS.read_bytes() == app_el.read_bytes()
     ha_pid = (ROOT / "pid_loop.py").read_text(encoding="utf-8")
     assert '"cv_man_entity": "number.plcassistant_co_level_man"' in ha_pid
     assert '"co_man": "CO_LEVEL_MAN"' in ha_pid

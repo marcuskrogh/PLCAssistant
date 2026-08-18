@@ -22,6 +22,7 @@ from plcassistant.io.ha_config_bridge import (
 from plcassistant.io.image import IoImage
 from plcassistant.io.mqtt_bridge import InMemoryMqttBus, MqttBus, MqttIoBridge
 from plcassistant.io.mqtt_topics import DEFAULT_INSTANCE_ID, MqttTagPayload
+from plcassistant.io.pid_loop import all_operator_param_tag_names
 from plcassistant.io.quality import QualityStatus, ReasonCode
 
 
@@ -209,12 +210,7 @@ class MqttScanLoop:
             "FLOW_MODE",
             "CO_LEVEL_MAN",
             "CO_FLOW_MAN",
-            "LEVEL_KP",
-            "LEVEL_KI",
-            "LEVEL_KD",
-            "FLOW_KP",
-            "FLOW_KI",
-            "FLOW_KD",
+            *all_operator_param_tag_names(),
             "LT_TANK",
             "LT_RES",
             "FT_INLET",
@@ -232,12 +228,7 @@ class MqttScanLoop:
             "FLOW_MODE",
             "CO_LEVEL_MAN",
             "CO_FLOW_MAN",
-            "LEVEL_KP",
-            "LEVEL_KI",
-            "LEVEL_KD",
-            "FLOW_KP",
-            "FLOW_KI",
-            "FLOW_KD",
+            *all_operator_param_tag_names(),
         }
     )
 

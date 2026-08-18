@@ -14,6 +14,7 @@ from plcassistant.control.pid import (
     pid_scan,
     zoh_fy,
 )
+from plcassistant.control.ramp import ramp_setpoint
 from plcassistant.control.scan import (
     PHASE_ORDER,
     ScanConfig,
@@ -38,5 +39,6 @@ __all__ = [
     "anti_windup",
     "assert_phase_order",
     "pid_scan",
+    "ramp_setpoint",
     "zoh_fy",
 ]

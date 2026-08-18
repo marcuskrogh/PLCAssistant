@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from tests.pid_faceplate_chrome import faceplate_chrome_source
+
 ROOT = Path("custom_components/plcassistant")
 CARD = ROOT / "www" / "pid-loop-card.js"
 
 
 def test_unit_pid_card_uses_text_sp_inputs() -> None:
-    text = CARD.read_text(encoding="utf-8")
+    text = faceplate_chrome_source()
     assert 'type="text"' in text
     assert 'inputmode="decimal"' in text
     assert 'type="number"' not in text
@@ -20,7 +22,7 @@ def test_unit_pid_card_uses_text_sp_inputs() -> None:
 
 
 def test_unit_pid_card_preserves_dirty_drafts_across_hass() -> None:
-    text = CARD.read_text(encoding="utf-8")
+    text = faceplate_chrome_source()
     # Live hass must not rewrite focused/dirty drafts (caret / "0." → 30 bug).
     assert "Never rewrite a focused or dirty draft" in text
     assert "this._dirty[key]" in text
@@ -33,7 +35,7 @@ def test_unit_pid_card_preserves_dirty_drafts_across_hass() -> None:
 
 
 def test_unit_pid_card_isa_visual_cues() -> None:
-    text = CARD.read_text(encoding="utf-8")
+    text = faceplate_chrome_source()
     assert "pid-badge" in text
     assert "pid-hero" in text
     assert "active-source" in text
@@ -44,7 +46,7 @@ def test_unit_pid_card_isa_visual_cues() -> None:
     assert "pid-isa-p" in text
     assert "--warning-color" in text
     assert "--error-color" in text
-    assert "Active SP" in text
+    assert "data-value-min" in text
     assert "data-cv-bar" in text
     assert 'data-mode="' in text
     assert 'data-role="err"' in text
@@ -52,11 +54,11 @@ def test_unit_pid_card_isa_visual_cues() -> None:
 
 def test_system_app_version_tracks_current() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.58"' in manifest
+    assert '"0.1.64"' in manifest
     config = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.58"' in config
+    assert 'version: "0.1.64"' in config
     docker = Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.58" in docker
+    assert "BUILD_VERSION=0.1.64" in docker
     dash = (ROOT / "lovelace" / "plcassistant.yaml").read_text(encoding="utf-8")
     assert "plcassistant_dashboard_version: 28" in dash
     assert "custom:plcassistant-pid-card" in dash

@@ -23,6 +23,7 @@ Operator PID faceplates follow ISA-101 high-performance HMI practice and the ind
 
 - ISA-5.1 glyph, ISA-TR5.9 Parallel, Bauer/IFAC PID — PR [#101](https://github.com/marcuskrogh/PLCAssistant/pull/101) / [#103](https://github.com/marcuskrogh/PLCAssistant/pull/103)
 - Lovelace ISA-101 colour-for-abnormal (no mode hues) — PR [#102](https://github.com/marcuskrogh/PLCAssistant/pull/102)
+- PID faceplate sandbox + operator chrome (paned settings, SP ramp) — PR [#105](https://github.com/marcuskrogh/PLCAssistant/pull/105)
 
 ## Not yet specified
 

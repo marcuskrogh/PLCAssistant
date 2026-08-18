@@ -19,6 +19,8 @@ from plcassistant.surface.builtin import (
 from plcassistant.surface.equations import evaluate_equation
 from plcassistant.surface.schema import program_from_dict
 
+from tests.pid_faceplate_chrome import faceplate_chrome_source
+
 ROOT = Path(__file__).resolve().parents[1]
 CANVAS = ROOT / "plcassistant" / "app" / "_canvas.py"
 CARD = ROOT / "custom_components" / "plcassistant" / "www" / "pid-loop-card.js"
@@ -205,13 +207,15 @@ def test_unit_canvas_pid_uses_isa_three_mode_glyph() -> None:
     assert "block-rect" not in true_branch
 
 
-def test_unit_faceplate_labels_pv_sp_co() -> None:
-    text = CARD.read_text(encoding="utf-8")
-    assert "<span>CO</span>" in text
+def test_unit_faceplate_labels_pv_sp_mv() -> None:
+    text = faceplate_chrome_source()
+    assert "<span>MV</span>" in text
     assert "<span>CV</span>" not in text
     assert "<span>PV</span>" in text
     assert "<span>ε</span>" in text
-    assert "Active SP" in text
+    assert "data-value-min" in text
+    assert "data-value-max" in text
+    assert "pid-err-between" in text
     assert 'data-mode="' in text
 
 
@@ -222,13 +226,13 @@ def test_unit_default_pytest_still_excludes_live() -> None:
 
 
 def test_unit_app_version_is_0_1_57() -> None:
-    assert 'version: "0.1.58"' in (ROOT / "plc_assistant" / "config.yaml").read_text(
+    assert 'version: "0.1.64"' in (ROOT / "plc_assistant" / "config.yaml").read_text(
         encoding="utf-8"
     )
     manifest = (ROOT / "custom_components" / "plcassistant" / "manifest.json").read_text(
         encoding="utf-8"
     )
-    assert '"0.1.58"' in manifest
+    assert '"0.1.64"' in manifest
 
 
 def test_unit_incremental_includes_constant_uff() -> None:
@@ -333,7 +337,15 @@ def test_dual_tree_isa_pid_glyph_and_faceplate() -> None:
     for label, text in (("root", root_canvas), ("mirror", mirror_canvas)):
         assert "appendIsaPidChrome" in text, label
         assert "isa-pid-p" in text, label
-    root_card = CARD.read_text(encoding="utf-8")
+    root_card = faceplate_chrome_source()
+    mirror_elements = (
+        ROOT
+        / "plc_assistant"
+        / "custom_components"
+        / "plcassistant"
+        / "www"
+        / "pid-faceplate-elements.js"
+    ).read_text(encoding="utf-8")
     mirror_card = (
         ROOT
         / "plc_assistant"
@@ -341,9 +353,9 @@ def test_dual_tree_isa_pid_glyph_and_faceplate() -> None:
         / "plcassistant"
         / "www"
         / "pid-loop-card.js"
-    ).read_text(encoding="utf-8")
+    ).read_text(encoding="utf-8") + "\n" + mirror_elements
     for label, text in (("root", root_card), ("mirror", mirror_card)):
-        assert "<span>CO</span>" in text, label
+        assert "<span>MV</span>" in text, label
         assert "<span>CV</span>" not in text, label
         assert "pid-isa-eps" in text, label
         assert "--pid-man" not in text, label

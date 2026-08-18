@@ -39,9 +39,16 @@ const {
   pidBarValueFromPointer,
   pidBarPct,
   pidPvScaleMax,
+  pidNudgeValue,
+  pidNudgeRange,
+  pidBarFaceLabel,
+  pidBarEditorKey,
+  pidNormalizeBarKey,
   PID_DISPLAY_DIGITS,
   PID_CV_MAX_LEVEL,
   PID_CV_MAX_FLOW,
+  PID_NUDGE_FINE,
+  PID_NUDGE_COARSE,
 } = await import(cardUrl);
 
 let failed = 0;
@@ -337,9 +344,11 @@ const writableCo = node("button", { "data-bar": "co", "data-writable": "1" });
 assertEq(resolveFaceplateClick(writableCo)?.type, "bar", "writable CO bar click is bar");
 assertEq(resolveFaceplateClick(writableCo)?.key, "co", "writable CO bar key is co");
 const lockedSp = node("button", { "data-bar": "sp", "data-writable": "0" });
-assertEq(resolveFaceplateClick(lockedSp), null, "non-writable SP bar is ignored");
+assertEq(resolveFaceplateClick(lockedSp)?.type, "bar", "non-writable SP bar still opens inspect popup");
+assertEq(resolveFaceplateClick(lockedSp)?.key, "sp", "locked SP bar key is sp");
 const pvBar = node("button", { "data-bar": "pv", "data-writable": "0" });
-assertEq(resolveFaceplateClick(pvBar), null, "PV bar is never writable");
+assertEq(resolveFaceplateClick(pvBar)?.type, "bar", "PV bar click opens inspect popup");
+assertEq(resolveFaceplateClick(pvBar)?.key, "pv", "PV bar key is pv");
 const openRoot = node("div", { "data-open-editor": "" });
 const barUnderOpen = node("button", { "data-bar": "sp", "data-writable": "1" }, openRoot);
 assertEq(
@@ -347,6 +356,39 @@ assertEq(
   "bar",
   "writable bar wins over data-open-editor ancestor"
 );
+
+assertEq(pidBarFaceLabel("co"), "MV", "CO analog is labelled MV");
+assertEq(pidBarFaceLabel("sp"), "SP", "SP analog is labelled SP");
+assertEq(pidBarFaceLabel("pv"), "PV", "PV analog is labelled PV");
+assertEq(pidNormalizeBarKey("cv"), "co", "cv normalises to co");
+assertEq(pidBarEditorKey("co"), "co", "MV bar uses co editor");
+assertEq(pidBarEditorKey("sp"), "auto", "SP bar uses auto editor");
+assertEq(pidBarEditorKey("pv"), null, "PV bar has no editor");
+assertEq(PID_NUDGE_FINE, 0.1, "fine nudge is 0.1");
+assertEq(PID_NUDGE_COARSE, 1, "coarse nudge is 1.0");
+assertEq(pidNudgeRange("sp", "level").max, 0.4, "level SP nudge max is 0.40 m");
+assertEq(pidNudgeRange("co", "level").max, 8, "level CO nudge max is 8 L/min");
+assertEq(pidNudgeValue(3.2, 0.1, 0, 8), 3.3, "fine nudge +0.1");
+assertEq(pidNudgeValue(3.2, -1, 0, 8), 2.2, "coarse nudge -1.0");
+assertEq(pidNudgeValue(0.05, -0.1, 0, 0.4), 0, "nudge clamps to min");
+assertEq(pidNudgeValue(7.6, 1, 0, 8), 8, "nudge clamps to max");
+assertEq(pidNudgeValue(null, 0.1, 0, 8), null, "nudge rejects missing value");
+
+const fineUp = node("button", { "data-nudge": "0.1" });
+assertEq(resolveFaceplateClick(fineUp)?.type, "nudge", "nudge click type");
+assertEq(resolveFaceplateClick(fineUp)?.delta, 0.1, "nudge click delta 0.1");
+const coarseDown = node("button", { "data-nudge": "-1" });
+assertEq(resolveFaceplateClick(coarseDown)?.delta, -1, "nudge click delta -1");
+const disabledNudge = node("button", { "data-nudge": "0.1", disabled: true });
+assertEq(resolveFaceplateClick(disabledNudge), null, "disabled nudge is ignored");
+
+const gear = node("button", { "data-settings": "open" });
+assertEq(resolveFaceplateClick(gear)?.type, "settings", "gear opens settings");
+assertEq(resolveFaceplateClick(gear)?.action, "open", "gear action is open");
+const settingsApply = node("button", { "data-settings-apply": "" });
+assertEq(resolveFaceplateClick(settingsApply)?.action, "apply", "settings apply");
+const settingsCancel = node("button", { "data-settings-cancel": "" });
+assertEq(resolveFaceplateClick(settingsCancel)?.action, "cancel", "settings cancel");
 
 if (failed > 0) {
   console.error(`\n${failed} assertion(s) failed`);

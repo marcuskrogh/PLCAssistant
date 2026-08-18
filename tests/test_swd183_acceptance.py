@@ -143,7 +143,9 @@ def test_integration_datablock_has_mode_tags() -> None:
     assert "SP_FLOW_AUTO" in tags
     assert "LEVEL_KD" in tags
     assert "FLOW_KD" in tags
-    assert len(block.bindings) == 26
+    assert "LEVEL_TF_TS" in tags
+    assert "FLOW_HOLD_WHEN_STOPPED" in tags
+    assert len(block.bindings) == 44
 
 
 def test_integration_softplc_ha_pid_loop_tag_parity() -> None:
@@ -151,7 +153,28 @@ def test_integration_softplc_ha_pid_loop_tag_parity() -> None:
     text = Path("custom_components/plcassistant/pid_loop.py").read_text(encoding="utf-8")
     for loop in DEMO_PID_LOOPS:
         assert f'"loop_id": "{loop.loop_id}"' in text
-        for field in ("pv", "sp", "sp_man", "sp_auto", "sp_rem", "mode", "cv", "co_man", "kp", "ki", "kd"):
+        for field in (
+            "pv",
+            "sp",
+            "sp_man",
+            "sp_auto",
+            "sp_rem",
+            "mode",
+            "cv",
+            "co_man",
+            "kp",
+            "ki",
+            "kd",
+            "u0",
+            "beta",
+            "direct_acting",
+            "cv_min",
+            "cv_max",
+            "hold_when_stopped",
+            "ts",
+            "tf_ts",
+            "sp_ramp_max",
+        ):
             assert f'"{field}": "{getattr(loop, field)}"' in text
 
 
@@ -171,6 +194,10 @@ def test_integration_compound_entity_attribute_schema_keys() -> None:
         "cv_entity",
         "kp_entity",
         "ki_entity",
+        "kd_entity",
+        "u0_entity",
+        "tf_ts_entity",
+        "sp_ramp_max_entity",
     ):
         assert entity_key in text
 
@@ -186,6 +213,7 @@ def test_integration_file_input_tags_include_operator_pid_in() -> None:
         "SP_LEVEL_MAN",
         "LEVEL_KP",
         "LEVEL_KD",
+        "LEVEL_TF_TS",
         "FLOW_KD",
         "LT_TANK",
     ):

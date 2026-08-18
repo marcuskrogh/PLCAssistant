@@ -31,6 +31,15 @@ _LEVEL = {
     "kp": "LEVEL_KP",
     "ki": "LEVEL_KI",
     "kd": "LEVEL_KD",
+    "u0": "LEVEL_U0",
+    "beta": "LEVEL_BETA",
+    "direct_acting": "LEVEL_DIRECT_ACTING",
+    "cv_min": "LEVEL_CV_MIN",
+    "cv_max": "LEVEL_CV_MAX",
+    "hold_when_stopped": "LEVEL_HOLD_WHEN_STOPPED",
+    "ts": "LEVEL_TS",
+    "tf_ts": "LEVEL_TF_TS",
+    "sp_ramp_max": "LEVEL_SP_RAMP_MAX",
     "pv_entity": "sensor.plcassistant_lt_tank_in",
     "sp_entity": "sensor.plcassistant_sp_level",
     "sp_man_entity": "number.plcassistant_sp_level_man",
@@ -41,6 +50,16 @@ _LEVEL = {
     "cv_man_entity": "number.plcassistant_co_level_man",
     "kp_entity": "number.plcassistant_level_kp",
     "ki_entity": "number.plcassistant_level_ki",
+    "kd_entity": "number.plcassistant_level_kd",
+    "u0_entity": "number.plcassistant_level_u0",
+    "beta_entity": "number.plcassistant_level_beta",
+    "direct_acting_entity": "number.plcassistant_level_direct_acting",
+    "cv_min_entity": "number.plcassistant_level_cv_min",
+    "cv_max_entity": "number.plcassistant_level_cv_max",
+    "hold_when_stopped_entity": "number.plcassistant_level_hold_when_stopped",
+    "ts_entity": "number.plcassistant_level_ts",
+    "tf_ts_entity": "number.plcassistant_level_tf_ts",
+    "sp_ramp_max_entity": "number.plcassistant_level_sp_ramp_max",
 }
 
 _FLOW = {
@@ -56,6 +75,15 @@ _FLOW = {
     "kp": "FLOW_KP",
     "ki": "FLOW_KI",
     "kd": "FLOW_KD",
+    "u0": "FLOW_U0",
+    "beta": "FLOW_BETA",
+    "direct_acting": "FLOW_DIRECT_ACTING",
+    "cv_min": "FLOW_CV_MIN",
+    "cv_max": "FLOW_CV_MAX",
+    "hold_when_stopped": "FLOW_HOLD_WHEN_STOPPED",
+    "ts": "FLOW_TS",
+    "tf_ts": "FLOW_TF_TS",
+    "sp_ramp_max": "FLOW_SP_RAMP_MAX",
     "pv_entity": "sensor.plcassistant_ft_inlet_in",
     "sp_entity": "sensor.plcassistant_sp_flow",
     "sp_man_entity": "number.plcassistant_sp_flow_man",
@@ -66,9 +94,34 @@ _FLOW = {
     "cv_man_entity": "number.plcassistant_co_flow_man",
     "kp_entity": "number.plcassistant_flow_kp",
     "ki_entity": "number.plcassistant_flow_ki",
+    "kd_entity": "number.plcassistant_flow_kd",
+    "u0_entity": "number.plcassistant_flow_u0",
+    "beta_entity": "number.plcassistant_flow_beta",
+    "direct_acting_entity": "number.plcassistant_flow_direct_acting",
+    "cv_min_entity": "number.plcassistant_flow_cv_min",
+    "cv_max_entity": "number.plcassistant_flow_cv_max",
+    "hold_when_stopped_entity": "number.plcassistant_flow_hold_when_stopped",
+    "ts_entity": "number.plcassistant_flow_ts",
+    "tf_ts_entity": "number.plcassistant_flow_tf_ts",
+    "sp_ramp_max_entity": "number.plcassistant_flow_sp_ramp_max",
 }
 
 DEMO_PID_LOOPS: tuple[dict[str, str], ...] = (_LEVEL, _FLOW)
+
+_PID_PARAM_KEYS = (
+    "kp",
+    "ki",
+    "kd",
+    "u0",
+    "beta",
+    "direct_acting",
+    "cv_min",
+    "cv_max",
+    "hold_when_stopped",
+    "ts",
+    "tf_ts",
+    "sp_ramp_max",
+)
 
 _MODE_NAMES = {0: "manual", 1: "automatic", 2: "remote"}
 _MODE_ALIASES = {
@@ -182,9 +235,7 @@ class PlcAssistantPidLoopSensor(SensorEntity):
                 spec["mode"],
                 spec["cv"],
                 spec["co_man"],
-                spec["kp"],
-                spec["ki"],
-                spec["kd"],
+                *[spec[key] for key in _PID_PARAM_KEYS],
             }
         )
 
@@ -194,14 +245,13 @@ class PlcAssistantPidLoopSensor(SensorEntity):
             "loop_id": spec["loop_id"],
             "pv": None,
             "sp": None,
+            "sp_target": None,
             "sp_man": None,
             "sp_auto": None,
             "sp_rem": None,
             "cv": None,
             "co_man": None,
-            "kp": None,
-            "ki": None,
-            "kd": None,
+            **{key: None for key in _PID_PARAM_KEYS},
             "pv_entity": spec["pv_entity"],
             "sp_entity": spec["sp_entity"],
             "sp_man_entity": spec["sp_man_entity"],
@@ -212,6 +262,16 @@ class PlcAssistantPidLoopSensor(SensorEntity):
             "cv_man_entity": spec["cv_man_entity"],
             "kp_entity": spec["kp_entity"],
             "ki_entity": spec["ki_entity"],
+            "kd_entity": spec["kd_entity"],
+            "u0_entity": spec["u0_entity"],
+            "beta_entity": spec["beta_entity"],
+            "direct_acting_entity": spec["direct_acting_entity"],
+            "cv_min_entity": spec["cv_min_entity"],
+            "cv_max_entity": spec["cv_max_entity"],
+            "hold_when_stopped_entity": spec["hold_when_stopped_entity"],
+            "ts_entity": spec["ts_entity"],
+            "tf_ts_entity": spec["tf_ts_entity"],
+            "sp_ramp_max_entity": spec["sp_ramp_max_entity"],
             "write_target": None,
         }
 
@@ -222,14 +282,22 @@ class PlcAssistantPidLoopSensor(SensorEntity):
         man = round_display(_cache_value(store, spec["sp_man"])) or 0.0
         auto = round_display(_cache_value(store, spec["sp_auto"])) or 0.0
         rem = round_display(_cache_value(store, spec["sp_rem"])) or 0.0
-        # Always mux from mode + sources — never prefer stale Soft-PLC SP_* OUT
-        # (that made faceplate Set look broken when OUT lagged) (SWD-222).
-        sp = round_display(_select_sp(mode, man, auto, rem)) or 0.0
+        # Mux is the operator/cascade request (target). When ramp rate is 0,
+        # keep mux as ``sp`` so Set does not lag (SWD-222). When ramping,
+        # ``sp`` is the Soft-PLC OUT (ramped) and ``sp_target`` stays the mux.
+        sp_target = round_display(_select_sp(mode, man, auto, rem)) or 0.0
+        ramp_max = round_display(_cache_value(store, spec["sp_ramp_max"])) or 0.0
+        if ramp_max > 0:
+            out = round_display(_cache_value(store, spec["sp"]))
+            sp = out if out is not None else sp_target
+        else:
+            sp = sp_target
         attrs = self._empty_attrs()
         attrs.update(
             {
                 "pv": round_display(_cache_value(store, spec["pv"])),
                 "sp": sp,
+                "sp_target": sp_target,
                 "sp_man": man,
                 "sp_auto": auto,
                 "sp_rem": rem,
@@ -238,9 +306,10 @@ class PlcAssistantPidLoopSensor(SensorEntity):
                 "write_target": _write_target(
                     mode, sp_auto_entity=spec["sp_auto_entity"]
                 ),
-                "kp": round_display(_cache_value(store, spec["kp"])),
-                "ki": round_display(_cache_value(store, spec["ki"])),
-                "kd": round_display(_cache_value(store, spec["kd"])),
+                **{
+                    key: round_display(_cache_value(store, spec[key]))
+                    for key in _PID_PARAM_KEYS
+                },
             }
         )
         changed = mode != self._attr_native_value or attrs != self._attr_extra_state_attributes

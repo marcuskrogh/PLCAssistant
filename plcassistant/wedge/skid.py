@@ -413,10 +413,10 @@ class Skid:
 
             if self._use_block_runtime and self._cascade_instances_ready():
                 # Block runtime path (default) when level_pi/flow_pi exist.
-                # Faceplate KP/KI live on CascadeConfig; sync into executing
+                # Faceplate PID params live on CascadeConfig; sync into executing
                 # PID instance params *before* bumpless so Start seeds with the
-                # tuned gains (SWD-224). CascadeConfig alone is not read by
-                # BlockRuntime.
+                # tuned values (SWD-224 / SWD-380). CascadeConfig alone is not
+                # read by BlockRuntime.
                 self._sync_cascade_gains_into_instances()
                 if running and not self._was_running:
                     if mv.lt_tank is not None and mv.ft_inlet is not None:
@@ -703,27 +703,29 @@ class Skid:
         )
 
     def _sync_cascade_gains_into_instances(self) -> None:
-        """Copy CascadeConfig KP/KI into live PID instance params (SWD-224).
+        """Copy faceplate PID params into live instance params.
 
         Faceplate / image tags update ``Skid.config.cascade``; BlockRuntime
         only reads ``inst.params``. Write only when values differ so unchanged
-        canvas params are not rewritten every scan.
+        canvas params are not rewritten every scan. Operator ``tf_ts`` /
+        clamp writes win over the cascade factory bypass (SWD-380).
         """
         prog = self._loader.program if self._loader is not None else None
         if prog is None:
             return
         cfg = self.config.cascade
-        mapping = (
-            ("level_pi", (("kp", cfg.level_kp), ("ki", cfg.level_ki))),
-            ("flow_pi", (("kp", cfg.flow_kp), ("ki", cfg.flow_ki))),
-        )
-        for inst_id, pairs in mapping:
+        for inst_id in ("level_pi", "flow_pi"):
             inst = prog.instances.get(inst_id)
             if inst is None:
                 continue
-            for key, value in pairs:
-                new = float(value)
+            for key, value in cfg.instance_operator_params(inst_id).items():
                 old = inst.params.get(key)
+                if isinstance(value, bool):
+                    if old is not None and bool(old) == value:
+                        continue
+                    inst.params[key] = value
+                    continue
+                new = float(value)
                 try:
                     if old is not None and float(old) == new:
                         continue

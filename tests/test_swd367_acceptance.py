@@ -339,14 +339,14 @@ def test_system_start_seeds_ifac_bumpless_state() -> None:
 
 
 def test_system_app_version_is_0_1_57() -> None:
-    assert 'version: "0.1.58"' in (ROOT / "plc_assistant" / "config.yaml").read_text(
+    assert 'version: "0.1.64"' in (ROOT / "plc_assistant" / "config.yaml").read_text(
         encoding="utf-8"
     )
     manifest = (ROOT / "custom_components" / "plcassistant" / "manifest.json").read_text(
         encoding="utf-8"
     )
-    assert '"0.1.58"' in manifest
+    assert '"0.1.64"' in manifest
     docker = (ROOT / "plc_assistant" / "Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.58" in docker
+    assert "BUILD_VERSION=0.1.64" in docker
     dual = ROOT / "plc_assistant" / "custom_components" / "plcassistant" / "manifest.json"
-    assert '"0.1.58"' in dual.read_text(encoding="utf-8")
+    assert '"0.1.64"' in dual.read_text(encoding="utf-8")

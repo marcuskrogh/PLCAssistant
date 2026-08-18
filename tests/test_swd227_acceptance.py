@@ -15,13 +15,15 @@ from pathlib import Path
 
 import pytest
 
+from tests.pid_faceplate_chrome import faceplate_chrome_source
+
 ROOT = Path("custom_components/plcassistant")
 CARD = ROOT / "www" / "pid-loop-card.js"
 JS_CONTRACT = Path("tests/js/pid_faceplate_contract.test.mjs")
 
 
 def test_unit_pid_card_mode_click_targets_buttons_only() -> None:
-    text = CARD.read_text(encoding="utf-8")
+    text = faceplate_chrome_source()
     assert 'closest("button[data-mode]")' in text
     assert 'closest("[data-mode]")' not in text
     assert "data-pid-mode" in text
@@ -31,7 +33,7 @@ def test_unit_pid_card_mode_click_targets_buttons_only() -> None:
 
 
 def test_unit_pid_card_exports_communication_helpers() -> None:
-    text = CARD.read_text(encoding="utf-8")
+    text = faceplate_chrome_source()
     assert "export function parseSpValue" in text
     assert "export function numberServiceValue" in text
     assert "export function resolveFaceplateClick" in text
@@ -138,11 +140,11 @@ def test_unit_sp_mode_flip_codes_are_floats() -> None:
 
 def test_system_app_version_tracks_current() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.58"' in manifest
+    assert '"0.1.64"' in manifest
     config = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.58"' in config
+    assert 'version: "0.1.64"' in config
     docker = Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.58" in docker
+    assert "BUILD_VERSION=0.1.64" in docker
     dash = (ROOT / "lovelace" / "plcassistant.yaml").read_text(encoding="utf-8")
     assert "plcassistant_dashboard_version: 28" in dash
 

@@ -10,10 +10,11 @@ practice under **ISA-101** high-performance HMI rules (grayscale normal chrome;
 colour only for caution/abnormal). **ANSI/ISA-112.00.01-2025** is the SCADA
 lifecycle / terminology standard; it tells organisations to keep an HMI style
 guide and points that guide at ISA-101. It does **not** specify PID bar
-geometry. ISA-TR5.9 names stay: **PV**, **SP**, **CO**.
+geometry. ISA-TR5.9 names stay on the Datablock: **PV**, **SP**, **CO**.
+Faceplates label the controller output **MV** (manipulated variable).
 
 The Datablock is system source of truth; HA entities and Lovelace cards write
-into it. The `cv` pin name is unchanged; faceplates label that signal **CO**.
+into it. The `cv` pin name is unchanged; faceplates label that signal **MV**.
 
 ## Modes
 
@@ -21,14 +22,16 @@ DCS controller modes (not three parallel SP sources while the PID still computes
 
 | Mode | Code | Operator write | Algorithm |
 |------|------|----------------|-----------|
-| Manual | `0` | **CO** (`CO_*_MAN` → Bauer `uman`) | PID `auto=false`; output holds |
+| Manual | `0` | **MV** (`CO_*_MAN` → Bauer `uman`) | PID `auto=false`; output holds |
 | Automatic | `1` | **SP** when the Auto entity is a Number | PID computes CO from local SP |
 | Remote | `2` | none (cascade / remote SP) | PID stays in auto; faceplate does not write SP or CO |
 
-Highlight the writable analog with grayscale selected chrome (outline / invert).
-**Do not** colour-code Man / Auto / Rem. Writing CO Set flips the loop to Manual.
-Writing Auto SP Set flips to Automatic (SWD-222). Remote Set is disabled on the
-faceplate.
+Highlight the writable analog by colouring its **fill** with a muted activity
+green (`--pid-active`). Mode buttons stay grayscale invert — **do not**
+colour-code Man / Auto / Rem. Loop error colour stays on **ε**; MV clamp
+caution may tint the MV fill only. Writing CO Set flips the loop to
+Manual. Writing Auto SP Set flips to Automatic (SWD-222). Remote Set is
+disabled on the faceplate.
 
 Flow **Automatic** remains **cascade** (slave CAS behaviour, SWD-221): the Auto
 SP entity is `sensor.plcassistant_sp_flow_auto`, so the flow SP bar is not
@@ -44,16 +47,21 @@ override.
 Compact analog-controller face:
 
 1. ISA-5.1 three-mode chrome (ε / P / I / D) matching the App Diagram glyph
-2. KPI row **PV / SP / ε / CO** at **two decimal places** (SWD-228)
-3. two vertical bars: PV (left) and SP (right)
-4. A horizontal CO bar below
-5. MAN / AUTO / REM on the face (grayscale active invert)
-6. Tap-to-adjust dialog for typed Set
+2. Header: title and settings gear
+3. two thin tall vertical bars: PV (left) and SP (right), with values on the bars
+4. Signed **ε** between the PV and SP bars (caution/abnormal colour)
+5. A thicker horizontal **MV** bar below, with its value beside the bar
+6. `<< < > >>` nudges (±1.0 / ±0.1) on the writable analog
+7. MAN / AUTO / REM on the face (grayscale active invert)
+8. Focused numeric popup for the clicked analog (current value, min, max; no pointer-position set)
+9. Settings popup with panes for standardised PID parameters (Gains, Structure, Output, Filter) plus Ramp (`sp_ramp_max`)
+10. While ramping, an orange segment on the SP bar between current SP and target
 
-Click the highlighted bar to set the value from pointer position (clamped to
-engineering scale). Typed Set remains in the dialog.
+Click any analog bar to open a popup for **that** analog (value, min, max, unit).
+Set is shown only when the analog is the operator write target. Nudge arrows
+change the writable analog directly.
 
-Scales: level PV/SP 0–0.40 m; flow PV/SP 0–8 L/min; level CO 0–8 L/min; flow CO
+Scales: level PV/SP 0–0.40 m; flow PV/SP 0–8 L/min; level MV 0–8 L/min; flow MV
 0–100%.
 
 ## Demo tags (`DB_Tank`)
@@ -83,11 +91,37 @@ CO reads `SP_FLOW_AUTO` (true level `cv`), not the muxed active `SP_FLOW`.
 
 ### Tunings
 
-`LEVEL_KP`, `LEVEL_KI`, `FLOW_KP`, and `FLOW_KI` IN tags (defaults aligned
-with `CascadeConfig`: 40 / 5 / 12 / 2) are applied into the live Soft-PLC
+Faceplate settings expose the standardised PID parameters from
+`pid_default_params()` (except unused Parallel leftovers `td` / `gamma`, and
+read-only `form=parallel`):
+
+| Pane | Params |
+|------|--------|
+| Gains | `kp`, `ki`, `kd`, `u0` |
+| Structure | `beta`, `direct_acting`, `form` (read-only Parallel) |
+| Output | `cv_min`, `cv_max`, `hold_when_stopped` |
+| Filter | `ts`, `tf_ts` (`<= 0` bypasses the measurement filter) |
+| Ramp | `sp_ramp_max` (engineering units per second; `0` = instant) |
+
+`sp_ramp_max` is a faceplate / SP-path rate limit, **not** a PID equation
+param. It is not copied into executing PID instance params. When the operator
+(or cascade) requests an SP step larger than one scan at that rate, the Soft-PLC
+ramps the SP fed to the PID. The compound sensor then publishes ramped `sp`
+(from `SP_LEVEL` / `SP_FLOW` OUT) and muxed `sp_target`. The SP bar paints an
+orange `--pid-ramp` segment between current SP and target while
+`|sp_target − sp|` exceeds one scan.
+
+Demo IN tags follow `LEVEL_*` / `FLOW_*` (`LEVEL_KP`, `LEVEL_TF_TS`,
+`LEVEL_SP_RAMP_MAX`, …).
+Defaults align with the wedge cascade copies (`CascadeConfig` gains 40 / 5 /
+12 / 2; level CV 0–8 L/min; flow CV 0–100%; `tf_ts = 0` filter bypass;
+level `hold_when_stopped=true`). Tags are applied into the live Soft-PLC
 `Skid` cascade **and synced into executing PID instance params** each scan
-when bound (SWD-224). `LEVEL_KD` / `FLOW_KD` are declared for
-faceplate parity; the wedge cascade PI does not use D terms yet.
+when bound (SWD-224 / SWD-380). Operator `tf_ts` and clamp writes win over
+the cascade factory bypass on the running instances.
+
+`LEVEL_KD` / `FLOW_KD` are live like the other params; wedge cascade copies
+still default `kd = 0`.
 
 Process tag ↔ PID pin bridging uses the common `TagPinWire` format
 (`plcassistant.surface.io_wires`) so Start → `running` → CV is one
@@ -102,7 +136,7 @@ Soft-PLC helpers live in
 
 | Entity | State | Attributes |
 |--------|-------|------------|
-| `sensor.plcassistant_pid_level` | `manual` / `automatic` / `remote` | `pv`, `sp`, `sp_man`, `sp_auto`, `sp_rem`, `cv`, `co_man`, `write_target`, `kp`, `ki`, `kd`, `loop_id`, related `*_entity` ids including `cv_man_entity` |
+| `sensor.plcassistant_pid_level` | `manual` / `automatic` / `remote` | `pv`, `sp`, `sp_target`, `sp_man`, `sp_auto`, `sp_rem`, `cv`, `co_man`, `write_target`, standardised PID params (`kp`…`tf_ts`), `sp_ramp_max`, `loop_id`, related `*_entity` ids including `cv_man_entity` and each `{param}_entity` |
 | `sensor.plcassistant_pid_flow` | same | same |
 
 ## Lovelace cards
@@ -118,19 +152,32 @@ YAML mode falls back to `frontend.add_extra_js_url`). Stock Operate (SWD-229)
 is a SCADA layout with PID cards only — no fallback entity dump. Custom boards
 may still list the underlying Number/sensor entities if cards fail to load.
 
+Chrome (glyph, KPI row, analog bars, mode row) lives in
+`www/pid-faceplate-elements.js`. The Lovelace card imports that module. Iterate
+the elements in a browser without the App:
+
+```bash
+./tools/pid-faceplate/serve.sh
+```
+
+Then open http://127.0.0.1:8765/tools/pid-faceplate/. Ship an App build only
+when operators should receive chrome changes.
+
 The PID card uses an ISA-5.1 three-mode chrome strip (ε / P / I / D) matching the
-App Diagram glyph, a hero strip for **PV / SP / ε / CO** at **two decimal
-places**, and analog bars (vertical PV/SP, horizontal CO). Man / Auto / Rem are
-controller modes; the mode badge, active button, and writable bar use grayscale
-selected chrome, not colour-coded identity. Colour follows ISA-101
-high-performance HMI practice: caution uses Home Assistant `--warning-color`,
-abnormal uses `--error-color`, applied to relative |ε| and to a CO bar at clamp
-(~0% or ~100% of scale). Text+`inputmode=decimal` editors keep intermediate
-edits alive across live Soft-PLC hass updates. Typography uses Home Assistant
-Lovelace design tokens (`--ha-font-family-body`, `--ha-card-header-font-size`,
-`--ha-font-size-*`) so the faceplate matches surrounding entities / glance
-cards. Compound PID attributes are rounded to 2dp when published. **Set** (or
-Enter) commits; Esc cancels a dirty draft.
+App Diagram glyph, analog bars (thin tall vertical PV/SP, thicker horizontal MV)
+with values on the bars, **ε** between PV and SP, nudge arrows, and a settings
+gear for standardised PID parameters (Gains / Structure / Output / Filter) plus SP ramp. While SP is ramping, an orange segment on the SP bar runs from the current SP to the target. Clicking a bar opens a focused numeric popup for that
+analog (value, min, max, unit). Set is shown only when the analog is writable.
+Man / Auto / Rem are controller modes; the active button stays grayscale invert.
+The writable analog **fill** uses a muted activity green (`--pid-active`).
+Colour otherwise follows ISA-101 high-performance HMI practice: caution uses
+Home Assistant `--warning-color`, abnormal uses `--error-color`, applied to
+relative |ε|. An MV bar at clamp (~0% or ~100% of scale) may take caution on
+that fill only. Text+`inputmode=decimal` editors keep intermediate edits alive across live Soft-PLC hass updates. Typography uses
+Home Assistant Lovelace design tokens (`--ha-font-family-body`,
+`--ha-card-header-font-size`, `--ha-font-size-*`) so the faceplate matches
+surrounding entities / glance cards. Compound PID attributes are rounded to 2dp
+when published. **Set** (or Enter) commits; Esc cancels a dirty draft.
 
 Cascade demo defaults (SWD-369): Level **Automatic**, Flow **Automatic**.
 Operator IN defaults are batch-seeded once at setup (no per-Number MQTT/file

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PID faceplate sandbox</title>
+    <style>
+      :root {
+        --primary-text-color: #1a1a1a;
+        --secondary-text-color: #5c5c5c;
+        --card-background-color: #fff;
+        --divider-color: #c8c8c8;
+        --primary-color: #03a9f4;
+        --warning-color: #f59e0b;
+        --error-color: #dc2626;
+        --secondary-background-color: #f3f3f3;
+        --ha-font-family-body: system-ui, sans-serif;
+        --ha-card-header-font-size: 1.25rem;
+        --ha-font-size-l: 1.25rem;
+        --ha-font-size-xs: 0.75rem;
+        --ha-font-size-m: 1rem;
+        --ha-font-size-s: 0.875rem;
+        --ha-font-weight-medium: 500;
+        --ha-line-height-normal: 1.4;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: var(--ha-font-family-body);
+        background: #d8d8d8;
+        color: var(--primary-text-color);
+      }
+      header {
+        padding: 20px 24px 8px;
+        max-width: 1100px;
+        margin: 0 auto;
+      }
+      header h1 { margin: 0 0 6px; font-size: 1.4rem; font-weight: 600; }
+      header p { margin: 0; color: var(--secondary-text-color); font-size: 0.95rem; }
+      main {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 16px 24px 48px;
+        display: grid;
+        gap: 20px;
+      }
+      .panel {
+        background: var(--card-background-color);
+        border-radius: 12px;
+        padding: 16px;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+      }
+      .panel h2 {
+        margin: 0 0 12px;
+        font-size: 0.85rem;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--secondary-text-color);
+      }
+      #isolates {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+      }
+      .tile {
+        border: 1px solid var(--divider-color);
+        border-radius: 8px;
+        padding: 10px;
+        min-height: 220px;
+        background: var(--card-background-color);
+      }
+      .tile h3 {
+        margin: 0 0 8px;
+        font-size: 0.8rem;
+        font-weight: 600;
+      }
+      .tile p {
+        margin: 0 0 8px;
+        font-size: 0.75rem;
+        color: var(--secondary-text-color);
+      }
+      #assembled {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 16px;
+      }
+      .mock {
+        border: 1px solid var(--divider-color);
+        border-radius: 8px;
+        overflow: hidden;
+        background: var(--card-background-color);
+      }
+      .controls {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 10px 16px;
+        align-items: end;
+      }
+      label { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; }
+      input[type="range"] { width: 100%; }
+      select, button.ctrl {
+        padding: 6px 8px;
+        font: inherit;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>PID faceplate elements</h1>
+      <p>
+        Isolated chrome for iterative layout work. No Home Assistant, no App.
+        Edit <code>custom_components/plcassistant/www/pid-faceplate-elements.js</code> and refresh.
+      </p>
+    </header>
+    <main>
+      <section class="panel">
+        <h2>Mock loop</h2>
+        <div class="controls">
+          <label>Loop
+            <select id="loop">
+              <option value="level">Level</option>
+              <option value="flow">Flow</option>
+            </select>
+          </label>
+          <label>Mode
+            <select id="mode">
+              <option value="automatic">Automatic</option>
+              <option value="manual">Manual</option>
+              <option value="remote">Remote</option>
+            </select>
+          </label>
+          <label>PV <span data-readout="pv"></span>
+            <input id="pv" type="range" min="0" max="0.4" step="0.01" value="0.18" />
+          </label>
+          <label>SP <span data-readout="sp"></span>
+            <input id="sp" type="range" min="0" max="0.4" step="0.01" value="0.30" />
+          </label>
+          <label>MV <span data-readout="cv"></span>
+            <input id="cv" type="range" min="0" max="8" step="0.1" value="3.2" />
+          </label>
+        </div>
+      </section>
+      <section class="panel">
+        <h2>Isolated elements</h2>
+        <div id="isolates"></div>
+      </section>
+      <section class="panel">
+        <h2>Assembled mocks</h2>
+        <div id="assembled">
+          <div>
+            <h3 style="margin:0 0 8px;font-size:0.85rem;">Level</h3>
+            <div class="mock" id="mock-level"></div>
+          </div>
+          <div>
+            <h3 style="margin:0 0 8px;font-size:0.85rem;">Flow</h3>
+            <div class="mock" id="mock-flow"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="./sandbox.js?v=sp-ramp-full"></script>
+  </body>
+</html>
