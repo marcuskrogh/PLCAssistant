@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.pid_faceplate_chrome import faceplate_chrome_source
+
 ROOT = Path("custom_components/plcassistant")
 CARD = ROOT / "www" / "pid-loop-card.js"
 PID = ROOT / "pid_loop.py"
@@ -16,7 +18,7 @@ JS_CONTRACT = Path("tests/js/pid_faceplate_contract.test.mjs")
 
 
 def test_unit_pid_card_uses_ha_font_tokens() -> None:
-    text = CARD.read_text(encoding="utf-8")
+    text = faceplate_chrome_source()
     assert "--ha-font-family-body" in text
     assert "--ha-card-header-font-size" in text
     assert "--ha-font-size-l" in text
@@ -29,7 +31,7 @@ def test_unit_pid_card_uses_ha_font_tokens() -> None:
 
 
 def test_unit_pid_card_formats_all_numerics_via_helper() -> None:
-    text = CARD.read_text(encoding="utf-8")
+    text = faceplate_chrome_source()
     assert "PID_DISPLAY_DIGITS = 2" in text
     assert "export function formatPidValue" in text
     assert "n.toFixed(digits)" in text
@@ -124,6 +126,7 @@ def test_unit_dual_tree_pid_card_synced() -> None:
     dual = Path("plc_assistant/custom_components/plcassistant")
     for rel in (
         "www/pid-loop-card.js",
+        "www/pid-faceplate-elements.js",
         "pid_loop.py",
         "sensor.py",
         "number.py",
@@ -133,7 +136,7 @@ def test_unit_dual_tree_pid_card_synced() -> None:
 
 
 def test_unit_pid_card_null_safe_err_and_commit() -> None:
-    text = CARD.read_text(encoding="utf-8")
+    text = faceplate_chrome_source()
     assert "export function isPresentFinite" in text
     assert "export function commitSpValue" in text
     assert "export function pidError" in text
@@ -164,13 +167,13 @@ def test_system_faceplate_js_contract() -> None:
 
 
 def test_system_app_version_0_1_50() -> None:
-    assert '"0.1.58"' in (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert 'version: "0.1.58"' in Path("plc_assistant/config.yaml").read_text(
+    assert '"0.1.59"' in (ROOT / "manifest.json").read_text(encoding="utf-8")
+    assert 'version: "0.1.59"' in Path("plc_assistant/config.yaml").read_text(
         encoding="utf-8"
     )
-    assert "BUILD_VERSION=0.1.58" in Path("plc_assistant/Dockerfile").read_text(
+    assert "BUILD_VERSION=0.1.59" in Path("plc_assistant/Dockerfile").read_text(
         encoding="utf-8"
     )
     dual = Path("plc_assistant/custom_components/plcassistant")
-    assert '"0.1.58"' in (dual / "manifest.json").read_text(encoding="utf-8")
+    assert '"0.1.59"' in (dual / "manifest.json").read_text(encoding="utf-8")
     assert CARD.read_bytes() == (dual / "www" / "pid-loop-card.js").read_bytes()

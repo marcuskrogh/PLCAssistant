@@ -118,6 +118,17 @@ YAML mode falls back to `frontend.add_extra_js_url`). Stock Operate (SWD-229)
 is a SCADA layout with PID cards only — no fallback entity dump. Custom boards
 may still list the underlying Number/sensor entities if cards fail to load.
 
+Chrome (glyph, KPI row, analog bars, mode row) lives in
+`www/pid-faceplate-elements.js`. The Lovelace card imports that module. Iterate
+the elements in a browser without the App:
+
+```bash
+./tools/pid-faceplate/serve.sh
+```
+
+Then open http://127.0.0.1:8765/tools/pid-faceplate/. Ship an App build only
+when operators should receive chrome changes.
+
 The PID card uses an ISA-5.1 three-mode chrome strip (ε / P / I / D) matching the
 App Diagram glyph, a hero strip for **PV / SP / ε / CO** at **two decimal
 places**, and analog bars (vertical PV/SP, horizontal CO). Man / Auto / Rem are

@@ -81,7 +81,7 @@
 - Task: [SWD-373](https://marcusknielsen.atlassian.net/browse/SWD-373)
 - Sub-tasks: [SWD-374](https://marcusknielsen.atlassian.net/browse/SWD-374), [SWD-375](https://marcusknielsen.atlassian.net/browse/SWD-375), [SWD-376](https://marcusknielsen.atlassian.net/browse/SWD-376)
 - Branch: `cursor/swd-373-pid-faceplate-sandbox-a582`
-- PR: (draft — opened with this plan)
+- PR: [#105](https://github.com/marcuskrogh/PLCAssistant/pull/105)
 - Classification: feature
 - Workflow: feature-standard
 

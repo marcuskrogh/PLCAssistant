@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.pid_faceplate_chrome import faceplate_chrome_source
+
 ROOT = Path("custom_components/plcassistant")
 CARD = ROOT / "www" / "pid-loop-card.js"
 FACEPLATE = Path("docs/io/06-pid-faceplate.md")
@@ -14,7 +16,7 @@ JS_CONTRACT = Path("tests/js/pid_faceplate_contract.test.mjs")
 
 
 def test_unit_pid_card_isa_chrome_and_error_kpi() -> None:
-    text = CARD.read_text(encoding="utf-8")
+    text = faceplate_chrome_source()
     assert "pid-isa-eps" in text
     assert "pid-isa-p" in text
     assert "pid-isa-i" in text
@@ -30,7 +32,7 @@ def test_unit_pid_card_isa_chrome_and_error_kpi() -> None:
 
 
 def test_unit_pid_card_isa101_colour_not_mode_hues() -> None:
-    text = CARD.read_text(encoding="utf-8")
+    text = faceplate_chrome_source()
     assert "--pid-man" not in text
     assert "--pid-auto" not in text
     assert "--pid-rem" not in text
@@ -61,7 +63,7 @@ def test_unit_iterate_tracks_swd366() -> None:
     issues = Path("docs/agents/ISSUES.md").read_text(encoding="utf-8")
     assert "SWD-366" in issues
     assert "pull/102" in issues
-    text = CARD.read_text(encoding="utf-8")
+    text = faceplate_chrome_source()
     assert "export function pidHighlightSeverity" in text
     face = FACEPLATE.read_text(encoding="utf-8")
     assert "ISA-101" in face
@@ -89,13 +91,13 @@ def test_system_faceplate_js_highlight_contract() -> None:
 
 def test_system_app_version_is_0_1_57() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.58"' in manifest
+    assert '"0.1.59"' in manifest
     config = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.58"' in config
+    assert 'version: "0.1.59"' in config
     docker = Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.58" in docker
+    assert "BUILD_VERSION=0.1.59" in docker
     dual = Path("plc_assistant/custom_components/plcassistant/manifest.json")
-    assert '"0.1.58"' in dual.read_text(encoding="utf-8")
+    assert '"0.1.59"' in dual.read_text(encoding="utf-8")
 
 
 def test_dual_tree_pid_card_synced() -> None:

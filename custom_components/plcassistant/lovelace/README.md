@@ -95,6 +95,8 @@ If personal boards still show unavailable plant Numbers, delete stale unavailabl
 entities in the entity registry (or remove/re-add the integration). Update any
 personal dashboards that still reference plant Numbers for Process display.
 
+**0.1.59** PID faceplate chrome is a shared element module plus a developer sandbox (`tools/pid-faceplate`). Lovelace card behaviour unchanged. Stock Lovelace still dashboard version **28**.
+
 **0.1.58** Lovelace PID cards: analog-controller face (vertical PV/SP, horizontal CO), DCS MAN/AUTO/REM (MAN writes CO). Stock Lovelace still dashboard version **28**.
 
 **0.1.57** Builtin PID follows the IFAC 2024 incremental reference (filter, Tx, auto/uman, windup). Lovelace faceplates unchanged. Stock Lovelace still dashboard version **28**.

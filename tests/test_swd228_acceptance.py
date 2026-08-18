@@ -7,13 +7,15 @@ from pathlib import Path
 
 import pytest
 
+from tests.pid_faceplate_chrome import faceplate_chrome_source
+
 ROOT = Path("custom_components/plcassistant")
 CARD = ROOT / "www" / "pid-loop-card.js"
 JS_CONTRACT = Path("tests/js/pid_faceplate_contract.test.mjs")
 
 
 def test_unit_pid_card_display_precision_two_decimals() -> None:
-    text = CARD.read_text(encoding="utf-8")
+    text = faceplate_chrome_source()
     assert "PID_DISPLAY_DIGITS = 2" in text
     assert "export function formatPidValue" in text
     assert "_fmt(value, digits = PID_DISPLAY_DIGITS)" in text
@@ -22,7 +24,7 @@ def test_unit_pid_card_display_precision_two_decimals() -> None:
 
 
 def test_unit_pid_card_kpi_row_never_wraps() -> None:
-    text = CARD.read_text(encoding="utf-8")
+    text = faceplate_chrome_source()
     assert "grid-template-columns: repeat(4, minmax(0, 1fr))" in text
     # Four KPIs (PV / SP / ε / CO) stay on one row; no mobile wrap.
     assert "grid-column: 1 / -1" not in text
@@ -30,7 +32,7 @@ def test_unit_pid_card_kpi_row_never_wraps() -> None:
 
 
 def test_unit_pid_card_compact_popup_editors() -> None:
-    text = CARD.read_text(encoding="utf-8")
+    text = faceplate_chrome_source()
     assert "data-open-editor" in text
     assert "data-close-editor" in text
     assert "pid-dialog" in text
@@ -44,36 +46,35 @@ def test_unit_pid_card_compact_popup_editors() -> None:
     # Faceplate surface opens dialog; Set/mode stay on button[data-mode]/data-apply.
     assert 'closest("button[data-mode]")' in text
     assert "data-pid-mode" in text
-    # Dialog must be a sibling of .pid-card (not nested under overflow:hidden).
-    assert "pid-shell" in text
-    card_idx = text.find('<div class="pid-card">')
-    dialog_idx = text.find('<div class="pid-dialog"')
-    assert card_idx != -1 and dialog_idx != -1 and dialog_idx > card_idx
+    # Dialog is assembled as a sibling of .pid-card inside pidFaceplateMarkup
+    # (pidDialogHtml is interpolated after the card, not nested in it).
+    markup = text.split("export function pidFaceplateMarkup", 1)[1].split(
+        "export function pidFaceplateRootHtml", 1
+    )[0]
+    assert '<div class="pid-card">' in markup
+    assert "${dialog}" in markup
+    assert "pidDialogHtml" in markup
+    card_idx = markup.find('<div class="pid-card">')
+    dialog_idx = markup.find("${dialog}")
+    assert card_idx != -1 and dialog_idx > card_idx
     # Explicit: overflow:hidden stays on .pid-card, not on .pid-shell.
-    assert ".pid-card {\n          position: relative;\n          overflow: hidden;" in text
+    assert "overflow: hidden;" in text.split(".pid-card {", 1)[1].split("}", 1)[0]
     assert "overflow: hidden;" not in text.split(".pid-shell", 1)[1].split(".pid-card", 1)[0]
 
 
 def test_unit_pid_dialog_not_nested_under_overflow_clip() -> None:
     """Regression for review-fix iter 1: fixed dialog must escape face clip."""
-    text = CARD.read_text(encoding="utf-8")
-    # Extract the available-entity HTML template region.
-    start = text.find('<div class="pid-shell"')
-    end = text.find("`\n      }", start)
-    assert start != -1 and end != -1
-    tpl = text[start:end]
-    # Dialog is inside pid-shell but outside pid-card.
-    assert '<div class="pid-card">' in tpl
-    assert '<div class="pid-dialog"' in tpl
-    # Close the pid-card before the dialog opens.
-    card_open = tpl.find('<div class="pid-card">')
-    dialog_open = tpl.find('<div class="pid-dialog"')
-    # Count div depth between card open and dialog: after closing pid-card
-    # there should be a literal </div> that ends pid-card before dialog.
-    between = tpl[card_open:dialog_open]
-    assert between.count("<div") >= 1
+    text = faceplate_chrome_source()
+    markup = text.split("export function pidFaceplateMarkup", 1)[1].split(
+        "export function pidFaceplateRootHtml", 1
+    )[0]
+    assert '<div class="pid-shell"' in markup
+    assert '<div class="pid-card">' in markup
+    assert "${dialog}" in markup
+    card_open = markup.find('<div class="pid-card">')
+    dialog_ref = markup.find("${dialog}")
+    between = markup[card_open:dialog_ref]
     assert "</div>" in between
-    # Ensure dialog is not inside an overflow:hidden ancestor in CSS ownership.
     assert "overflow: hidden" in text
     shell_css = text.split(".pid-shell {", 1)[1].split(".pid-card {", 1)[0]
     assert "overflow: hidden" not in shell_css
@@ -106,11 +107,11 @@ def test_system_faceplate_js_compact_contract() -> None:
 
 def test_system_app_version_tracks_current() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.58"' in manifest
+    assert '"0.1.59"' in manifest
     config = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.58"' in config
+    assert 'version: "0.1.59"' in config
     docker = Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.58" in docker
+    assert "BUILD_VERSION=0.1.59" in docker
     dash = (ROOT / "lovelace" / "plcassistant.yaml").read_text(encoding="utf-8")
     assert "plcassistant_dashboard_version: 28" in dash
     assert "custom:plcassistant-pid-card" in dash
