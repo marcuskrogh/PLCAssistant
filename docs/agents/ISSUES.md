@@ -4,7 +4,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 | Key | Type | Title | Status | Parent | Artifact | Next |
 |-----|------|-------|--------|--------|----------|------|
-| SWD-384 | Task | Research: validate PLC/model blocks and example skid against standards | To Do | Relates SWD-81 | docs/RESEARCH.md | none — validation brief only |
+| SWD-384 | Task | Research: validate PLC/model blocks and example skid against standards | Done | Relates SWD-81 | docs/RESEARCH.md | none — validation brief only |
 | SWD-382 | Bug | [Iterate] PID faceplate settings fields reset while editing | Done | Relates SWD-373 | docs/ITERATE.md | Done — shipped PR [#106](https://github.com/marcuskrogh/PLCAssistant/pull/106) (App 0.1.65) |
 | SWD-373 | Task | Isolate PID faceplate elements for sandbox iteration | Done | Relates SWD-368, SWD-369 | docs/PLAN.md | Done — shipped PR [#105](https://github.com/marcuskrogh/PLCAssistant/pull/105) (App 0.1.64) |
 | SWD-374 | Subtask | SWD-373: Shared faceplate elements module + Lovelace wiring | Done | SWD-373 | docs/PLAN.md, custom_components/plcassistant/www/pid-faceplate-elements.js | — |
@@ -182,7 +182,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
-- 2026-08-18 — Research SWD-384: standards/scientific validation of PLC PID, model unit-ops, and example skid → `docs/RESEARCH.md` on `cursor/swd-384-validate-plc-model-0f45`. Next none (brief only). Relates SWD-81.
+- 2026-08-18 — Research SWD-384: standards/scientific validation of PLC PID, model unit-ops, and example skid → `docs/RESEARCH.md` on `cursor/swd-384-validate-plc-model-0f45`. Task Done. Next none (brief only). Relates SWD-81.
 - 2026-08-18 — Ship SWD-382: review-fix CLEAN + closeout; PR [#106](https://github.com/marcuskrogh/PLCAssistant/pull/106) (App 0.1.65) → Done.
 - 2026-08-18 — Implement SWD-382: freeze PID faceplate settings drafts across live hass paints; App 0.1.65; PR [#106](https://github.com/marcuskrogh/PLCAssistant/pull/106) → In Review. Next `/review-fix SWD-382`.
 - 2026-08-18 — Ship SWD-373: review-fix CLEAN + closeout; PR [#105](https://github.com/marcuskrogh/PLCAssistant/pull/105) (App 0.1.64) → Done.
