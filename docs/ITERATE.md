@@ -39,4 +39,4 @@
 - App: **0.1.65**
 
 ## Next
-`/review-fix SWD-382` — Review and auto-fix (single pass)
+Done — shipped PR [#106](https://github.com/marcuskrogh/PLCAssistant/pull/106) (App 0.1.65)
