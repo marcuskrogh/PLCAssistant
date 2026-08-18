@@ -93,6 +93,15 @@ _TAG_META: dict[str, dict] = {
         "object_id": "plcassistant_sp_flow_man",
         "default": 0.0,
     },
+    "SP_FLOW_REQ": {
+        "name": "PLCAssistant Flow setpoint",
+        "min": 0.0,
+        "max": 20.0,
+        "step": 0.1,
+        "unit": "L/min",
+        "object_id": "plcassistant_sp_flow_req",
+        "default": 0.0,
+    },
     "SP_FLOW_REM": {
         "name": "PLCAssistant Flow SP (remote)",
         "min": 0.0,
@@ -108,7 +117,7 @@ _TAG_META: dict[str, dict] = {
         "max": 2.0,
         "step": 1.0,
         "object_id": "plcassistant_flow_mode",
-        "default": 1.0,  # Automatic — cascade slave (SWD-221)
+        "default": 2.0,  # Remote — cascade slave
     },
     "CO_FLOW_MAN": {
         "name": "PLCAssistant Flow CO (manual)",
@@ -357,6 +366,7 @@ _SP_MODE_FLIP: dict[str, tuple[str, float]] = {
     "SP_LEVEL_REQ": ("LEVEL_MODE", 1.0),
     "SP_LEVEL_REM": ("LEVEL_MODE", 2.0),
     "SP_FLOW_MAN": ("FLOW_MODE", 0.0),
+    "SP_FLOW_REQ": ("FLOW_MODE", 1.0),
     "SP_FLOW_REM": ("FLOW_MODE", 2.0),
     "CO_LEVEL_MAN": ("LEVEL_MODE", 0.0),
     "CO_FLOW_MAN": ("FLOW_MODE", 0.0),
@@ -374,6 +384,7 @@ def _sp_mode_flip_map() -> dict[str, tuple[str, float]]:
             "SP_LEVEL_REQ": ("LEVEL_MODE", float(SpSourceMode.AUTOMATIC.code)),
             "SP_LEVEL_REM": ("LEVEL_MODE", float(SpSourceMode.REMOTE.code)),
             "SP_FLOW_MAN": ("FLOW_MODE", float(SpSourceMode.MANUAL.code)),
+            "SP_FLOW_REQ": ("FLOW_MODE", float(SpSourceMode.AUTOMATIC.code)),
             "SP_FLOW_REM": ("FLOW_MODE", float(SpSourceMode.REMOTE.code)),
             "CO_LEVEL_MAN": ("LEVEL_MODE", float(SpSourceMode.MANUAL.code)),
             "CO_FLOW_MAN": ("FLOW_MODE", float(SpSourceMode.MANUAL.code)),
@@ -390,6 +401,7 @@ _FILE_BRIDGE_IN_TAGS = frozenset(
         "SP_LEVEL_REM",
         "LEVEL_MODE",
         "SP_FLOW_MAN",
+        "SP_FLOW_REQ",
         "SP_FLOW_REM",
         "FLOW_MODE",
         "CO_LEVEL_MAN",

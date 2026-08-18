@@ -53,7 +53,7 @@ def test_system_missing_cascade_instances_still_drive_cv_on_start() -> None:
     image.begin_inputs()
     for tag, val in (
         ("LEVEL_MODE", 1.0),
-        ("FLOW_MODE", 1.0),
+        ("FLOW_MODE", 2.0),
         ("SP_LEVEL_REQ", 0.30),
         ("LT_TANK", 0.0),
         ("LT_RES", 0.20),
@@ -93,7 +93,7 @@ def test_system_screenshot_level_man_pv0_drives_cvs() -> None:
     image.begin_inputs()
     for tag, val in (
         ("LEVEL_MODE", 1.0),
-        ("FLOW_MODE", 1.0),
+        ("FLOW_MODE", 2.0),
         ("SP_LEVEL_REQ", 0.30),
         ("LT_TANK", 0.0),
         ("LT_RES", 0.20),
@@ -165,7 +165,7 @@ def test_system_hot_sync_does_not_rebumpless_while_running() -> None:
     image.begin_inputs()
     for tag, val in (
         ("LEVEL_MODE", 1.0),
-        ("FLOW_MODE", 1.0),
+        ("FLOW_MODE", 2.0),
         ("SP_LEVEL_REQ", 0.30),
         ("LT_TANK", 0.0),
         ("LT_RES", 0.20),
@@ -228,7 +228,7 @@ def test_system_file_runtime_snapshot_includes_level_cv(tmp_path, monkeypatch) -
     image.begin_inputs()
     for tag, val in (
         ("LEVEL_MODE", 1.0),
-        ("FLOW_MODE", 1.0),
+        ("FLOW_MODE", 2.0),
         ("SP_LEVEL_REQ", 0.30),
         ("LT_TANK", 0.0),
         ("LT_RES", 0.20),
@@ -252,8 +252,8 @@ def test_system_file_runtime_snapshot_includes_level_cv(tmp_path, monkeypatch) -
 
 def test_system_app_version_0_1_45() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.65"' in manifest
+    assert '"0.1.66"' in manifest
     config = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.65"' in config
+    assert 'version: "0.1.66"' in config
     docker = Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.65" in docker
+    assert "BUILD_VERSION=0.1.66" in docker

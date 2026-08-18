@@ -153,7 +153,7 @@ def wedge_cascade_io_wires() -> list[TagPinWire]:
         TagPinWire(SHELL_TAG_RUNNING, "flow_pi", "running", IoDir.IN),
         TagPinWire(SHELL_TAG_FLOW_AUTO, "flow_pi", "auto", IoDir.IN),
         TagPinWire(SHELL_TAG_FLOW_UMAN, "flow_pi", "uman", IoDir.IN),
-        # Optional: when present, overrides cascade wire into flow_pi.sp.
+        # Optional: when present, local Automatic SP overrides cascade wire.
         TagPinWire(SHELL_TAG_FLOW_SP_OVERRIDE, "flow_pi", "sp", IoDir.IN),
         TagPinWire("SP_FLOW_AUTO", "level_pi", "cv", IoDir.OUT),
         TagPinWire("CMD_SPEED", "flow_pi", "cv", IoDir.OUT),

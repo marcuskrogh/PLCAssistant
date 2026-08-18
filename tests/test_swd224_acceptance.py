@@ -88,7 +88,7 @@ def test_system_start_drives_pid_cvs_via_io_wires() -> None:
     image.begin_inputs()
     for tag, val in (
         ("LEVEL_MODE", 1.0),
-        ("FLOW_MODE", 1.0),
+        ("FLOW_MODE", 2.0),
         ("SP_LEVEL_REQ", 0.30),
         ("LT_TANK", 0.15),
         ("LT_RES", 0.20),
@@ -121,7 +121,7 @@ def test_system_faceplate_gains_reach_live_pid_instances() -> None:
     image.begin_inputs()
     for tag, val in (
         ("LEVEL_MODE", 1.0),
-        ("FLOW_MODE", 1.0),
+        ("FLOW_MODE", 2.0),
         ("SP_LEVEL_REQ", 0.30),
         ("LEVEL_KP", 55.0),
         ("LEVEL_KI", 7.0),
@@ -214,10 +214,10 @@ def test_system_flow_manual_prefer_context_does_not_mutate_wires() -> None:
 
 def test_system_app_version_0_1_44() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.65"' in manifest
+    assert '"0.1.66"' in manifest
     config = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.65"' in config
+    assert 'version: "0.1.66"' in config
     docker = Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.65" in docker
+    assert "BUILD_VERSION=0.1.66" in docker
     dash = (ROOT / "lovelace" / "plcassistant.yaml").read_text(encoding="utf-8")
     assert "plcassistant_dashboard_version: 28" in dash

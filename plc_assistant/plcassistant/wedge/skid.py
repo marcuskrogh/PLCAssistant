@@ -200,8 +200,8 @@ class Skid:
         # Re-sync in case injected process/safety carried stale thresholds
         self._apply_limits()
         self.sp_level = self.config.sp_level
-        # When set, Flow Rem SP overrides the cascade wire into flow_pi.sp
-        # for that CONTROL tick (SWD-223). None → Automatic cascade wire.
+        # When set, local Automatic flow SP overrides the cascade wire into
+        # flow_pi.sp for that CONTROL tick. None → Remote cascade (level CO).
         self.sp_flow_override: float | None = None
         # Output Manual (DCS MAN / Bauer uman). None → PID auto=true.
         self.level_uman: float | None = None

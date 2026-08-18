@@ -62,15 +62,15 @@ def test_system_settings_draft_js_contract() -> None:
     assert "data-dirty settings draft survives" in proc.stdout
 
 
-def test_system_app_version_is_0_1_65() -> None:
+def test_system_app_version_is_0_1_66() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.65"' in manifest
+    assert '"0.1.66"' in manifest
     config = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.65"' in config
+    assert 'version: "0.1.66"' in config
     docker = Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.65" in docker
+    assert "BUILD_VERSION=0.1.66" in docker
     dual = Path("plc_assistant/custom_components/plcassistant/manifest.json")
-    assert '"0.1.65"' in dual.read_text(encoding="utf-8")
+    assert '"0.1.66"' in dual.read_text(encoding="utf-8")
 
 
 def test_dual_tree_elements_and_card_synced() -> None:

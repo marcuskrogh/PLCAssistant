@@ -227,9 +227,10 @@ def default_tank_datablock() -> Datablock:
                 "LEVEL_SP_RAMP_MAX": {"default": 0.0, "unit": "m/s"},
                 "SP_FLOW": {"default": 0.0, "unit": "L/min"},
                 "SP_FLOW_MAN": {"default": 0.0, "unit": "L/min"},
+                "SP_FLOW_REQ": {"default": 0.0, "unit": "L/min"},
                 "SP_FLOW_AUTO": {"default": 0.0, "unit": "L/min"},
                 "SP_FLOW_REM": {"default": 0.0, "unit": "L/min"},
-                "FLOW_MODE": {"default": 1.0, "unit": None},
+                "FLOW_MODE": {"default": 2.0, "unit": None},
                 "FLOW_KP": {"default": 12.0, "unit": None},
                 "FLOW_KI": {"default": 2.0, "unit": None},
                 "FLOW_KD": {"default": 0.0, "unit": None},
@@ -278,6 +279,11 @@ def default_tank_datablock() -> Datablock:
                 {
                     "tag": "SP_FLOW_MAN",
                     "entity": "number.plcassistant_sp_flow_man",
+                    "direction": "IN",
+                },
+                {
+                    "tag": "SP_FLOW_REQ",
+                    "entity": "number.plcassistant_sp_flow_req",
                     "direction": "IN",
                 },
                 {

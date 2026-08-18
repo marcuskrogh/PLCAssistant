@@ -92,10 +92,10 @@ def test_unit_pid_loop_faceplate_entities_are_writable_numbers() -> None:
     assert '"sp_auto_entity": "number.plcassistant_sp_level_req"' in src
     assert '"sp_rem_entity": "number.plcassistant_sp_level_rem"' in src
     assert '"mode_entity": "number.plcassistant_level_mode"' in src
-    # Flow Auto is the cascade CV sensor (card skips sensor.* on Set).
+    # Flow Auto is local SP (REQ); Rem is cascade CV sensor (card skips sensor.* on Set).
     assert '"sp_man_entity": "number.plcassistant_sp_flow_man"' in src
-    assert '"sp_auto_entity": "sensor.plcassistant_sp_flow_auto"' in src
-    assert '"sp_rem_entity": "number.plcassistant_sp_flow_rem"' in src
+    assert '"sp_auto_entity": "number.plcassistant_sp_flow_req"' in src
+    assert '"sp_rem_entity": "sensor.plcassistant_sp_flow_auto"' in src
     assert '"mode_entity": "number.plcassistant_flow_mode"' in src
     # Card must refuse writing sensors (integration↔HMI guard).
     card = CARD.read_text(encoding="utf-8")
@@ -140,11 +140,11 @@ def test_unit_sp_mode_flip_codes_are_floats() -> None:
 
 def test_system_app_version_tracks_current() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.65"' in manifest
+    assert '"0.1.66"' in manifest
     config = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.65"' in config
+    assert 'version: "0.1.66"' in config
     docker = Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.65" in docker
+    assert "BUILD_VERSION=0.1.66" in docker
     dash = (ROOT / "lovelace" / "plcassistant.yaml").read_text(encoding="utf-8")
     assert "plcassistant_dashboard_version: 28" in dash
 

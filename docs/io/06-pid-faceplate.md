@@ -33,14 +33,13 @@ caution may tint the MV fill only. Writing CO Set flips the loop to
 Manual. Writing Auto SP Set flips to Automatic (SWD-222). Remote Set is
 disabled on the faceplate.
 
-Flow **Automatic** remains **cascade** (slave CAS behaviour, SWD-221): the Auto
-SP entity is `sensor.plcassistant_sp_flow_auto`, so the flow SP bar is not
-operator-writable in AUTO.
+Flow **Remote** is **cascade** (slave CAS): the Rem SP entity is
+`sensor.plcassistant_sp_flow_auto` (level CV), so the flow SP bar is not
+operator-writable in REM. Flow **Automatic** is local SP (`SP_FLOW_REQ`).
 
 Level loop **CO** is published as `SP_FLOW_AUTO` (cascade request into flow).
-Active flow SP is muxed onto `SP_FLOW` for display. Flow Remote SP is applied to
-the flow PI each scan (SWD-223). Flow Manual is output Manual, not an SP
-override.
+Active flow SP is muxed onto `SP_FLOW` for display. Flow Remote keeps the
+cascade wire. Flow Manual is output Manual, not an SP override.
 
 ## Faceplate geometry
 
@@ -69,7 +68,7 @@ Scales: level PV/SP 0–0.40 m; flow PV/SP 0–8 L/min; level MV 0–8 L/min; fl
 | Loop | Mode | SP Man / Auto / Rem | Active SP | PV | CO | Manual CO |
 |------|------|---------------------|-----------|----|----|-----------|
 | Level | `LEVEL_MODE` | `SP_LEVEL_MAN` / `SP_LEVEL_AUTO` / `SP_LEVEL_REM` | `SP_LEVEL` | `LT_TANK` | `SP_FLOW_AUTO` (level CO / `cv`) | `CO_LEVEL_MAN` |
-| Flow | `FLOW_MODE` | `SP_FLOW_MAN` / `SP_FLOW_AUTO` / `SP_FLOW_REM` | `SP_FLOW` | `FT_INLET` | `CMD_SPEED` | `CO_FLOW_MAN` |
+| Flow | `FLOW_MODE` | `SP_FLOW_MAN` / `SP_FLOW_REQ` / `SP_FLOW_AUTO` (Rem = cascade) | `SP_FLOW` | `FT_INLET` | `CMD_SPEED` | `CO_FLOW_MAN` |
 
 Legacy `SP_LEVEL_REQ` is the **Automatic writer** for the level loop when
 declared on the Datablock — it feeds the Automatic SP source even when
@@ -77,17 +76,17 @@ declared on the Datablock — it feeds the Automatic SP source even when
 uses `SP_LEVEL_AUTO`. Writing REQ from the HMI also mirrors into
 `SP_LEVEL_AUTO` (retained IN sync).
 
-Demo defaults: Level **Automatic**, Flow **Automatic** (cascade). Level Manual
+Demo defaults: Level **Automatic**, Flow **Remote** (cascade). Level Manual
 is available so the operator can hold cascade CO. Selecting Manual copies live
 CO into `CO_*_MAN` (bumpless hold).
 
-### Flow Remote SP (SWD-223)
+### Flow Remote (cascade)
 
-When flow mode is Remote, Soft-PLC applies `SP_FLOW_REM` to `flow_pi.sp` for
-that scan via runtime `prefer_context` (cascade wire left intact on the
-Program) so `CMD_SPEED` tracks the remote SP. Automatic mode keeps the level
-CO → flow SP wire. Manual mode holds `CO_FLOW_MAN` (`uman`). Level faceplate
-CO reads `SP_FLOW_AUTO` (true level `cv`), not the muxed active `SP_FLOW`.
+When flow mode is Remote, Soft-PLC keeps the level-CO cascade wire into
+`flow_pi.sp`. Automatic mode applies local `SP_FLOW_REQ` via runtime
+`prefer_context` (cascade wire left intact on the Program). Manual mode holds
+`CO_FLOW_MAN` (`uman`). Level faceplate CO reads `SP_FLOW_AUTO` (true level
+`cv`), not the muxed active `SP_FLOW`.
 
 ### Tunings
 
@@ -179,7 +178,8 @@ Home Assistant Lovelace design tokens (`--ha-font-family-body`,
 surrounding entities / glance cards. Compound PID attributes are rounded to 2dp
 when published. **Set** (or Enter) commits; Esc cancels a dirty draft.
 
-Cascade demo defaults (SWD-369): Level **Automatic**, Flow **Automatic**.
+Cascade demo defaults: Level **Automatic**, Flow **Remote**.
 Operator IN defaults are batch-seeded once at setup (no per-Number MQTT/file
 storm). Level faceplate Automatic writes ``SP_LEVEL_REQ`` (the mux Automatic
-writer). Setup hydration of Man/Rem SP Numbers must not mode-flip.
+writer). Flow Automatic writes ``SP_FLOW_REQ``. Setup hydration of Man/Rem SP
+Numbers must not mode-flip.

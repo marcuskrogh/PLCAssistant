@@ -68,6 +68,7 @@ def test_unit_sp_mode_flip_map_publishes_level_mode() -> None:
         "SP_LEVEL_REQ": ("LEVEL_MODE", float(SpSourceMode.AUTOMATIC.code)),
         "SP_LEVEL_REM": ("LEVEL_MODE", float(SpSourceMode.REMOTE.code)),
         "SP_FLOW_MAN": ("FLOW_MODE", float(SpSourceMode.MANUAL.code)),
+        "SP_FLOW_REQ": ("FLOW_MODE", float(SpSourceMode.AUTOMATIC.code)),
         "SP_FLOW_REM": ("FLOW_MODE", float(SpSourceMode.REMOTE.code)),
     }
     assert flip["SP_LEVEL_MAN"] == ("LEVEL_MODE", 0.0)
@@ -126,6 +127,7 @@ def test_integration_datablock_has_mode_tags() -> None:
         "SP_LEVEL_REM",
         "LEVEL_MODE",
         "SP_FLOW_MAN",
+        "SP_FLOW_REQ",
         "SP_FLOW_AUTO",
         "SP_FLOW_REM",
         "FLOW_MODE",
@@ -145,7 +147,7 @@ def test_integration_datablock_has_mode_tags() -> None:
     assert "FLOW_KD" in tags
     assert "LEVEL_TF_TS" in tags
     assert "FLOW_HOLD_WHEN_STOPPED" in tags
-    assert len(block.bindings) == 44
+    assert len(block.bindings) == 45
 
 
 def test_integration_softplc_ha_pid_loop_tag_parity() -> None:
@@ -208,6 +210,7 @@ def test_integration_file_input_tags_include_operator_pid_in() -> None:
     tags = MqttScanLoop._FILE_INPUT_TAGS
     for tag in (
         "SP_LEVEL_REQ",
+        "SP_FLOW_REQ",
         "LEVEL_MODE",
         "FLOW_MODE",
         "SP_LEVEL_MAN",

@@ -82,9 +82,9 @@ def test_scan_loop_drains_file_cmd_and_writes_runtime(tmp_path: Path, monkeypatc
     bridge = MqttIoBridge(bus, instance_id="default")
     loop = MqttScanLoop(bridge, image, period_s=0.05)
     bridge.start()
-    # Automatic modes so published SP_FLOW follows cascade (SWD-220 Manual defaults).
+    # Remote flow (cascade slave) so published SP_FLOW follows level CO.
     assert write_input_tags(
-        {"LEVEL_MODE": 1.0, "FLOW_MODE": 1.0},
+        {"LEVEL_MODE": 1.0, "FLOW_MODE": 2.0},
         root=tmp_path,
     )
     assert write_cmd("start", root=tmp_path)

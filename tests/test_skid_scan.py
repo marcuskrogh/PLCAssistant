@@ -13,9 +13,9 @@ def test_skid_image_logic_start_drives_cv_without_plant_out():
     """SWD-145: control OUT moves; plant PVs are IN and stay static (no Soft-PLC physics)."""
     image = declare_default_image()
     image.begin_inputs()
-    # Automatic modes so REQ drives level SP and published SP_FLOW follows cascade.
+    # Automatic level + Remote flow so REQ drives level SP and published SP_FLOW follows cascade.
     image.apply_input("LEVEL_MODE", 1.0, QualityStatus.GOOD)
-    image.apply_input("FLOW_MODE", 1.0, QualityStatus.GOOD)
+    image.apply_input("FLOW_MODE", 2.0, QualityStatus.GOOD)
     image.apply_input("SP_LEVEL_REQ", 0.20, QualityStatus.GOOD)
     image.apply_input("LT_TANK", 0.15, QualityStatus.GOOD)
     image.apply_input("LT_RES", 0.20, QualityStatus.GOOD)

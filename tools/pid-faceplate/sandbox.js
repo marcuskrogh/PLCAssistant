@@ -109,10 +109,10 @@ function snapshot(loopId) {
     sp_ramp_max: tune.sp_ramp_max,
     form: tune.form || "Parallel",
     settingsPane: settingsPaneByLoop[loopId] || "gains",
-    spWritable: mode === "automatic" && loopId === "level",
+    spWritable: mode === "automatic",
     coWritable: true,
     writeTarget: pidOperatorWriteTarget(mode, {
-      spWritable: mode === "automatic" && loopId === "level",
+      spWritable: mode === "automatic",
       coWritable: true,
     }),
     scale,

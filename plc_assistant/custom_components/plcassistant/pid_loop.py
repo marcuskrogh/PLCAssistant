@@ -67,8 +67,8 @@ _FLOW = {
     "pv": "FT_INLET",
     "sp": "SP_FLOW",
     "sp_man": "SP_FLOW_MAN",
-    "sp_auto": "SP_FLOW_AUTO",
-    "sp_rem": "SP_FLOW_REM",
+    "sp_auto": "SP_FLOW_REQ",
+    "sp_rem": "SP_FLOW_AUTO",
     "mode": "FLOW_MODE",
     "cv": "CMD_SPEED",
     "co_man": "CO_FLOW_MAN",
@@ -87,8 +87,8 @@ _FLOW = {
     "pv_entity": "sensor.plcassistant_ft_inlet_in",
     "sp_entity": "sensor.plcassistant_sp_flow",
     "sp_man_entity": "number.plcassistant_sp_flow_man",
-    "sp_auto_entity": "sensor.plcassistant_sp_flow_auto",
-    "sp_rem_entity": "number.plcassistant_sp_flow_rem",
+    "sp_auto_entity": "number.plcassistant_sp_flow_req",
+    "sp_rem_entity": "sensor.plcassistant_sp_flow_auto",
     "mode_entity": "number.plcassistant_flow_mode",
     "cv_entity": "sensor.plcassistant_cmd_speed",
     "cv_man_entity": "number.plcassistant_co_flow_man",
@@ -222,8 +222,8 @@ class PlcAssistantPidLoopSensor(SensorEntity):
         object_id = f"plcassistant_pid_{loop_id}"
         self._attr_suggested_object_id = object_id
         self.entity_id = f"sensor.{object_id}"
-        # Cascade demo: both loops Automatic until store hydrate (SWD-369).
-        self._attr_native_value = "automatic"
+        # Demo defaults until store hydrate: Level Automatic, Flow Remote.
+        self._attr_native_value = "remote" if loop_id == "flow" else "automatic"
         self._attr_extra_state_attributes = self._empty_attrs()
         self._watch_tags = frozenset(
             {
