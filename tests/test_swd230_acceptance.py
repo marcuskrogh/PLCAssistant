@@ -37,7 +37,7 @@ def test_unit_pid_card_formats_all_numerics_via_helper() -> None:
     assert "n.toFixed(digits)" in text
     # Committed SP editors and KPI path both go through formatPidValue.
     assert "formatPidValue(value, PID_DISPLAY_DIGITS)" in text
-    assert 'el.textContent = this._fmt(value)' in text or "this._fmt(value)" in text
+    assert "formatPidValue(pv)" in text
     # No leftover 3dp default path.
     assert "_fmt(value, digits = 3)" not in text
 
@@ -141,7 +141,7 @@ def test_unit_pid_card_null_safe_err_and_commit() -> None:
     assert "export function commitSpValue" in text
     assert "export function pidError" in text
     assert "isPresentFinite(sp) || !isPresentFinite(pv)" in text
-    assert "const err = pidError(sp, pv);" in text
+    assert "pidError(sp, pv)" in text
     assert "commitSpValue(parsed)" in text
     assert "DISPLAY_PRECISION in const.py" in text
 

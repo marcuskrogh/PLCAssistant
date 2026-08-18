@@ -208,7 +208,7 @@ def test_unit_canvas_pid_uses_isa_three_mode_glyph() -> None:
 
 
 def test_unit_faceplate_labels_pv_sp_co() -> None:
-    text = CARD.read_text(encoding="utf-8")
+    text = faceplate_chrome_source()
     assert "<span>CO</span>" in text
     assert "<span>CV</span>" not in text
     assert "<span>PV</span>" in text
