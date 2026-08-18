@@ -4,7 +4,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 | Key | Type | Title | Status | Parent | Artifact | Next |
 |-----|------|-------|--------|--------|----------|------|
-| SWD-373 | Task | Isolate PID faceplate elements for sandbox iteration | In Review | Relates SWD-368, SWD-369 | docs/PLAN.md | `/review-fix SWD-373` |
+| SWD-373 | Task | Isolate PID faceplate elements for sandbox iteration | Done | Relates SWD-368, SWD-369 | docs/PLAN.md | Done — shipped PR [#105](https://github.com/marcuskrogh/PLCAssistant/pull/105) (App 0.1.64) |
 | SWD-374 | Subtask | SWD-373: Shared faceplate elements module + Lovelace wiring | Done | SWD-373 | docs/PLAN.md, custom_components/plcassistant/www/pid-faceplate-elements.js | — |
 | SWD-375 | Subtask | SWD-373: Isolated element sandbox (no HA/App) | Done | SWD-373 | docs/PLAN.md, tools/pid-faceplate/ | — |
 | SWD-376 | Subtask | SWD-373: Tests, docs, dual-tree, App 0.1.59 | Done | SWD-373 | docs/PLAN.md, tests/test_swd373_acceptance.py | — |
@@ -180,6 +180,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
+- 2026-08-18 — Ship SWD-373: review-fix CLEAN + closeout; PR [#105](https://github.com/marcuskrogh/PLCAssistant/pull/105) (App 0.1.64) → Done.
 - 2026-08-18 — Implement SWD-373 UX (SWD-381): SP ramping (`sp_ramp_max`) in backend, Ramp settings pane, orange SP-bar segment; App 0.1.64; PR [#105](https://github.com/marcuskrogh/PLCAssistant/pull/105) → In Review. Next `/review-fix SWD-373`.
 - 2026-08-18 — Implement SWD-373 UX (SWD-380): paned settings for all standardised PID params; App 0.1.63; PR [#105](https://github.com/marcuskrogh/PLCAssistant/pull/105) → In Review. Next `/review-fix SWD-373`.
 - 2026-08-18 — Implement SWD-373 UX (SWD-379): muted activity-green writable fill; App 0.1.62; PR [#105](https://github.com/marcuskrogh/PLCAssistant/pull/105) → In Review. Next `/review-fix SWD-373`.

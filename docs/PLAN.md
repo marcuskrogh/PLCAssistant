@@ -127,4 +127,4 @@
 - Workflow: feature-standard
 
 ## Next
-`/review-fix SWD-373` — Review and auto-fix per Workflow binding
+Done — shipped PR [#105](https://github.com/marcuskrogh/PLCAssistant/pull/105)
