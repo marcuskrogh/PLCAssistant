@@ -100,6 +100,7 @@ def test_unit_settings_has_ramp_pane_and_orange_sp_segment() -> None:
     js = ELEMENTS.read_text(encoding="utf-8")
     assert "export function rampSetpoint" in js
     assert "export function pidSpRampVisible" in js
+    assert 'data-ramping' in js
     assert "SWD-381" not in js
 
 

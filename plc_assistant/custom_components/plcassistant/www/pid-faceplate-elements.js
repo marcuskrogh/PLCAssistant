@@ -660,6 +660,7 @@ const PID_FACEPLATE_CSS = `
   transition: height 0.25s ease, background 0.2s ease, opacity 0.2s ease;
   z-index: 0;
 }
+.pid-vbar-fill[data-ramping="1"] { transition: none; }
 .pid-vbar-ramp {
   position: absolute;
   left: 0;
@@ -1398,16 +1399,21 @@ export function applyPidFaceplateState(root, state = {}) {
   const pvBar = root.querySelector("[data-pv-bar]");
   if (pvBar) pvBar.style.height = `${pidBarPct(pv, pvScale)}%`;
   const spBar = root.querySelector("[data-sp-bar]");
-  if (spBar) spBar.style.height = `${pidBarPct(sp, pvScale)}%`;
   const spTarget =
     state.spTarget !== undefined && state.spTarget !== null ? state.spTarget : sp;
   const rampEl = root.querySelector("[data-sp-ramp]");
+  const spPct = pidBarPct(sp, pvScale);
+  const tgtPct = pidBarPct(spTarget, pvScale);
+  const ramping = pidSpRampVisible(sp, spTarget, state.sp_ramp_max, state.scanDt);
+  if (spBar) {
+    // While ramping, green fill stops at the lower of current/target so the
+    // whole interval is orange (no green cap at the top of the bar).
+    spBar.style.height = `${ramping ? Math.min(spPct, tgtPct) : spPct}%`;
+    spBar.setAttribute("data-ramping", ramping ? "1" : "0");
+  }
   if (rampEl) {
-    const active = pidSpRampVisible(sp, spTarget, state.sp_ramp_max, state.scanDt);
-    rampEl.setAttribute("data-active", active ? "1" : "0");
-    if (active) {
-      const spPct = pidBarPct(sp, pvScale);
-      const tgtPct = pidBarPct(spTarget, pvScale);
+    rampEl.setAttribute("data-active", ramping ? "1" : "0");
+    if (ramping) {
       const lo = Math.min(spPct, tgtPct);
       const hi = Math.max(spPct, tgtPct);
       rampEl.style.bottom = `${lo}%`;

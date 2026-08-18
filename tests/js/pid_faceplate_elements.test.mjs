@@ -274,6 +274,28 @@ assert(
   Math.abs(parseFloat(root.mk("[data-sp-ramp]").style.height) - 50) < 1e-6,
   "ramp spans to target 0.30/0.40"
 );
+assertEq(root.mk("[data-sp-bar]").style.height, "25%", "green fill stops at current when ramping up");
+assertEq(root.mk("[data-sp-bar]")._attrs["data-ramping"], "1", "SP fill disables height transition while ramping");
+
+applyPidFaceplateState(root, {
+  title: "Level PID",
+  mode: "automatic",
+  loopId: "level",
+  pv: 0.2,
+  sp: 0.30,
+  spTarget: 0.10,
+  sp_ramp_max: 0.05,
+  scanDt: 0.1,
+  cv: 3.2,
+  coWritable: true,
+  spWritable: true,
+});
+assertEq(root.mk("[data-sp-bar]").style.height, "25%", "green fill stops at target when ramping down");
+assertEq(root.mk("[data-sp-ramp]").style.bottom, "25%", "down-ramp orange starts at target");
+assert(
+  Math.abs(parseFloat(root.mk("[data-sp-ramp]").style.height) - 50) < 1e-6,
+  "down-ramp orange spans to current SP (no green cap)"
+);
 assert(pidSpRampVisible(0.10, 0.30, 0.05, 0.1) === true, "visible when remaining exceeds one scan");
 assert(pidSpRampVisible(0.10, 0.104, 0.05, 0.1) === false, "hidden when remaining fits in one scan");
 assert(
