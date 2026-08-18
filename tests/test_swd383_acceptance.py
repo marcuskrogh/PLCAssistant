@@ -33,6 +33,10 @@ def test_unit_flow_mode_default_is_remote() -> None:
     assert '"sp_auto_entity": "number.plcassistant_sp_flow_req"' in flow_spec
     assert '"sp_rem": "SP_FLOW_AUTO"' in flow_spec
     assert '"sp_rem_entity": "sensor.plcassistant_sp_flow_auto"' in flow_spec
+    assert (
+        'self._attr_native_value = "remote" if loop_id == "flow" else "automatic"'
+        in pid
+    )
 
 
 def test_unit_missing_flow_mode_defaults_remote() -> None:
@@ -107,12 +111,12 @@ def test_system_flow_auto_uses_local_sp_not_cascade() -> None:
     assert float(image.get_value("CMD_SPEED")) > 0.0
 
 
-def test_system_app_version_0_1_65() -> None:
+def test_system_app_version_0_1_66() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.65"' in manifest
+    assert '"0.1.66"' in manifest
     config = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.65"' in config
+    assert 'version: "0.1.66"' in config
     docker = Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.65" in docker
+    assert "BUILD_VERSION=0.1.66" in docker
     dual = Path("plc_assistant/custom_components/plcassistant/manifest.json")
-    assert '"0.1.65"' in dual.read_text(encoding="utf-8")
+    assert '"0.1.66"' in dual.read_text(encoding="utf-8")

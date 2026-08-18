@@ -27,6 +27,7 @@ const {
   pidFaceplateStyles,
   applyPidFaceplateState,
   mountPidFaceplateElement,
+  pidSettingsDialogOpen,
   rampSetpoint,
   pidSpRampVisible,
 } = await import(elementsUrl);
@@ -313,6 +314,72 @@ assertEq(root.mk("[data-value-title]").textContent, "PV", "PV popup title");
 assertEq(root.mk("[data-value-max]").textContent, "0.40", "level PV max is 0.40 m");
 assertEq(root.mk("[data-value-current]").textContent, "0.20", "PV current follows pv");
 assertEq(root.mk(".pid-value-focus")._attrs["data-writable"], "0", "PV popup is read-only");
+
+function withTuneRoot({ settingsOpen = false } = {}) {
+  const root = makeNode();
+  const dlg = {
+    _hidden: !settingsOpen,
+    hasAttribute(name) {
+      return name === "hidden" ? this._hidden : false;
+    },
+  };
+  const kp = {
+    type: "text",
+    value: "",
+    _dirty: null,
+    getAttribute(name) {
+      return name === "data-dirty" ? this._dirty : null;
+    },
+    setAttribute(name, value) {
+      if (name === "data-dirty") this._dirty = String(value);
+    },
+  };
+  const orig = root.querySelector.bind(root);
+  root.querySelector = (sel) => {
+    if (sel === ".pid-settings-dialog") return dlg;
+    if (sel === '[data-tune="kp"]') return kp;
+    return orig(sel);
+  };
+  root._dlg = dlg;
+  root._kp = kp;
+  return root;
+}
+
+const liveTune = {
+  title: "Level PID",
+  mode: "automatic",
+  loopId: "level",
+  pv: 0.2,
+  sp: 0.3,
+  cv: 3.2,
+  kp: 40,
+  coWritable: true,
+  spWritable: true,
+};
+
+const seeded = withTuneRoot({ settingsOpen: false });
+applyPidFaceplateState(seeded, liveTune);
+assertEq(seeded._kp.value, "40.00", "closed settings dialog paints live Kp");
+assert(pidSettingsDialogOpen(seeded) === false, "hidden settings dialog is closed");
+
+seeded._kp.value = "41";
+seeded._dlg._hidden = false;
+applyPidFaceplateState(seeded, { ...liveTune, kp: 12 });
+assertEq(seeded._kp.value, "41", "open settings dialog freezes Kp across live paints");
+assert(pidSettingsDialogOpen(seeded) === true, "visible settings dialog is open");
+
+const forced = withTuneRoot({ settingsOpen: false });
+applyPidFaceplateState(forced, { ...liveTune, kp: 40 });
+forced._kp.value = "0.";
+applyPidFaceplateState(forced, { ...liveTune, kp: 12, freezeTune: true });
+assertEq(forced._kp.value, "0.", "freezeTune override keeps an incomplete settings draft");
+
+const dirty = withTuneRoot({ settingsOpen: false });
+applyPidFaceplateState(dirty, { ...liveTune, kp: 40 });
+dirty._kp.value = "0.";
+dirty._kp.setAttribute("data-dirty", "1");
+applyPidFaceplateState(dirty, { ...liveTune, kp: 12 });
+assertEq(dirty._kp.value, "0.", "data-dirty settings draft survives even when dialog is closed");
 
 const host = { innerHTML: "" };
 const mounted = mountPidFaceplateElement(host, "analog-bars");

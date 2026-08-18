@@ -95,7 +95,9 @@ If personal boards still show unavailable plant Numbers, delete stale unavailabl
 entities in the entity registry (or remove/re-add the integration). Update any
 personal dashboards that still reference plant Numbers for Process display.
 
-**0.1.65** Flow PID defaults to Remote (cascade slave); Automatic is local `SP_FLOW_REQ`. Stock Lovelace still dashboard version **28**.
+**0.1.66** Flow PID defaults to Remote (cascade slave); Automatic is local `SP_FLOW_REQ`. Stock Lovelace still dashboard version **28**.
+
+**0.1.65** PID faceplate: controller settings fields keep drafts while the dialog is open (live hass no longer restomps Kp/Ki/…). Stock Lovelace still dashboard version **28**.
 
 **0.1.64** PID faceplate: SP ramping (`sp_ramp_max`) with an orange SP-bar segment from current SP to target. Stock Lovelace still dashboard version **28**.
 

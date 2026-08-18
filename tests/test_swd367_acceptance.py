@@ -210,9 +210,14 @@ def test_unit_windup_both_freezes_i() -> None:
 
 def test_unit_iterate_tracks_swd367() -> None:
     """IFAC 2024 remains the builtin PID standardisation source (SWD-367)."""
-    text = Path("plcassistant/control/pid.py").read_text(encoding="utf-8")
-    assert "SWD-367" in text or "10.1016/j.ifacol.2024.08.090" in text
-    assert "tf_ts" in text
+    # ITERATE.md is a rolling artifact; the IFAC align lives in the PID module + spec.
+    pid = Path("plcassistant/control/pid.py").read_text(encoding="utf-8")
+    spec = Path("docs/control/02-fb-pid.md").read_text(encoding="utf-8")
+    issues = Path("docs/agents/ISSUES.md").read_text(encoding="utf-8")
+    assert "SWD-367" in spec
+    assert "SWD-367" in issues
+    assert "10.1016/j.ifacol.2024.08.090" in pid
+    assert "tf_ts" in pid
 
 
 def test_unit_legacy_cascade_without_tf_ts_bypasses_filter() -> None:
@@ -339,14 +344,14 @@ def test_system_start_seeds_ifac_bumpless_state() -> None:
 
 
 def test_system_app_version_is_0_1_57() -> None:
-    assert 'version: "0.1.65"' in (ROOT / "plc_assistant" / "config.yaml").read_text(
+    assert 'version: "0.1.66"' in (ROOT / "plc_assistant" / "config.yaml").read_text(
         encoding="utf-8"
     )
     manifest = (ROOT / "custom_components" / "plcassistant" / "manifest.json").read_text(
         encoding="utf-8"
     )
-    assert '"0.1.65"' in manifest
+    assert '"0.1.66"' in manifest
     docker = (ROOT / "plc_assistant" / "Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.65" in docker
+    assert "BUILD_VERSION=0.1.66" in docker
     dual = ROOT / "plc_assistant" / "custom_components" / "plcassistant" / "manifest.json"
-    assert '"0.1.65"' in dual.read_text(encoding="utf-8")
+    assert '"0.1.66"' in dual.read_text(encoding="utf-8")

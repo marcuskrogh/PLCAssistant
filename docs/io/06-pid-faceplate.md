@@ -172,7 +172,7 @@ The writable analog **fill** uses a muted activity green (`--pid-active`).
 Colour otherwise follows ISA-101 high-performance HMI practice: caution uses
 Home Assistant `--warning-color`, abnormal uses `--error-color`, applied to
 relative |ε|. An MV bar at clamp (~0% or ~100% of scale) may take caution on
-that fill only. Text+`inputmode=decimal` editors keep intermediate edits alive across live Soft-PLC hass updates. Typography uses
+that fill only. Text+`inputmode=decimal` editors keep intermediate edits alive across live Soft-PLC hass updates. **Controller settings** freeze while that dialog is open so live paints cannot restomp `data-tune` drafts; Apply commits, Cancel / Escape discards. Typography uses
 Home Assistant Lovelace design tokens (`--ha-font-family-body`,
 `--ha-card-header-font-size`, `--ha-font-size-*`) so the faceplate matches
 surrounding entities / glance cards. Compound PID attributes are rounded to 2dp

@@ -222,8 +222,8 @@ class PlcAssistantPidLoopSensor(SensorEntity):
         object_id = f"plcassistant_pid_{loop_id}"
         self._attr_suggested_object_id = object_id
         self.entity_id = f"sensor.{object_id}"
-        # Cascade demo: both loops Automatic until store hydrate (SWD-369).
-        self._attr_native_value = "automatic"
+        # Demo defaults until store hydrate: Level Automatic, Flow Remote.
+        self._attr_native_value = "remote" if loop_id == "flow" else "automatic"
         self._attr_extra_state_attributes = self._empty_attrs()
         self._watch_tags = frozenset(
             {

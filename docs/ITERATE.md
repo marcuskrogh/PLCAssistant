@@ -19,7 +19,7 @@ The PID faceplate describes **REM** as cascade/remote and read-only. The flow lo
 - [x] Start with Level Auto + Flow Rem → `SP_FLOW` tracks `SP_FLOW_AUTO` and `CMD_SPEED` moves
 - [x] Flow Automatic uses local `SP_FLOW_REQ`, not the level CV
 - [x] Manual stays output Manual (`CO_FLOW_MAN`)
-- [x] Docs + dual-tree + App **0.1.65**
+- [x] Docs + dual-tree + App **0.1.66**
 
 ## Out of scope
 - Alarm-limit colour bands
@@ -29,14 +29,14 @@ The PID faceplate describes **REM** as cascade/remote and read-only. The flow lo
 ## Work packages
 1. Backend mux + defaults (`FLOW_MODE=2`, REM=cascade, AUTO=`SP_FLOW_REQ`)
 2. HA catalog / Number / compound sensor + docs
-3. Tests, dual-tree, App 0.1.65
+3. Tests, dual-tree, App 0.1.66
 
 ## Tracker
 - Task: [SWD-383](https://marcusknielsen.atlassian.net/browse/SWD-383)
 - Relates: [SWD-373](https://marcusknielsen.atlassian.net/browse/SWD-373)
 - Branch: `cursor/swd-383-flow-cascade-remote-68c1`
 - PR: https://github.com/marcuskrogh/PLCAssistant/pull/107
-- App: **0.1.65**
+- App: **0.1.66**
 
 ## Next
 `/review-fix SWD-383` — Review and auto-fix on the new delivery PR

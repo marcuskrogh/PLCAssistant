@@ -20,9 +20,10 @@
  * (--error-color) colour ε; MV clamp caution tints the MV fill only.
  * Man / Auto / Rem buttons stay grayscale invert.
  *
- * Drafts: typed SP inputs use text + inputmode=decimal (not type=number) so
- * intermediate edits like "0." survive live hass updates without caret jumps.
- * Dirty drafts persist across refreshes until Set / Escape / clear.
+ * Drafts: typed SP and settings inputs use text + inputmode=decimal (not
+ * type=number) so intermediate edits like "0." survive live hass updates
+ * without caret jumps. Dirty SP drafts persist until Set / Escape / clear.
+ * Settings fields freeze for the whole dialog until Apply / Cancel / Escape.
  *
  * Re-exported helpers are the integration↔HMI communication contract and are
  * covered by Node regression tests.
@@ -67,6 +68,7 @@ import {
   pidFaceplateRootHtml,
   applyPidFaceplateState,
   applyPidSettingsPane,
+  pidSettingsDialogOpen,
   PID_TUNE_KEYS,
   PID_TUNE_BOOL_KEYS,
 } from "./pid-faceplate-elements.js";
@@ -206,6 +208,53 @@ class PlcAssistantPidCard extends HTMLElement {
         this._drafts[key] = input.value;
       }
     }
+    this._captureTuneDrafts();
+  }
+
+  _tuneDraftKey(key) {
+    return `tune:${key}`;
+  }
+
+  _captureTuneDrafts() {
+    if (!this._root || !this._settingsOpen) return;
+    // First open still has the dialog hidden so live params can seed the form.
+    if (!pidSettingsDialogOpen(this._root)) return;
+    for (const key of PID_TUNE_KEYS) {
+      const input = this._root.querySelector(`[data-tune="${key}"]`);
+      if (!input) continue;
+      const draftKey = this._tuneDraftKey(key);
+      this._drafts[draftKey] =
+        input.type === "checkbox" || PID_TUNE_BOOL_KEYS.includes(key)
+          ? input.checked
+          : input.value;
+      this._dirty[draftKey] = true;
+    }
+  }
+
+  _restoreTuneDrafts() {
+    if (!this._root || !this._settingsOpen) return;
+    for (const key of PID_TUNE_KEYS) {
+      const draftKey = this._tuneDraftKey(key);
+      if (!this._dirty[draftKey] || this._drafts[draftKey] === undefined) continue;
+      const input = this._root.querySelector(`[data-tune="${key}"]`);
+      if (!input) continue;
+      if (input.type === "checkbox" || PID_TUNE_BOOL_KEYS.includes(key)) {
+        input.checked = Boolean(this._drafts[draftKey]);
+      } else if (input.value !== this._drafts[draftKey]) {
+        input.value = this._drafts[draftKey];
+      }
+      input.setAttribute("data-dirty", "1");
+    }
+  }
+
+  _clearTuneDrafts() {
+    for (const key of PID_TUNE_KEYS) {
+      this._clearDraft(this._tuneDraftKey(key));
+      const input = this._root?.querySelector(`[data-tune="${key}"]`);
+      if (input && typeof input.removeAttribute === "function") {
+        input.removeAttribute("data-dirty");
+      }
+    }
   }
 
   _clearDraft(key) {
@@ -267,6 +316,7 @@ class PlcAssistantPidCard extends HTMLElement {
 
   _openDialog(barKey = "co") {
     this._dialogBar = pidNormalizeBarKey(barKey);
+    if (this._settingsOpen) this._clearTuneDrafts();
     this._settingsOpen = false;
     this._dialogOpen = true;
     this._render(false);
@@ -288,6 +338,7 @@ class PlcAssistantPidCard extends HTMLElement {
   _closeSettings() {
     if (!this._settingsOpen) return;
     this._settingsOpen = false;
+    this._clearTuneDrafts();
     this._render(false);
   }
 
@@ -357,12 +408,11 @@ class PlcAssistantPidCard extends HTMLElement {
       }
     });
     this._root.addEventListener("input", (ev) => {
-      const input = ev.target.closest("input[data-sp]");
-      if (!input) return;
-      const key = input.getAttribute("data-sp");
-      if (!key) return;
-      this._drafts[key] = input.value;
-      this._dirty[key] = true;
+      this._onEditorInput(ev.target);
+    });
+    this._root.addEventListener("change", (ev) => {
+      const tune = ev.target.closest?.("input[data-tune]");
+      if (tune) this._onEditorInput(tune);
     });
     this._root.addEventListener("keydown", (ev) => {
       if (ev.key === "Escape" && (this._dialogOpen || this._settingsOpen)) {
@@ -397,6 +447,29 @@ class PlcAssistantPidCard extends HTMLElement {
     });
     // Do not clear dirty drafts on blur — live hass updates must not reformat
     // an in-progress edit after an accidental focus loss.
+  }
+
+  _onEditorInput(target) {
+    if (!target || typeof target.closest !== "function") return;
+    const tune = target.closest("input[data-tune]");
+    if (tune) {
+      const key = tune.getAttribute("data-tune");
+      if (!key) return;
+      const draftKey = this._tuneDraftKey(key);
+      this._drafts[draftKey] =
+        tune.type === "checkbox" || PID_TUNE_BOOL_KEYS.includes(key)
+          ? tune.checked
+          : tune.value;
+      this._dirty[draftKey] = true;
+      tune.setAttribute("data-dirty", "1");
+      return;
+    }
+    const input = target.closest("input[data-sp]");
+    if (!input) return;
+    const key = input.getAttribute("data-sp");
+    if (!key) return;
+    this._drafts[key] = input.value;
+    this._dirty[key] = true;
   }
 
   _modeKey(mode) {
@@ -482,7 +555,9 @@ class PlcAssistantPidCard extends HTMLElement {
       spWritable: !autoDisabled,
       coWritable: Boolean(cvManEntity),
       dialogBarKey: this._dialogBar,
+      freezeTune: this._settingsOpen && pidSettingsDialogOpen(this._root),
     });
+    this._restoreTuneDrafts();
 
     const dialog = this._root.querySelector(".pid-value-dialog");
     if (dialog) {
