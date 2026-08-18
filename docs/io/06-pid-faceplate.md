@@ -54,7 +54,7 @@ Compact analog-controller face:
 6. `<< < > >>` nudges (±1.0 / ±0.1) on the writable analog
 7. MAN / AUTO / REM on the face (grayscale active invert)
 8. Focused numeric popup for the clicked analog (current value, min, max; no pointer-position set)
-9. Settings popup for Kp / Ki / Kd
+9. Settings popup with panes for standardised PID parameters (Gains, Structure, Output, Filter)
 
 Click any analog bar to open a popup for **that** analog (value, min, max, unit).
 Set is shown only when the analog is the operator write target. Nudge arrows
@@ -90,11 +90,27 @@ CO reads `SP_FLOW_AUTO` (true level `cv`), not the muxed active `SP_FLOW`.
 
 ### Tunings
 
-`LEVEL_KP`, `LEVEL_KI`, `FLOW_KP`, and `FLOW_KI` IN tags (defaults aligned
-with `CascadeConfig`: 40 / 5 / 12 / 2) are applied into the live Soft-PLC
+Faceplate settings expose the standardised PID parameters from
+`pid_default_params()` (except unused Parallel leftovers `td` / `gamma`, and
+read-only `form=parallel`):
+
+| Pane | Params |
+|------|--------|
+| Gains | `kp`, `ki`, `kd`, `u0` |
+| Structure | `beta`, `direct_acting`, `form` (read-only Parallel) |
+| Output | `cv_min`, `cv_max`, `hold_when_stopped` |
+| Filter | `ts`, `tf_ts` (`<= 0` bypasses the measurement filter) |
+
+Demo IN tags follow `LEVEL_*` / `FLOW_*` (`LEVEL_KP`, `LEVEL_TF_TS`, …).
+Defaults align with the wedge cascade copies (`CascadeConfig` gains 40 / 5 /
+12 / 2; level CV 0–8 L/min; flow CV 0–100%; `tf_ts = 0` filter bypass;
+level `hold_when_stopped=true`). Tags are applied into the live Soft-PLC
 `Skid` cascade **and synced into executing PID instance params** each scan
-when bound (SWD-224). `LEVEL_KD` / `FLOW_KD` are declared for
-faceplate parity; the wedge cascade PI does not use D terms yet.
+when bound (SWD-224 / SWD-380). Operator `tf_ts` and clamp writes win over
+the cascade factory bypass on the running instances.
+
+`LEVEL_KD` / `FLOW_KD` are live like the other params; wedge cascade copies
+still default `kd = 0`.
 
 Process tag ↔ PID pin bridging uses the common `TagPinWire` format
 (`plcassistant.surface.io_wires`) so Start → `running` → CV is one
@@ -109,7 +125,7 @@ Soft-PLC helpers live in
 
 | Entity | State | Attributes |
 |--------|-------|------------|
-| `sensor.plcassistant_pid_level` | `manual` / `automatic` / `remote` | `pv`, `sp`, `sp_man`, `sp_auto`, `sp_rem`, `cv`, `co_man`, `write_target`, `kp`, `ki`, `kd`, `loop_id`, related `*_entity` ids including `cv_man_entity`, `kp_entity`, `ki_entity`, `kd_entity` |
+| `sensor.plcassistant_pid_level` | `manual` / `automatic` / `remote` | `pv`, `sp`, `sp_man`, `sp_auto`, `sp_rem`, `cv`, `co_man`, `write_target`, standardised PID params (`kp`…`tf_ts`), `loop_id`, related `*_entity` ids including `cv_man_entity` and each `{param}_entity` |
 | `sensor.plcassistant_pid_flow` | same | same |
 
 ## Lovelace cards
@@ -139,7 +155,7 @@ when operators should receive chrome changes.
 The PID card uses an ISA-5.1 three-mode chrome strip (ε / P / I / D) matching the
 App Diagram glyph, analog bars (thin tall vertical PV/SP, thicker horizontal MV)
 with values on the bars, **ε** between PV and SP, nudge arrows, and a settings
-gear for Kp / Ki / Kd. Clicking a bar opens a focused numeric popup for that
+gear for standardised PID parameters (Gains / Structure / Output / Filter). Clicking a bar opens a focused numeric popup for that
 analog (value, min, max, unit). Set is shown only when the analog is writable.
 Man / Auto / Rem are controller modes; the active button stays grayscale invert.
 The writable analog **fill** uses a muted activity green (`--pid-active`).

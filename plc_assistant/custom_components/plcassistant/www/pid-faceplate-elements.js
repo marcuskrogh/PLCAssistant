@@ -31,6 +31,25 @@ export const PID_CV_MAX_LEVEL = 8;
 /** Bar fraction from 0% or 100% treated as clamp. */
 export const PID_CV_CLAMP_FRAC = 0.005;
 
+/** Standardised PID params shown in the settings gear (skip unused td/gamma). */
+export const PID_TUNE_KEYS = [
+  "kp",
+  "ki",
+  "kd",
+  "u0",
+  "beta",
+  "direct_acting",
+  "cv_min",
+  "cv_max",
+  "hold_when_stopped",
+  "ts",
+  "tf_ts",
+];
+
+export const PID_TUNE_BOOL_KEYS = ["direct_acting", "hold_when_stopped"];
+
+export const PID_SETTINGS_PANES = ["gains", "structure", "output", "filter"];
+
 /**
  * Format a numeric faceplate value to fixed decimal places, or em-dash.
  * Always uses ``toFixed`` so float noise never leaks into the HMI.
@@ -334,6 +353,10 @@ export function resolveFaceplateClick(target) {
   const settingsCancel = target.closest("[data-settings-cancel]");
   if (settingsCancel) {
     return { type: "settings", action: "cancel" };
+  }
+  const paneBtn = target.closest("button[data-pane]");
+  if (paneBtn) {
+    return { type: "pane", id: paneBtn.getAttribute("data-pane") };
   }
   const nudgeBtn = target.closest("button[data-nudge]");
   if (nudgeBtn) {
@@ -731,6 +754,61 @@ const PID_FACEPLATE_CSS = `
   border: 1px solid var(--divider-color, #ddd);
   animation: pid-rise 0.18s ease;
 }
+.pid-settings-dialog .pid-dialog-panel {
+  width: min(100%, 440px);
+  max-height: min(90vh, 640px);
+}
+.pid-settings-tabs {
+  display: flex;
+  gap: 0;
+  margin: 0 0 12px;
+  border: 1px solid var(--divider-color, #c8c8c8);
+  border-radius: var(--ha-card-border-radius, 8px);
+  overflow: hidden;
+}
+.pid-settings-tabs button {
+  flex: 1;
+  border: 0;
+  border-right: 1px solid var(--divider-color, #c8c8c8);
+  background: var(--card-background-color, #fff);
+  color: var(--primary-text-color);
+  padding: 8px 4px;
+  cursor: pointer;
+  font-family: var(--pid-font);
+  font-size: var(--pid-label-size);
+  font-weight: var(--ha-font-weight-medium, 500);
+}
+.pid-settings-tabs button:last-child { border-right: 0; }
+.pid-settings-tabs button.is-active {
+  background: var(--primary-text-color);
+  color: var(--card-background-color, #fff);
+}
+.pid-settings-tabs button:focus-visible {
+  outline: 2px solid var(--pid-focus);
+  outline-offset: -2px;
+}
+.pid-tune-hint {
+  display: block;
+  font-size: var(--pid-label-size);
+  opacity: 0.65;
+  line-height: 1.3;
+  margin: 0 0 10px;
+}
+.pid-row-check {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+.pid-row-check label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: auto;
+}
+.pid-row-readonly strong {
+  font-weight: var(--ha-font-weight-medium, 500);
+}
 @keyframes pid-rise {
   from { transform: translateY(8px); opacity: 0.85; }
   to { transform: translateY(0); opacity: 1; }
@@ -1008,19 +1086,82 @@ export function pidSettingsDialogHtml() {
               <button type="button" class="pid-dialog-close" data-close-editor aria-label="Close">×</button>
             </div>
             <div class="pid-dialog-body">
-              <div class="pid-editors">
+              <div class="pid-settings-tabs" role="tablist">
+                <button type="button" role="tab" data-pane="gains" class="is-active" aria-selected="true">Gains</button>
+                <button type="button" role="tab" data-pane="structure" aria-selected="false">Structure</button>
+                <button type="button" role="tab" data-pane="output" aria-selected="false">Output</button>
+                <button type="button" role="tab" data-pane="filter" aria-selected="false">Filter</button>
+              </div>
+              <div class="pid-editors" data-pane-panel="gains">
                 <div class="pid-row">
                   <label>Kp</label>
                   <input data-tune="kp" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" />
                 </div>
+                <p class="pid-tune-hint">Proportional gain</p>
                 <div class="pid-row">
                   <label>Ki</label>
                   <input data-tune="ki" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" />
                 </div>
+                <p class="pid-tune-hint">Integral gain (1/s). 0 selects P / PD with bias u0</p>
                 <div class="pid-row">
                   <label>Kd</label>
                   <input data-tune="kd" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" />
                 </div>
+                <p class="pid-tune-hint">Derivative gain</p>
+                <div class="pid-row">
+                  <label>u0</label>
+                  <input data-tune="u0" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" />
+                </div>
+                <p class="pid-tune-hint">Bias applied when Ki is 0</p>
+              </div>
+              <div class="pid-editors" data-pane-panel="structure" hidden>
+                <div class="pid-row">
+                  <label>β</label>
+                  <input data-tune="beta" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" />
+                </div>
+                <p class="pid-tune-hint">Setpoint weight on P (1 = full error)</p>
+                <div class="pid-row pid-row-check">
+                  <label>
+                    <input data-tune="direct_acting" type="checkbox" />
+                    Direct acting
+                  </label>
+                </div>
+                <p class="pid-tune-hint">Off is reverse acting (SP − PV)</p>
+                <div class="pid-row pid-row-readonly">
+                  <label>Form</label>
+                  <strong data-tune-readonly="form">Parallel</strong>
+                </div>
+                <p class="pid-tune-hint">Parallel is the implemented algorithm</p>
+              </div>
+              <div class="pid-editors" data-pane-panel="output" hidden>
+                <div class="pid-row">
+                  <label>CV min</label>
+                  <input data-tune="cv_min" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" />
+                </div>
+                <div class="pid-row">
+                  <label>CV max</label>
+                  <input data-tune="cv_max" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" />
+                </div>
+                <p class="pid-tune-hint">Output clamps for the manipulated variable</p>
+                <div class="pid-row pid-row-check">
+                  <label>
+                    <input data-tune="hold_when_stopped" type="checkbox" />
+                    Hold when stopped
+                  </label>
+                </div>
+                <p class="pid-tune-hint">On holds last CV when the loop is not running; off forces 0</p>
+              </div>
+              <div class="pid-editors" data-pane-panel="filter" hidden>
+                <div class="pid-row">
+                  <label>Ts</label>
+                  <input data-tune="ts" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" />
+                </div>
+                <p class="pid-tune-hint">Nominal sample time (s)</p>
+                <div class="pid-row">
+                  <label>Tf/Ts</label>
+                  <input data-tune="tf_ts" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" />
+                </div>
+                <p class="pid-tune-hint">Measurement filter. 0 bypasses the filter</p>
               </div>
               <div class="pid-dialog-actions">
                 <button type="button" data-settings-cancel>Cancel</button>
@@ -1029,6 +1170,41 @@ export function pidSettingsDialogHtml() {
             </div>
           </div>
         </div>`;
+}
+
+export function applyPidSettingsPane(root, paneId) {
+  const pane = PID_SETTINGS_PANES.includes(paneId) ? paneId : "gains";
+  if (!root || typeof root.querySelectorAll !== "function") return pane;
+  root.querySelectorAll("button[data-pane]").forEach((btn) => {
+    const on = btn.getAttribute("data-pane") === pane;
+    btn.classList.toggle("is-active", on);
+    btn.setAttribute("aria-selected", on ? "true" : "false");
+  });
+  root.querySelectorAll("[data-pane-panel]").forEach((panel) => {
+    const on = panel.getAttribute("data-pane-panel") === pane;
+    if (on) panel.removeAttribute("hidden");
+    else panel.setAttribute("hidden", "");
+  });
+  return pane;
+}
+
+function isTruthyTune(val) {
+  if (val === true || val === 1 || val === "1" || val === "true") return true;
+  if (typeof val === "number") return val !== 0;
+  return false;
+}
+
+function paintTuneField(root, key, val) {
+  const input = root.querySelector(`[data-tune="${key}"]`);
+  if (!input) return;
+  const focused =
+    typeof document !== "undefined" && document.activeElement === input;
+  if (focused) return;
+  if (input.type === "checkbox") {
+    input.checked = isTruthyTune(val);
+    return;
+  }
+  input.value = val == null || val === "" ? "" : formatPidValue(val);
 }
 
 export function pidFaceplateMarkup({
@@ -1198,16 +1374,13 @@ export function applyPidFaceplateState(root, state = {}) {
     btn.disabled = !canNudge;
   });
 
-  for (const key of ["kp", "ki", "kd"]) {
+  for (const key of PID_TUNE_KEYS) {
     if (!(key in state)) continue;
-    const input = root.querySelector(`[data-tune="${key}"]`);
-    if (!input) continue;
-    const focused =
-      typeof document !== "undefined" && document.activeElement === input;
-    if (focused) continue;
-    const val = state[key];
-    input.value = val == null || val === "" ? "" : formatPidValue(val);
+    paintTuneField(root, key, state[key]);
   }
+  const formEl = root.querySelector('[data-tune-readonly="form"]');
+  if (formEl) formEl.textContent = state.form || "Parallel";
+  applyPidSettingsPane(root, state.settingsPane || "gains");
 
   applyPidValueDialog(root, {
     barKey: dialogBar,

@@ -7,9 +7,12 @@ import {
   PID_PV_MAX_FLOW,
   PID_CV_MAX_LEVEL,
   PID_CV_MAX_FLOW,
+  PID_TUNE_KEYS,
+  PID_TUNE_BOOL_KEYS,
   pidFaceplateStyles,
   pidFaceplateMarkup,
   applyPidFaceplateState,
+  applyPidSettingsPane,
   mountPidFaceplateElement,
   pidOperatorWriteTarget,
   pidNudgeValue,
@@ -31,9 +34,32 @@ const isolates = document.querySelector("#isolates");
 const mockLevel = document.querySelector("#mock-level");
 const mockFlow = document.querySelector("#mock-flow");
 
+function defaultTune(loopId) {
+  const cvMax = loopId === "flow" ? PID_CV_MAX_FLOW : PID_CV_MAX_LEVEL;
+  return {
+    kp: loopId === "flow" ? 12 : 40,
+    ki: loopId === "flow" ? 2 : 5,
+    kd: 0,
+    u0: 0,
+    beta: 1,
+    direct_acting: false,
+    form: "Parallel",
+    cv_min: 0,
+    cv_max: cvMax,
+    hold_when_stopped: loopId !== "flow",
+    ts: 0.1,
+    tf_ts: 0,
+  };
+}
+
 const tunings = {
-  level: { kp: 40, ki: 5, kd: 0 },
-  flow: { kp: 12, ki: 2, kd: 0 },
+  level: defaultTune("level"),
+  flow: defaultTune("flow"),
+};
+
+const settingsPaneByLoop = {
+  level: "gains",
+  flow: "gains",
 };
 
 const dialogBarByLoop = {
@@ -62,6 +88,16 @@ function snapshot(loopId) {
     kp: tune.kp,
     ki: tune.ki,
     kd: tune.kd,
+    u0: tune.u0,
+    beta: tune.beta,
+    direct_acting: tune.direct_acting,
+    cv_min: tune.cv_min,
+    cv_max: tune.cv_max,
+    hold_when_stopped: tune.hold_when_stopped,
+    ts: tune.ts,
+    tf_ts: tune.tf_ts,
+    form: tune.form || "Parallel",
+    settingsPane: settingsPaneByLoop[loopId] || "gains",
     spWritable: mode === "automatic" && loopId === "level",
     coWritable: true,
     writeTarget: pidOperatorWriteTarget(mode, {
@@ -112,9 +148,13 @@ function applyLocalValue(loopId, key, raw) {
 
 function applyLocalSettings(root, loopId) {
   const next = { ...tunings[loopId] };
-  for (const key of ["kp", "ki", "kd"]) {
+  for (const key of PID_TUNE_KEYS) {
     const input = root.querySelector(`[data-tune="${key}"]`);
     if (!input) continue;
+    if (input.type === "checkbox" || PID_TUNE_BOOL_KEYS.includes(key)) {
+      next[key] = Boolean(input.checked);
+      continue;
+    }
     const committed = commitSpValue(parseSpValue(input.value));
     if (committed === null) continue;
     next[key] = committed;
@@ -196,6 +236,11 @@ function bindLocalChrome(root, loopId) {
         closeDialogs(root);
         refresh();
       }
+      return;
+    }
+    if (action.type === "pane") {
+      settingsPaneByLoop[loopId] = action.id || "gains";
+      applyPidSettingsPane(root, settingsPaneByLoop[loopId]);
     }
   });
 }

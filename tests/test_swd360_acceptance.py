@@ -226,13 +226,13 @@ def test_unit_default_pytest_still_excludes_live() -> None:
 
 
 def test_unit_app_version_is_0_1_57() -> None:
-    assert 'version: "0.1.62"' in (ROOT / "plc_assistant" / "config.yaml").read_text(
+    assert 'version: "0.1.63"' in (ROOT / "plc_assistant" / "config.yaml").read_text(
         encoding="utf-8"
     )
     manifest = (ROOT / "custom_components" / "plcassistant" / "manifest.json").read_text(
         encoding="utf-8"
     )
-    assert '"0.1.62"' in manifest
+    assert '"0.1.63"' in manifest
 
 
 def test_unit_incremental_includes_constant_uff() -> None:

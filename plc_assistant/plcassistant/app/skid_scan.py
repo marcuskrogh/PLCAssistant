@@ -20,6 +20,7 @@ from plcassistant.io.pid_loop import (
 )
 from plcassistant.io.quality import QualityStatus, ReasonCode
 from plcassistant.wedge.process import HeldProcess
+from plcassistant.wedge.control import CascadeConfig
 from plcassistant.wedge.skid import Mode, OperatorCommand, Skid
 
 _PLANT_TAGS = (
@@ -37,6 +38,69 @@ def _tag_float(image: IoImage, name: str, default: float = 0.0) -> float:
         return float(image.get_value(name))
     except (TypeError, ValueError):
         return default
+
+
+def _tag_bool(image: IoImage, name: str, default: bool) -> bool:
+    return _tag_float(image, name, 1.0 if default else 0.0) != 0.0
+
+
+def _apply_faceplate_params(image: IoImage, cascade: CascadeConfig) -> None:
+    """Copy operator PID parameter IN tags onto CascadeConfig."""
+    names = image.names()
+    level = LEVEL_LOOP
+    flow = FLOW_LOOP
+    if level.kp in names:
+        cascade.level_kp = _tag_float(image, level.kp, cascade.level_kp)
+    if level.ki in names:
+        cascade.level_ki = _tag_float(image, level.ki, cascade.level_ki)
+    if level.kd in names:
+        cascade.level_kd = _tag_float(image, level.kd, cascade.level_kd)
+    if level.u0 in names:
+        cascade.level_u0 = _tag_float(image, level.u0, cascade.level_u0)
+    if level.beta in names:
+        cascade.level_beta = _tag_float(image, level.beta, cascade.level_beta)
+    if level.direct_acting in names:
+        cascade.level_direct_acting = _tag_bool(
+            image, level.direct_acting, cascade.level_direct_acting
+        )
+    if level.cv_min in names:
+        cascade.sp_flow_min = _tag_float(image, level.cv_min, cascade.sp_flow_min)
+    if level.cv_max in names:
+        cascade.sp_flow_max = _tag_float(image, level.cv_max, cascade.sp_flow_max)
+    if level.hold_when_stopped in names:
+        cascade.level_hold_when_stopped = _tag_bool(
+            image, level.hold_when_stopped, cascade.level_hold_when_stopped
+        )
+    if level.ts in names:
+        cascade.level_ts = _tag_float(image, level.ts, cascade.level_ts)
+    if level.tf_ts in names:
+        cascade.level_tf_ts = _tag_float(image, level.tf_ts, cascade.level_tf_ts)
+    if flow.kp in names:
+        cascade.flow_kp = _tag_float(image, flow.kp, cascade.flow_kp)
+    if flow.ki in names:
+        cascade.flow_ki = _tag_float(image, flow.ki, cascade.flow_ki)
+    if flow.kd in names:
+        cascade.flow_kd = _tag_float(image, flow.kd, cascade.flow_kd)
+    if flow.u0 in names:
+        cascade.flow_u0 = _tag_float(image, flow.u0, cascade.flow_u0)
+    if flow.beta in names:
+        cascade.flow_beta = _tag_float(image, flow.beta, cascade.flow_beta)
+    if flow.direct_acting in names:
+        cascade.flow_direct_acting = _tag_bool(
+            image, flow.direct_acting, cascade.flow_direct_acting
+        )
+    if flow.cv_min in names:
+        cascade.cmd_speed_min = _tag_float(image, flow.cv_min, cascade.cmd_speed_min)
+    if flow.cv_max in names:
+        cascade.cmd_speed_max = _tag_float(image, flow.cv_max, cascade.cmd_speed_max)
+    if flow.hold_when_stopped in names:
+        cascade.flow_hold_when_stopped = _tag_bool(
+            image, flow.hold_when_stopped, cascade.flow_hold_when_stopped
+        )
+    if flow.ts in names:
+        cascade.flow_ts = _tag_float(image, flow.ts, cascade.flow_ts)
+    if flow.tf_ts in names:
+        cascade.flow_tf_ts = _tag_float(image, flow.tf_ts, cascade.flow_tf_ts)
 
 
 def _resolve_level_sp(image: IoImage) -> float:
@@ -179,14 +243,7 @@ class SkidImageLogic:
     def __call__(self, image: IoImage) -> None:
         names = image.names()
         cascade = self.skid.config.cascade
-        if LEVEL_LOOP.kp in names:
-            cascade.level_kp = _tag_float(image, LEVEL_LOOP.kp, cascade.level_kp)
-        if LEVEL_LOOP.ki in names:
-            cascade.level_ki = _tag_float(image, LEVEL_LOOP.ki, cascade.level_ki)
-        if FLOW_LOOP.kp in names:
-            cascade.flow_kp = _tag_float(image, FLOW_LOOP.kp, cascade.flow_kp)
-        if FLOW_LOOP.ki in names:
-            cascade.flow_ki = _tag_float(image, FLOW_LOOP.ki, cascade.flow_ki)
+        _apply_faceplate_params(image, cascade)
         self.skid.sp_level = _resolve_level_sp(image)
         # Remote flow SP overrides cascade; Manual is output Manual (SWD-369).
         self.skid.sp_flow_override = _flow_sp_override_from_image(image)

@@ -76,6 +76,24 @@ def operator_write_target(mode: SpSourceMode | str) -> WriteTarget | None:
     return None
 
 
+# Standardised PID params operators may set from the faceplate settings gear.
+# Skip unused Parallel leftovers ``td`` / ``gamma``. ``form`` is display-only.
+PID_OPERATOR_PARAM_KEYS: tuple[str, ...] = (
+    "kp",
+    "ki",
+    "kd",
+    "u0",
+    "beta",
+    "direct_acting",
+    "cv_min",
+    "cv_max",
+    "hold_when_stopped",
+    "ts",
+    "tf_ts",
+)
+PID_BOOL_PARAM_KEYS = frozenset({"direct_acting", "hold_when_stopped"})
+
+
 @dataclass(frozen=True)
 class PidLoopTags:
     """Datablock tag names for one PID faceplate / compound entity."""
@@ -92,11 +110,23 @@ class PidLoopTags:
     kp: str
     ki: str
     kd: str
+    u0: str
+    beta: str
+    direct_acting: str
+    cv_min: str
+    cv_max: str
+    hold_when_stopped: str
+    ts: str
+    tf_ts: str
 
     @property
     def entity_object_id(self) -> str:
         """HA object_id suffix, e.g. ``pid_level`` → ``sensor.plcassistant_pid_level``."""
         return f"pid_{self.loop_id}"
+
+    def operator_param_tags(self) -> dict[str, str]:
+        """Map standardised param name → Datablock IN tag."""
+        return {key: getattr(self, key) for key in PID_OPERATOR_PARAM_KEYS}
 
 
 # Demo tank loops (stable ids for Lovelace + Soft-PLC).
@@ -113,6 +143,14 @@ LEVEL_LOOP = PidLoopTags(
     kp="LEVEL_KP",
     ki="LEVEL_KI",
     kd="LEVEL_KD",
+    u0="LEVEL_U0",
+    beta="LEVEL_BETA",
+    direct_acting="LEVEL_DIRECT_ACTING",
+    cv_min="LEVEL_CV_MIN",
+    cv_max="LEVEL_CV_MAX",
+    hold_when_stopped="LEVEL_HOLD_WHEN_STOPPED",
+    ts="LEVEL_TS",
+    tf_ts="LEVEL_TF_TS",
 )
 
 FLOW_LOOP = PidLoopTags(
@@ -128,9 +166,25 @@ FLOW_LOOP = PidLoopTags(
     kp="FLOW_KP",
     ki="FLOW_KI",
     kd="FLOW_KD",
+    u0="FLOW_U0",
+    beta="FLOW_BETA",
+    direct_acting="FLOW_DIRECT_ACTING",
+    cv_min="FLOW_CV_MIN",
+    cv_max="FLOW_CV_MAX",
+    hold_when_stopped="FLOW_HOLD_WHEN_STOPPED",
+    ts="FLOW_TS",
+    tf_ts="FLOW_TF_TS",
 )
 
 DEMO_PID_LOOPS: tuple[PidLoopTags, ...] = (LEVEL_LOOP, FLOW_LOOP)
+
+
+def all_operator_param_tag_names() -> frozenset[str]:
+    """Every faceplate PID parameter IN tag on the demo loops."""
+    names: set[str] = set()
+    for loop in DEMO_PID_LOOPS:
+        names.update(loop.operator_param_tags().values())
+    return frozenset(names)
 
 
 def select_active_sp(
@@ -247,6 +301,14 @@ def faceplate_from_image_tags(
         "kp": values.get(tags.kp),
         "ki": values.get(tags.ki),
         "kd": values.get(tags.kd),
+        "u0": values.get(tags.u0),
+        "beta": values.get(tags.beta),
+        "direct_acting": values.get(tags.direct_acting),
+        "cv_min": values.get(tags.cv_min),
+        "cv_max": values.get(tags.cv_max),
+        "hold_when_stopped": values.get(tags.hold_when_stopped),
+        "ts": values.get(tags.ts),
+        "tf_ts": values.get(tags.tf_ts),
         "tags": {
             "pv": tags.pv,
             "sp": tags.sp,
@@ -264,7 +326,10 @@ __all__ = [
     "DEMO_PID_LOOPS",
     "FLOW_LOOP",
     "LEVEL_LOOP",
+    "PID_BOOL_PARAM_KEYS",
+    "PID_OPERATOR_PARAM_KEYS",
     "PidLoopTags",
+    "all_operator_param_tag_names",
     "SpSourceMode",
     "apply_co_write",
     "apply_explicit_mode",

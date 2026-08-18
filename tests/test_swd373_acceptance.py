@@ -37,6 +37,9 @@ def test_unit_lovelace_card_imports_shared_module() -> None:
     assert "data-nudge" in chrome
     assert 'data-settings="open"' in chrome
     assert "pid-settings-dialog" in chrome
+    assert 'data-pane="gains"' in chrome
+    assert 'data-tune="tf_ts"' in chrome
+    assert 'data-tune-readonly="form"' in chrome
     assert ".pid-vbar-fill[data-writable=\"1\"]" in chrome
     assert "--pid-active" in chrome
     assert 'data-pid-hi="abnormal"] .pid-vbar-fill[data-writable="1"]' not in chrome
@@ -83,15 +86,15 @@ def test_unit_faceplate_doc_points_at_sandbox() -> None:
     assert "pid-faceplate-elements.js" in text
 
 
-def test_system_app_version_is_0_1_62() -> None:
+def test_system_app_version_is_0_1_63() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.62"' in manifest
+    assert '"0.1.63"' in manifest
     config = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.62"' in config
+    assert 'version: "0.1.63"' in config
     docker = Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.62" in docker
+    assert "BUILD_VERSION=0.1.63" in docker
     dual = Path("plc_assistant/custom_components/plcassistant/manifest.json")
-    assert '"0.1.62"' in dual.read_text(encoding="utf-8")
+    assert '"0.1.63"' in dual.read_text(encoding="utf-8")
 
 
 def test_dual_tree_elements_and_card_synced() -> None:

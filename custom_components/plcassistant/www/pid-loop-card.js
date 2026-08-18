@@ -10,7 +10,8 @@
  *
  * Highlighted bar is the writable analog (MV in MAN, SP in AUTO when the Auto
  * entity is a Number). Tap the bar to open a focused numeric popup. Arrows nudge
- * the writable analog by 0.1 / 1.0. The settings gear edits Kp / Ki / Kd.
+ * the writable analog by 0.1 / 1.0. The settings gear edits standardised
+ * PID parameters (gains, structure, output, filter).
  * Loop error (ε) sits between the PV and SP bars.
  *
  * Colour (ISA-101 high-performance HMI): grayscale / Home Assistant tokens in
@@ -65,6 +66,9 @@ import {
   pidModeKey,
   pidFaceplateRootHtml,
   applyPidFaceplateState,
+  applyPidSettingsPane,
+  PID_TUNE_KEYS,
+  PID_TUNE_BOOL_KEYS,
 } from "./pid-faceplate-elements.js";
 
 export {
@@ -117,6 +121,7 @@ class PlcAssistantPidCard extends HTMLElement {
     this._bound = false;
     this._dialogOpen = false;
     this._settingsOpen = false;
+    this._settingsPane = "gains";
     this._dialogBar = "co";
   }
 
@@ -129,6 +134,7 @@ class PlcAssistantPidCard extends HTMLElement {
     this._dirty = {};
     this._dialogOpen = false;
     this._settingsOpen = false;
+    this._settingsPane = "gains";
     this._dialogBar = "co";
     this._render(true);
   }
@@ -288,14 +294,19 @@ class PlcAssistantPidCard extends HTMLElement {
   _applySettings() {
     const st = this._hass?.states?.[this._config.entity];
     if (!st || !this._root) return;
-    for (const key of ["kp", "ki", "kd"]) {
+    for (const key of PID_TUNE_KEYS) {
       const input = this._root.querySelector(`[data-tune="${key}"]`);
       const entity = this._attr(st, `${key}_entity`, "");
       if (!input || !entity || String(entity).startsWith("sensor.")) continue;
-      const parsed = this._parseSp(input.value);
-      if (parsed === null) continue;
-      const committed = commitSpValue(parsed);
-      if (committed === null) continue;
+      let committed;
+      if (input.type === "checkbox" || PID_TUNE_BOOL_KEYS.includes(key)) {
+        committed = input.checked ? 1 : 0;
+      } else {
+        const parsed = this._parseSp(input.value);
+        if (parsed === null) continue;
+        committed = commitSpValue(parsed);
+        if (committed === null) continue;
+      }
       this._setNumber(entity, committed);
     }
     this._closeSettings();
@@ -334,6 +345,11 @@ class PlcAssistantPidCard extends HTMLElement {
         if (action.action === "open") this._openSettings();
         else if (action.action === "cancel") this._closeSettings();
         else if (action.action === "apply") this._applySettings();
+        return;
+      }
+      if (action.type === "pane") {
+        this._settingsPane = action.id || "gains";
+        applyPidSettingsPane(this._root, this._settingsPane);
         return;
       }
       if (action.type === "bar") {
@@ -451,6 +467,16 @@ class PlcAssistantPidCard extends HTMLElement {
       kp: this._attr(st, "kp", null),
       ki: this._attr(st, "ki", null),
       kd: this._attr(st, "kd", null),
+      u0: this._attr(st, "u0", null),
+      beta: this._attr(st, "beta", null),
+      direct_acting: this._attr(st, "direct_acting", null),
+      cv_min: this._attr(st, "cv_min", null),
+      cv_max: this._attr(st, "cv_max", null),
+      hold_when_stopped: this._attr(st, "hold_when_stopped", null),
+      ts: this._attr(st, "ts", null),
+      tf_ts: this._attr(st, "tf_ts", null),
+      form: "Parallel",
+      settingsPane: this._settingsPane,
       spWritable: !autoDisabled,
       coWritable: Boolean(cvManEntity),
       dialogBarKey: this._dialogBar,

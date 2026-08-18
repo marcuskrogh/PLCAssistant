@@ -45,6 +45,53 @@ class CascadeConfig:
     flow_td: float = 0.0
     """Flow D time stub — reserved; v1 ignores (must stay 0)."""
 
+    level_kd: float = 0.0
+    flow_kd: float = 0.0
+    level_u0: float = 0.0
+    flow_u0: float = 0.0
+    level_beta: float = 1.0
+    flow_beta: float = 1.0
+    level_direct_acting: bool = False
+    flow_direct_acting: bool = False
+    level_hold_when_stopped: bool = True
+    flow_hold_when_stopped: bool = False
+    level_ts: float = 0.1
+    flow_ts: float = 0.1
+    level_tf_ts: float = 0.0
+    flow_tf_ts: float = 0.0
+
+    def instance_operator_params(self, instance_id: str) -> dict[str, float | bool]:
+        """Standardised PID params for a cascade PI copy, from faceplate tags."""
+        if instance_id == "level_pi":
+            return {
+                "kp": float(self.level_kp),
+                "ki": float(self.level_ki),
+                "kd": float(self.level_kd),
+                "u0": float(self.level_u0),
+                "beta": float(self.level_beta),
+                "direct_acting": bool(self.level_direct_acting),
+                "cv_min": float(self.sp_flow_min),
+                "cv_max": float(self.sp_flow_max),
+                "hold_when_stopped": bool(self.level_hold_when_stopped),
+                "ts": float(self.level_ts),
+                "tf_ts": float(self.level_tf_ts),
+            }
+        if instance_id == "flow_pi":
+            return {
+                "kp": float(self.flow_kp),
+                "ki": float(self.flow_ki),
+                "kd": float(self.flow_kd),
+                "u0": float(self.flow_u0),
+                "beta": float(self.flow_beta),
+                "direct_acting": bool(self.flow_direct_acting),
+                "cv_min": float(self.cmd_speed_min),
+                "cv_max": float(self.cmd_speed_max),
+                "hold_when_stopped": bool(self.flow_hold_when_stopped),
+                "ts": float(self.flow_ts),
+                "tf_ts": float(self.flow_tf_ts),
+            }
+        return {}
+
 
 @dataclass
 class CascadeOutputs:
