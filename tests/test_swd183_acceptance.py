@@ -171,6 +171,7 @@ def test_integration_compound_entity_attribute_schema_keys() -> None:
         "cv_entity",
         "kp_entity",
         "ki_entity",
+        "kd_entity",
     ):
         assert entity_key in text
 

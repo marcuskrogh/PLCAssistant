@@ -90,7 +90,13 @@ def test_unit_pid_card_analog_controller_geometry() -> None:
     assert "--pid-rem" not in text
     assert "grid-template-columns: repeat(4, minmax(0, 1fr))" in text
     assert "Tap to adjust" in text
-    assert 'getCardSize() {\n    return 3;' in text or "return 3;" in text
+    assert 'getCardSize() {\n    return 4;' in text or "return 4;" in text
+    assert "_applyBarClick" not in text
+    assert "data-nudge" in text
+    assert 'data-settings="open"' in text
+    assert ".pid-vbar-fill[data-writable=\"1\"]" in text
+    assert "min-height: 120px" in text
+    assert "height: 16px" in text
     assert 'closest("button[data-mode]")' in text
     # Face modes plus dialog modes; still button[data-mode] only.
     assert 'data-mode="0"' in text
@@ -207,13 +213,13 @@ def test_system_faceplate_js_write_target_contract() -> None:
 
 def test_system_app_version_is_0_1_58() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.59"' in manifest
+    assert '"0.1.60"' in manifest
     config = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.59"' in config
+    assert 'version: "0.1.60"' in config
     docker = Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.59" in docker
+    assert "BUILD_VERSION=0.1.60" in docker
     dual = Path("plc_assistant/custom_components/plcassistant/manifest.json")
-    assert '"0.1.59"' in dual.read_text(encoding="utf-8")
+    assert '"0.1.60"' in dual.read_text(encoding="utf-8")
 
 
 def test_dual_tree_pid_card_synced() -> None:

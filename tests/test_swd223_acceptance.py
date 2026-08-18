@@ -107,6 +107,6 @@ def test_integration_level_cv_is_sp_flow_auto() -> None:
 
 def test_system_app_version_0_1_43() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.59"' in manifest
+    assert '"0.1.60"' in manifest
     config = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.59"' in config
+    assert 'version: "0.1.60"' in config

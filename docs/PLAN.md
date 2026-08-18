@@ -10,13 +10,14 @@
 - `custom_components/plcassistant/www/pid-faceplate-elements.js` — CSS, markup, `applyPidFaceplateState`, and existing faceplate helpers
 - Lovelace card becomes HA glue (hass, services, dialog drafts) importing that module
 - `tools/pid-faceplate/` sandbox gallery + local static server script
-- Tests, faceplate-doc note, dual-tree sync, App **0.1.59** (new www module the card imports)
+- Tests, faceplate-doc note, dual-tree sync, App **0.1.60**
+- Faceplate UX (SWD-377): thinner/taller PV/SP bars; thicker CO; colour fill on the writable analog; PV/SP/CO values on the bars; bar click opens the numeric popup (no pointer-set); `<< < > >>` nudges (0.1 / 1.0) between CO and modes; settings gear for Kp/Ki/Kd
 
 ### Out
-- Operator Lovelace behaviour changes (geometry, modes, writes, ISA-101 colour)
 - New Lovelace resource registration for the elements file (the card module imports it)
 - Alarm-limit colour bands, CAS relabel, series form / autotune
 - Replacing Lovelace with a dedicated SCADA HMI
+- Colour-coding MAN / AUTO / REM **buttons** (mode identity stays grayscale invert; only the writable **bar fill** uses colour)
 
 ## Decisions
 | Topic | Decision |
@@ -28,7 +29,11 @@
 | How to open | Serve the repo root over HTTP (ES modules). `tools/pid-faceplate/serve.sh`. |
 | Lovelace load | Card stays the registered module resource. Relative `import` of `./pid-faceplate-elements.js` from `/plcassistant_static/` (already `res_type: module`). |
 | Helpers | Move exported contract helpers into the elements module; card re-exports so existing JS tests keep working. |
-| App version | **0.1.59** — operators need the new sibling file next to the card. |
+| App version | **0.1.60** — operators need the chrome + `kd_entity` on the compound PID sensor. |
+| Writable highlight | Colour the **bar fill** (`--primary-color`). Not a bounding box. Caution/abnormal still override. |
+| Bar click | Opens the numeric popup. Does **not** set from pointer position. |
+| Nudges | `<<` / `>>` ±1.0, `<` / `>` ±0.1 on the writable analog; between CO and MAN/AUTO/REM. |
+| Settings | Gear top-right; popup for Kp / Ki / Kd. |
 
 ## Classification
 - Class: feature
@@ -53,7 +58,7 @@
 
 ## Constraints
 - Dual trees (`custom_components/plcassistant/` and `plc_assistant/custom_components/plcassistant/`) stay in sync; run `scripts/sync-ha-app-package.sh`
-- Do not change MAN/AUTO/REM write targets, bar click mapping, or ISA-101 colour rules
+- MAN/AUTO/REM write targets stay: MAN→CO, AUTO→SP when Number, REM none
 - Keep SWD-227 click routing: mode only from `button[data-mode]`
 - Dialog stays a sibling of `.pid-card` (overflow:hidden on the card only)
 - Issue keys stay off product surfaces (card copy, Lovelace yaml, sandbox visible labels)
@@ -66,11 +71,19 @@
 - [x] Existing JS faceplate contract tests still pass (re-exports from the card)
 - [x] Dual-tree includes `pid-faceplate-elements.js`; App **0.1.59**
 - [x] Docs note the sandbox path and that chrome iteration does not require an App deploy until ship
+- [x] Vertical PV/SP bars are thinner and taller; CO bar is thicker
+- [x] Writable analog uses colour fill (not a bounding box); mode buttons stay grayscale
+- [x] PV / SP / CO numerics sit on their bars; ε stays in the header
+- [x] Clicking a writable bar opens the numeric popup (no pointer-position set)
+- [x] `<< < > >>` between CO and modes nudge the writable analog by 1.0 / 0.1
+- [x] Settings gear (top right) edits Kp / Ki / Kd
+- [x] Dual-tree + App **0.1.60**
 
 ## Work packages
 1. **Shared faceplate elements module + Lovelace wiring** ([SWD-374](https://marcusknielsen.atlassian.net/browse/SWD-374))
 2. **Isolated element sandbox (no HA/App)** ([SWD-375](https://marcusknielsen.atlassian.net/browse/SWD-375))
-3. **Tests, docs, dual-tree, App 0.1.59** ([SWD-376](https://marcusknielsen.atlassian.net/browse/SWD-376))
+3. **Tests, docs, dual-tree, App 0.1.59** ([SWD-376](https://marcusknielsen.atlassian.net/browse/SWD-376)) — Done
+4. **Faceplate UX** ([SWD-377](https://marcusknielsen.atlassian.net/browse/SWD-377))
 
 ## Open items
 - Whether a later slice adds alarm-limit colour bands on the PV bar — still later (SWD-368)
@@ -79,7 +92,7 @@
 - Provider: jira
 - Story: [SWD-368](https://marcusknielsen.atlassian.net/browse/SWD-368) (Relates)
 - Task: [SWD-373](https://marcusknielsen.atlassian.net/browse/SWD-373)
-- Sub-tasks: [SWD-374](https://marcusknielsen.atlassian.net/browse/SWD-374), [SWD-375](https://marcusknielsen.atlassian.net/browse/SWD-375), [SWD-376](https://marcusknielsen.atlassian.net/browse/SWD-376)
+- Sub-tasks: [SWD-374](https://marcusknielsen.atlassian.net/browse/SWD-374), [SWD-375](https://marcusknielsen.atlassian.net/browse/SWD-375), [SWD-376](https://marcusknielsen.atlassian.net/browse/SWD-376), [SWD-377](https://marcusknielsen.atlassian.net/browse/SWD-377)
 - Branch: `cursor/swd-373-pid-faceplate-sandbox-a582`
 - PR: [#105](https://github.com/marcuskrogh/PLCAssistant/pull/105)
 - Classification: feature

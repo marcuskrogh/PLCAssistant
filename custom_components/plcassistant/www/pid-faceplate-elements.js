@@ -4,6 +4,9 @@
  *
  * Named elements: isa-glyph, kpi-row, analog-bars, mode-row.
  * Mount one-at-a-time via mountPidFaceplateElement, or assemble a full face.
+ *
+ * Writable analog uses colour fill (--primary-color). Mode buttons stay
+ * grayscale invert. Caution/abnormal still override the fill.
  */
 
 /** Display precision for faceplate KPIs (PV / SP / CO / error) and SP editors. */
@@ -158,6 +161,35 @@ export function pidBarValueFromPointer(rect, clientX, clientY, min, max, orienta
   return lo + frac * (hi - lo);
 }
 
+/** Fine nudge step on the writable analog. */
+export const PID_NUDGE_FINE = 0.1;
+
+/** Coarse nudge step on the writable analog. */
+export const PID_NUDGE_COARSE = 1;
+
+/** Engineering range for a nudge of SP vs CO. */
+export function pidNudgeRange(metric, loopId) {
+  const key = String(metric ?? "");
+  if (key === "co" || key === "cv") {
+    return { min: 0, max: pidCvScaleMax(loopId) };
+  }
+  return { min: 0, max: pidPvScaleMax(loopId) };
+}
+
+/**
+ * Add ``delta`` to a faceplate analog and clamp to ``[min, max]``.
+ * Returns a 2dp commit, or null when the inputs are not finite.
+ */
+export function pidNudgeValue(value, delta, min, max) {
+  if (!isPresentFinite(value) || !isPresentFinite(delta)) return null;
+  let next = Number(value) + Number(delta);
+  const lo = Number(min);
+  const hi = Number(max);
+  if (Number.isFinite(lo)) next = Math.max(lo, next);
+  if (Number.isFinite(hi)) next = Math.min(hi, next);
+  return commitSpValue(next);
+}
+
 /**
  * Round a parsed SP to display precision for both UI commit and number.set_value.
  * Returns null when the input is not a finite number.
@@ -188,11 +220,15 @@ export function numberServiceValue(value) {
 }
 
 /**
- * Resolve a faceplate click to a mode, SP-apply, open, or close action.
+ * Resolve a faceplate click to a mode, apply, bar, nudge, settings, open, or
+ * close action.
  *
  * Mode switches must use ``button[data-mode]`` only — never a bare
  * ``[data-mode]`` match — so a card-root accent attribute cannot hijack Set
  * (``data-mode="man"`` → Number("man") → NaN toast).
+ *
+ * Writable bar clicks are ``type: "bar"`` so the host can open the numeric
+ * popup. Pointer-position set is not part of this resolver.
  */
 export function resolveFaceplateClick(target) {
   if (!target || typeof target.closest !== "function") return null;
@@ -209,13 +245,37 @@ export function resolveFaceplateClick(target) {
     if (applyBtn.disabled) return null;
     return { type: "apply", key: applyBtn.getAttribute("data-apply") };
   }
+  const settingsApply = target.closest("[data-settings-apply]");
+  if (settingsApply) {
+    if (settingsApply.disabled) return null;
+    return { type: "settings", action: "apply" };
+  }
+  const settingsCancel = target.closest("[data-settings-cancel]");
+  if (settingsCancel) {
+    return { type: "settings", action: "cancel" };
+  }
+  const nudgeBtn = target.closest("button[data-nudge]");
+  if (nudgeBtn) {
+    if (nudgeBtn.disabled) return null;
+    const delta = Number(nudgeBtn.getAttribute("data-nudge"));
+    if (!Number.isFinite(delta)) return null;
+    return { type: "nudge", delta };
+  }
   const barBtn = target.closest("[data-bar]");
   if (barBtn) {
     if (barBtn.getAttribute("data-writable") !== "1") return null;
     return { type: "bar", key: barBtn.getAttribute("data-bar") };
   }
+  const settingsOpen = target.closest("[data-settings]");
+  if (settingsOpen) {
+    return { type: "settings", action: "open" };
+  }
   // Dialog chrome (inputs/labels/panel) must not re-trigger open.
-  if (target.closest(".pid-dialog-panel") || target.closest("input[data-sp]")) {
+  if (
+    target.closest(".pid-dialog-panel") ||
+    target.closest("input[data-sp]") ||
+    target.closest("input[data-tune]")
+  ) {
     return null;
   }
   const openSurface = target.closest("[data-open-editor]");
@@ -279,6 +339,41 @@ const PID_FACEPLATE_CSS = `
 .pid-head {
   display: flex; justify-content: space-between; align-items: center;
   gap: 8px; margin-bottom: 10px;
+}
+.pid-head-err {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0;
+  min-width: 3.25rem;
+}
+.pid-head-err span {
+  font-size: var(--pid-label-size);
+  font-weight: var(--ha-font-weight-medium, 500);
+  color: var(--secondary-text-color);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.pid-head-err strong {
+  font-size: var(--pid-value-size);
+  font-weight: var(--ha-font-weight-normal, 400);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--ha-line-height-normal, 1.4);
+}
+.pid-settings-btn {
+  flex: 0 0 auto;
+  width: 32px; height: 32px;
+  border: 0; background: transparent;
+  color: var(--primary-text-color);
+  cursor: pointer; border-radius: 4px; padding: 4px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.pid-settings-btn svg { width: 20px; height: 20px; fill: currentColor; }
+.pid-settings-btn:hover { background: var(--secondary-background-color, #f0f0f0); }
+.pid-settings-btn:focus-visible {
+  outline: 2px solid var(--pid-focus);
+  outline-offset: 1px;
 }
 .pid-isa {
   flex: 0 0 auto;
@@ -360,34 +455,36 @@ const PID_FACEPLATE_CSS = `
 .pid-analog {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   margin: 8px 0 4px;
 }
 .pid-vbars {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  min-height: 88px;
+  display: flex;
+  justify-content: center;
+  gap: 28px;
+  min-height: 148px;
 }
 .pid-vbar,
 .pid-hbar {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 4px;
-  min-width: 0;
-  padding: 4px;
   margin: 0;
-  border: 1px solid transparent;
+  padding: 0;
+  border: 0;
   background: transparent;
   color: inherit;
   cursor: default;
   font: inherit;
-  border-radius: 6px;
+}
+.pid-vbar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 56px;
 }
 .pid-vbar-track {
-  flex: 1;
-  min-height: 72px;
+  flex: 1 1 auto;
+  width: 14px;
+  min-height: 120px;
   border-radius: 4px;
   background: var(--divider-color, #ccc);
   position: relative;
@@ -401,8 +498,16 @@ const PID_FACEPLATE_CSS = `
   height: 0%;
   background: var(--primary-text-color);
   opacity: 0.45;
-  transition: height 0.25s ease;
+  transition: height 0.25s ease, background 0.2s ease, opacity 0.2s ease;
 }
+.pid-hbar {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.pid-bar-caption,
 .pid-vbar-lab,
 .pid-cv-lab {
   font-size: var(--pid-label-size);
@@ -411,8 +516,17 @@ const PID_FACEPLATE_CSS = `
   text-align: center;
   color: var(--secondary-text-color);
 }
+.pid-bar-readout {
+  font-size: var(--pid-secondary-size);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--ha-font-weight-medium, 500);
+  color: var(--primary-text-color);
+  min-width: 3.25rem;
+  text-align: center;
+}
+.pid-hbar .pid-bar-readout { text-align: right; }
 .pid-cv-track {
-  height: 10px; border-radius: 4px;
+  height: 16px; border-radius: 4px;
   background: var(--divider-color, #ccc);
   overflow: hidden;
 }
@@ -421,18 +535,61 @@ const PID_FACEPLATE_CSS = `
   background: var(--primary-text-color); opacity: 0.45;
   transition: width 0.25s ease, background 0.2s ease, opacity 0.2s ease;
 }
-.pid-cv-fill[data-hi="caution"] {
+.pid-vbar-fill[data-writable="1"],
+.pid-cv-fill[data-writable="1"] {
+  background: var(--primary-color, var(--pid-focus));
+  opacity: 1;
+}
+.pid-cv-fill[data-hi="caution"],
+.pid-shell[data-pid-hi="caution"] .pid-vbar-fill[data-writable="1"],
+.pid-shell[data-pid-hi="caution"] .pid-cv-fill[data-writable="1"] {
   background: var(--pid-hi-caution); opacity: 1;
+}
+.pid-shell[data-pid-hi="abnormal"] .pid-vbar-fill[data-writable="1"],
+.pid-shell[data-pid-hi="abnormal"] .pid-cv-fill[data-writable="1"] {
+  background: var(--pid-hi-abnormal); opacity: 1;
 }
 .pid-vbar[data-writable="1"],
 .pid-hbar[data-writable="1"] {
   cursor: pointer;
-  border-color: var(--primary-text-color);
-  box-shadow: inset 0 0 0 1px var(--primary-text-color);
 }
 .pid-vbar[data-writable="0"],
 .pid-hbar[data-writable="0"] {
   pointer-events: none;
+}
+.pid-nudge {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin: 8px 0 6px;
+}
+.pid-nudge button {
+  border: 1px solid var(--divider-color, #c8c8c8);
+  background: var(--card-background-color, #fff);
+  color: var(--primary-text-color);
+  border-radius: 4px;
+  padding: 8px 4px;
+  cursor: pointer;
+  font-family: var(--pid-font);
+  font-size: var(--pid-body-size);
+  font-weight: var(--ha-font-weight-medium, 500);
+}
+.pid-nudge button:disabled { opacity: 0.4; cursor: default; }
+.pid-nudge button:focus-visible {
+  outline: 2px solid var(--pid-focus);
+  outline-offset: 1px;
+}
+.pid-dialog-actions {
+  display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px;
+}
+.pid-dialog-actions button {
+  border: 1px solid var(--divider-color, #c8c8c8);
+  background: var(--secondary-background-color, #f7f7f7);
+  color: var(--primary-text-color);
+  border-radius: 4px; padding: 8px 12px; cursor: pointer;
+  font-family: var(--pid-font);
+  font-size: var(--pid-secondary-size);
+  font-weight: var(--ha-font-weight-medium, 500);
 }
 .pid-face-modes {
   margin-top: 6px;
@@ -651,22 +808,40 @@ export function pidKpiRowHtml({ metricPrefix = "" } = {}) {
             </div>`;
 }
 
+export function pidSettingsButtonHtml() {
+  return `<button type="button" class="pid-settings-btn" data-settings="open" aria-label="Controller settings" title="Controller settings">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96c-.5-.4-1.04-.71-1.63-.94l-.36-2.54A.5.5 0 0 0 13.9 2h-3.8a.5.5 0 0 0-.5.42l-.36 2.54c-.59.23-1.13.54-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.8 8.48a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94L2.92 14.1a.5.5 0 0 0-.12.64l1.92 3.32c.13.24.42.34.7.22l2.39-.96c.5.4 1.04.71 1.63.94l.36 2.54c.05.24.26.42.5.42h3.8c.24 0 .45-.18.5-.42l.36-2.54c.59-.23 1.13-.54 1.63-.94l2.39.96c.28.12.57.02.7-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 12 8.5a3.5 3.5 0 0 1 0 7z"/></svg>
+              </button>`;
+}
+
 export function pidAnalogBarsHtml() {
   return `<div class="pid-analog">
               <div class="pid-vbars">
                 <button type="button" class="pid-vbar" data-bar="pv" data-writable="0" aria-label="PV">
+                  <span class="pid-bar-caption">PV</span>
                   <div class="pid-vbar-track"><div class="pid-vbar-fill" data-pv-bar></div></div>
-                  <span class="pid-vbar-lab">PV</span>
+                  <span class="pid-bar-readout" data-metric="pv">—</span>
                 </button>
                 <button type="button" class="pid-vbar" data-bar="sp" data-writable="0" aria-label="SP">
+                  <span class="pid-bar-caption">SP</span>
                   <div class="pid-vbar-track"><div class="pid-vbar-fill" data-sp-bar></div></div>
-                  <span class="pid-vbar-lab">SP</span>
+                  <span class="pid-bar-readout" data-metric="sp">—</span>
                 </button>
               </div>
               <button type="button" class="pid-hbar" data-bar="co" data-writable="0" aria-label="CO">
+                <span class="pid-bar-caption">CO</span>
                 <div class="pid-cv-track"><div class="pid-cv-fill" data-cv-bar></div></div>
-                <span class="pid-cv-lab">CO</span>
+                <span class="pid-bar-readout" data-metric="cv">—</span>
               </button>
+            </div>`;
+}
+
+export function pidNudgeRowHtml() {
+  return `<div class="pid-nudge" role="group" aria-label="Nudge writable analog">
+              <button type="button" data-nudge="-1" title="Decrease by 1.0">&lt;&lt;</button>
+              <button type="button" data-nudge="-0.1" title="Decrease by 0.1">&lt;</button>
+              <button type="button" data-nudge="0.1" title="Increase by 0.1">&gt;</button>
+              <button type="button" data-nudge="1" title="Increase by 1.0">&gt;&gt;</button>
             </div>`;
 }
 
@@ -685,16 +860,20 @@ export function pidAssembledFaceHtml({ includeHint = true } = {}) {
   return `<div class="pid-head">
               ${pidIsaGlyphHtml()}
               <div class="pid-title"></div>
-              <div class="pid-badge" data-badge></div>
+              <div class="pid-metric pid-head-err" data-role="err">
+                <span>ε</span>
+                <strong data-metric="err"></strong>
+              </div>
+              ${pidSettingsButtonHtml()}
             </div>
-            ${pidKpiRowHtml()}
             ${pidAnalogBarsHtml()}
+            ${pidNudgeRowHtml()}
             ${pidModeRowHtml()}
             ${hint}`;
 }
 
 export function pidDialogHtml() {
-  return `<div class="pid-dialog" hidden role="dialog" aria-modal="true">
+  return `<div class="pid-dialog pid-value-dialog" hidden role="dialog" aria-modal="true">
           <button type="button" class="pid-dialog-backdrop" data-close-editor aria-label="Dismiss"></button>
           <div class="pid-dialog-panel" role="document">
             <div class="pid-dialog-head">
@@ -744,6 +923,38 @@ export function pidDialogHtml() {
         </div>`;
 }
 
+export function pidSettingsDialogHtml() {
+  return `<div class="pid-dialog pid-settings-dialog" hidden role="dialog" aria-modal="true">
+          <button type="button" class="pid-dialog-backdrop" data-close-editor aria-label="Dismiss"></button>
+          <div class="pid-dialog-panel" role="document">
+            <div class="pid-dialog-head">
+              <div class="pid-dialog-title">Controller settings</div>
+              <button type="button" class="pid-dialog-close" data-close-editor aria-label="Close">×</button>
+            </div>
+            <div class="pid-dialog-body">
+              <div class="pid-editors">
+                <div class="pid-row">
+                  <label>Kp</label>
+                  <input data-tune="kp" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" />
+                </div>
+                <div class="pid-row">
+                  <label>Ki</label>
+                  <input data-tune="ki" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" />
+                </div>
+                <div class="pid-row">
+                  <label>Kd</label>
+                  <input data-tune="kd" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" />
+                </div>
+              </div>
+              <div class="pid-dialog-actions">
+                <button type="button" data-settings-cancel>Cancel</button>
+                <button type="button" data-settings-apply>Apply</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+}
+
 export function pidFaceplateMarkup({
   unavailable = false,
   entity = "",
@@ -753,7 +964,7 @@ export function pidFaceplateMarkup({
   if (unavailable) {
     return `<div class="pid-missing">Entity ${entity} unavailable</div>`;
   }
-  const dialog = includeDialog ? pidDialogHtml() : "";
+  const dialog = includeDialog ? `${pidDialogHtml()}${pidSettingsDialogHtml()}` : "";
   return `<div class="pid-shell" data-pid-mode="man" data-pid-hi="normal">
         <div class="pid-card">
         <div class="pid-accent" aria-hidden="true"></div>
@@ -795,7 +1006,7 @@ export const PID_FACEPLATE_ELEMENT_CATALOG = [
   {
     id: "analog-bars",
     title: "Analog bars",
-    description: "Vertical PV and SP, horizontal CO.",
+    description: "Thin tall PV/SP bars and a thicker CO bar, with values on the analog.",
     html: () => wrapIsolated(pidAnalogBarsHtml()),
   },
   {
@@ -898,6 +1109,31 @@ export function applyPidFaceplateState(root, state = {}) {
       (barKey === "co" && writeTarget === "co");
     el.setAttribute("data-writable", writable ? "1" : "0");
   });
+  const fillWritable = {
+    "[data-pv-bar]": "0",
+    "[data-sp-bar]": writeTarget === "sp" ? "1" : "0",
+    "[data-cv-bar]": writeTarget === "co" ? "1" : "0",
+  };
+  for (const [sel, flag] of Object.entries(fillWritable)) {
+    const fill = root.querySelector(sel);
+    if (fill) fill.setAttribute("data-writable", flag);
+  }
+
+  const canNudge = Boolean(writeTarget);
+  root.querySelectorAll("[data-nudge]").forEach((btn) => {
+    btn.disabled = !canNudge;
+  });
+
+  for (const key of ["kp", "ki", "kd"]) {
+    if (!(key in state)) continue;
+    const input = root.querySelector(`[data-tune="${key}"]`);
+    if (!input) continue;
+    const focused =
+      typeof document !== "undefined" && document.activeElement === input;
+    if (focused) continue;
+    const val = state[key];
+    input.value = val == null || val === "" ? "" : formatPidValue(val);
+  }
 
   root.querySelectorAll("button[data-mode]").forEach((btn) => {
     const code = btn.getAttribute("data-mode");

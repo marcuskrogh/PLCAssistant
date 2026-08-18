@@ -9,12 +9,13 @@
  * same elements can be mounted in the developer sandbox without Home Assistant.
  *
  * Highlighted bar is the writable analog (CO in MAN, SP in AUTO when the Auto
- * entity is a Number). Tap the bar to set from pointer position; typed Set
- * remains in the dialog.
+ * entity is a Number). Tap the bar to open the numeric popup. Arrows nudge
+ * the writable analog by 0.1 / 1.0. The settings gear edits Kp / Ki / Kd.
  *
  * Colour (ISA-101 high-performance HMI): grayscale / Home Assistant tokens in
- * normal operation. Colour is reserved for caution (--warning-color) and
- * abnormal (--error-color) — never for Man / Auto / Rem identity.
+ * normal operation for mode identity. The writable analog **fill** uses
+ * --primary-color. Caution (--warning-color) and abnormal (--error-color)
+ * still override. Man / Auto / Rem buttons stay grayscale invert.
  *
  * Drafts: typed SP inputs use text + inputmode=decimal (not type=number) so
  * intermediate edits like "0." survive live hass updates without caret jumps.
@@ -47,6 +48,10 @@ import {
   pidBarPct,
   pidOperatorWriteTarget,
   pidBarValueFromPointer,
+  pidNudgeValue,
+  pidNudgeRange,
+  PID_NUDGE_FINE,
+  PID_NUDGE_COARSE,
   commitSpValue,
   parseSpValue,
   numberServiceValue,
@@ -79,6 +84,10 @@ export {
   pidBarPct,
   pidOperatorWriteTarget,
   pidBarValueFromPointer,
+  pidNudgeValue,
+  pidNudgeRange,
+  PID_NUDGE_FINE,
+  PID_NUDGE_COARSE,
   commitSpValue,
   parseSpValue,
   numberServiceValue,
@@ -97,6 +106,7 @@ class PlcAssistantPidCard extends HTMLElement {
     this._dirty = {};
     this._bound = false;
     this._dialogOpen = false;
+    this._settingsOpen = false;
   }
 
   setConfig(config) {
@@ -107,6 +117,7 @@ class PlcAssistantPidCard extends HTMLElement {
     this._drafts = {};
     this._dirty = {};
     this._dialogOpen = false;
+    this._settingsOpen = false;
     this._render(true);
   }
 
@@ -116,7 +127,7 @@ class PlcAssistantPidCard extends HTMLElement {
   }
 
   getCardSize() {
-    return 3;
+    return 4;
   }
 
   _attr(stateObj, key, fallback) {
@@ -207,45 +218,38 @@ class PlcAssistantPidCard extends HTMLElement {
     this._setNumber(entity, committed);
   }
 
-  _applyBarClick(ev, key) {
-    const barBtn = ev.target?.closest?.("[data-bar]");
-    const track = barBtn?.querySelector?.(".pid-vbar-track, .pid-cv-track");
-    if (!track || typeof track.getBoundingClientRect !== "function") return;
+  _writeTargetState() {
     const st = this._hass?.states?.[this._config.entity];
+    const mode = (st?.state || "automatic").toLowerCase();
     const loopId = this._attr(st, "loop_id", "loop");
-    let min = 0;
-    let max;
-    let orientation;
-    if (key === "co") {
-      max = pidCvScaleMax(loopId);
-      orientation = "horizontal";
-    } else if (key === "sp") {
-      max = pidPvScaleMax(loopId);
-      orientation = "vertical";
-    } else {
-      return;
-    }
-    const rect = track.getBoundingClientRect();
-    const raw = pidBarValueFromPointer(
-      rect,
-      ev.clientX,
-      ev.clientY,
-      min,
-      max,
-      orientation
-    );
-    const committed = commitSpValue(raw);
-    if (committed === null) return;
-    const entity =
-      key === "co"
-        ? this._attr(st, "cv_man_entity", "")
-        : this._attr(st, "sp_auto_entity", "");
+    const spAutoEntity = this._attr(st, "sp_auto_entity", "");
+    const cvManEntity = this._attr(st, "cv_man_entity", "");
+    const autoDisabled = String(spAutoEntity).startsWith("sensor.");
+    const target = pidOperatorWriteTarget(mode, {
+      spWritable: !autoDisabled,
+      coWritable: Boolean(cvManEntity),
+    });
+    return { st, loopId, target, spAutoEntity, cvManEntity };
+  }
+
+  _nudge(delta) {
+    const { st, loopId, target, spAutoEntity, cvManEntity } = this._writeTargetState();
+    if (!st || !target) return;
+    const range = pidNudgeRange(target, loopId);
+    const current =
+      target === "co"
+        ? this._attr(st, "co_man", this._attr(st, "cv", 0))
+        : this._attr(st, "sp", 0);
+    const next = pidNudgeValue(current, delta, range.min, range.max);
+    if (next === null) return;
+    const entity = target === "co" ? cvManEntity : spAutoEntity;
     if (!entity || String(entity).startsWith("sensor.")) return;
-    this._setNumber(entity, committed);
+    this._setNumber(entity, next);
   }
 
   _openDialog() {
     if (this._dialogOpen) return;
+    this._settingsOpen = false;
     this._dialogOpen = true;
     this._render(false);
   }
@@ -254,6 +258,35 @@ class PlcAssistantPidCard extends HTMLElement {
     if (!this._dialogOpen) return;
     this._dialogOpen = false;
     this._render(false);
+  }
+
+  _openSettings() {
+    if (this._settingsOpen) return;
+    this._dialogOpen = false;
+    this._settingsOpen = true;
+    this._render(false);
+  }
+
+  _closeSettings() {
+    if (!this._settingsOpen) return;
+    this._settingsOpen = false;
+    this._render(false);
+  }
+
+  _applySettings() {
+    const st = this._hass?.states?.[this._config.entity];
+    if (!st || !this._root) return;
+    for (const key of ["kp", "ki", "kd"]) {
+      const input = this._root.querySelector(`[data-tune="${key}"]`);
+      const entity = this._attr(st, `${key}_entity`, "");
+      if (!input || !entity || String(entity).startsWith("sensor.")) continue;
+      const parsed = this._parseSp(input.value);
+      if (parsed === null) continue;
+      const committed = commitSpValue(parsed);
+      if (committed === null) continue;
+      this._setNumber(entity, committed);
+    }
+    this._closeSettings();
   }
 
   _bindEditors() {
@@ -268,6 +301,7 @@ class PlcAssistantPidCard extends HTMLElement {
       }
       if (action.type === "close") {
         this._closeDialog();
+        this._closeSettings();
         return;
       }
       if (action.type === "mode") {
@@ -278,8 +312,18 @@ class PlcAssistantPidCard extends HTMLElement {
         this._applySp(action.key);
         return;
       }
+      if (action.type === "nudge") {
+        this._nudge(action.delta);
+        return;
+      }
+      if (action.type === "settings") {
+        if (action.action === "open") this._openSettings();
+        else if (action.action === "cancel") this._closeSettings();
+        else if (action.action === "apply") this._applySettings();
+        return;
+      }
       if (action.type === "bar") {
-        this._applyBarClick(ev, action.key);
+        this._openDialog();
       }
     });
     this._root.addEventListener("input", (ev) => {
@@ -291,11 +335,12 @@ class PlcAssistantPidCard extends HTMLElement {
       this._dirty[key] = true;
     });
     this._root.addEventListener("keydown", (ev) => {
-      if (ev.key === "Escape" && this._dialogOpen) {
-        const onInput = ev.target.closest?.("input[data-sp]");
+      if (ev.key === "Escape" && (this._dialogOpen || this._settingsOpen)) {
+        const onInput = ev.target.closest?.("input[data-sp], input[data-tune]");
         if (!onInput) {
           ev.preventDefault();
           this._closeDialog();
+          this._closeSettings();
           return;
         }
       }
@@ -389,14 +434,22 @@ class PlcAssistantPidCard extends HTMLElement {
       pv,
       sp,
       cv,
+      kp: this._attr(st, "kp", null),
+      ki: this._attr(st, "ki", null),
+      kd: this._attr(st, "kd", null),
       spWritable: !autoDisabled,
       coWritable: Boolean(cvManEntity),
     });
 
-    const dialog = this._root.querySelector(".pid-dialog");
+    const dialog = this._root.querySelector(".pid-value-dialog");
     if (dialog) {
       if (this._dialogOpen) dialog.removeAttribute("hidden");
       else dialog.setAttribute("hidden", "");
+    }
+    const settings = this._root.querySelector(".pid-settings-dialog");
+    if (settings) {
+      if (this._settingsOpen) settings.removeAttribute("hidden");
+      else settings.setAttribute("hidden", "");
     }
 
     const values = { co: coMan, auto: spAuto, rem: spRem };
@@ -434,7 +487,7 @@ class PlcAssistantPidCard extends HTMLElement {
     const note = this._root.querySelector(".pid-note");
     if (note) {
       note.textContent =
-        `Mode via ${modeEntity || "—"}. MAN writes CO; AUTO writes local SP; REM is cascade/remote (read-only). Click the highlighted bar or Set. Enter commits · Esc cancels draft (or closes).`;
+        `Mode via ${modeEntity || "—"}. MAN writes CO; AUTO writes local SP; REM is cascade/remote (read-only). Click the highlighted bar to type a value. Arrows nudge. Gear opens tuning. Enter commits · Esc cancels draft (or closes).`;
     }
   }
 }

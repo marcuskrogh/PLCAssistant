@@ -41,6 +41,7 @@ _LEVEL = {
     "cv_man_entity": "number.plcassistant_co_level_man",
     "kp_entity": "number.plcassistant_level_kp",
     "ki_entity": "number.plcassistant_level_ki",
+    "kd_entity": "number.plcassistant_level_kd",
 }
 
 _FLOW = {
@@ -66,6 +67,7 @@ _FLOW = {
     "cv_man_entity": "number.plcassistant_co_flow_man",
     "kp_entity": "number.plcassistant_flow_kp",
     "ki_entity": "number.plcassistant_flow_ki",
+    "kd_entity": "number.plcassistant_flow_kd",
 }
 
 DEMO_PID_LOOPS: tuple[dict[str, str], ...] = (_LEVEL, _FLOW)
@@ -212,6 +214,7 @@ class PlcAssistantPidLoopSensor(SensorEntity):
             "cv_man_entity": spec["cv_man_entity"],
             "kp_entity": spec["kp_entity"],
             "ki_entity": spec["ki_entity"],
+            "kd_entity": spec["kd_entity"],
             "write_target": None,
         }
 

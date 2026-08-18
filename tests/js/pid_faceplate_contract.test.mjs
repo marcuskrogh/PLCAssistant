@@ -39,9 +39,13 @@ const {
   pidBarValueFromPointer,
   pidBarPct,
   pidPvScaleMax,
+  pidNudgeValue,
+  pidNudgeRange,
   PID_DISPLAY_DIGITS,
   PID_CV_MAX_LEVEL,
   PID_CV_MAX_FLOW,
+  PID_NUDGE_FINE,
+  PID_NUDGE_COARSE,
 } = await import(cardUrl);
 
 let failed = 0;
@@ -347,6 +351,32 @@ assertEq(
   "bar",
   "writable bar wins over data-open-editor ancestor"
 );
+
+assertEq(PID_NUDGE_FINE, 0.1, "fine nudge is 0.1");
+assertEq(PID_NUDGE_COARSE, 1, "coarse nudge is 1.0");
+assertEq(pidNudgeRange("sp", "level").max, 0.4, "level SP nudge max is 0.40 m");
+assertEq(pidNudgeRange("co", "level").max, 8, "level CO nudge max is 8 L/min");
+assertEq(pidNudgeValue(3.2, 0.1, 0, 8), 3.3, "fine nudge +0.1");
+assertEq(pidNudgeValue(3.2, -1, 0, 8), 2.2, "coarse nudge -1.0");
+assertEq(pidNudgeValue(0.05, -0.1, 0, 0.4), 0, "nudge clamps to min");
+assertEq(pidNudgeValue(7.6, 1, 0, 8), 8, "nudge clamps to max");
+assertEq(pidNudgeValue(null, 0.1, 0, 8), null, "nudge rejects missing value");
+
+const fineUp = node("button", { "data-nudge": "0.1" });
+assertEq(resolveFaceplateClick(fineUp)?.type, "nudge", "nudge click type");
+assertEq(resolveFaceplateClick(fineUp)?.delta, 0.1, "nudge click delta 0.1");
+const coarseDown = node("button", { "data-nudge": "-1" });
+assertEq(resolveFaceplateClick(coarseDown)?.delta, -1, "nudge click delta -1");
+const disabledNudge = node("button", { "data-nudge": "0.1", disabled: true });
+assertEq(resolveFaceplateClick(disabledNudge), null, "disabled nudge is ignored");
+
+const gear = node("button", { "data-settings": "open" });
+assertEq(resolveFaceplateClick(gear)?.type, "settings", "gear opens settings");
+assertEq(resolveFaceplateClick(gear)?.action, "open", "gear action is open");
+const settingsApply = node("button", { "data-settings-apply": "" });
+assertEq(resolveFaceplateClick(settingsApply)?.action, "apply", "settings apply");
+const settingsCancel = node("button", { "data-settings-cancel": "" });
+assertEq(resolveFaceplateClick(settingsCancel)?.action, "cancel", "settings cancel");
 
 if (failed > 0) {
   console.error(`\n${failed} assertion(s) failed`);

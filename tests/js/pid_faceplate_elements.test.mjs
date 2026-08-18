@@ -67,6 +67,9 @@ assert(bars.includes('data-bar="sp"'), "SP bar");
 assert(bars.includes('data-bar="co"'), "CO bar");
 assert(bars.includes("pid-vbar-track"), "vertical track");
 assert(bars.includes("pid-hbar"), "horizontal CO");
+assert(bars.includes('data-metric="pv"'), "PV value on bar");
+assert(bars.includes('data-metric="sp"'), "SP value on bar");
+assert(bars.includes('data-metric="cv"'), "CO value on bar");
 
 const modes = pidFaceplateElementHtml("mode-row");
 assert(modes.includes('data-mode="0"'), "Man");
@@ -81,11 +84,25 @@ assert(css.includes("--error-color"), "ISA-101 abnormal token");
 assert(!css.includes("--pid-man"), "no MAN hue token");
 assert(css.includes("overflow: hidden"), "card clips; shell does not own overflow in CSS block");
 assert(css.includes(".pid-card"), "card selector");
+assert(css.includes("min-height: 120px"), "taller vertical tracks");
+assert(css.includes("width: 14px"), "thinner vertical tracks");
+assert(css.includes("height: 16px"), "thicker CO track");
+assert(css.includes(".pid-vbar-fill[data-writable=\"1\"]"), "writable fill colour hook");
+assert(
+  !css.includes("box-shadow: inset 0 0 0 1px var(--primary-text-color)"),
+  "writable analog is not a bounding box"
+);
 
 const assembled = pidFaceplateMarkup({ includeDialog: true, includeHint: true });
 assert(assembled.includes("Tap to adjust"), "assembled hint");
+assert(assembled.includes("data-nudge"), "nudge row on assembled face");
+assert(assembled.includes('data-settings="open"'), "settings gear");
+assert(assembled.includes("pid-head-err"), "ε in the header");
+assert(assembled.includes("pid-settings-dialog"), "settings dialog");
+assert(assembled.includes("pid-value-dialog"), "value dialog");
+assert(!assembled.includes("pid-hero"), "assembled face does not keep the KPI hero row");
 const cardOpen = assembled.indexOf('<div class="pid-card">');
-const dialogOpen = assembled.indexOf('<div class="pid-dialog"');
+const dialogOpen = assembled.indexOf('class="pid-dialog');
 assert(cardOpen !== -1 && dialogOpen > cardOpen, "dialog after card");
 const between = assembled.slice(cardOpen, dialogOpen);
 assert(between.includes("</div>"), "pid-card closes before dialog");
@@ -130,6 +147,14 @@ function makeNode() {
           return n;
         });
       }
+      if (sel === "[data-nudge]") {
+        return ["-1", "-0.1", "0.1", "1"].map((delta) => {
+          const n = mk(`button[data-nudge="${delta}"]`);
+          n._attrs["data-nudge"] = delta;
+          n.disabled = false;
+          return n;
+        });
+      }
       if (sel === "button[data-mode]") {
         return ["0", "1", "2"].map((code) => {
           const n = mk(`button[data-mode="${code}"]`);
@@ -161,6 +186,8 @@ assertEq(root.mk('[data-metric="sp"]').textContent, "0.30", "SP 2dp");
 assertEq(root.mk("[data-pv-bar]").style.height, "50%", "PV bar 0.2/0.4");
 assertEq(root.mk('[data-bar="co"]')._attrs["data-writable"], "1", "MAN highlights CO");
 assertEq(root.mk('[data-bar="sp"]')._attrs["data-writable"], "0", "MAN does not write SP");
+assertEq(root.mk("[data-cv-bar]")._attrs["data-writable"], "1", "MAN colours CO fill");
+assert(root.mk('button[data-nudge="-1"]').disabled === false, "nudge enabled in MAN");
 assert(root.mk('button[data-mode="0"]').classList._on === true, "Man button active");
 
 const host = { innerHTML: "" };

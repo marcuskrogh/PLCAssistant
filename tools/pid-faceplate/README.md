@@ -21,6 +21,6 @@ Then open http://127.0.0.1:8765/tools/pid-faceplate/
 
 - Isolated elements: ISA-5.1 glyph, KPI row, PV/SP/CO bars, MAN/AUTO/REM
 - Assembled Level and Flow mocks driven by the sliders
-- Local click-to-set on the highlighted bar (sandbox only)
+- Click a highlighted bar to type a value; nudge arrows (±0.1 / ±1.0); gear for Kp/Ki/Kd
 
 Ship the App only when you want operators to receive chrome changes.
