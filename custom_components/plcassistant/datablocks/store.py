@@ -28,6 +28,39 @@ def default_store_payload() -> dict[str, Any]:
     }
 
 
+def merge_missing_default_tank_entries(payload: dict[str, Any]) -> bool:
+    """Add newly shipped DB_Tank tags/bindings without overwriting user edits.
+
+    Existing installs persist ``datablocks.json`` from an older catalog. MAN CO
+    Numbers never appear unless missing default tank entries are merged on load.
+    """
+    defaults = default_tank_datablock_catalog().get("DB_Tank")
+    if defaults is None:
+        return False
+    raw = payload.get("datablocks")
+    if not isinstance(raw, dict) or "DB_Tank" not in raw:
+        return False
+    catalog = DatablockCatalog.from_dict(payload)
+    tank = catalog.get("DB_Tank")
+    if tank is None:
+        return False
+    changed = False
+    for name, decl in defaults.tags.items():
+        if name not in tank.tags:
+            tank.tags[name] = decl
+            changed = True
+    have = {b.tag for b in tank.bindings}
+    for binding in defaults.bindings:
+        if binding.tag not in have:
+            tank.bindings.append(binding)
+            changed = True
+    if not changed:
+        return False
+    tank.binding_table()
+    payload["datablocks"] = catalog.to_dict()["datablocks"]
+    return True
+
+
 def load_store(config_root: Path) -> dict[str, Any]:
     path = store_path(config_root)
     if not path.is_file():
@@ -41,6 +74,8 @@ def load_store(config_root: Path) -> dict[str, Any]:
     # Ensure catalog validates (per-block BindingTable rules).
     DatablockCatalog.from_dict(data)
     data.setdefault("program_access", default_program_datablock_access())
+    if merge_missing_default_tank_entries(data):
+        save_store(config_root, data)
     return data
 
 

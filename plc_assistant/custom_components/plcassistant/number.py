@@ -551,11 +551,11 @@ class PlcAssistantRequestNumber(NumberEntity):
             self._plant_simulator().set_tag(self._tag, eng)
             self.async_write_ha_state()
             return
-        await self._publish_in_tag(self._tag, eng)
-        # DCS bumpless MAN: copy live CO into CO_*_MAN when the operator
-        # selects Manual so the PID holds the last output.
+        # DCS bumpless MAN: copy live CO into CO_*_MAN *before* MODE=0 so the
+        # next scan cannot hold the default 0 output.
         if self._tag in ("LEVEL_MODE", "FLOW_MODE") and int(eng) == 0:
             await self._seed_co_hold()
+        await self._publish_in_tag(self._tag, eng)
         # SWD-183/222: writing Man/Auto/Rem SP also flips LEVEL_MODE / FLOW_MODE.
         flip = _sp_mode_flip_map().get(self._tag)
         if flip is not None:

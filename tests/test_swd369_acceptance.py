@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import ast
+import importlib.util
 import subprocess
 from pathlib import Path
 
@@ -218,3 +220,62 @@ def test_dual_tree_pid_card_synced() -> None:
     ha_pid = (ROOT / "pid_loop.py").read_text(encoding="utf-8")
     assert '"cv_man_entity": "number.plcassistant_co_level_man"' in ha_pid
     assert '"co_man": "CO_LEVEL_MAN"' in ha_pid
+
+
+def test_unit_ha_pid_loop_parses() -> None:
+    """Compound PID sensors must load: one real ``_payload_value``, no stub."""
+    src_path = ROOT / "pid_loop.py"
+    tree = ast.parse(src_path.read_text(encoding="utf-8"), filename=str(src_path))
+    defs = [
+        node
+        for node in tree.body
+        if isinstance(node, ast.FunctionDef) and node.name == "_payload_value"
+    ]
+    assert len(defs) == 1
+    assert any(isinstance(node, ast.If) for node in defs[0].body)
+    app_path = Path("plc_assistant/custom_components/plcassistant/pid_loop.py")
+    ast.parse(app_path.read_text(encoding="utf-8"), filename=str(app_path))
+
+
+def test_unit_mode_zero_seeds_co_before_publish() -> None:
+    """Bumpless MAN: seed live CO into CO_*_MAN before publishing MODE=0."""
+    body = (ROOT / "number.py").read_text(encoding="utf-8").split(
+        "async def async_set_native_value", 1
+    )[1]
+    seed = body.find("_seed_co_hold()")
+    publish = body.find("_publish_in_tag(self._tag, eng)")
+    assert 0 <= seed < publish
+
+
+def _ha_store_mod():
+    spec = importlib.util.spec_from_file_location(
+        "test_swd184_acceptance",
+        Path("tests/test_swd184_acceptance.py"),
+    )
+    assert spec is not None and spec.loader is not None
+    helper = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(helper)
+    return helper._load_store_mod()
+
+
+def test_integration_load_store_merges_missing_co_man(tmp_path: Path) -> None:
+    """Existing datablocks.json gains CO_*_MAN without overwriting user tags."""
+    mod = _ha_store_mod()
+    payload = mod.default_store_payload()
+    tank = payload["datablocks"]["DB_Tank"]
+    tank["tags"]["LEVEL_MODE"]["default"] = 0.0
+    for name in ("CO_LEVEL_MAN", "CO_FLOW_MAN"):
+        tank["tags"].pop(name, None)
+        tank["bindings"] = [b for b in tank["bindings"] if b["tag"] != name]
+    mod.save_store(tmp_path, payload)
+
+    reloaded = mod.load_store(tmp_path)
+    tank2 = reloaded["datablocks"]["DB_Tank"]
+    assert "CO_LEVEL_MAN" in tank2["tags"]
+    assert "CO_FLOW_MAN" in tank2["tags"]
+    bound = {b["tag"] for b in tank2["bindings"]}
+    assert "CO_LEVEL_MAN" in bound
+    assert "CO_FLOW_MAN" in bound
+    assert tank2["tags"]["LEVEL_MODE"]["default"] == 0.0
+    persisted = mod.load_store(tmp_path)
+    assert "CO_LEVEL_MAN" in persisted["datablocks"]["DB_Tank"]["tags"]

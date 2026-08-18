@@ -87,9 +87,6 @@ _MODE_ALIASES = {
 
 
 def _payload_value(payload: str | None) -> Any | None:
-
-
-def _payload_value(payload: str | None) -> Any | None:
     if payload is None:
         return None
     try:
