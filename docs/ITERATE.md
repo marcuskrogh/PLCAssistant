@@ -34,7 +34,9 @@
 ## Tracker
 - Task: [SWD-382](https://marcusknielsen.atlassian.net/browse/SWD-382)
 - Relates: SWD-373
-- Branch: `swd-382-pid-settings-drafts`
+- Branch: `cursor/swd-382-pid-settings-drafts`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/106
+- App: **0.1.65**
 
 ## Next
 `/review-fix SWD-382` — Review and auto-fix (single pass)
