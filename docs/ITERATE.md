@@ -1,54 +1,42 @@
-# Iterate: Align builtin PID with IFAC 2024 reference implementation
+# Iterate: PID faceplate settings fields reset while editing
 
 ## Prior work
-- Task: [SWD-360](https://marcusknielsen.atlassian.net/browse/SWD-360) (algorithm); [SWD-366](https://marcusknielsen.atlassian.net/browse/SWD-366) (latest ship)
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/101 (App 0.1.55); https://github.com/marcuskrogh/PLCAssistant/pull/102 (App 0.1.56)
-- Spec context: docs/PLAN.md, docs/RESEARCH.md, IFAC-PapersOnLine 58(7) 370–375 (doi:10.1016/j.ifacol.2024.08.090)
+- Task: [SWD-373](https://marcusknielsen.atlassian.net/browse/SWD-373)
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/105 (App 0.1.64)
+- Spec context: docs/PLAN.md, docs/io/06-pid-faceplate.md, SWD-226 dirty-draft SP editors
 
 ## Problem
-The shipped builtin PID follows ISA-TR5.9 names and a simplified hybrid update. It does not implement the IFAC 2024 reference (Sundström, Hägglund, Bauer, Eker, Soltesz) that this iterate takes as the standardisation source:
-
-- Listing 1 incremental law with `u_old` / `up_old` / `ud_old` / `uff_old`
-- Listings 2–3 critically damped second-order measurement filter and ZOH
-- Jitter scale `Tx`
-- Output Manual (`auto` / `uman`) and external `windup` on the integral increment
+- Controller **settings** fields (Gains / Structure / Output / Filter / Ramp) reset to the live current value more than once per second while the operator is typing, so Apply cannot keep the intended values.
+- Analog SP/MV popup editors already keep dirty drafts across hass updates (SWD-226). Settings `data-tune` fields only skipped a rewrite when `document.activeElement` was that input, which fails in Lovelace shadow DOM and restomps every other field as soon as focus leaves it.
 
 ## Clarifications
-- Invoke named the paper as the standardisation reference; no further questions.
-- ISA-TR5.9 names stay: `pv` ≈ y, `sp` ≈ r, `cv` ≈ u, `beta` ≈ b.
-- `ki` stays in 1/s so wedge tunings do not change (`Dui = ki * e * dt`).
-- `running` stays the permit pin. Lovelace Man / Auto / Rem stays the setpoint-source mux.
-- Wedge cascade PI copies bypass the measurement filter (`tf_ts = 0`) so they do not need retuning.
-- Reimplement from the paper; do not vendor github.com/copybit/pid.
+- Scope is **settings dialog fields only** — analog popup SP/MV editors stay as they are.
+- While the settings dialog is open, the form is a draft until Apply or Cancel/Escape. Reopening loads live params.
 
 ## Acceptance criteria
-- [x] Builtin PID listing-1 incremental update, including `ki = 0` bias `u0` and tracking
-- [x] Second-order measurement filter (paper `TfTs` default 10) with ZOH; `tf_ts <= 0` bypasses
-- [x] `Tx = dt / ts` scales derivative and documents jitter; integral uses `ki * dt`
-- [x] Pins `auto` (default true), `uman`, `windup` (0 none / 1 upper / 2 lower / 3 both)
-- [x] `running` false still holds or zeros CO; Lovelace SP-source modes unchanged
-- [x] Wedge `level_pi` / `flow_pi` still settle without retuning
-- [x] Unit tests cover filter, auto/manual, windup, Tx, and equation ≡ Python reference
-- [x] Docs + dual-tree sync + App **0.1.57**
+- [x] Live hass / `applyPidFaceplateState` paints do not rewrite settings fields while the settings dialog is open
+- [x] Typed or toggled settings drafts survive focus movement and incomplete text such as `0.`
+- [x] Apply still commits current field values; Cancel / Escape / close discards the draft so the next open shows live params
+- [x] Analog popup editors are unchanged
+- [x] Regression tests cover freeze-while-open plus `data-dirty` drafts
+- [x] Dual-tree sync + App **0.1.65** (Lovelace `?v=` cache-bust)
 
 ## Out of scope
-- Lovelace UI for output Manual
-- Series form / external-reset feedback / percent-of-range scaling
-- Threaded listing-5 runtime (Soft-PLC scan is the runtime)
-- Autotune
-- Vendoring copybit/pid
+- Changing PID parameter semantics or which keys appear in settings
+- Reworking analog popup draft handling
+- ISA-101 / chrome layout changes
 
 ## Work packages
-1. Python reference (`plcassistant/control/pid.py`) + equation helpers
-2. Builtin PID equation, pins/params, bumpless seed
-3. Tests, docs, App 0.1.57, dual-tree sync
+1. Freeze `data-tune` paints while the settings dialog is shown (`pid-faceplate-elements.js`)
+2. Lovelace card snapshots / restores settings drafts across hass (same pattern as SP dirty drafts)
+3. Tests, docs, dual-tree, App 0.1.65
 
 ## Tracker
-- Task: [SWD-367](https://marcusknielsen.atlassian.net/browse/SWD-367)
-- Relates: SWD-360, SWD-366
-- Branch: `cursor/swd-367-ifac-pid-reference-6900`
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/103
-- App: **0.1.57**
+- Task: [SWD-382](https://marcusknielsen.atlassian.net/browse/SWD-382)
+- Relates: SWD-373
+- Branch: `cursor/swd-382-pid-settings-drafts`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/106
+- App: **0.1.65**
 
 ## Next
-Done — shipped PR [#103](https://github.com/marcuskrogh/PLCAssistant/pull/103)
+Done — shipped PR [#106](https://github.com/marcuskrogh/PLCAssistant/pull/106) (App 0.1.65)
