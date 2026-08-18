@@ -114,6 +114,7 @@ assert(assembled.includes(">MV<"), "assembled labels MV");
 assert(!assembled.includes("Active SP"), "focused popup is not the old editor stack");
 assert(!css.includes("pointer-events: none"), "non-writable bars stay clickable");
 assert(css.includes("border-left: 1px solid var(--divider-color"), "ε gutter between PV and SP");
+assert(css.includes("[data-pane-panel][hidden]"), "inactive settings panes are hidden");
 assert(assembled.includes("pid-settings-dialog"), "settings dialog");
 assert(assembled.includes('data-pane="gains"'), "settings Gains pane");
 assert(assembled.includes('data-pane="structure"'), "settings Structure pane");

@@ -862,6 +862,8 @@ const PID_FACEPLATE_CSS = `
   color: var(--card-background-color, #fff);
 }
 .pid-editors { display: grid; gap: 8px; }
+.pid-editors[hidden],
+[data-pane-panel][hidden] { display: none !important; }
 .pid-row {
   display: grid; grid-template-columns: 56px 1fr auto; gap: 8px;
   align-items: center; padding: 8px 10px;

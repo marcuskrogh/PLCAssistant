@@ -37,6 +37,7 @@ def test_unit_lovelace_card_imports_shared_module() -> None:
     assert "data-nudge" in chrome
     assert 'data-settings="open"' in chrome
     assert "pid-settings-dialog" in chrome
+    assert "[data-pane-panel][hidden]" in chrome
     assert 'data-pane="gains"' in chrome
     assert 'data-tune="tf_ts"' in chrome
     assert 'data-tune-readonly="form"' in chrome
