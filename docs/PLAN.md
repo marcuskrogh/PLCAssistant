@@ -69,15 +69,15 @@
 - Issue keys stay off product surfaces (card copy, Lovelace yaml)
 
 ## Acceptance criteria
-- [ ] PID card shows two vertical bars (PV, SP) and a horizontal CO bar
-- [ ] MAN highlights CO (grayscale); click/set writes CO; algorithm holds `uman`
-- [ ] AUTO highlights SP when the Auto SP entity is a Number; click/set writes local SP
-- [ ] REM does not highlight a writable analog; PID remains in auto
-- [ ] Colour still only caution/abnormal (ε bands, CO clamp); no mode hues
-- [ ] ISA-5.1 ε/P/I/D chrome retained; KPIs PV / SP / ε / CO at 2dp
-- [ ] Level AUTO + Flow AUTO cascade still settles after Start
-- [ ] Unit/JS tests cover writable target, bar click mapping, MAN hold, and faceplate contract
-- [ ] Dual-tree sync + App **0.1.58**
+- [x] PID card shows two vertical bars (PV, SP) and a horizontal CO bar
+- [x] MAN highlights CO (grayscale); click/set writes CO; algorithm holds `uman`
+- [x] AUTO highlights SP when the Auto SP entity is a Number; click/set writes local SP
+- [x] REM does not highlight a writable analog; PID remains in auto
+- [x] Colour still only caution/abnormal (ε bands, CO clamp); no mode hues
+- [x] ISA-5.1 ε/P/I/D chrome retained; KPIs PV / SP / ε / CO at 2dp
+- [x] Level AUTO + Flow AUTO cascade still settles after Start
+- [x] Unit/JS tests cover writable target, bar click mapping, MAN hold, and faceplate contract
+- [x] Dual-tree sync + App **0.1.58**
 
 ## Work packages
 1. **Controller-mode contract + CO_MAN tags + Bauer auto/uman wiring**
@@ -99,4 +99,4 @@
 - Workflow: feature-standard
 
 ## Next
-`/review-fix SWD-369` — after implement lands on the draft PR
+Done — shipped PR [#104](https://github.com/marcuskrogh/PLCAssistant/pull/104)

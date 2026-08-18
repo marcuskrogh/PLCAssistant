@@ -17,7 +17,7 @@ Operator PID faceplates follow ISA-101 high-performance HMI practice and the ind
 
 | Order | Task | Type | Blocked by | Status | Issue |
 |-------|------|------|------------|--------|-------|
-| 1 | Define & ship ISA-101 DCS PID faceplate (PV/SP bars, CO bar, MAN/AUTO/REM) | implement | — | In Progress | [SWD-369](https://marcusknielsen.atlassian.net/browse/SWD-369) |
+| 1 | Define & ship ISA-101 DCS PID faceplate (PV/SP bars, CO bar, MAN/AUTO/REM) | implement | — | Done | [SWD-369](https://marcusknielsen.atlassian.net/browse/SWD-369) |
 
 ## Cleared so far
 
@@ -46,4 +46,4 @@ Operator PID faceplates follow ISA-101 high-performance HMI practice and the ind
 
 ## Next
 
-`/review-fix SWD-369` — analog-controller faceplate on the delivery branch
+Done — shipped PR [#104](https://github.com/marcuskrogh/PLCAssistant/pull/104)

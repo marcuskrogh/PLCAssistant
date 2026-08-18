@@ -4,11 +4,11 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 | Key | Type | Title | Status | Parent | Artifact | Next |
 |-----|------|-------|--------|--------|----------|------|
-| SWD-368 | Story | ISA-101 / DCS-standard PID faceplates | In Progress | Relates SWD-366 | docs/ROADMAP.md, docs/RESEARCH.md | `/review-fix SWD-369` |
-| SWD-369 | Task | Define & ship ISA-101 DCS PID faceplate | In Review | Relates SWD-368 | docs/PLAN.md | `/review-fix SWD-369` |
-| SWD-370 | Subtask | SWD-369: Controller-mode contract + CO_MAN + auto/uman wiring | In Review | SWD-369 | docs/PLAN.md, plcassistant/io/pid_loop.py | — |
-| SWD-371 | Subtask | SWD-369: Lovelace analog-controller PID card | In Review | SWD-369 | docs/PLAN.md, custom_components/plcassistant/www/pid-loop-card.js | — |
-| SWD-372 | Subtask | SWD-369: Tests, docs, dual-tree, App 0.1.58 | In Review | SWD-369 | docs/PLAN.md, tests/test_swd369_acceptance.py | — |
+| SWD-368 | Story | ISA-101 / DCS-standard PID faceplates | Done | Relates SWD-366 | docs/ROADMAP.md, docs/RESEARCH.md | Done — shipped PR [#104](https://github.com/marcuskrogh/PLCAssistant/pull/104) |
+| SWD-369 | Task | Define & ship ISA-101 DCS PID faceplate | Done | Relates SWD-368 | docs/PLAN.md | Done — shipped PR [#104](https://github.com/marcuskrogh/PLCAssistant/pull/104) |
+| SWD-370 | Subtask | SWD-369: Controller-mode contract + CO_MAN + auto/uman wiring | Done | SWD-369 | docs/PLAN.md, plcassistant/io/pid_loop.py | — |
+| SWD-371 | Subtask | SWD-369: Lovelace analog-controller PID card | Done | SWD-369 | docs/PLAN.md, custom_components/plcassistant/www/pid-loop-card.js | — |
+| SWD-372 | Subtask | SWD-369: Tests, docs, dual-tree, App 0.1.58 | Done | SWD-369 | docs/PLAN.md, tests/test_swd369_acceptance.py | — |
 | SWD-367 | Task | Iterate: Align builtin PID with IFAC 2024 reference implementation | Done | Relates SWD-360, SWD-366 | docs/ITERATE.md | Done — shipped PR [#103](https://github.com/marcuskrogh/PLCAssistant/pull/103) |
 | SWD-366 | Task | Iterate: Lovelace PID cards ISA-5.1 look and ISA-101 highlighting | Done | Relates SWD-360 | docs/ITERATE.md | Done — shipped PR [#102](https://github.com/marcuskrogh/PLCAssistant/pull/102) |
 | SWD-359 | Story | Standardised PID blocks — ISA visualisation and structure | Done | — | docs/ROADMAP.md, docs/RESEARCH.md | Done — shipped PR [#101](https://github.com/marcuskrogh/PLCAssistant/pull/101) |
@@ -171,6 +171,8 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
+- 2026-08-18 — Ship SWD-369: review-fix CLEAN + closeout; PR [#104](https://github.com/marcuskrogh/PLCAssistant/pull/104) (App 0.1.58) → Done.
+- 2026-08-18 — review-fix SWD-369 CLEAN after 1 iter (pid_loop parse / seed-before-MODE=0 / persist CO_MAN). Next `/ship SWD-369` closeout.
 - 2026-08-17 — Implement SWD-369: ISA-101 DCS PID faceplate (PV/SP bars, CO bar, MAN writes CO); App 0.1.58; PR [#104](https://github.com/marcuskrogh/PLCAssistant/pull/104) → In Review. Next `/review-fix SWD-369`.
 - 2026-08-17 — Explore+research+define SWD-368/SWD-369: ISA-112 vs ISA-101; analog-controller geometry; PLAN on `cursor/swd-369-isa101-pid-faceplate-5304`.
 - 2026-08-17 — Ship SWD-367: review-fix CLEAN + closeout; PR [#103](https://github.com/marcuskrogh/PLCAssistant/pull/103) (App 0.1.57) → Done.
