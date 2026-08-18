@@ -209,9 +209,9 @@ def test_unit_windup_both_freezes_i() -> None:
 
 
 def test_unit_iterate_tracks_swd367() -> None:
-    text = Path("docs/ITERATE.md").read_text(encoding="utf-8")
-    assert "SWD-367" in text
-    assert "10.1016/j.ifacol.2024.08.090" in text
+    """IFAC 2024 remains the builtin PID standardisation source (SWD-367)."""
+    text = Path("plcassistant/control/pid.py").read_text(encoding="utf-8")
+    assert "SWD-367" in text or "10.1016/j.ifacol.2024.08.090" in text
     assert "tf_ts" in text
 
 

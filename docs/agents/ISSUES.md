@@ -4,7 +4,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 | Key | Type | Title | Status | Parent | Artifact | Next |
 |-----|------|-------|--------|--------|----------|------|
-| SWD-383 | Task | [Iterate] Flow cascade slave should default to Remote, not Automatic | To Do | Relates SWD-373 | docs/ITERATE.md | `/implement SWD-383` |
+| SWD-383 | Task | [Iterate] Flow cascade slave should default to Remote, not Automatic | In Review | Relates SWD-373 | docs/ITERATE.md | `/review-fix SWD-383` |
 | SWD-373 | Task | Isolate PID faceplate elements for sandbox iteration | Done | Relates SWD-368, SWD-369 | docs/PLAN.md | Done — shipped PR [#105](https://github.com/marcuskrogh/PLCAssistant/pull/105) (App 0.1.64) |
 | SWD-374 | Subtask | SWD-373: Shared faceplate elements module + Lovelace wiring | Done | SWD-373 | docs/PLAN.md, custom_components/plcassistant/www/pid-faceplate-elements.js | — |
 | SWD-375 | Subtask | SWD-373: Isolated element sandbox (no HA/App) | Done | SWD-373 | docs/PLAN.md, tools/pid-faceplate/ | — |
@@ -181,6 +181,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
+- 2026-08-18 — Implement SWD-383: flow REM cascade default + local Auto SP_FLOW_REQ; App 0.1.65; PR [#107](https://github.com/marcuskrogh/PLCAssistant/pull/107) → In Review. Next `/review-fix SWD-383`.
 - 2026-08-18 — Iterate SWD-383: flow cascade slave defaults to Remote (not Auto); Relates SWD-373; branch `cursor/swd-383-flow-cascade-remote-68c1`. Next `/implement SWD-383`.
 - 2026-08-18 — Ship SWD-373: review-fix CLEAN + closeout; PR [#105](https://github.com/marcuskrogh/PLCAssistant/pull/105) (App 0.1.64) → Done.
 - 2026-08-18 — Implement SWD-373 UX (SWD-381): SP ramping (`sp_ramp_max`) in backend, Ramp settings pane, orange SP-bar segment; App 0.1.64; PR [#105](https://github.com/marcuskrogh/PLCAssistant/pull/105) → In Review. Next `/review-fix SWD-373`.

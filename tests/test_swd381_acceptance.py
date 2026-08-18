@@ -53,7 +53,7 @@ def test_unit_level_sp_out_ramps_when_set_exceeds_rate() -> None:
     image = declare_default_image()
     image.begin_inputs()
     image.apply_input("LEVEL_MODE", 1.0, QualityStatus.GOOD)
-        image.apply_input("FLOW_MODE", 2.0, QualityStatus.GOOD)
+    image.apply_input("FLOW_MODE", 2.0, QualityStatus.GOOD)
     image.apply_input("SP_LEVEL_REQ", 0.20, QualityStatus.GOOD)
     image.apply_input("LEVEL_SP_RAMP_MAX", 0.05, QualityStatus.GOOD)
     image.apply_input("LT_TANK", 0.15, QualityStatus.GOOD)

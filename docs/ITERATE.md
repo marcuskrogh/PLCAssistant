@@ -14,12 +14,12 @@ The PID faceplate describes **REM** as cascade/remote and read-only. The flow lo
 - Automatic on the flow loop becomes local SP (`SP_FLOW_REQ`), which is what AUTO means on a DCS slave.
 
 ## Acceptance criteria
-- [ ] Datablock and HA Number default `FLOW_MODE=2` (Remote)
-- [ ] Remote keeps the cascade wire (level CV → flow SP); faceplate writes none
-- [ ] Start with Level Auto + Flow Rem → `SP_FLOW` tracks `SP_FLOW_AUTO` and `CMD_SPEED` moves
-- [ ] Flow Automatic uses local `SP_FLOW_REQ`, not the level CV
-- [ ] Manual stays output Manual (`CO_FLOW_MAN`)
-- [ ] Docs + dual-tree + App **0.1.65**
+- [x] Datablock and HA Number default `FLOW_MODE=2` (Remote)
+- [x] Remote keeps the cascade wire (level CV → flow SP); faceplate writes none
+- [x] Start with Level Auto + Flow Rem → `SP_FLOW` tracks `SP_FLOW_AUTO` and `CMD_SPEED` moves
+- [x] Flow Automatic uses local `SP_FLOW_REQ`, not the level CV
+- [x] Manual stays output Manual (`CO_FLOW_MAN`)
+- [x] Docs + dual-tree + App **0.1.65**
 
 ## Out of scope
 - Alarm-limit colour bands
@@ -38,4 +38,4 @@ The PID faceplate describes **REM** as cascade/remote and read-only. The flow lo
 - App: **0.1.65**
 
 ## Next
-`/implement SWD-383` — Build per ITERATE.md (same branch/PR)
+`/review-fix SWD-383` — Review and auto-fix on the new delivery PR

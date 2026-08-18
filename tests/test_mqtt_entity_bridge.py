@@ -114,7 +114,7 @@ def test_scan_loop_once_and_commands():
     )
     bus.publish(
         tag_in_topic("default", "FLOW_MODE"),
-        MqttTagPayload.now(1.0).encode(),
+        MqttTagPayload.now(2.0).encode(),
     )
     bus.publish(
         tag_in_topic("default", "SP_LEVEL_REQ"),

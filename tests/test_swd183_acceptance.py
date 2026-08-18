@@ -147,7 +147,7 @@ def test_integration_datablock_has_mode_tags() -> None:
     assert "FLOW_KD" in tags
     assert "LEVEL_TF_TS" in tags
     assert "FLOW_HOLD_WHEN_STOPPED" in tags
-    assert len(block.bindings) == 44
+    assert len(block.bindings) == 45
 
 
 def test_integration_softplc_ha_pid_loop_tag_parity() -> None:
