@@ -95,6 +95,8 @@ If personal boards still show unavailable plant Numbers, delete stale unavailabl
 entities in the entity registry (or remove/re-add the integration). Update any
 personal dashboards that still reference plant Numbers for Process display.
 
+**0.1.65** PID faceplate: controller settings fields keep drafts while the dialog is open (live hass no longer restomps Kp/Ki/…). Stock Lovelace still dashboard version **28**.
+
 **0.1.64** PID faceplate: SP ramping (`sp_ramp_max`) with an orange SP-bar segment from current SP to target. Stock Lovelace still dashboard version **28**.
 
 **0.1.63** PID faceplate: settings gear panes for all standardised PID parameters (Gains / Structure / Output / Filter). Stock Lovelace still dashboard version **28**.

@@ -1255,12 +1255,27 @@ function isTruthyTune(val) {
   return false;
 }
 
+/** True when the controller-settings dialog is currently shown. */
+export function pidSettingsDialogOpen(root) {
+  if (!root || typeof root.querySelector !== "function") return false;
+  const dlg = root.querySelector(".pid-settings-dialog");
+  if (!dlg) return false;
+  if (typeof dlg.hasAttribute === "function") {
+    return !dlg.hasAttribute("hidden");
+  }
+  return false;
+}
+
 function paintTuneField(root, key, val) {
   const input = root.querySelector(`[data-tune="${key}"]`);
   if (!input) return;
   const focused =
     typeof document !== "undefined" && document.activeElement === input;
   if (focused) return;
+  // Dirty drafts survive live paints the same way SP editors do (caret / "0.").
+  if (typeof input.getAttribute === "function" && input.getAttribute("data-dirty") === "1") {
+    return;
+  }
   if (input.type === "checkbox") {
     input.checked = isTruthyTune(val);
     return;
@@ -1350,7 +1365,8 @@ export function mountPidFaceplateElement(host, elementId, { withStyles = true } 
 
 /**
  * Paint chrome from a loop snapshot. Safe on an isolate or a full faceplate.
- * Dialog drafts are owned by the Lovelace card.
+ * Analog-dialog drafts are owned by the Lovelace card. Settings fields freeze
+ * while the settings dialog is open so live hass paints cannot restomp edits.
  */
 export function applyPidFaceplateState(root, state = {}) {
   if (!root) return;
@@ -1460,9 +1476,14 @@ export function applyPidFaceplateState(root, state = {}) {
     btn.disabled = !canNudge;
   });
 
-  for (const key of PID_TUNE_KEYS) {
-    if (!(key in state)) continue;
-    paintTuneField(root, key, state[key]);
+  const freezeTune =
+    state.freezeTune === true ||
+    (state.freezeTune !== false && pidSettingsDialogOpen(root));
+  if (!freezeTune) {
+    for (const key of PID_TUNE_KEYS) {
+      if (!(key in state)) continue;
+      paintTuneField(root, key, state[key]);
+    }
   }
   const formEl = root.querySelector('[data-tune-readonly="form"]');
   if (formEl) formEl.textContent = state.form || "Parallel";

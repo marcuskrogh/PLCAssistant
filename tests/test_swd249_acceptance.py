@@ -377,10 +377,10 @@ def test_place_still_works_via_api(app_server):
 def test_app_version_0_1_53():
     root = Path("custom_components/plcassistant")
     dual = Path("plc_assistant/custom_components/plcassistant")
-    assert '"0.1.64"' in (root / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.64"' in (dual / "manifest.json").read_text(encoding="utf-8")
-    assert 'version: "0.1.64"' in Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.64" in Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
+    assert '"0.1.65"' in (root / "manifest.json").read_text(encoding="utf-8")
+    assert '"0.1.65"' in (dual / "manifest.json").read_text(encoding="utf-8")
+    assert 'version: "0.1.65"' in Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
+    assert "BUILD_VERSION=0.1.65" in Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
 
 
 def test_default_wedge_project_has_instances():
