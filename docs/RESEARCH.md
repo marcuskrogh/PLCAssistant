@@ -1,175 +1,139 @@
-# Research brief: ISA PID standardisation and Bauer reference implementation
+# Research brief: ISA-101 / ISA-112 and DCS PID faceplates
 
-**Tracker:** [SWD-360](https://marcusknielsen.atlassian.net/browse/SWD-360)  
-**Story:** [SWD-359](https://marcusknielsen.atlassian.net/browse/SWD-359)  
+**Tracker:** [SWD-369](https://marcusknielsen.atlassian.net/browse/SWD-369)  
+**Story:** [SWD-368](https://marcusknielsen.atlassian.net/browse/SWD-368)  
 **Date:** 2026-08-17  
-**Tooling:** `scripts/arxiv_research.py` + WebSearch / WebFetch
+**Tooling:** WebSearch / WebFetch + `scripts/arxiv_research.py`
 
 ## Question
 
-What do current **ISA** documents and **Margret Bauer**’s recent publications
-say about:
+What do current **ISA** documents and industrial HMI practice say about:
 
-1. **Visualisation** — how a PID should be drawn as a function block / functional
-   diagram / operator display
-2. **Structure** — named algorithm forms, pins, modes, anti-windup, and
-   practical digital implementation
+1. **Operator PID faceplates** — layout (bars, labels), modes, and what the operator may write
+2. **SCADA / HMI colour and chrome** — how to highlight the writable parameter without violating high-performance HMI rules
+3. **Which standard actually governs** the two-vertical-bar + horizontal-output layout
 
-Scope: supportive evidence for `/define` on standardised Soft-PLC PID blocks.
-This brief does **not** decide product scope, UX, or acceptance.
+Scope: supportive evidence for `/define` on Lovelace PID faceplates. This brief does **not** decide product scope, UX, or acceptance.
 
 ## Axes covered
 
 | Axis | Status | Notes |
 |------|--------|-------|
-| Preprints (arXiv) | covered | Multi-query search; core hit is arXiv:2604.15918 (Bauer et al., 2026). Broader “PID + standard” queries are noisy (unrelated PID acronyms). |
-| Formal written | covered | ISA-TR5.9-2023 (via ISA InTech excerpt); ANSI/ISA-5.1-2024 (functional diagram + Table 16); IFAC-PapersOnLine 2024 reference implementation (DOI 10.1016/j.ifacol.2024.08.090) |
-| Web discovery | covered | ISA-5 series hub; ANSI blog on ISA-5.1-2024; ISA committee pages |
-| Informal / practitioner | covered | Bauer LinkedIn 2026-04-29; Control Global ISA 5.9 columns; GitHub copybit/pid listings. Labeled informal. |
+| Preprints (arXiv) | covered (empty) | Queries `high performance HMI`, `ISA-101`, `PID faceplate` returned 0 papers. HMI style is not an arXiv topic here. |
+| Formal written | covered | ISA-101.01-2015 hub; ISA-TR101.01 / TR101.02; ANSI/ISA-112.00.01-2025 announcement; existing ISA-5.1 / ISA-TR5.9 brief in prior `docs/RESEARCH.md` (SWD-360) |
+| Web discovery | covered | ISA press release 2026-02-24; Industrial Cyber on ISA-112; ISA-101 series page; ISA112 lifecycle diagram (points HMI style guides at ISA-101) |
+| Informal / practitioner | covered | AVEVA Plant SCADA Analog Controller; Citect Situational Awareness library; FrameworX ISA-101 how-to; plcprogramming.io HPHMI; Casual Process Engineer DCS modes; control.com cascade textbook. Labeled informal. |
 
 ## Search strategy
 
 | Axis | Queries / targets |
 |------|-------------------|
-| Preprints | `au:Bauer AND all:PID`; `all:"reference implementation" AND PID`; `all:PID AND (standard OR standardisation OR ISA)`. Unique papers: 18. Core: [arXiv:2604.15918](https://arxiv.org/abs/2604.15918). |
-| Formal | [ISA-5 series](https://www.isa.org/standards-and-publications/isa-standards/isa-5-standard); [ISA-TR5.9 InTech](https://www.isa.org/intech-home/2023/june-2023/features/isa-tr5-9-2023-realizing-and-achieving-best-pid); ANSI/ISA-5.1-2024 Table 15–16; [IFAC 2024 DOI](https://doi.org/10.1016/j.ifacol.2024.08.090); [Lund post-print](https://lucris.lub.lu.se/ws/files/177637056/sundstrom24a.pdf) |
-| Web | ISA-5.1 / ISA-5.5 committee pages; ANSI blog 2024 revision notes |
-| Informal | [Bauer LinkedIn](https://www.linkedin.com/posts/margret-bauer-a885618_after-two-years-of-developing-a-standard-activity-7455172250363854848--8qU); [Control Global part 1](https://www.controlglobal.com/control/loop-control/article/11290464/the-concealed-pid-revealed-part-1) / [part 3](https://www.controlglobal.com/control/loop-control/article/11289104/the-concealed-pid-revealed-part-3); [github.com/copybit/pid](https://github.com/copybit/pid) |
+| Preprints | `all:"high performance HMI"`; `all:ISA-101`; `all:"PID" AND "faceplate"` |
+| Formal | [ISA-101 series](https://www.isa.org/standards-and-publications/isa-standards/isa-101-standards); [ISA 2026-02-24 ISA-112 announcement](https://www.isa.org/news-press-releases/2026/february/isa-announces-publication-of-new-standard-for-scad); prior SWD-360 brief (ISA-5.1, ISA-TR5.9, IFAC 2024) |
+| Web | Industrial Cyber ISA-112; ISA112 lifecycle PDF |
+| Informal | AVEVA Analog Controller; Tatsoft FrameworX ISA-101 how-to; DCS MAN/AUTO/CAS explainers |
 
 ## Executive summary (what the sources say)
 
-ISA and Bauer answer **different halves** of “standard PID”:
+Four different standards answer four different questions. None of them is “the PDF that draws the two-bar PID faceplate”:
 
-- **ISA-TR5.9-2023** standardises **names**: Parallel, Standard, and Series
-  algorithm forms; two-degree-of-freedom (2DoF) structures with setpoint weights
-  β and γ; signals treated as percent of engineering-unit range; direct vs
-  reverse action. It is a technical report laying a foundation for a future
-  standard, not a code listing.
-- **ANSI/ISA-5.1-2024** standardises **drawings**: functional diagrams use
-  Table 15 controller glyphs composed from Table 16 signal-processing blocks
-  (difference, proportional K/P, integral ∫/I, derivative d/dt/D). A three-mode
-  PID is an error summer plus P, I, and D compartments — not a blank rectangle.
-- **Bauer et al.** (IFAC PID 2024, then the 2026 practical guide) standardise
-  **implementation**: a hybrid incremental (velocity) / positional controller
-  with anti-windup, bumpless transfer, setpoint weighting, feed-forward inside
-  the block, tracking, filtering, and jitter compensation. They cite ISA 2023
-  as nomenclature, not as an implementation spec. There is still **no ISA
-  standard for PID source code**.
+- **ANSI/ISA-101.01-2015** (and TR101.01 philosophy / TR101.02 usability) standardises **HMI practice**: grayscale / low-chroma normal operation, colour reserved for abnormal or required action, analog indicators with context (range, setpoint, limits), consistent widget libraries, display hierarchy. It does **not** prescribe a particular PID bar geometry.
+- **ANSI/ISA-112.00.01-2025** (the February 2026 ISA announcement) standardises **SCADA lifecycle, diagrams, and terminology**. It tells organisations to keep an HMI philosophy / style guide and points that work at **ISA-101**. It is not a faceplate drawing spec.
+- **ISA-TR5.9-2023** standardises **signal names** on the PID: PV, SP, **CO** (controller output). Informal process language often says MV (manipulated variable) for the same signal. Formal ISA PID nomenclature is CO, not MV.
+- **ANSI/ISA-5.1-2024** standardises the **function-block glyph** (ε / P / I / D), already shipped on this product (SWD-360 / SWD-366). It is not the operator faceplate.
+- The **two vertical bars (PV, SP) + horizontal output bar** plus **MAN / AUTO / CAS(REM)** is **DCS analog-controller convention** (AVEVA/Citect Situational Awareness Analog Controller; Honeywell / Emerson / Yokogawa family faceplates). SP is editable in Auto; output is editable in Manual; cascade/remote SP is not operator-local.
 
-Industrial 2DoF practice (ISA-TR5.9 commentary / Control Global) most often
-uses **PI on error, derivative on PV** (γ = 0) to avoid derivative kick.
+**Highlighting** in ISA-101 is not a mode colour. Mode identity stays grayscale (selected chrome / outline / invert). Colour is for caution and abnormal (already SWD-366). AVEVA’s green active-mode button is a vendor library choice and **conflicts** with ISA-101 colour-for-abnormal.
+
+**Manual** in DCS and in Bauer / IFAC 2024 is **output Manual** (`auto=false`, operator supplies CO / `uman`). It is not “a third setpoint source while the PID still computes CO”. PLCAssistant’s current Man / Auto / Rem mux is the latter — that is the contradiction to correct.
 
 ## Key sources
 
 | Title | Axis | ID/URL | Relevance |
 |-------|------|--------|-----------|
-| A Practical Guide to PID Controller Implementation | Preprint | [arXiv:2604.15918](https://arxiv.org/abs/2604.15918) | Bauer, Sundström, Guzmán, Hägglund, Soltesz (compiled 2026-05-07; v3 2026-07-14). Hybrid incremental/positional reference; pins r/y; auto/uman; track; uff. |
-| Reference Implementation of the PID Controller | Formal | [doi:10.1016/j.ifacol.2024.08.090](https://doi.org/10.1016/j.ifacol.2024.08.090) | Peer-reviewed 2024 conference version; incremental form; GitHub copybit/pid. |
-| ISA-TR5.9-2023 (InTech excerpt) | Formal | [ISA InTech June 2023](https://www.isa.org/intech-home/2023/june-2023/features/isa-tr5-9-2023-realizing-and-achieving-best-pid) | Naming: Parallel / Standard / Series; % of range; 2DoF; external-reset feedback. |
-| ANSI/ISA-5.1-2024 | Formal | ISA-5.1-2024 Table 15–16 | Three-mode controller glyph; Table 16 symbols 8 (P), 10 (I), 11 (D). |
-| ISA-5 series hub | Web | [isa.org ISA-5](https://www.isa.org/standards-and-publications/isa-standards/isa-5-standard) | Places TR5.9 and 5.1 in the same documentation family. |
-| copybit/pid `pid.txt` | Informal | [github.com/copybit/pid](https://github.com/copybit/pid) | Living pseudo-code listing (no license on the repo). |
-| Bauer LinkedIn, 2026-04-29 | Informal | [LinkedIn post](https://www.linkedin.com/posts/margret-bauer-a885618_after-two-years-of-developing-a-standard-activity-7455172250363854848--8qU) | Announces finalised “standard PID” code after two years. |
+| ISA-101 series hub | Formal | [isa.org ISA-101](https://www.isa.org/standards-and-publications/isa-standards/isa-101-standards) | ISA-101.01-2015 + TR101.01 / TR101.02: HMI lifecycle, philosophy, usability — not bar geometry |
+| ISA announces ISA-112 Part 1 | Formal | [ISA 2026-02-24](https://www.isa.org/news-press-releases/2026/february/isa-announces-publication-of-new-standard-for-scad) | ANSI/ISA-112.00.01-2025: SCADA lifecycle, diagrams, terminology |
+| Industrial Cyber on ISA-112 | Web | [industrialcyber.co](https://industrialcyber.co/isa-iec-62443/isa-issues-ansi-isa-112-standard-to-guide-functional-architecture-models-standardize-scada-lifecycle-architecture/) | ISA-112 includes HMI/alarm *considerations* and control-mode terminology; defers HMI style |
+| ISA112 lifecycle diagram | Formal | [ISA PDF 2022-07-08](https://www.isa.org/getmedia/ac809e6d-27ed-4305-b207-9813b04f43b4/ISA112_SCADA-Systems_SCADA-lifecycle-diagram_rev2022-07-08.pdf) | Explicit: “HMI Philosophy and HMI Style Guides (ISA101)” |
+| AVEVA Analog Controller | Informal | [docs.aveva.com](https://docs.aveva.com/bundle/plant-scada/page/1206371.html) | SP editable only in Auto; OP editable only in Manual; Auto / Manual / Cascade buttons; output bar below |
+| FrameworX ISA-101 how-to | Informal | [docs.tatsoft.com](https://docs.tatsoft.com/display/FX/ISA-101+HMI-Compliance-How-to) | Analog bars: gray fill, dark current, triangle SP; faceplate fields PV / SP / OP; modes AUTO/MAN/CAS |
+| High Performance HMI (ISA-101) | Informal | [plcprogramming.io](https://plcprogramming.io/blog/high-performance-hmi-isa-101) | Faceplates with analog bars as the loop-controller widget; colour only when action required |
+| DCS controller modes | Informal | [casualprocessengineer.com](https://www.casualprocessengineer.com/Process-control/DCS-Controller-Modes) | MAN = operator sets MV/OP; AUTO = operator sets SP; CAS = SP from another block |
+| Cascade control textbook | Informal | [control.com](https://control.com/textbook/basic-process-control-strategies/cascade-control/) | Slave in cascade must stay in CAS; AUTO on the slave breaks the cascade |
+| Prior PID brief | Formal (prior) | `docs/RESEARCH.md` history / SWD-360 | ISA-TR5.9 CO; Bauer `auto`/`uman`; ISA-5.1 glyph |
 
 ## Themes and trends
 
-### 1. Nomenclature is standardised; source code is not
+### 1. ISA-112 is not ISA-101
 
-ISA-TR5.9 exists because vendors used incompatible names for the same
-equations. Bauer et al. (2024, 2026) repeat that ISA 2023 covers nomenclature
-and use, **not** implementation, and that commercial PIDs often omit
-anti-windup.
+The linked February 2026 announcement is **ISA-112 Part 1**. It organises SCADA projects (lifecycle, architecture, terminology, which end-user standards to keep). HMI drawing rules stay in the ISA-101 series. An ISA-112-aligned product still uses an ISA-101 style guide for operator graphics.
 
-### 2. Three algorithm forms, one 2DoF structure family
+### 2. Analog bars are the ISA-101 indicator; dual PV/SP bars are DCS convention
 
-ISA-TR5.9 names:
+ISA-101-aligned practice prefers analog bars over naked digits so the operator sees value versus range and setpoint at a glance. Typical encodings: gray track, dark fill or pointer for PV, marker for SP, colour only in alarm bands.
 
-| Form | Idea |
-|------|------|
-| Parallel | Independent Kc, Ki, Kd summed to CO |
-| Standard | Kc applied to P, I (Ti), and D (Td) together |
-| Series | Derivative as phase-lead before PI; identical to Standard when Td = 0 |
+The **two adjacent vertical bars (PV and SP) with a horizontal output** is the analog-controller faceplate used by DCS/SCADA libraries. A single PV bar with an SP triangle is also valid HPHMI. The user’s two-bar + horizontal CO request matches the analog-controller family, not a clause in ISA-101.
 
-2DoF setpoint weights: β on proportional, γ on derivative (Bauer uses b and c
-for the same idea). Structure “PI on error, D on PV” (γ = 0) is the common
-industrial default.
+### 3. Labels are PV / SP / CO (or OP), not MV
 
-### 3. Functional-diagram PID is a composed glyph
+ISA-TR5.9 and this product already use **CO**. AVEVA/Citect use **OP**. Process engineers often say **MV**. Faceplate label should stay **CO**. Informal “MV bar” means the CO bar.
 
-ISA-5.1 Table 15 “automatic three-mode controller”: top box is Table 16
-symbol 3 (difference); left / centre / right boxes are symbols 8, 10, 11
-(P, I, D). Identification bubbles (LIC, FIC) belong on P&IDs, not as a
-substitute for that software glyph.
+### 4. MAN / AUTO / REM(CAS) are controller modes, not SP-source muxes
 
-ISA-5.5-1985 is for process-equipment display symbols (pumps, vessels). ISA
-marks it inactive and points HMI work to ISA-101. It is not a PID faceplate
-standard.
+| Mode | Who sets SP | Who sets CO | PID algorithm |
+|------|-------------|-------------|---------------|
+| MAN | frozen / tracking | operator | off (`auto=false`, CO = `uman`) |
+| AUTO | operator (local) | PID | on |
+| CAS / REM | other loop or remote | PID | on |
 
-### 4. Practical digital PID is incremental when integral is present
+Writing SP in Manual, or colouring the three modes, is contrary to both DCS faceplates and ISA-101.
 
-Bauer 2026: incremental form gives bumpless transfer and clamping anti-windup
-without a tracking-time parameter; positional form is required when ki = 0
-(P / PD), with bias u0. Feed-forward must enter **inside** the block before
-anti-windup. Measurement filter on y; derivative on filtered PV. Optional
-tracking (output follows utrack) and auto/manual (CO = uman when not auto).
+On a cascade slave, the “normal” closed-loop mode is **CAS/REM** (SP from the primary CO), not local AUTO. Local AUTO on the slave breaks the cascade.
 
-The 2024 IFAC listing and 2026 guide agree on this pin set:
+### 5. Writable-parameter emphasis is grayscale, not hue
 
-```text
-PID(r, y; uff, uman, utrack, Tx=1.0, track, auto, windup) → u
-```
+Selected / writable analog (SP in AUTO, CO in MAN) uses outline, invert, or stronger gray fill. Colour remains caution (`warning`) and abnormal (`error`), as already implemented in SWD-366.
 
-ISA-TR5.9 aliases: r ≈ SP, y ≈ PV, u ≈ CO.
-
-### 5. Manual mode is output Manual, not SP-source
-
-Bauer `auto=false` means the operator (or a higher layer) supplies **CO**
-(`uman`). ISA-5.1 Table 15 also shows auto-manual stations as separate
-manual signal processors. That is a different concept from PLCAssistant’s
-current Manual / Automatic / Remote **setpoint-source** mux.
+Click-to-set on the writable analog (and typed numeric) is standard analog-controller interaction (AVEVA: SP in Auto, OP in Manual).
 
 ## Gaps and limitations
 
-- Full ISA-TR5.9 and ISA-5.1 PDFs are paywalled; this brief uses the ISA
-  InTech excerpt, the public ISA-5 hub, and retrieved Table 15–16 text.
-  Fine print (normative notes, ERF annexes) may be incomplete.
-- copybit/pid has **no declared license** and is a tiny pseudo-code dump
-  (last push 2024-03-19). Treat it as illustration, not a vendored dependency.
-- IEC 61514-2 (PID performance evaluation) is cited by Bauer 2026 but was not
-  retrieved here.
-- ArXiv “PID + standard” search is polluted by other expansions of “PID”
-  (process ID, partial information decomposition).
+- Full ISA-101.01 and ISA-112 PDFs are paywalled. This brief uses the public ISA hubs, the 2026 press release, the ISA112 lifecycle diagram, and practitioner libraries that claim ISA-101 alignment. Fine print (normative notes on faceplate contents) may be incomplete.
+- AVEVA’s green mode buttons are **not** ISA-101; treat the *editability* rules as the signal, not the green.
+- No arXiv corpus for this HMI question.
+- IEC 62682 / ISA-18.2 (alarms) and IEC 61514-2 (PID performance) were not retrieved; they do not define faceplate geometry.
 
 ## Recommended reading order
 
-1. ISA InTech excerpt of TR5.9 — Parallel / Standard / Series names
-2. ISA-5.1 Table 15–16 — how to draw the three-mode block
-3. arXiv:2604.15918 §§2–4 — hybrid algorithm and pin set
-4. IFAC 2024 paper + copybit/pid `pid.txt` — compact listing
-5. Control Global “Concealed PID” parts 1 and 3 — 2DoF β / γ practice
+1. ISA-101 series hub — what HMI standards actually cover
+2. ISA 2026-02-24 ISA-112 announcement + lifecycle diagram — SCADA vs HMI split
+3. AVEVA Analog Controller table — SP vs OP editability
+4. DCS MAN / AUTO / CAS explainers — mode semantics
+5. Prior SWD-360 brief — CO name, Bauer `auto`/`uman`, ISA-5.1 glyph
 
 ## Role in pipeline
 
-Finding docs for `/define` and `/implement` on SWD-360. Supportive context
-only — not a product plan.
+Finding docs for `/define` and `/implement` on SWD-369. Supportive context only — not a product plan.
 
 ## Sources
 
-- Sundström, E., Bauer, M., Guzmán, J. L., Hägglund, T., Soltesz, K. (2026). *A Practical Guide to PID Controller Implementation*. arXiv:2604.15918. Axis: Preprints.
-- Sundström, E., Hägglund, T., Bauer, M., Eker, J., Soltesz, K. (2024). *Reference Implementation of the PID Controller*. IFAC-PapersOnLine 58(7), 370–375. doi:10.1016/j.ifacol.2024.08.090. Axis: Formal written.
-- ISA (2023). *ISA-TR5.9-2023, Proportional-Integral-Derivative (PID) Algorithms and Performance*. Described in Morgan & McMillan, InTech, June 2023. Axis: Formal written.
-- ISA (2024). *ANSI/ISA-5.1-2024, Instrumentation and Control – Symbols and Identification*, Tables 15–16. Axis: Formal written.
-- ISA (n.d.). *ISA-5 Series of Standards*. https://www.isa.org/standards-and-publications/isa-standards/isa-5-standard. Axis: Web discovery.
-- copybit (2024). *pid* reference listings. https://github.com/copybit/pid. Axis: Informal / practitioner.
-- Bauer, M. (2026-04-29). LinkedIn post announcing finalised standard PID code. Axis: Informal / practitioner.
-- Control Global (ISA 5.9 series). *The concealed PID revealed*, parts 1 and 3. Axis: Informal / practitioner.
+- ISA, *ISA-101 Series of Standards*, https://www.isa.org/standards-and-publications/isa-standards/isa-101-standards (Formal)
+- ISA, *ISA Announces Publication of New Standard for SCADA Systems*, 2026-02-24, https://www.isa.org/news-press-releases/2026/february/isa-announces-publication-of-new-standard-for-scad (Formal)
+- Industrial Cyber, *ISA issues ANSI/ISA-112…*, https://industrialcyber.co/isa-iec-62443/isa-issues-ansi-isa-112-standard-to-guide-functional-architecture-models-standardize-scada-lifecycle-architecture/ (Web)
+- ISA112 committee, *SCADA System Lifecycle* diagram, 2022-07-08, https://www.isa.org/getmedia/ac809e6d-27ed-4305-b207-9813b04f43b4/ISA112_SCADA-Systems_SCADA-lifecycle-diagram_rev2022-07-08.pdf (Formal)
+- AVEVA, *Analog Controller* (Plant SCADA), https://docs.aveva.com/bundle/plant-scada/page/1206371.html (Informal)
+- Tatsoft, *ISA-101 HMI Compliance How-to*, https://docs.tatsoft.com/display/FX/ISA-101+HMI-Compliance-How-to (Informal)
+- plcprogramming.io, *High Performance HMI (ISA-101)*, https://plcprogramming.io/blog/high-performance-hmi-isa-101 (Informal)
+- Casual Process Engineer, *DCS Controller Modes*, https://www.casualprocessengineer.com/Process-control/DCS-Controller-Modes (Informal)
+- control.com, *Cascade Control*, https://control.com/textbook/basic-process-control-strategies/cascade-control/ (Informal)
 
 ## Tracker
-- Task: [SWD-360](https://marcusknielsen.atlassian.net/browse/SWD-360)
-- Story: [SWD-359](https://marcusknielsen.atlassian.net/browse/SWD-359)
+
+- Task: SWD-369
 - Artifact: docs/RESEARCH.md
-- Branch: `cursor/swd-360-isa-pid-blocks-25fc`
-- PR: — (research never opens a PR; define opens the delivery PR)
+- Branch: `cursor/swd-369-isa101-pid-faceplate-5304`
+- PR: — (research never opens a PR)
 
 ## Next
-`/implement SWD-360` — PLAN.md binds the build; research is complete on this branch
+
+`/define SWD-369` — lock faceplate geometry, DCS modes, and CO vs MV using this brief

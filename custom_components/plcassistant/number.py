@@ -73,7 +73,16 @@ _TAG_META: dict[str, dict] = {
         "max": 2.0,
         "step": 1.0,
         "object_id": "plcassistant_level_mode",
-        "default": 0.0,  # Manual — cascade primary (SWD-221)
+        "default": 1.0,  # Automatic — operator sets SP (SWD-369)
+    },
+    "CO_LEVEL_MAN": {
+        "name": "PLCAssistant Level CO (manual)",
+        "min": 0.0,
+        "max": 8.0,
+        "step": 0.1,
+        "unit": "L/min",
+        "object_id": "plcassistant_co_level_man",
+        "default": 0.0,
     },
     "SP_FLOW_MAN": {
         "name": "PLCAssistant Flow SP (manual)",
@@ -100,6 +109,15 @@ _TAG_META: dict[str, dict] = {
         "step": 1.0,
         "object_id": "plcassistant_flow_mode",
         "default": 1.0,  # Automatic — cascade slave (SWD-221)
+    },
+    "CO_FLOW_MAN": {
+        "name": "PLCAssistant Flow CO (manual)",
+        "min": 0.0,
+        "max": 100.0,
+        "step": 0.1,
+        "unit": "%",
+        "object_id": "plcassistant_co_flow_man",
+        "default": 0.0,
     },
     "LEVEL_KP": {
         "name": "PLCAssistant Level Kp",
@@ -188,6 +206,8 @@ _SP_MODE_FLIP: dict[str, tuple[str, float]] = {
     "SP_LEVEL_REM": ("LEVEL_MODE", 2.0),
     "SP_FLOW_MAN": ("FLOW_MODE", 0.0),
     "SP_FLOW_REM": ("FLOW_MODE", 2.0),
+    "CO_LEVEL_MAN": ("LEVEL_MODE", 0.0),
+    "CO_FLOW_MAN": ("FLOW_MODE", 0.0),
 }
 
 
@@ -203,6 +223,8 @@ def _sp_mode_flip_map() -> dict[str, tuple[str, float]]:
             "SP_LEVEL_REM": ("LEVEL_MODE", float(SpSourceMode.REMOTE.code)),
             "SP_FLOW_MAN": ("FLOW_MODE", float(SpSourceMode.MANUAL.code)),
             "SP_FLOW_REM": ("FLOW_MODE", float(SpSourceMode.REMOTE.code)),
+            "CO_LEVEL_MAN": ("LEVEL_MODE", float(SpSourceMode.MANUAL.code)),
+            "CO_FLOW_MAN": ("FLOW_MODE", float(SpSourceMode.MANUAL.code)),
         }
     except ImportError:
         return _SP_MODE_FLIP
@@ -218,6 +240,8 @@ _FILE_BRIDGE_IN_TAGS = frozenset(
         "SP_FLOW_MAN",
         "SP_FLOW_REM",
         "FLOW_MODE",
+        "CO_LEVEL_MAN",
+        "CO_FLOW_MAN",
         "LEVEL_KP",
         "LEVEL_KI",
         "LEVEL_KD",
@@ -487,6 +511,34 @@ class PlcAssistantRequestNumber(NumberEntity):
                 exc_info=True,
             )
 
+    async def _seed_co_hold(self) -> None:
+        """Copy last live CO into the Manual CO tag (output hold)."""
+        store = self.hass.data.get(DOMAIN, {}).get(self._entry_id) or {}
+        if self._tag == "LEVEL_MODE":
+            cv_tag, co_tag = "SP_FLOW_AUTO", "CO_LEVEL_MAN"
+        else:
+            cv_tag, co_tag = "CMD_SPEED", "CO_FLOW_MAN"
+        raw = None
+        for bucket in ("out_values", "in_values"):
+            raw = (store.get(bucket) or {}).get(cv_tag) or (
+                store.get(bucket) or {}
+            ).get(str(cv_tag).upper())
+            if raw:
+                break
+        if raw is None:
+            return
+        try:
+            body = json.loads(str(raw) or "{}")
+            cv = float(body.get("value")) if isinstance(body, dict) else float(raw)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return
+        if not math.isfinite(cv):
+            return
+        rounded = round_display(cv)
+        if rounded is None:
+            return
+        await self._publish_in_tag(co_tag, float(rounded))
+
     async def async_set_native_value(self, value: float) -> None:
         # SWD-230: round once so HA display and MQTT/file eng stay aligned at 2dp.
         rounded = round_display(value)
@@ -499,6 +551,10 @@ class PlcAssistantRequestNumber(NumberEntity):
             self._plant_simulator().set_tag(self._tag, eng)
             self.async_write_ha_state()
             return
+        # DCS bumpless MAN: copy live CO into CO_*_MAN *before* MODE=0 so the
+        # next scan cannot hold the default 0 output.
+        if self._tag in ("LEVEL_MODE", "FLOW_MODE") and int(eng) == 0:
+            await self._seed_co_hold()
         await self._publish_in_tag(self._tag, eng)
         # SWD-183/222: writing Man/Auto/Rem SP also flips LEVEL_MODE / FLOW_MODE.
         flip = _sp_mode_flip_map().get(self._tag)

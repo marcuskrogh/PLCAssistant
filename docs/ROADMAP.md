@@ -1,48 +1,49 @@
-# Roadmap: Standardised PID blocks (ISA visualisation and structure)
+# Roadmap: ISA-101 / DCS-standard PID faceplates
 
 ## Destination
-PID function blocks on the Soft-PLC Diagram and operator faceplates use one
-ISA-aligned glyph and one named algorithm structure, so every loop looks and
-behaves like the same industrial PID rather than a generic rectangle with
-ad-hoc pins.
+
+Operator PID faceplates follow ISA-101 high-performance HMI practice and the industrial analog-controller convention: paired vertical PV/SP bars, a horizontal CO bar, MAN / AUTO / REM modes, and grayscale emphasis of the writable parameter. ISA-TR5.9 names stay (PV, SP, CO). ANSI/ISA-112.00.01-2025 informs SCADA terminology and “keep an HMI style guide”, not faceplate geometry.
 
 ## Notes
-- Visualisation follows ANSI/ISA-5.1-2024 functional diagrams (Table 15
-  three-mode controller + Table 16 P / I / D symbols).
-- Algorithm names follow ISA-TR5.9-2023 (Parallel / Standard / Series;
-  two-degree-of-freedom β / γ; signals PV, SP, CO).
-- Practical code follows Bauer, Sundström, Guzmán, Hägglund, Soltesz
-  (IFAC 2024; arXiv:2604.15918, 2026): hybrid incremental / positional PID.
-- Existing wedge cascade instances `level_pi` / `flow_pi` must keep working.
+
+- The February 2026 ISA announcement is **ISA-112** (SCADA lifecycle), not ISA-101.
+- ISA-101 does not draw the two-bar layout; DCS analog-controller practice does. ISA-101 governs grayscale, colour-for-abnormal, analog indicators, consistent widgets.
+- MAN means output Manual (write CO / Bauer `uman`). AUTO means local SP. REM means remote/cascade SP (not operator-writable on the faceplate).
+- Colour remains reserved for caution/abnormal (SWD-366). Mode identity stays grayscale.
+- Relates prior PID work: SWD-359, SWD-360, SWD-366, SWD-367.
 - Research findings: [`docs/RESEARCH.md`](RESEARCH.md). Plan: [`docs/PLAN.md`](PLAN.md).
 
 ## Route
+
 | Order | Task | Type | Blocked by | Status | Issue |
 |-------|------|------|------------|--------|-------|
-| 1 | Define & ship standardised PID visualisation and structure | define | — | Done | [SWD-360](https://marcusknielsen.atlassian.net/browse/SWD-360) |
+| 1 | Define & ship ISA-101 DCS PID faceplate (PV/SP bars, CO bar, MAN/AUTO/REM) | implement | — | Done | [SWD-369](https://marcusknielsen.atlassian.net/browse/SWD-369) |
 
 ## Cleared so far
-- Research pass on ISA-5.1 / ISA-TR5.9 and Bauer et al. 2024–2026 — `docs/RESEARCH.md`
-- ISA-5.1 glyph, ISA-TR5.9 Parallel contract, Bauer hybrid algorithm, faceplate CO — PR [#101](https://github.com/marcuskrogh/PLCAssistant/pull/101)
+
+- ISA-5.1 glyph, ISA-TR5.9 Parallel, Bauer/IFAC PID — PR [#101](https://github.com/marcuskrogh/PLCAssistant/pull/101) / [#103](https://github.com/marcuskrogh/PLCAssistant/pull/103)
+- Lovelace ISA-101 colour-for-abnormal (no mode hues) — PR [#102](https://github.com/marcuskrogh/PLCAssistant/pull/102)
 
 ## Not yet specified
-- Whether later slices add ISA-TR5.9 Series form, external-reset feedback, or
-  classic output Manual on the Lovelace card
-- Whether internal calculation should move from engineering units to percent of
-  range (ISA-TR5.9 preference)
+
+- Whether a later slice adds alarm-limit colour bands (HH/H/L/LL) on the PV bar (ISA-18.2 / analog-controller extras)
+- Whether flow AUTO is relabelled CAS on the slave faceplate
+- Percent-of-range internal scaling (ISA-TR5.9)
 
 ## Out of scope
-- Autotune / gain scheduling
-- ISA-5.5 process-equipment glyphs (pumps, vessels) on the Diagram
-- Replacing Lovelace with a full ISA-101 HMI
-- Vendor-copying the copybit/pid GitHub listing into the App
-- Fractional-order or PIDD2 extensions
+
+- Full Operate dashboard rewrite to a four-level ISA-101 hierarchy
+- Replacing Lovelace with a dedicated SCADA HMI product
+- ISA-5.5 process-equipment glyphs
+- Series form / external-reset feedback / autotune
+- Colour-coding MAN / AUTO / REM (contrary to ISA-101)
 
 ## Tracker
+
 - Provider: jira
-- Story (map): [SWD-359](https://marcusknielsen.atlassian.net/browse/SWD-359)
-- Tasks: [SWD-360](https://marcusknielsen.atlassian.net/browse/SWD-360)
-- Sub-tasks: SWD-361, SWD-362, SWD-363, SWD-364, SWD-365
+- Story (map): [SWD-368](https://marcusknielsen.atlassian.net/browse/SWD-368)
+- Tasks: [SWD-369](https://marcusknielsen.atlassian.net/browse/SWD-369)
 
 ## Next
-Done — shipped PR [#101](https://github.com/marcuskrogh/PLCAssistant/pull/101)
+
+Done — shipped PR [#104](https://github.com/marcuskrogh/PLCAssistant/pull/104)

@@ -212,7 +212,7 @@ def default_tank_datablock() -> Datablock:
                 "SP_LEVEL_MAN": {"default": 0.20, "unit": "m"},
                 "SP_LEVEL_AUTO": {"default": 0.20, "unit": "m"},
                 "SP_LEVEL_REM": {"default": 0.20, "unit": "m"},
-                "LEVEL_MODE": {"default": 0.0, "unit": None},
+                "LEVEL_MODE": {"default": 1.0, "unit": None},
                 "LEVEL_KP": {"default": 40.0, "unit": None},
                 "LEVEL_KI": {"default": 5.0, "unit": None},
                 "LEVEL_KD": {"default": 0.0, "unit": None},
@@ -225,6 +225,8 @@ def default_tank_datablock() -> Datablock:
                 "FLOW_KI": {"default": 2.0, "unit": None},
                 "FLOW_KD": {"default": 0.0, "unit": None},
                 "CMD_SPEED": {"default": 0.0, "unit": "pct"},
+                "CO_LEVEL_MAN": {"default": 0.0, "unit": "L/min"},
+                "CO_FLOW_MAN": {"default": 0.0, "unit": "pct"},
                 "MODE": {"default": "STOP", "unit": None},
                 "PERM_OK": {"default": False, "unit": None},
                 "TRIP_ACTIVE": {"default": False, "unit": None},
@@ -268,6 +270,16 @@ def default_tank_datablock() -> Datablock:
                 {
                     "tag": "FLOW_MODE",
                     "entity": "number.plcassistant_flow_mode",
+                    "direction": "IN",
+                },
+                {
+                    "tag": "CO_LEVEL_MAN",
+                    "entity": "number.plcassistant_co_level_man",
+                    "direction": "IN",
+                },
+                {
+                    "tag": "CO_FLOW_MAN",
+                    "entity": "number.plcassistant_co_flow_man",
                     "direction": "IN",
                 },
                 {

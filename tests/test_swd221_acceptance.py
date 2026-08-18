@@ -14,28 +14,28 @@ def test_unit_cascade_mode_defaults() -> None:
 
     block = default_tank_datablock_catalog().get("DB_Tank")
     assert block is not None
-    assert float(block.tags["LEVEL_MODE"].default) == pytest.approx(0.0)
+    assert float(block.tags["LEVEL_MODE"].default) == pytest.approx(1.0)
     assert float(block.tags["FLOW_MODE"].default) == pytest.approx(1.0)
 
     meta = (ROOT / "number.py").read_text(encoding="utf-8")
-    level = meta.split('"LEVEL_MODE":', 1)[1].split('"SP_FLOW_MAN"', 1)[0]
+    level = meta.split('"LEVEL_MODE":', 1)[1].split('"CO_LEVEL_MAN":', 1)[0]
     flow = meta.split('"FLOW_MODE":', 1)[1].split('"LEVEL_KP"', 1)[0]
-    assert '"default": 0.0' in level
+    assert '"default": 1.0' in level
     assert '"default": 1.0' in flow
 
 
 def test_unit_skid_defaults_drive_cascade_on_start() -> None:
-    """Level Man + Flow Auto defaults → Start publishes non-zero SP_FLOW/CMD."""
+    """Level Auto + Flow Auto defaults → Start publishes non-zero SP_FLOW/CMD."""
     from plcassistant.app.default_image import declare_default_image
     from plcassistant.app.skid_scan import SkidImageLogic
     from plcassistant.io.quality import QualityStatus
 
     image = declare_default_image()
     image.begin_inputs()
-    # Defaults from datablock: LEVEL_MODE=0, FLOW_MODE=1, SP_LEVEL_MAN=0.20
-    image.apply_input("LEVEL_MODE", 0.0, QualityStatus.GOOD)
+    # Defaults from datablock: LEVEL_MODE=1, FLOW_MODE=1, SP_LEVEL_REQ=0.20
+    image.apply_input("LEVEL_MODE", 1.0, QualityStatus.GOOD)
     image.apply_input("FLOW_MODE", 1.0, QualityStatus.GOOD)
-    image.apply_input("SP_LEVEL_MAN", 0.25, QualityStatus.GOOD)
+    image.apply_input("SP_LEVEL_REQ", 0.25, QualityStatus.GOOD)
     image.apply_input("LT_TANK", 0.15, QualityStatus.GOOD)
     image.apply_input("LT_RES", 0.20, QualityStatus.GOOD)
     image.apply_input("FT_INLET", 0.0, QualityStatus.GOOD)
@@ -95,4 +95,4 @@ def test_system_level_auto_sp_entity_contract() -> None:
     number = (ROOT / "number.py").read_text(encoding="utf-8")
     assert "plcassistant_sp_level_req" in number
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.57"' in manifest
+    assert '"0.1.58"' in manifest

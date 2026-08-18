@@ -27,6 +27,7 @@ _LEVEL = {
     "sp_rem": "SP_LEVEL_REM",
     "mode": "LEVEL_MODE",
     "cv": "SP_FLOW_AUTO",
+    "co_man": "CO_LEVEL_MAN",
     "kp": "LEVEL_KP",
     "ki": "LEVEL_KI",
     "kd": "LEVEL_KD",
@@ -37,6 +38,7 @@ _LEVEL = {
     "sp_rem_entity": "number.plcassistant_sp_level_rem",
     "mode_entity": "number.plcassistant_level_mode",
     "cv_entity": "sensor.plcassistant_sp_flow_auto",
+    "cv_man_entity": "number.plcassistant_co_level_man",
     "kp_entity": "number.plcassistant_level_kp",
     "ki_entity": "number.plcassistant_level_ki",
 }
@@ -50,6 +52,7 @@ _FLOW = {
     "sp_rem": "SP_FLOW_REM",
     "mode": "FLOW_MODE",
     "cv": "CMD_SPEED",
+    "co_man": "CO_FLOW_MAN",
     "kp": "FLOW_KP",
     "ki": "FLOW_KI",
     "kd": "FLOW_KD",
@@ -60,6 +63,7 @@ _FLOW = {
     "sp_rem_entity": "number.plcassistant_sp_flow_rem",
     "mode_entity": "number.plcassistant_flow_mode",
     "cv_entity": "sensor.plcassistant_cmd_speed",
+    "cv_man_entity": "number.plcassistant_co_flow_man",
     "kp_entity": "number.plcassistant_flow_kp",
     "ki_entity": "number.plcassistant_flow_ki",
 }
@@ -74,6 +78,8 @@ _MODE_ALIASES = {
     "automatic": "automatic",
     "rem": "remote",
     "remote": "remote",
+    "cas": "remote",
+    "cascade": "remote",
     "0": "manual",
     "1": "automatic",
     "2": "remote",
@@ -109,12 +115,20 @@ def _parse_mode(raw: Any) -> str:
         try:
             code = int(raw)
         except (TypeError, ValueError):
-            return "manual"
-        return _MODE_NAMES.get(code, "manual")
+            return "automatic"
+        return _MODE_NAMES.get(code, "automatic")
     key = str(raw or "").strip().lower()
-    # Unknown aliases fall back to manual — Soft-PLC ``SpSourceMode.parse``
-    # raises ValueError and skid_scan resolves to MANUAL the same way (SWD-220).
-    return _MODE_ALIASES.get(key, "manual")
+    # Unknown aliases fall back to automatic — same as Soft-PLC skid_scan (SWD-369).
+    return _MODE_ALIASES.get(key, "automatic")
+
+
+def _write_target(mode: str, *, sp_auto_entity: str) -> str | None:
+    """Which analog the operator may set: CO in MAN, SP in AUTO (if writable)."""
+    if mode == "manual":
+        return "co"
+    if mode == "automatic" and not str(sp_auto_entity).startswith("sensor."):
+        return "sp"
+    return None
 
 
 def _select_sp(mode: str, man: float, auto: float, rem: float) -> float:
@@ -155,10 +169,8 @@ class PlcAssistantPidLoopSensor(SensorEntity):
         object_id = f"plcassistant_pid_{loop_id}"
         self._attr_suggested_object_id = object_id
         self.entity_id = f"sensor.{object_id}"
-        # Cascade demo: level Manual, flow Automatic until store hydrate.
-        self._attr_native_value = (
-            "automatic" if loop_id == "flow" else "manual"
-        )
+        # Cascade demo: both loops Automatic until store hydrate (SWD-369).
+        self._attr_native_value = "automatic"
         self._attr_extra_state_attributes = self._empty_attrs()
         self._watch_tags = frozenset(
             {
@@ -169,6 +181,7 @@ class PlcAssistantPidLoopSensor(SensorEntity):
                 spec["sp_rem"],
                 spec["mode"],
                 spec["cv"],
+                spec["co_man"],
                 spec["kp"],
                 spec["ki"],
                 spec["kd"],
@@ -185,6 +198,7 @@ class PlcAssistantPidLoopSensor(SensorEntity):
             "sp_auto": None,
             "sp_rem": None,
             "cv": None,
+            "co_man": None,
             "kp": None,
             "ki": None,
             "kd": None,
@@ -195,8 +209,10 @@ class PlcAssistantPidLoopSensor(SensorEntity):
             "sp_rem_entity": spec["sp_rem_entity"],
             "mode_entity": spec["mode_entity"],
             "cv_entity": spec["cv_entity"],
+            "cv_man_entity": spec["cv_man_entity"],
             "kp_entity": spec["kp_entity"],
             "ki_entity": spec["ki_entity"],
+            "write_target": None,
         }
 
     def _refresh_from_store(self) -> bool:
@@ -218,6 +234,10 @@ class PlcAssistantPidLoopSensor(SensorEntity):
                 "sp_auto": auto,
                 "sp_rem": rem,
                 "cv": round_display(_cache_value(store, spec["cv"])),
+                "co_man": round_display(_cache_value(store, spec["co_man"])) or 0.0,
+                "write_target": _write_target(
+                    mode, sp_auto_entity=spec["sp_auto_entity"]
+                ),
                 "kp": round_display(_cache_value(store, spec["kp"])),
                 "ki": round_display(_cache_value(store, spec["ki"])),
                 "kd": round_display(_cache_value(store, spec["kd"])),

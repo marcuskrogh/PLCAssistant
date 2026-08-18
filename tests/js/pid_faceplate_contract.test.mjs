@@ -35,6 +35,10 @@ const {
   pidCvBarPct,
   pidCvHighlightSeverity,
   pidFaceplateHighlight,
+  pidOperatorWriteTarget,
+  pidBarValueFromPointer,
+  pidBarPct,
+  pidPvScaleMax,
   PID_DISPLAY_DIGITS,
   PID_CV_MAX_LEVEL,
   PID_CV_MAX_FLOW,
@@ -290,6 +294,58 @@ assertEq(
   pidFaceplateHighlight(0.2, 1, 0.8, 0, "level"),
   "abnormal",
   "abnormal ε outranks clamp CO"
+);
+
+// --- DCS analog-controller write target + bar mapping (SWD-369) ---
+assertEq(pidPvScaleMax("level"), 0.4, "level PV/SP scale is 0.40 m");
+assertEq(pidPvScaleMax("flow"), 8, "flow PV/SP scale is 8 L/min");
+assertEq(pidBarPct(0.2, 0.4), 50, "level PV 0.20 m is 50% of 0.40");
+assertEq(pidBarPct(4, 8), 50, "flow PV 4 L/min is 50% of 8");
+assertEq(pidOperatorWriteTarget("manual"), "co", "MAN writes CO");
+assertEq(pidOperatorWriteTarget("automatic"), "sp", "AUTO writes SP when Number");
+assertEq(
+  pidOperatorWriteTarget("automatic", { spWritable: false }),
+  null,
+  "AUTO does not write SP when Auto entity is a sensor"
+);
+assertEq(pidOperatorWriteTarget("remote"), null, "REM is not operator-writable");
+assertEq(pidOperatorWriteTarget("cas"), null, "cascade alias is REM (not writable)");
+
+const track = { left: 10, top: 20, width: 100, height: 80 };
+assertEq(
+  pidBarValueFromPointer(track, 10, 20, 0, 1, "vertical"),
+  1,
+  "vertical bar top is max"
+);
+assertEq(
+  pidBarValueFromPointer(track, 10, 100, 0, 1, "vertical"),
+  0,
+  "vertical bar bottom is min"
+);
+assertEq(
+  pidBarValueFromPointer(track, 10, 20, 0, 8, "horizontal"),
+  0,
+  "horizontal bar left is min"
+);
+assertEq(
+  pidBarValueFromPointer(track, 110, 20, 0, 8, "horizontal"),
+  8,
+  "horizontal bar right is max"
+);
+
+const writableCo = node("button", { "data-bar": "co", "data-writable": "1" });
+assertEq(resolveFaceplateClick(writableCo)?.type, "bar", "writable CO bar click is bar");
+assertEq(resolveFaceplateClick(writableCo)?.key, "co", "writable CO bar key is co");
+const lockedSp = node("button", { "data-bar": "sp", "data-writable": "0" });
+assertEq(resolveFaceplateClick(lockedSp), null, "non-writable SP bar is ignored");
+const pvBar = node("button", { "data-bar": "pv", "data-writable": "0" });
+assertEq(resolveFaceplateClick(pvBar), null, "PV bar is never writable");
+const openRoot = node("div", { "data-open-editor": "" });
+const barUnderOpen = node("button", { "data-bar": "sp", "data-writable": "1" }, openRoot);
+assertEq(
+  resolveFaceplateClick(barUnderOpen)?.type,
+  "bar",
+  "writable bar wins over data-open-editor ancestor"
 );
 
 if (failed > 0) {

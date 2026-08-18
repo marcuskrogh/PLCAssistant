@@ -137,7 +137,7 @@ def test_app_version_0_1_53():
 
     root = Path("custom_components/plcassistant")
     dual = Path("plc_assistant/custom_components/plcassistant")
-    assert '"0.1.57"' in (root / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.57"' in (dual / "manifest.json").read_text(encoding="utf-8")
-    assert 'version: "0.1.57"' in Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.57" in Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
+    assert '"0.1.58"' in (root / "manifest.json").read_text(encoding="utf-8")
+    assert '"0.1.58"' in (dual / "manifest.json").read_text(encoding="utf-8")
+    assert 'version: "0.1.58"' in Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
+    assert "BUILD_VERSION=0.1.58" in Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
