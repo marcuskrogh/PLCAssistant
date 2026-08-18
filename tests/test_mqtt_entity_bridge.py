@@ -84,6 +84,7 @@ def test_ha_default_bindings_match_app_wedge_config():
         "SP_LEVEL_MAN",
         "LEVEL_MODE",
         "SP_FLOW_MAN",
+        "SP_FLOW_REQ",
         "FLOW_MODE",
         "SP_FLOW_AUTO",
         "MODE",

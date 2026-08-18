@@ -67,7 +67,7 @@ def test_system_flow_manual_zero_does_not_hide_level_cv() -> None:
     assert float(image.get_value("CMD_SPEED")) == pytest.approx(0.0, abs=0.5)
 
 
-def test_system_flow_auto_cascade_still_engages() -> None:
+def test_system_flow_remote_cascade_still_engages() -> None:
     from plcassistant.app.default_image import declare_default_image
     from plcassistant.app.skid_scan import SkidImageLogic
     from plcassistant.io.quality import QualityStatus
@@ -76,7 +76,7 @@ def test_system_flow_auto_cascade_still_engages() -> None:
     image.begin_inputs()
     for tag, val in (
         ("LEVEL_MODE", 1.0),
-        ("FLOW_MODE", 1.0),
+        ("FLOW_MODE", 2.0),
         ("SP_LEVEL_REQ", 0.30),
         ("LT_TANK", 0.15),
         ("LT_RES", 0.20),
@@ -107,6 +107,6 @@ def test_integration_level_cv_is_sp_flow_auto() -> None:
 
 def test_system_app_version_0_1_43() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.64"' in manifest
+    assert '"0.1.65"' in manifest
     config = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.64"' in config
+    assert 'version: "0.1.65"' in config

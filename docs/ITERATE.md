@@ -1,54 +1,41 @@
-# Iterate: Align builtin PID with IFAC 2024 reference implementation
+# Iterate: Flow cascade slave defaults to Remote
 
 ## Prior work
-- Task: [SWD-360](https://marcusknielsen.atlassian.net/browse/SWD-360) (algorithm); [SWD-366](https://marcusknielsen.atlassian.net/browse/SWD-366) (latest ship)
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/101 (App 0.1.55); https://github.com/marcuskrogh/PLCAssistant/pull/102 (App 0.1.56)
-- Spec context: docs/PLAN.md, docs/RESEARCH.md, IFAC-PapersOnLine 58(7) 370–375 (doi:10.1016/j.ifacol.2024.08.090)
+- Task: [SWD-373](https://marcusknielsen.atlassian.net/browse/SWD-373)
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/105 (App 0.1.64)
+- Spec context: `docs/io/06-pid-faceplate.md`, `docs/RESEARCH.md` (MAN / AUTO / REM), SWD-221/223 mux
 
 ## Problem
-The shipped builtin PID follows ISA-TR5.9 names and a simplified hybrid update. It does not implement the IFAC 2024 reference (Sundström, Hägglund, Bauer, Eker, Soltesz) that this iterate takes as the standardisation source:
-
-- Listing 1 incremental law with `u_old` / `up_old` / `ud_old` / `uff_old`
-- Listings 2–3 critically damped second-order measurement filter and ZOH
-- Jitter scale `Tx`
-- Output Manual (`auto` / `uman`) and external `windup` on the integral increment
+The PID faceplate describes **REM** as cascade/remote and read-only. The flow loop is the cascade slave, but the backend defaults it to **Automatic** and treats Automatic as the cascade path (level CO → flow SP). Remote applied `SP_FLOW_REM` instead, so the highlighted mode did not match DCS cascade semantics.
 
 ## Clarifications
-- Invoke named the paper as the standardisation reference; no further questions.
-- ISA-TR5.9 names stay: `pv` ≈ y, `sp` ≈ r, `cv` ≈ u, `beta` ≈ b.
-- `ki` stays in 1/s so wedge tunings do not change (`Dui = ki * e * dt`).
-- `running` stays the permit pin. Lovelace Man / Auto / Rem stays the setpoint-source mux.
-- Wedge cascade PI copies bypass the measurement filter (`tf_ts = 0`) so they do not need retuning.
-- Reimplement from the paper; do not vendor github.com/copybit/pid.
+- Invoke was enough: align backend with the existing REM description; do not change MAN/AUTO/REM chrome copy.
+- Level stays Automatic (primary). Flow demo default becomes Remote (slave CAS).
+- Automatic on the flow loop becomes local SP (`SP_FLOW_REQ`), which is what AUTO means on a DCS slave.
 
 ## Acceptance criteria
-- [x] Builtin PID listing-1 incremental update, including `ki = 0` bias `u0` and tracking
-- [x] Second-order measurement filter (paper `TfTs` default 10) with ZOH; `tf_ts <= 0` bypasses
-- [x] `Tx = dt / ts` scales derivative and documents jitter; integral uses `ki * dt`
-- [x] Pins `auto` (default true), `uman`, `windup` (0 none / 1 upper / 2 lower / 3 both)
-- [x] `running` false still holds or zeros CO; Lovelace SP-source modes unchanged
-- [x] Wedge `level_pi` / `flow_pi` still settle without retuning
-- [x] Unit tests cover filter, auto/manual, windup, Tx, and equation ≡ Python reference
-- [x] Docs + dual-tree sync + App **0.1.57**
+- [ ] Datablock and HA Number default `FLOW_MODE=2` (Remote)
+- [ ] Remote keeps the cascade wire (level CV → flow SP); faceplate writes none
+- [ ] Start with Level Auto + Flow Rem → `SP_FLOW` tracks `SP_FLOW_AUTO` and `CMD_SPEED` moves
+- [ ] Flow Automatic uses local `SP_FLOW_REQ`, not the level CV
+- [ ] Manual stays output Manual (`CO_FLOW_MAN`)
+- [ ] Docs + dual-tree + App **0.1.65**
 
 ## Out of scope
-- Lovelace UI for output Manual
-- Series form / external-reset feedback / percent-of-range scaling
-- Threaded listing-5 runtime (Soft-PLC scan is the runtime)
-- Autotune
-- Vendoring copybit/pid
+- Alarm-limit colour bands
+- Retuning cascade PI copies
+- Renaming `SP_FLOW_AUTO` (level CV OUT tag stays)
 
 ## Work packages
-1. Python reference (`plcassistant/control/pid.py`) + equation helpers
-2. Builtin PID equation, pins/params, bumpless seed
-3. Tests, docs, App 0.1.57, dual-tree sync
+1. Backend mux + defaults (`FLOW_MODE=2`, REM=cascade, AUTO=`SP_FLOW_REQ`)
+2. HA catalog / Number / compound sensor + docs
+3. Tests, dual-tree, App 0.1.65
 
 ## Tracker
-- Task: [SWD-367](https://marcusknielsen.atlassian.net/browse/SWD-367)
-- Relates: SWD-360, SWD-366
-- Branch: `cursor/swd-367-ifac-pid-reference-6900`
-- PR: https://github.com/marcuskrogh/PLCAssistant/pull/103
-- App: **0.1.57**
+- Task: [SWD-383](https://marcusknielsen.atlassian.net/browse/SWD-383)
+- Relates: [SWD-373](https://marcusknielsen.atlassian.net/browse/SWD-373)
+- Branch: `cursor/swd-383-flow-cascade-remote-68c1`
+- App: **0.1.65**
 
 ## Next
-Done — shipped PR [#103](https://github.com/marcuskrogh/PLCAssistant/pull/103)
+`/implement SWD-383` — Build per ITERATE.md (same branch/PR)

@@ -59,7 +59,7 @@ def test_unit_level_and_flow_mode_defaults_are_automatic() -> None:
     block = default_tank_datablock_catalog().get("DB_Tank")
     assert block is not None
     assert float(block.tags["LEVEL_MODE"].default) == pytest.approx(1.0)
-    assert float(block.tags["FLOW_MODE"].default) == pytest.approx(1.0)
+    assert float(block.tags["FLOW_MODE"].default) == pytest.approx(2.0)
     assert "CO_LEVEL_MAN" in block.tags
     assert "CO_FLOW_MAN" in block.tags
     bindings = {b.tag for b in block.bindings}
@@ -124,7 +124,7 @@ def test_system_level_auto_still_computes_cascade_co() -> None:
     image.begin_inputs()
     for tag, val in (
         ("LEVEL_MODE", 1.0),
-        ("FLOW_MODE", 1.0),
+        ("FLOW_MODE", 2.0),
         ("SP_LEVEL_REQ", 0.30),
         ("LT_TANK", 0.15),
         ("LT_RES", 0.20),
@@ -150,7 +150,7 @@ def test_system_level_man_holds_co() -> None:
     image.begin_inputs()
     for tag, val in (
         ("LEVEL_MODE", 0.0),
-        ("FLOW_MODE", 1.0),
+        ("FLOW_MODE", 2.0),
         ("CO_LEVEL_MAN", 3.0),
         ("SP_LEVEL_REQ", 0.30),
         ("LT_TANK", 0.15),
@@ -213,13 +213,13 @@ def test_system_faceplate_js_write_target_contract() -> None:
 
 def test_system_app_version_is_0_1_58() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.64"' in manifest
+    assert '"0.1.65"' in manifest
     config = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.64"' in config
+    assert 'version: "0.1.65"' in config
     docker = Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.64" in docker
+    assert "BUILD_VERSION=0.1.65" in docker
     dual = Path("plc_assistant/custom_components/plcassistant/manifest.json")
-    assert '"0.1.64"' in dual.read_text(encoding="utf-8")
+    assert '"0.1.65"' in dual.read_text(encoding="utf-8")
 
 
 def test_dual_tree_pid_card_synced() -> None:

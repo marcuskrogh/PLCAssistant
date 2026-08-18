@@ -138,34 +138,32 @@ def _resolve_level_sp(image: IoImage) -> float:
 
 def _resolve_flow_mode(image: IoImage) -> SpSourceMode:
     names = image.names()
-    mode_raw = image.get_value(FLOW_LOOP.mode) if FLOW_LOOP.mode in names else 1
+    mode_raw = image.get_value(FLOW_LOOP.mode) if FLOW_LOOP.mode in names else 2
     try:
         return SpSourceMode.parse(mode_raw)
     except ValueError:
-        return SpSourceMode.AUTOMATIC
+        return SpSourceMode.REMOTE
 
 
 def _resolve_flow_sp(image: IoImage, *, cascade_auto: float) -> float:
-    """Select active flow SP; Automatic source is the cascade (level CV)."""
-    names = image.names()
-    auto = cascade_auto
+    """Select active flow SP; Remote source is the cascade (level CV)."""
+    rem = cascade_auto
+    auto = _tag_float(image, FLOW_LOOP.sp_auto, rem)
     man = _tag_float(image, FLOW_LOOP.sp_man, auto)
-    rem = _tag_float(image, FLOW_LOOP.sp_rem, auto)
     mode = _resolve_flow_mode(image)
     return select_active_sp(mode, sp_man=man, sp_auto=auto, sp_rem=rem)
 
 
 def _flow_sp_override_from_image(image: IoImage) -> float | None:
-    """Remote flow SP for the flow PI this scan; None keeps cascade wire.
+    """Local Automatic flow SP for the flow PI this scan; None keeps cascade.
 
-    Automatic keeps the level-CO cascade. Manual is output Manual (CO), not an
-    SP override. Remote still supplies ``SP_FLOW_REM``.
+    Remote keeps the level-CO cascade (read-only). Manual is output Manual (CO),
+    not an SP override. Automatic supplies ``SP_FLOW_REQ``.
     """
     mode = _resolve_flow_mode(image)
-    if mode is SpSourceMode.AUTOMATIC or mode is SpSourceMode.MANUAL:
+    if mode is SpSourceMode.REMOTE or mode is SpSourceMode.MANUAL:
         return None
-    rem = _tag_float(image, FLOW_LOOP.sp_rem, 0.0)
-    return float(rem)
+    return float(_tag_float(image, FLOW_LOOP.sp_auto, 0.0))
 
 
 def _uman_from_image(image: IoImage, *, loop) -> float | None:
@@ -283,7 +281,7 @@ class SkidImageLogic:
             self.skid.sp_flow_override = self._sp_flow_ramped
         else:
             self._sp_flow_ramped = None
-            # Remote flow SP overrides cascade; Manual is output Manual (SWD-369).
+            # Local Auto SP overrides cascade; Manual is output Manual.
             self.skid.sp_flow_override = _flow_sp_override_from_image(image)
         self.skid.level_uman = _uman_from_image(image, loop=LEVEL_LOOP)
         self.skid.flow_uman = _uman_from_image(image, loop=FLOW_LOOP)
@@ -311,8 +309,8 @@ class SkidImageLogic:
             _set("SP_LEVEL", float(snap.sp_level))
         if "SP_FLOW" in names:
             _set("SP_FLOW", float(published_flow))
-        if FLOW_LOOP.sp_auto in names:
-            _set(FLOW_LOOP.sp_auto, float(snap.sp_flow))
+        if LEVEL_LOOP.cv in names:
+            _set(LEVEL_LOOP.cv, float(snap.sp_flow))
         if "CMD_SPEED" in names:
             _set("CMD_SPEED", float(snap.cmd_speed))
         # Plant PVs are Soft-PLC IN only (SWD-145) — never synthesize as OUT.

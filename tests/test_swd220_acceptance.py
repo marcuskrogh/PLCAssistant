@@ -15,7 +15,7 @@ def test_unit_mode_defaults_are_manual() -> None:
     block = default_tank_datablock_catalog().get("DB_Tank")
     assert block is not None
     assert float(block.tags["LEVEL_MODE"].default) == pytest.approx(1.0)
-    assert float(block.tags["FLOW_MODE"].default) == pytest.approx(1.0)  # cascade slave (SWD-221)
+    assert float(block.tags["FLOW_MODE"].default) == pytest.approx(2.0)  # cascade slave (REM)
 
     meta = (ROOT / "number.py").read_text(encoding="utf-8")
     assert '"object_id": "plcassistant_level_mode"' in meta
@@ -23,7 +23,7 @@ def test_unit_mode_defaults_are_manual() -> None:
     level_block = meta.split('"LEVEL_MODE":', 1)[1].split('"CO_LEVEL_MAN":', 1)[0]
     assert '"default": 1.0' in level_block
     flow_block = meta.split('"FLOW_MODE":', 1)[1].split('"LEVEL_KP"', 1)[0]
-    assert '"default": 1.0' in flow_block
+    assert '"default": 2.0' in flow_block
 
 
 def test_unit_skid_missing_mode_defaults_automatic() -> None:
@@ -88,7 +88,7 @@ def test_system_lovelace_resource_registration() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
     assert '"after_dependencies"' in manifest
     assert '"lovelace"' in manifest
-    assert '"0.1.64"' in manifest
+    assert '"0.1.65"' in manifest
 
     pid = (ROOT / "www" / "pid-loop-card.js").read_text(encoding="utf-8")
     assert 'customElements.get("plcassistant-pid-card")' in pid
@@ -132,4 +132,4 @@ def test_integration_ha_catalog_mode_default_parity() -> None:
     ) == pytest.approx(1.0)
     assert float(soft_block.tags["FLOW_MODE"].default) == float(
         ha_block.tags["FLOW_MODE"].default
-    ) == pytest.approx(1.0)
+    ) == pytest.approx(2.0)

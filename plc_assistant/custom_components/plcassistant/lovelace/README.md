@@ -45,7 +45,7 @@ PID cards edit mode / SP / CO (entities still exist for automation / custom boar
 | `number.plcassistant_sp_level_req` | Operator **level setpoint request** (writable; Automatic source; click SP bar or dialog) |
 | `number.plcassistant_co_level_man` / `_co_flow_man` | Output Manual MV (writable in MAN; click MV bar or dialog) |
 | `number.plcassistant_sp_level_man` / `_rem` / `level_mode` | Level PID legacy Manual/Remote SP + mode (0/1/2) |
-| `number.plcassistant_sp_flow_man` / `_rem` / `flow_mode` | Flow PID Remote SP + mode (flow AUTO is cascade; MAN writes CO) |
+| `number.plcassistant_sp_flow_req` / `_man` / `flow_mode` | Flow PID local Auto SP + mode (flow REM is cascade; MAN writes CO) |
 | `sensor.plcassistant_pid_level` / `_pid_flow` | Compound PID faceplate (mode + attributes) |
 | `sensor.plcassistant_lt_tank_in` / `_lt_res_in` / `_ft_inlet_in` | Plant PVs as Soft-PLC **IN** (Operate Process glance) |
 | `number.plcassistant_lt_tank_in` / `_lt_res_in` / `_ft_inlet_in` | Plant PV **nudges** (writable; same tags) |
@@ -94,6 +94,8 @@ After App Update + Core restart: stock Lovelace refreshes to dashboard version *
 If personal boards still show unavailable plant Numbers, delete stale unavailable
 entities in the entity registry (or remove/re-add the integration). Update any
 personal dashboards that still reference plant Numbers for Process display.
+
+**0.1.65** Flow PID defaults to Remote (cascade slave); Automatic is local `SP_FLOW_REQ`. Stock Lovelace still dashboard version **28**.
 
 **0.1.64** PID faceplate: SP ramping (`sp_ramp_max`) with an orange SP-bar segment from current SP to target. Stock Lovelace still dashboard version **28**.
 

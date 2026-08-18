@@ -25,7 +25,7 @@ def test_unit_no_optimistic_running_on_start() -> None:
 
 
 def test_unit_operator_file_beats_stale_mqtt_retain(tmp_path: Path, monkeypatch) -> None:
-    """File-seeded FLOW_MODE=Automatic wins over stale MQTT FLOW_MODE=Manual."""
+    """File-seeded FLOW_MODE=Remote wins over stale MQTT FLOW_MODE=Manual."""
     from plcassistant.app.runtime import MqttScanLoop, declare_default_image
     from plcassistant.io.ha_config_bridge import write_input_tags
     from plcassistant.io.mqtt_bridge import InMemoryMqttBus, MqttIoBridge
@@ -44,7 +44,7 @@ def test_unit_operator_file_beats_stale_mqtt_retain(tmp_path: Path, monkeypatch)
     assert write_input_tags(
         {
             "LEVEL_MODE": 1.0,
-            "FLOW_MODE": 1.0,
+            "FLOW_MODE": 2.0,
             "SP_LEVEL_REQ": 0.25,
             "LT_TANK": 0.15,
             "LT_RES": 0.20,
@@ -68,7 +68,7 @@ def test_unit_operator_file_beats_stale_mqtt_retain(tmp_path: Path, monkeypatch)
     )
     bus.publish(cmd_topic("default", "start"), b"1")
     loop.scan_once()
-    assert float(image.get_value("FLOW_MODE")) == pytest.approx(1.0)
+    assert float(image.get_value("FLOW_MODE")) == pytest.approx(2.0)
     assert float(image.get_value("LEVEL_MODE")) == pytest.approx(1.0)
     assert loop.scanning is True
     assert image.get_value("MODE") == "RUNNING"
@@ -125,7 +125,7 @@ def test_system_defaults_start_cascade_inlet_rises() -> None:
     image = declare_default_image()
     image.begin_inputs()
     image.apply_input("LEVEL_MODE", 1.0, QualityStatus.GOOD)
-    image.apply_input("FLOW_MODE", 1.0, QualityStatus.GOOD)
+    image.apply_input("FLOW_MODE", 2.0, QualityStatus.GOOD)
     image.apply_input("SP_LEVEL_REQ", 0.25, QualityStatus.GOOD)
     image.apply_input("LT_TANK", 0.15, QualityStatus.GOOD)
     image.apply_input("LT_RES", 0.20, QualityStatus.GOOD)
@@ -257,10 +257,10 @@ def test_integration_pid_card_preserves_drafts() -> None:
 
 def test_system_app_version_and_dashboard() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.64"' in manifest
+    assert '"0.1.65"' in manifest
     dash = (ROOT / "lovelace" / "plcassistant.yaml").read_text(encoding="utf-8")
     assert "plcassistant_dashboard_version: 28" in dash
     config = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.64"' in config
+    assert 'version: "0.1.65"' in config
     docker = Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.64" in docker
+    assert "BUILD_VERSION=0.1.65" in docker

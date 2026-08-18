@@ -189,7 +189,7 @@ def test_closed_loop_settles_near_level_setpoint() -> None:
 
     sp = 0.30
     image.apply_input("LEVEL_MODE", 1.0, QualityStatus.GOOD)
-    image.apply_input("FLOW_MODE", 1.0, QualityStatus.GOOD)
+    image.apply_input("FLOW_MODE", 2.0, QualityStatus.GOOD)
     image.apply_input("SP_LEVEL_REQ", sp, QualityStatus.GOOD)
     logic.enqueue_operator("start")
     for _ in range(2500):  # 250 s
@@ -248,7 +248,7 @@ def test_mqtt_silent_file_bridge_closed_loop_settles(
     plant.apply_status_payload({"state": "running", "scan_period_s": 0.1})
     plant.publish_now()
     assert write_input_tags(
-        {"SP_LEVEL_REQ": 0.30, "LEVEL_MODE": 1.0, "FLOW_MODE": 1.0},
+        {"SP_LEVEL_REQ": 0.30, "LEVEL_MODE": 1.0, "FLOW_MODE": 2.0},
         root=tmp_path,
     )
 
