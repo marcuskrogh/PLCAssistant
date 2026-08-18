@@ -41,6 +41,9 @@ const {
   pidPvScaleMax,
   pidNudgeValue,
   pidNudgeRange,
+  pidBarFaceLabel,
+  pidBarEditorKey,
+  pidNormalizeBarKey,
   PID_DISPLAY_DIGITS,
   PID_CV_MAX_LEVEL,
   PID_CV_MAX_FLOW,
@@ -341,9 +344,11 @@ const writableCo = node("button", { "data-bar": "co", "data-writable": "1" });
 assertEq(resolveFaceplateClick(writableCo)?.type, "bar", "writable CO bar click is bar");
 assertEq(resolveFaceplateClick(writableCo)?.key, "co", "writable CO bar key is co");
 const lockedSp = node("button", { "data-bar": "sp", "data-writable": "0" });
-assertEq(resolveFaceplateClick(lockedSp), null, "non-writable SP bar is ignored");
+assertEq(resolveFaceplateClick(lockedSp)?.type, "bar", "non-writable SP bar still opens inspect popup");
+assertEq(resolveFaceplateClick(lockedSp)?.key, "sp", "locked SP bar key is sp");
 const pvBar = node("button", { "data-bar": "pv", "data-writable": "0" });
-assertEq(resolveFaceplateClick(pvBar), null, "PV bar is never writable");
+assertEq(resolveFaceplateClick(pvBar)?.type, "bar", "PV bar click opens inspect popup");
+assertEq(resolveFaceplateClick(pvBar)?.key, "pv", "PV bar key is pv");
 const openRoot = node("div", { "data-open-editor": "" });
 const barUnderOpen = node("button", { "data-bar": "sp", "data-writable": "1" }, openRoot);
 assertEq(
@@ -352,6 +357,13 @@ assertEq(
   "writable bar wins over data-open-editor ancestor"
 );
 
+assertEq(pidBarFaceLabel("co"), "MV", "CO analog is labelled MV");
+assertEq(pidBarFaceLabel("sp"), "SP", "SP analog is labelled SP");
+assertEq(pidBarFaceLabel("pv"), "PV", "PV analog is labelled PV");
+assertEq(pidNormalizeBarKey("cv"), "co", "cv normalises to co");
+assertEq(pidBarEditorKey("co"), "co", "MV bar uses co editor");
+assertEq(pidBarEditorKey("sp"), "auto", "SP bar uses auto editor");
+assertEq(pidBarEditorKey("pv"), null, "PV bar has no editor");
 assertEq(PID_NUDGE_FINE, 0.1, "fine nudge is 0.1");
 assertEq(PID_NUDGE_COARSE, 1, "coarse nudge is 1.0");
 assertEq(pidNudgeRange("sp", "level").max, 0.4, "level SP nudge max is 0.40 m");

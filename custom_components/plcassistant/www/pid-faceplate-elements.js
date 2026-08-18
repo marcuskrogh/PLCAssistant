@@ -190,6 +190,85 @@ export function pidNudgeValue(value, delta, min, max) {
   return commitSpValue(next);
 }
 
+/** Normalise a bar click to pv / sp / co. */
+export function pidNormalizeBarKey(barKey) {
+  const key = String(barKey ?? "");
+  if (key === "sp") return "sp";
+  if (key === "pv") return "pv";
+  return "co";
+}
+
+/** Operator label for an analog. MV is the faceplate name for CO. */
+export function pidBarFaceLabel(barKey) {
+  const key = pidNormalizeBarKey(barKey);
+  if (key === "sp") return "SP";
+  if (key === "pv") return "PV";
+  return "MV";
+}
+
+/** data-sp / data-apply key for a writable bar. PV has no editor. */
+export function pidBarEditorKey(barKey) {
+  const key = pidNormalizeBarKey(barKey);
+  if (key === "sp") return "auto";
+  if (key === "co") return "co";
+  return null;
+}
+
+/** Engineering unit for a bar on a loop. */
+export function pidBarUnit(barKey, loopId) {
+  const key = String(barKey ?? "");
+  if (key === "co" || key === "cv") {
+    return loopId === "flow" ? "%" : "L/min";
+  }
+  return loopId === "flow" ? "L/min" : "m";
+}
+
+/**
+ * Paint the focused numeric popup for one analog (label, min, max, unit, editor key).
+ * Set is shown only when that analog is the operator write target.
+ */
+export function applyPidValueDialog(
+  root,
+  { barKey = "co", loopId = "level", value = null, writable = false } = {}
+) {
+  if (!root) return;
+  const key = pidNormalizeBarKey(barKey);
+  const editorKey = pidBarEditorKey(key);
+  const label = pidBarFaceLabel(key);
+  const range = pidNudgeRange(key, loopId);
+  const unit = pidBarUnit(key, loopId);
+  setText(root, "[data-value-title]", label);
+  setText(root, "[data-value-label]", label);
+  setText(root, "[data-value-min]", formatPidValue(range.min));
+  setText(root, "[data-value-max]", formatPidValue(range.max));
+  setText(root, "[data-value-unit]", unit);
+  setText(root, "[data-value-current]", formatPidValue(value));
+  const dialog = root.querySelector(".pid-value-dialog");
+  const scope = dialog && typeof dialog.querySelector === "function" ? dialog : root;
+  if (typeof scope.querySelector !== "function") return;
+  const focus = scope.querySelector(".pid-value-focus");
+  if (focus && typeof focus.setAttribute === "function") {
+    focus.setAttribute("data-writable", writable ? "1" : "0");
+  }
+  const input = scope.querySelector("input[data-sp]");
+  const apply = scope.querySelector("[data-apply]");
+  const row = scope.querySelector("[data-source]");
+  if (input) {
+    if (editorKey) input.setAttribute("data-sp", editorKey);
+    input.disabled = !writable;
+  }
+  if (apply) {
+    if (editorKey) apply.setAttribute("data-apply", editorKey);
+    apply.disabled = !writable;
+  }
+  if (row && editorKey) row.setAttribute("data-source", editorKey);
+}
+
+function setText(root, sel, value) {
+  const el = root.querySelector(sel);
+  if (el) el.textContent = value;
+}
+
 /**
  * Round a parsed SP to display precision for both UI commit and number.set_value.
  * Returns null when the input is not a finite number.
@@ -227,8 +306,9 @@ export function numberServiceValue(value) {
  * ``[data-mode]`` match — so a card-root accent attribute cannot hijack Set
  * (``data-mode="man"`` → Number("man") → NaN toast).
  *
- * Writable bar clicks are ``type: "bar"`` so the host can open the numeric
- * popup. Pointer-position set is not part of this resolver.
+ * Bar clicks are ``type: "bar"`` so the host can open a focused numeric
+ * popup for that analog. Writability is painted separately; pointer-position
+ * set is not part of this resolver.
  */
 export function resolveFaceplateClick(target) {
   if (!target || typeof target.closest !== "function") return null;
@@ -263,7 +343,6 @@ export function resolveFaceplateClick(target) {
   }
   const barBtn = target.closest("[data-bar]");
   if (barBtn) {
-    if (barBtn.getAttribute("data-writable") !== "1") return null;
     return { type: "bar", key: barBtn.getAttribute("data-bar") };
   }
   const settingsOpen = target.closest("[data-settings]");
@@ -340,28 +419,10 @@ const PID_FACEPLATE_CSS = `
   display: flex; justify-content: space-between; align-items: center;
   gap: 8px; margin-bottom: 10px;
 }
-.pid-head-err {
-  flex: 0 0 auto;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0;
-  min-width: 3.25rem;
+.pid-settings-btn:focus-visible {
+  outline: 2px solid var(--pid-focus);
+  outline-offset: 1px;
 }
-.pid-head-err span {
-  font-size: var(--pid-label-size);
-  font-weight: var(--ha-font-weight-medium, 500);
-  color: var(--secondary-text-color);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-.pid-head-err strong {
-  font-size: var(--pid-value-size);
-  font-weight: var(--ha-font-weight-normal, 400);
-  font-variant-numeric: tabular-nums;
-  line-height: var(--ha-line-height-normal, 1.4);
-}
-.pid-settings-btn {
   flex: 0 0 auto;
   width: 32px; height: 32px;
   border: 0; background: transparent;
@@ -459,10 +520,53 @@ const PID_FACEPLATE_CSS = `
   margin: 8px 0 4px;
 }
 .pid-vbars {
-  display: flex;
-  justify-content: center;
-  gap: 28px;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: stretch;
+  justify-items: center;
+  gap: 8px;
   min-height: 148px;
+}
+.pid-err-between {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  min-width: 3.25rem;
+  min-height: 4.5rem;
+  padding: 8px 6px;
+  text-align: center;
+  border-left: 1px solid var(--divider-color, #ccc);
+  border-right: 1px solid var(--divider-color, #ccc);
+}
+.pid-err-between span {
+  font-size: var(--pid-label-size);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--secondary-text-color);
+}
+.pid-value-focus { display: grid; gap: 12px; }
+.pid-value-focus[data-writable="0"] input,
+.pid-value-focus[data-writable="0"] [data-apply] { display: none; }
+.pid-value-focus[data-writable="1"] [data-value-current] { display: none; }
+.pid-value-focus[data-writable="0"] [data-value-current] {
+  font-size: var(--pid-value-size);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--ha-font-weight-medium, 500);
+  justify-self: end;
+}
+.pid-value-bound {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: var(--pid-secondary-size);
+  color: var(--secondary-text-color);
+}
+.pid-value-bound strong {
+  font-variant-numeric: tabular-nums;
+  color: var(--primary-text-color);
 }
 .pid-vbar,
 .pid-hbar {
@@ -471,7 +575,7 @@ const PID_FACEPLATE_CSS = `
   border: 0;
   background: transparent;
   color: inherit;
-  cursor: default;
+  cursor: pointer;
   font: inherit;
 }
 .pid-vbar {
@@ -548,14 +652,6 @@ const PID_FACEPLATE_CSS = `
 .pid-shell[data-pid-hi="abnormal"] .pid-vbar-fill[data-writable="1"],
 .pid-shell[data-pid-hi="abnormal"] .pid-cv-fill[data-writable="1"] {
   background: var(--pid-hi-abnormal); opacity: 1;
-}
-.pid-vbar[data-writable="1"],
-.pid-hbar[data-writable="1"] {
-  cursor: pointer;
-}
-.pid-vbar[data-writable="0"],
-.pid-hbar[data-writable="0"] {
-  pointer-events: none;
 }
 .pid-nudge {
   display: grid;
@@ -802,7 +898,7 @@ export function pidKpiRowHtml({ metricPrefix = "" } = {}) {
                 <strong data-metric="${p}err"></strong>
               </div>
               <div class="pid-metric" data-role="cv">
-                <span>CO</span>
+                <span>MV</span>
                 <strong data-metric="${p}cv"></strong>
               </div>
             </div>`;
@@ -822,14 +918,18 @@ export function pidAnalogBarsHtml() {
                   <div class="pid-vbar-track"><div class="pid-vbar-fill" data-pv-bar></div></div>
                   <span class="pid-bar-readout" data-metric="pv">—</span>
                 </button>
+                <div class="pid-metric pid-err-between" data-role="err">
+                  <span>ε</span>
+                  <strong data-metric="err">—</strong>
+                </div>
                 <button type="button" class="pid-vbar" data-bar="sp" data-writable="0" aria-label="SP">
                   <span class="pid-bar-caption">SP</span>
                   <div class="pid-vbar-track"><div class="pid-vbar-fill" data-sp-bar></div></div>
                   <span class="pid-bar-readout" data-metric="sp">—</span>
                 </button>
               </div>
-              <button type="button" class="pid-hbar" data-bar="co" data-writable="0" aria-label="CO">
-                <span class="pid-bar-caption">CO</span>
+              <button type="button" class="pid-hbar" data-bar="co" data-writable="0" aria-label="MV">
+                <span class="pid-bar-caption">MV</span>
                 <div class="pid-cv-track"><div class="pid-cv-fill" data-cv-bar></div></div>
                 <span class="pid-bar-readout" data-metric="cv">—</span>
               </button>
@@ -860,10 +960,6 @@ export function pidAssembledFaceHtml({ includeHint = true } = {}) {
   return `<div class="pid-head">
               ${pidIsaGlyphHtml()}
               <div class="pid-title"></div>
-              <div class="pid-metric pid-head-err" data-role="err">
-                <span>ε</span>
-                <strong data-metric="err"></strong>
-              </div>
               ${pidSettingsButtonHtml()}
             </div>
             ${pidAnalogBarsHtml()}
@@ -877,44 +973,28 @@ export function pidDialogHtml() {
           <button type="button" class="pid-dialog-backdrop" data-close-editor aria-label="Dismiss"></button>
           <div class="pid-dialog-panel" role="document">
             <div class="pid-dialog-head">
-              <div class="pid-dialog-title" data-dialog-title></div>
+              <div class="pid-dialog-title" data-value-title>MV</div>
               <button type="button" class="pid-dialog-close" data-close-editor aria-label="Close">×</button>
             </div>
             <div class="pid-dialog-body">
-              <div class="pid-dialog-summary">
-                <div class="pid-metric" data-role="pv">
-                  <span>PV</span>
-                  <strong data-metric="dlg-pv"></strong>
+              <div class="pid-value-focus">
+                <div class="pid-value-bound">
+                  <span>Min</span>
+                  <strong data-value-min>—</strong>
                 </div>
-                <div class="pid-metric" data-role="sp">
-                  <span>Active SP</span>
-                  <strong data-metric="dlg-sp"></strong>
-                </div>
-                <div class="pid-metric" data-role="err">
-                  <span>ε</span>
-                  <strong data-metric="dlg-err"></strong>
-                </div>
-                <div class="pid-metric" data-role="cv">
-                  <span>CO</span>
-                  <strong data-metric="dlg-cv"></strong>
-                </div>
-              </div>
-              ${pidModeRowHtml({ className: "pid-modes" })}
-              <div class="pid-editors">
                 <div class="pid-row" data-source="co">
-                  <label>CO</label>
+                  <label data-value-label>MV</label>
+                  <strong data-value-current>—</strong>
                   <input data-sp="co" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" />
                   <button type="button" data-apply="co">Set</button>
                 </div>
-                <div class="pid-row" data-source="auto">
-                  <label>Auto</label>
-                  <input data-sp="auto" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" />
-                  <button type="button" data-apply="auto">Set</button>
+                <div class="pid-value-bound">
+                  <span>Max</span>
+                  <strong data-value-max>—</strong>
                 </div>
-                <div class="pid-row" data-source="rem">
-                  <label>Rem</label>
-                  <input data-sp="rem" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" />
-                  <button type="button" data-apply="rem">Set</button>
+                <div class="pid-value-bound">
+                  <span>Unit</span>
+                  <strong data-value-unit></strong>
                 </div>
               </div>
               <div class="pid-note"></div>
@@ -1006,7 +1086,7 @@ export const PID_FACEPLATE_ELEMENT_CATALOG = [
   {
     id: "analog-bars",
     title: "Analog bars",
-    description: "Thin tall PV/SP bars and a thicker CO bar, with values on the analog.",
+    description: "Thin tall PV/SP bars, ε between them, and a thicker MV bar.",
     html: () => wrapIsolated(pidAnalogBarsHtml()),
   },
   {
@@ -1035,11 +1115,6 @@ export function mountPidFaceplateElement(host, elementId, { withStyles = true } 
   return host;
 }
 
-function setText(root, sel, value) {
-  const el = root.querySelector(sel);
-  if (el) el.textContent = value;
-}
-
 /**
  * Paint chrome from a loop snapshot. Safe on an isolate or a full faceplate.
  * Dialog drafts are owned by the Lovelace card.
@@ -1063,6 +1138,9 @@ export function applyPidFaceplateState(root, state = {}) {
           spWritable: state.spWritable !== false,
           coWritable: state.coWritable !== false,
         });
+  const dialogBar = pidNormalizeBarKey(
+    state.dialogBarKey || (writeTarget === "sp" ? "sp" : "co")
+  );
 
   const shell = root.querySelector(".pid-shell") || (root.classList && root.classList.contains("pid-shell") ? root : null);
   if (shell) {
@@ -1134,6 +1212,15 @@ export function applyPidFaceplateState(root, state = {}) {
     const val = state[key];
     input.value = val == null || val === "" ? "" : formatPidValue(val);
   }
+
+  applyPidValueDialog(root, {
+    barKey: dialogBar,
+    loopId,
+    value: dialogBar === "sp" ? sp : dialogBar === "pv" ? pv : cv,
+    writable:
+      (dialogBar === "sp" && writeTarget === "sp") ||
+      (dialogBar === "co" && writeTarget === "co"),
+  });
 
   root.querySelectorAll("button[data-mode]").forEach((btn) => {
     const code = btn.getAttribute("data-mode");

@@ -57,9 +57,10 @@ const kpis = pidFaceplateElementHtml("kpi-row");
 assert(kpis.includes('data-metric="pv"'), "kpi PV");
 assert(kpis.includes('data-metric="sp"'), "kpi SP");
 assert(kpis.includes('data-metric="err"'), "kpi ε");
-assert(kpis.includes('data-metric="cv"'), "kpi CO");
-assert(kpis.includes("<span>CO</span>"), "kpi labels CO");
+assert(kpis.includes('data-metric="cv"'), "kpi MV");
+assert(kpis.includes("<span>MV</span>"), "kpi labels MV");
 assert(!kpis.includes("<span>CV</span>"), "kpi does not label CV");
+assert(!kpis.includes("<span>CO</span>"), "kpi does not label CO");
 
 const bars = pidFaceplateElementHtml("analog-bars");
 assert(bars.includes('data-bar="pv"'), "PV bar");
@@ -69,7 +70,8 @@ assert(bars.includes("pid-vbar-track"), "vertical track");
 assert(bars.includes("pid-hbar"), "horizontal CO");
 assert(bars.includes('data-metric="pv"'), "PV value on bar");
 assert(bars.includes('data-metric="sp"'), "SP value on bar");
-assert(bars.includes('data-metric="cv"'), "CO value on bar");
+assert(bars.includes('aria-label="MV"'), "MV bar label");
+assert(bars.includes("pid-err-between"), "ε sits between PV and SP");
 
 const modes = pidFaceplateElementHtml("mode-row");
 assert(modes.includes('data-mode="0"'), "Man");
@@ -97,7 +99,15 @@ const assembled = pidFaceplateMarkup({ includeDialog: true, includeHint: true })
 assert(assembled.includes("Tap to adjust"), "assembled hint");
 assert(assembled.includes("data-nudge"), "nudge row on assembled face");
 assert(assembled.includes('data-settings="open"'), "settings gear");
-assert(assembled.includes("pid-head-err"), "ε in the header");
+assert(assembled.includes("pid-err-between"), "ε between PV and SP");
+assert(!assembled.includes("pid-head-err"), "ε is not in the header");
+assert(assembled.includes("data-value-min"), "focused popup has min");
+assert(assembled.includes("data-value-max"), "focused popup has max");
+assert(assembled.includes("data-value-current"), "focused popup has current value");
+assert(assembled.includes(">MV<"), "assembled labels MV");
+assert(!assembled.includes("Active SP"), "focused popup is not the old editor stack");
+assert(!css.includes("pointer-events: none"), "non-writable bars stay clickable");
+assert(css.includes("border-left: 1px solid var(--divider-color"), "ε gutter between PV and SP");
 assert(assembled.includes("pid-settings-dialog"), "settings dialog");
 assert(assembled.includes("pid-value-dialog"), "value dialog");
 assert(!assembled.includes("pid-hero"), "assembled face does not keep the KPI hero row");
@@ -187,8 +197,46 @@ assertEq(root.mk("[data-pv-bar]").style.height, "50%", "PV bar 0.2/0.4");
 assertEq(root.mk('[data-bar="co"]')._attrs["data-writable"], "1", "MAN highlights CO");
 assertEq(root.mk('[data-bar="sp"]')._attrs["data-writable"], "0", "MAN does not write SP");
 assertEq(root.mk("[data-cv-bar]")._attrs["data-writable"], "1", "MAN colours CO fill");
-assert(root.mk('button[data-nudge="-1"]').disabled === false, "nudge enabled in MAN");
+assertEq(root.mk("[data-value-title]").textContent, "MV", "MAN default popup is MV");
+assertEq(root.mk("[data-value-min]").textContent, "0.00", "MV min is 0");
+assertEq(root.mk("[data-value-max]").textContent, "8.00", "level MV max is 8");
+assertEq(root.mk("[data-value-unit]").textContent, "L/min", "level MV unit");
+assertEq(root.mk("[data-value-current]").textContent, "3.20", "MV current follows cv");
+assert(root.mk("button[data-nudge=\"-1\"]").disabled === false, "nudge enabled in MAN");
 assert(root.mk('button[data-mode="0"]').classList._on === true, "Man button active");
+
+applyPidFaceplateState(root, {
+  title: "Level PID",
+  mode: "automatic",
+  loopId: "level",
+  pv: 0.2,
+  sp: 0.3,
+  cv: 3.2,
+  coWritable: true,
+  spWritable: true,
+  dialogBarKey: "sp",
+});
+assertEq(root.mk("[data-value-title]").textContent, "SP", "SP popup title");
+assertEq(root.mk("[data-value-max]").textContent, "0.40", "level SP max is 0.40 m");
+assertEq(root.mk("[data-value-unit]").textContent, "m", "level SP unit");
+assertEq(root.mk("[data-value-current]").textContent, "0.30", "SP current follows sp");
+assertEq(root.mk(".pid-value-focus")._attrs["data-writable"], "1", "SP popup is writable in AUTO");
+
+applyPidFaceplateState(root, {
+  title: "Level PID",
+  mode: "automatic",
+  loopId: "level",
+  pv: 0.2,
+  sp: 0.3,
+  cv: 3.2,
+  coWritable: true,
+  spWritable: true,
+  dialogBarKey: "pv",
+});
+assertEq(root.mk("[data-value-title]").textContent, "PV", "PV popup title");
+assertEq(root.mk("[data-value-max]").textContent, "0.40", "level PV max is 0.40 m");
+assertEq(root.mk("[data-value-current]").textContent, "0.20", "PV current follows pv");
+assertEq(root.mk(".pid-value-focus")._attrs["data-writable"], "0", "PV popup is read-only");
 
 const host = { innerHTML: "" };
 const mounted = mountPidFaceplateElement(host, "analog-bars");

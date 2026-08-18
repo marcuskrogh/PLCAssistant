@@ -17,6 +17,9 @@ import {
   commitSpValue,
   parseSpValue,
   resolveFaceplateClick,
+  applyPidValueDialog,
+  pidBarEditorKey,
+  pidNormalizeBarKey,
 } from "../../custom_components/plcassistant/www/pid-faceplate-elements.js";
 
 const loopEl = document.querySelector("#loop");
@@ -31,6 +34,11 @@ const mockFlow = document.querySelector("#mock-flow");
 const tunings = {
   level: { kp: 40, ki: 5, kd: 0 },
   flow: { kp: 12, ki: 2, kd: 0 },
+};
+
+const dialogBarByLoop = {
+  level: "co",
+  flow: "co",
 };
 
 function scaleFor(loopId) {
@@ -130,6 +138,30 @@ function bindLocalChrome(root, loopId) {
       return;
     }
     if (action.type === "open" || action.type === "bar") {
+      const state = snapshot(loopId);
+      const barKey =
+        action.type === "bar"
+          ? pidNormalizeBarKey(action.key)
+          : state.writeTarget
+            ? pidNormalizeBarKey(state.writeTarget)
+            : null;
+      if (!barKey) return;
+      dialogBarByLoop[loopId] = barKey;
+      applyPidValueDialog(root, {
+        barKey,
+        loopId,
+        value: barKey === "sp" ? state.sp : barKey === "pv" ? state.pv : state.cv,
+        writable:
+          (barKey === "sp" && state.writeTarget === "sp") ||
+          (barKey === "co" && state.writeTarget === "co"),
+      });
+      const input = root.querySelector(".pid-value-dialog input[data-sp]");
+      if (input) {
+        const editorKey = pidBarEditorKey(barKey);
+        input.value = String(
+          editorKey === "auto" ? state.sp : barKey === "pv" ? state.pv : state.cv
+        );
+      }
       setDialogOpen(root, ".pid-settings-dialog", false);
       setDialogOpen(root, ".pid-value-dialog", true);
       return;
@@ -200,12 +232,16 @@ function refresh() {
   isolates.querySelectorAll("[data-host]").forEach((host) => {
     applyPidFaceplateState(host, selected);
   });
-  applyPidFaceplateState(mockLevel, snapshot("level"));
+  applyPidFaceplateState(mockLevel, {
+    ...snapshot("level"),
+    dialogBarKey: dialogBarByLoop.level,
+  });
   applyPidFaceplateState(mockFlow, {
     ...snapshot("flow"),
     title: "Flow PID",
     loopId: "flow",
     spWritable: false,
+    dialogBarKey: dialogBarByLoop.flow,
   });
 }
 

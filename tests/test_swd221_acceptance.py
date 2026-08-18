@@ -95,4 +95,4 @@ def test_system_level_auto_sp_entity_contract() -> None:
     number = (ROOT / "number.py").read_text(encoding="utf-8")
     assert "plcassistant_sp_level_req" in number
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.60"' in manifest
+    assert '"0.1.61"' in manifest

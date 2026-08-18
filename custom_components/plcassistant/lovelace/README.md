@@ -30,7 +30,7 @@ Operate is a compact SCADA screen — not an entity browser:
 | **Status** | Soft-PLC, Mode (`STOP` / `RUNNING` / `TRIPPED`), Trip |
 | **Commands** | Start / Stop / Reset |
 | **Process** | Glance PVs (tank, reservoir, inlet flow, pump speed) — tap opens more-info / history |
-| **PID** | Level + Flow analog-controller faceplates (PV/SP bars, CO bar; MAN writes CO, AUTO writes SP) |
+| **PID** | Level + Flow analog-controller faceplates (PV/SP bars, MV bar; MAN writes MV, AUTO writes SP) |
 
 Engineering surfaces stay on the **Dynamics** and **Datablocks** tabs.
 
@@ -43,7 +43,7 @@ PID cards edit mode / SP / CO (entities still exist for automation / custom boar
 | Entity | Role |
 |--------|------|
 | `number.plcassistant_sp_level_req` | Operator **level setpoint request** (writable; Automatic source; click SP bar or dialog) |
-| `number.plcassistant_co_level_man` / `_co_flow_man` | Output Manual CO (writable in MAN; click CO bar or dialog) |
+| `number.plcassistant_co_level_man` / `_co_flow_man` | Output Manual MV (writable in MAN; click MV bar or dialog) |
 | `number.plcassistant_sp_level_man` / `_rem` / `level_mode` | Level PID legacy Manual/Remote SP + mode (0/1/2) |
 | `number.plcassistant_sp_flow_man` / `_rem` / `flow_mode` | Flow PID Remote SP + mode (flow AUTO is cascade; MAN writes CO) |
 | `sensor.plcassistant_pid_level` / `_pid_flow` | Compound PID faceplate (mode + attributes) |
@@ -94,6 +94,8 @@ After App Update + Core restart: stock Lovelace refreshes to dashboard version *
 If personal boards still show unavailable plant Numbers, delete stale unavailable
 entities in the entity registry (or remove/re-add the integration). Update any
 personal dashboards that still reference plant Numbers for Process display.
+
+**0.1.61** PID faceplate: focused analog popup (value/min/max), MV label, ε between PV and SP. Stock Lovelace still dashboard version **28**.
 
 **0.1.60** PID faceplate: colour fill on the writable analog, values on the bars, numeric popup (no pointer-set), nudge arrows, settings gear for Kp/Ki/Kd. Stock Lovelace still dashboard version **28**.
 

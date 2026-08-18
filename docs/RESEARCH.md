@@ -74,9 +74,9 @@ ISA-101-aligned practice prefers analog bars over naked digits so the operator s
 
 The **two adjacent vertical bars (PV and SP) with a horizontal output** is the analog-controller faceplate used by DCS/SCADA libraries. A single PV bar with an SP triangle is also valid HPHMI. The user’s two-bar + horizontal CO request matches the analog-controller family, not a clause in ISA-101.
 
-### 3. Labels are PV / SP / CO (or OP), not MV
+### 3. Labels are PV / SP / MV on the faceplate; Soft-PLC key stays CO
 
-ISA-TR5.9 and this product already use **CO**. AVEVA/Citect use **OP**. Process engineers often say **MV**. Faceplate label should stay **CO**. Informal “MV bar” means the CO bar.
+ISA-TR5.9 and this product’s tags/helpers use **CO**. AVEVA/Citect use **OP**. Process engineers often say **MV**. Operator chrome (SWD-378) labels the horizontal analog **MV**; internal `cv` / `data-bar="co"` / write_target `co` stay CO.
 
 ### 4. MAN / AUTO / REM(CAS) are controller modes, not SP-source muxes
 

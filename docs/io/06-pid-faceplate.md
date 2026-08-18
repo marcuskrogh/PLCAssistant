@@ -10,10 +10,11 @@ practice under **ISA-101** high-performance HMI rules (grayscale normal chrome;
 colour only for caution/abnormal). **ANSI/ISA-112.00.01-2025** is the SCADA
 lifecycle / terminology standard; it tells organisations to keep an HMI style
 guide and points that guide at ISA-101. It does **not** specify PID bar
-geometry. ISA-TR5.9 names stay: **PV**, **SP**, **CO**.
+geometry. ISA-TR5.9 names stay on the Datablock: **PV**, **SP**, **CO**.
+Faceplates label the controller output **MV** (manipulated variable).
 
 The Datablock is system source of truth; HA entities and Lovelace cards write
-into it. The `cv` pin name is unchanged; faceplates label that signal **CO**.
+into it. The `cv` pin name is unchanged; faceplates label that signal **MV**.
 
 ## Modes
 
@@ -21,7 +22,7 @@ DCS controller modes (not three parallel SP sources while the PID still computes
 
 | Mode | Code | Operator write | Algorithm |
 |------|------|----------------|-----------|
-| Manual | `0` | **CO** (`CO_*_MAN` → Bauer `uman`) | PID `auto=false`; output holds |
+| Manual | `0` | **MV** (`CO_*_MAN` → Bauer `uman`) | PID `auto=false`; output holds |
 | Automatic | `1` | **SP** when the Auto entity is a Number | PID computes CO from local SP |
 | Remote | `2` | none (cascade / remote SP) | PID stays in auto; faceplate does not write SP or CO |
 
@@ -45,18 +46,20 @@ override.
 Compact analog-controller face:
 
 1. ISA-5.1 three-mode chrome (ε / P / I / D) matching the App Diagram glyph
-2. Header: title, **ε** at two decimal places, settings gear
+2. Header: title and settings gear
 3. two thin tall vertical bars: PV (left) and SP (right), with values on the bars
-4. A thicker horizontal CO bar below, with its value beside the bar
-5. `<< < > >>` nudges (±1.0 / ±0.1) on the writable analog
-6. MAN / AUTO / REM on the face (grayscale active invert)
-7. Numeric popup to type a value (bar click opens it; no pointer-position set)
-8. Settings popup for Kp / Ki / Kd
+4. Signed **ε** between the PV and SP bars (caution/abnormal colour)
+5. A thicker horizontal **MV** bar below, with its value beside the bar
+6. `<< < > >>` nudges (±1.0 / ±0.1) on the writable analog
+7. MAN / AUTO / REM on the face (grayscale active invert)
+8. Focused numeric popup for the clicked analog (current value, min, max; no pointer-position set)
+9. Settings popup for Kp / Ki / Kd
 
-Click the highlighted bar to open the numeric popup. Typed Set remains in that
-dialog. Nudge arrows change the writable analog directly.
+Click any analog bar to open a popup for **that** analog (value, min, max, unit).
+Set is shown only when the analog is the operator write target. Nudge arrows
+change the writable analog directly.
 
-Scales: level PV/SP 0–0.40 m; flow PV/SP 0–8 L/min; level CO 0–8 L/min; flow CO
+Scales: level PV/SP 0–0.40 m; flow PV/SP 0–8 L/min; level MV 0–8 L/min; flow MV
 0–100%.
 
 ## Demo tags (`DB_Tank`)
@@ -133,19 +136,20 @@ Then open http://127.0.0.1:8765/tools/pid-faceplate/. Ship an App build only
 when operators should receive chrome changes.
 
 The PID card uses an ISA-5.1 three-mode chrome strip (ε / P / I / D) matching the
-App Diagram glyph, **ε** in the header, analog bars (thin tall vertical PV/SP,
-thicker horizontal CO) with values on the bars, nudge arrows, and a settings gear
-for Kp / Ki / Kd. Man / Auto / Rem are controller modes; the active button stays
-grayscale invert. The writable analog **fill** uses `--primary-color`. Colour
-otherwise follows ISA-101 high-performance HMI practice: caution uses Home
-Assistant `--warning-color`, abnormal uses `--error-color`, applied to relative
-|ε| and to a CO bar at clamp (~0% or ~100% of scale). Text+`inputmode=decimal`
-editors keep intermediate edits alive across live Soft-PLC hass updates.
-Typography uses Home Assistant Lovelace design tokens
-(`--ha-font-family-body`, `--ha-card-header-font-size`, `--ha-font-size-*`) so
-the faceplate matches surrounding entities / glance cards. Compound PID
-attributes are rounded to 2dp when published. **Set** (or Enter) commits; Esc
-cancels a dirty draft.
+App Diagram glyph, analog bars (thin tall vertical PV/SP, thicker horizontal MV)
+with values on the bars, **ε** between PV and SP, nudge arrows, and a settings
+gear for Kp / Ki / Kd. Clicking a bar opens a focused numeric popup for that
+analog (value, min, max, unit). Set is shown only when the analog is writable.
+Man / Auto / Rem are controller modes; the active button stays grayscale invert.
+The writable analog **fill** uses `--primary-color`. Colour otherwise follows
+ISA-101 high-performance HMI practice: caution uses Home Assistant
+`--warning-color`, abnormal uses `--error-color`, applied to relative |ε| and
+to an MV bar at clamp (~0% or ~100% of scale). Text+`inputmode=decimal` editors
+keep intermediate edits alive across live Soft-PLC hass updates. Typography uses
+Home Assistant Lovelace design tokens (`--ha-font-family-body`,
+`--ha-card-header-font-size`, `--ha-font-size-*`) so the faceplate matches
+surrounding entities / glance cards. Compound PID attributes are rounded to 2dp
+when published. **Set** (or Enter) commits; Esc cancels a dirty draft.
 
 Cascade demo defaults (SWD-369): Level **Automatic**, Flow **Automatic**.
 Operator IN defaults are batch-seeded once at setup (no per-Number MQTT/file

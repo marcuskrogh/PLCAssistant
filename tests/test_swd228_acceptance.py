@@ -107,11 +107,11 @@ def test_system_faceplate_js_compact_contract() -> None:
 
 def test_system_app_version_tracks_current() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.60"' in manifest
+    assert '"0.1.61"' in manifest
     config = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.60"' in config
+    assert 'version: "0.1.61"' in config
     docker = Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.60" in docker
+    assert "BUILD_VERSION=0.1.61" in docker
     dash = (ROOT / "lovelace" / "plcassistant.yaml").read_text(encoding="utf-8")
     assert "plcassistant_dashboard_version: 28" in dash
     assert "custom:plcassistant-pid-card" in dash

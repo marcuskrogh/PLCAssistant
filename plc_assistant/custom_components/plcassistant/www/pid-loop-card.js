@@ -8,9 +8,10 @@
  * Analog-controller faceplate chrome lives in pid-faceplate-elements.js so the
  * same elements can be mounted in the developer sandbox without Home Assistant.
  *
- * Highlighted bar is the writable analog (CO in MAN, SP in AUTO when the Auto
- * entity is a Number). Tap the bar to open the numeric popup. Arrows nudge
+ * Highlighted bar is the writable analog (MV in MAN, SP in AUTO when the Auto
+ * entity is a Number). Tap the bar to open a focused numeric popup. Arrows nudge
  * the writable analog by 0.1 / 1.0. The settings gear edits Kp / Ki / Kd.
+ * Loop error (ε) sits between the PV and SP bars.
  *
  * Colour (ISA-101 high-performance HMI): grayscale / Home Assistant tokens in
  * normal operation for mode identity. The writable analog **fill** uses
@@ -52,6 +53,10 @@ import {
   pidNudgeRange,
   PID_NUDGE_FINE,
   PID_NUDGE_COARSE,
+  pidBarFaceLabel,
+  pidBarEditorKey,
+  pidNormalizeBarKey,
+  applyPidValueDialog,
   commitSpValue,
   parseSpValue,
   numberServiceValue,
@@ -88,6 +93,10 @@ export {
   pidNudgeRange,
   PID_NUDGE_FINE,
   PID_NUDGE_COARSE,
+  pidBarFaceLabel,
+  pidBarEditorKey,
+  pidNormalizeBarKey,
+  applyPidValueDialog,
   commitSpValue,
   parseSpValue,
   numberServiceValue,
@@ -107,6 +116,7 @@ class PlcAssistantPidCard extends HTMLElement {
     this._bound = false;
     this._dialogOpen = false;
     this._settingsOpen = false;
+    this._dialogBar = "co";
   }
 
   setConfig(config) {
@@ -118,6 +128,7 @@ class PlcAssistantPidCard extends HTMLElement {
     this._dirty = {};
     this._dialogOpen = false;
     this._settingsOpen = false;
+    this._dialogBar = "co";
     this._render(true);
   }
 
@@ -247,8 +258,8 @@ class PlcAssistantPidCard extends HTMLElement {
     this._setNumber(entity, next);
   }
 
-  _openDialog() {
-    if (this._dialogOpen) return;
+  _openDialog(barKey = "co") {
+    this._dialogBar = pidNormalizeBarKey(barKey);
     this._settingsOpen = false;
     this._dialogOpen = true;
     this._render(false);
@@ -296,7 +307,9 @@ class PlcAssistantPidCard extends HTMLElement {
       const action = resolveFaceplateClick(ev.target);
       if (!action) return;
       if (action.type === "open") {
-        this._openDialog();
+        const { target } = this._writeTargetState();
+        if (!target) return;
+        this._openDialog(target);
         return;
       }
       if (action.type === "close") {
@@ -323,7 +336,7 @@ class PlcAssistantPidCard extends HTMLElement {
         return;
       }
       if (action.type === "bar") {
-        this._openDialog();
+        this._openDialog(action.key);
       }
     });
     this._root.addEventListener("input", (ev) => {
@@ -439,6 +452,7 @@ class PlcAssistantPidCard extends HTMLElement {
       kd: this._attr(st, "kd", null),
       spWritable: !autoDisabled,
       coWritable: Boolean(cvManEntity),
+      dialogBarKey: this._dialogBar,
     });
 
     const dialog = this._root.querySelector(".pid-value-dialog");
@@ -452,42 +466,39 @@ class PlcAssistantPidCard extends HTMLElement {
       else settings.setAttribute("hidden", "");
     }
 
+    const editorKey = pidBarEditorKey(this._dialogBar);
     const values = { co: coMan, auto: spAuto, rem: spRem };
-    for (const key of ["co", "auto", "rem"]) {
-      const input = this._root.querySelector(`input[data-sp="${key}"]`);
-      if (!input) continue;
+    const writeTarget = pidOperatorWriteTarget(mode, {
+      spWritable: !autoDisabled,
+      coWritable: Boolean(cvManEntity),
+    });
+    const canWrite =
+      (this._dialogBar === "sp" && writeTarget === "sp") ||
+      (this._dialogBar === "co" && writeTarget === "co");
+    const live =
+      this._dialogBar === "sp" ? sp : this._dialogBar === "pv" ? pv : coMan;
+    const input = this._root.querySelector(".pid-value-dialog input[data-sp]");
+    const apply = this._root.querySelector(".pid-value-dialog [data-apply]");
+    if (input) {
       const focused = document.activeElement === input;
-      if (key === "auto") {
-        input.disabled = autoDisabled;
-        const apply = this._root.querySelector('[data-apply="auto"]');
-        if (apply) apply.disabled = autoDisabled;
-      }
-      if (key === "rem") {
-        input.disabled = remDisabled;
-        const apply = this._root.querySelector('[data-apply="rem"]');
-        if (apply) apply.disabled = remDisabled;
-      }
-      if (key === "co") {
-        input.disabled = !cvManEntity;
-        const apply = this._root.querySelector('[data-apply="co"]');
-        if (apply) apply.disabled = !cvManEntity;
-      }
-      // Never rewrite a focused or dirty draft from live HA values.
-      // Focus alone (no typing) still skips rewrite to protect caret/selection;
-      // after blur without input, _dirty is false so live SP resumes.
-      if (focused || this._dirty[key]) {
-        if (this._drafts[key] !== undefined && input.value !== this._drafts[key]) {
-          input.value = this._drafts[key];
+      input.disabled = !canWrite;
+      if (apply) apply.disabled = !canWrite;
+      // Never rewrite a focused or dirty draft (caret / "0." survive hass).
+      if (editorKey && (focused || this._dirty[editorKey])) {
+        if (this._drafts[editorKey] !== undefined && input.value !== this._drafts[editorKey]) {
+          input.value = this._drafts[editorKey];
         }
-        continue;
+      } else if (editorKey) {
+        input.value = this._inputValue(editorKey, values[editorKey]);
+      } else {
+        input.value = this._committedText(live);
       }
-      input.value = this._inputValue(key, values[key]);
     }
 
     const note = this._root.querySelector(".pid-note");
     if (note) {
       note.textContent =
-        `Mode via ${modeEntity || "—"}. MAN writes CO; AUTO writes local SP; REM is cascade/remote (read-only). Click the highlighted bar to type a value. Arrows nudge. Gear opens tuning. Enter commits · Esc cancels draft (or closes).`;
+        `Mode via ${modeEntity || "—"}. MAN writes MV; AUTO writes local SP; REM is cascade/remote (read-only). Click a bar to inspect that analog; the highlighted bar can be typed. Arrows nudge. Gear opens tuning. Enter commits · Esc cancels draft (or closes).`;
     }
   }
 }

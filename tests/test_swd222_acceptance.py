@@ -249,7 +249,7 @@ def test_integration_pid_card_preserves_drafts() -> None:
     assert "_drafts" in card
     assert "_captureFocusedDrafts" in card
     assert "_dirty" in card
-    assert "MAN writes CO; AUTO writes local SP" in card
+    assert "MAN writes MV; AUTO writes local SP" in card
     assert "this.innerHTML = `" not in card.split("_render", 1)[1].split(
         "customElements.define", 1
     )[0] or "forceRebuild" in card
@@ -257,10 +257,10 @@ def test_integration_pid_card_preserves_drafts() -> None:
 
 def test_system_app_version_and_dashboard() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert '"0.1.60"' in manifest
+    assert '"0.1.61"' in manifest
     dash = (ROOT / "lovelace" / "plcassistant.yaml").read_text(encoding="utf-8")
     assert "plcassistant_dashboard_version: 28" in dash
     config = Path("plc_assistant/config.yaml").read_text(encoding="utf-8")
-    assert 'version: "0.1.60"' in config
+    assert 'version: "0.1.61"' in config
     docker = Path("plc_assistant/Dockerfile").read_text(encoding="utf-8")
-    assert "BUILD_VERSION=0.1.60" in docker
+    assert "BUILD_VERSION=0.1.61" in docker
