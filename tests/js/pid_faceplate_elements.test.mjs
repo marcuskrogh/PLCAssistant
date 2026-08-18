@@ -27,6 +27,8 @@ const {
   pidFaceplateStyles,
   applyPidFaceplateState,
   mountPidFaceplateElement,
+  rampSetpoint,
+  pidSpRampVisible,
 } = await import(elementsUrl);
 
 let failed = 0;
@@ -70,6 +72,7 @@ assert(bars.includes("pid-vbar-track"), "vertical track");
 assert(bars.includes("pid-hbar"), "horizontal CO");
 assert(bars.includes('data-metric="pv"'), "PV value on bar");
 assert(bars.includes('data-metric="sp"'), "SP value on bar");
+assert(bars.includes("data-sp-ramp"), "SP ramp segment markup");
 assert(bars.includes('aria-label="MV"'), "MV bar label");
 assert(bars.includes("pid-err-between"), "ε sits between PV and SP");
 
@@ -120,6 +123,11 @@ assert(assembled.includes('data-pane="gains"'), "settings Gains pane");
 assert(assembled.includes('data-pane="structure"'), "settings Structure pane");
 assert(assembled.includes('data-pane="output"'), "settings Output pane");
 assert(assembled.includes('data-pane="filter"'), "settings Filter pane");
+assert(assembled.includes('data-pane="ramp"'), "settings Ramp pane");
+assert(assembled.includes('data-tune="sp_ramp_max"'), "settings SP ramp max");
+assert(assembled.includes("data-sp-ramp"), "SP bar has ramp segment");
+assert(css.includes("--pid-ramp"), "ramp segment uses orange token");
+assert(css.includes(".pid-vbar-ramp"), "ramp segment CSS");
 assert(assembled.includes('data-tune="u0"'), "settings u0");
 assert(assembled.includes('data-tune="beta"'), "settings beta");
 assert(assembled.includes('data-tune="direct_acting"'), "settings direct acting");
@@ -246,6 +254,33 @@ assertEq(root.mk("[data-sp-bar]")._attrs["data-writable"], "1", "AUTO colours SP
 assertEq(root.mk("[data-cv-bar]")._attrs["data-writable"], "0", "AUTO does not colour MV fill");
 assertEq(root.mk('[data-bar="sp"]')._attrs["data-writable"], "1", "AUTO highlights SP bar");
 assertEq(root.mk('[data-bar="co"]')._attrs["data-writable"], "0", "AUTO does not highlight MV bar");
+
+applyPidFaceplateState(root, {
+  title: "Level PID",
+  mode: "automatic",
+  loopId: "level",
+  pv: 0.2,
+  sp: 0.10,
+  spTarget: 0.30,
+  sp_ramp_max: 0.05,
+  scanDt: 0.1,
+  cv: 3.2,
+  coWritable: true,
+  spWritable: true,
+});
+assertEq(root.mk("[data-sp-ramp]")._attrs["data-active"], "1", "orange ramp while catching the target");
+assertEq(root.mk("[data-sp-ramp]").style.bottom, "25%", "ramp starts at current SP 0.10/0.40");
+assert(
+  Math.abs(parseFloat(root.mk("[data-sp-ramp]").style.height) - 50) < 1e-6,
+  "ramp spans to target 0.30/0.40"
+);
+assert(pidSpRampVisible(0.10, 0.30, 0.05, 0.1) === true, "visible when remaining exceeds one scan");
+assert(pidSpRampVisible(0.10, 0.104, 0.05, 0.1) === false, "hidden when remaining fits in one scan");
+assert(
+  Math.abs(rampSetpoint(0.20, 0.35, 0.05, 0.1) - 0.205) < 1e-12,
+  "JS ramp helper matches 0.05 m/s × 0.1 s"
+);
+assertEq(rampSetpoint(0.20, 0.35, 0, 0.1), 0.35, "JS ramp helper is instant at rate 0");
 
 applyPidFaceplateState(root, {
   title: "Level PID",

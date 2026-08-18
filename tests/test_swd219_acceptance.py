@@ -84,7 +84,7 @@ def test_unit_ha_catalog_loads_without_softplc(monkeypatch: pytest.MonkeyPatch) 
         catalog.union_program_access_ids(catalog.default_program_datablock_access())
     )
     rows = catalog.binding_rows_from_table(table)
-    assert len(rows) == 42
+    assert len(rows) == 44
     assert {r["tag"] for r in rows} >= {
         "SP_LEVEL_REQ",
         "LEVEL_MODE",

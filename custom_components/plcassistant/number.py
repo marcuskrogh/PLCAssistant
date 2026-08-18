@@ -301,6 +301,24 @@ _TAG_META: dict[str, dict] = {
         "object_id": "plcassistant_flow_tf_ts",
         "default": 0.0,
     },
+    "LEVEL_SP_RAMP_MAX": {
+        "name": "PLCAssistant Level SP ramp max",
+        "min": 0.0,
+        "max": 10.0,
+        "step": 0.001,
+        "unit": "m/s",
+        "object_id": "plcassistant_level_sp_ramp_max",
+        "default": 0.0,
+    },
+    "FLOW_SP_RAMP_MAX": {
+        "name": "PLCAssistant Flow SP ramp max",
+        "min": 0.0,
+        "max": 100.0,
+        "step": 0.01,
+        "unit": "L/min/s",
+        "object_id": "plcassistant_flow_sp_ramp_max",
+        "default": 0.0,
+    },
     "LT_TANK": {
         "name": "PLCAssistant Tank level (IN)",
         "min": 0.0,
@@ -398,6 +416,8 @@ _FILE_BRIDGE_IN_TAGS = frozenset(
         "FLOW_HOLD_WHEN_STOPPED",
         "FLOW_TS",
         "FLOW_TF_TS",
+        "LEVEL_SP_RAMP_MAX",
+        "FLOW_SP_RAMP_MAX",
     }
 )
 

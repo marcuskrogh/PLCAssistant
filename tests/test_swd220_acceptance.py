@@ -88,7 +88,7 @@ def test_system_lovelace_resource_registration() -> None:
     manifest = (ROOT / "manifest.json").read_text(encoding="utf-8")
     assert '"after_dependencies"' in manifest
     assert '"lovelace"' in manifest
-    assert '"0.1.63"' in manifest
+    assert '"0.1.64"' in manifest
 
     pid = (ROOT / "www" / "pid-loop-card.js").read_text(encoding="utf-8")
     assert 'customElements.get("plcassistant-pid-card")' in pid

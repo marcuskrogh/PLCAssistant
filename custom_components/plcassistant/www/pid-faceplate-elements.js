@@ -44,11 +44,12 @@ export const PID_TUNE_KEYS = [
   "hold_when_stopped",
   "ts",
   "tf_ts",
+  "sp_ramp_max",
 ];
 
 export const PID_TUNE_BOOL_KEYS = ["direct_acting", "hold_when_stopped"];
 
-export const PID_SETTINGS_PANES = ["gains", "structure", "output", "filter"];
+export const PID_SETTINGS_PANES = ["gains", "structure", "output", "filter", "ramp"];
 
 /**
  * Format a numeric faceplate value to fixed decimal places, or em-dash.
@@ -148,6 +149,34 @@ export function pidBarPct(value, max) {
   const n = Number(value);
   if (!Number.isFinite(n) || !(max > 0)) return 0;
   return Math.max(0, Math.min(100, (n / max) * 100));
+}
+
+/** Move current toward target at most maxRate engineering units per second. */
+export function rampSetpoint(current, target, maxRate, dt) {
+  const dest = Number(target);
+  const rate = Number(maxRate);
+  const stepDt = Number(dt);
+  if (!Number.isFinite(dest)) return Number(current);
+  if (!(rate > 0) || !(stepDt > 0) || !Number.isFinite(Number(current))) return dest;
+  const here = Number(current);
+  const delta = dest - here;
+  const step = rate * stepDt;
+  if (Math.abs(delta) <= step) return dest;
+  return here + (delta > 0 ? step : -step);
+}
+
+/**
+ * True when the SP bar should show the orange ramp segment: rate is on and
+ * remaining |target − current| exceeds one scan at that rate.
+ */
+export function pidSpRampVisible(sp, spTarget, rampMax, dt = 0.1) {
+  const rate = Number(rampMax);
+  const cur = Number(sp);
+  const tgt = Number(spTarget);
+  if (!(rate > 0) || !Number.isFinite(cur) || !Number.isFinite(tgt)) return false;
+  const remaining = Math.abs(tgt - cur);
+  const maxStep = rate * Math.max(Number(dt) || 0, 0);
+  return remaining > Math.max(maxStep, 1e-9);
 }
 
 /**
@@ -400,6 +429,7 @@ const PID_FACEPLATE_CSS = `
   --pid-hi-caution: var(--warning-color, #f59e0b);
   --pid-hi-abnormal: var(--error-color, #dc2626);
   --pid-active: #5a8f6e;
+  --pid-ramp: #e67e22;
   --pid-accent: var(--pid-chrome);
   --pid-focus: var(--primary-color, var(--pid-chrome));
   /* Match stock Lovelace cards (entities / glance) — HA design tokens. */
@@ -628,7 +658,20 @@ const PID_FACEPLATE_CSS = `
   background: var(--primary-text-color);
   opacity: 0.45;
   transition: height 0.25s ease, background 0.2s ease, opacity 0.2s ease;
+  z-index: 0;
 }
+.pid-vbar-ramp {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0%;
+  background: var(--pid-ramp, #e67e22);
+  opacity: 0.95;
+  display: none;
+  z-index: 1;
+}
+.pid-vbar-ramp[data-active="1"] { display: block; }
 .pid-hbar {
   display: grid;
   grid-template-columns: auto 1fr auto;
@@ -1000,7 +1043,7 @@ export function pidAnalogBarsHtml() {
                 </div>
                 <button type="button" class="pid-vbar" data-bar="sp" data-writable="0" aria-label="SP">
                   <span class="pid-bar-caption">SP</span>
-                  <div class="pid-vbar-track"><div class="pid-vbar-fill" data-sp-bar></div></div>
+                  <div class="pid-vbar-track"><div class="pid-vbar-fill" data-sp-bar></div><div class="pid-vbar-ramp" data-sp-ramp></div></div>
                   <span class="pid-bar-readout" data-metric="sp">—</span>
                 </button>
               </div>
@@ -1093,6 +1136,7 @@ export function pidSettingsDialogHtml() {
                 <button type="button" role="tab" data-pane="structure" aria-selected="false">Structure</button>
                 <button type="button" role="tab" data-pane="output" aria-selected="false">Output</button>
                 <button type="button" role="tab" data-pane="filter" aria-selected="false">Filter</button>
+                <button type="button" role="tab" data-pane="ramp" aria-selected="false">Ramp</button>
               </div>
               <div class="pid-editors" data-pane-panel="gains">
                 <div class="pid-row">
@@ -1164,6 +1208,13 @@ export function pidSettingsDialogHtml() {
                   <input data-tune="tf_ts" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" />
                 </div>
                 <p class="pid-tune-hint">Measurement filter. 0 bypasses the filter</p>
+              </div>
+              <div class="pid-editors" data-pane-panel="ramp" hidden>
+                <div class="pid-row">
+                  <label>Ramp</label>
+                  <input data-tune="sp_ramp_max" type="text" inputmode="decimal" autocomplete="off" spellcheck="false" />
+                </div>
+                <p class="pid-tune-hint">Max SP speed (engineering units per second). 0 = instant. When a Set exceeds this rate, SP ramps and the bar shows orange to the target.</p>
               </div>
               <div class="pid-dialog-actions">
                 <button type="button" data-settings-cancel>Cancel</button>
@@ -1348,6 +1399,24 @@ export function applyPidFaceplateState(root, state = {}) {
   if (pvBar) pvBar.style.height = `${pidBarPct(pv, pvScale)}%`;
   const spBar = root.querySelector("[data-sp-bar]");
   if (spBar) spBar.style.height = `${pidBarPct(sp, pvScale)}%`;
+  const spTarget =
+    state.spTarget !== undefined && state.spTarget !== null ? state.spTarget : sp;
+  const rampEl = root.querySelector("[data-sp-ramp]");
+  if (rampEl) {
+    const active = pidSpRampVisible(sp, spTarget, state.sp_ramp_max, state.scanDt);
+    rampEl.setAttribute("data-active", active ? "1" : "0");
+    if (active) {
+      const spPct = pidBarPct(sp, pvScale);
+      const tgtPct = pidBarPct(spTarget, pvScale);
+      const lo = Math.min(spPct, tgtPct);
+      const hi = Math.max(spPct, tgtPct);
+      rampEl.style.bottom = `${lo}%`;
+      rampEl.style.height = `${hi - lo}%`;
+    } else {
+      rampEl.style.bottom = "0%";
+      rampEl.style.height = "0%";
+    }
+  }
   const barEl = root.querySelector("[data-cv-bar]");
   if (barEl) {
     barEl.style.width = `${pidCvBarPct(cv, loopId)}%`;

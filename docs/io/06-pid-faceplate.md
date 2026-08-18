@@ -54,7 +54,8 @@ Compact analog-controller face:
 6. `<< < > >>` nudges (±1.0 / ±0.1) on the writable analog
 7. MAN / AUTO / REM on the face (grayscale active invert)
 8. Focused numeric popup for the clicked analog (current value, min, max; no pointer-position set)
-9. Settings popup with panes for standardised PID parameters (Gains, Structure, Output, Filter)
+9. Settings popup with panes for standardised PID parameters (Gains, Structure, Output, Filter) plus Ramp (`sp_ramp_max`)
+10. While ramping, an orange segment on the SP bar between current SP and target
 
 Click any analog bar to open a popup for **that** analog (value, min, max, unit).
 Set is shown only when the analog is the operator write target. Nudge arrows
@@ -100,8 +101,18 @@ read-only `form=parallel`):
 | Structure | `beta`, `direct_acting`, `form` (read-only Parallel) |
 | Output | `cv_min`, `cv_max`, `hold_when_stopped` |
 | Filter | `ts`, `tf_ts` (`<= 0` bypasses the measurement filter) |
+| Ramp | `sp_ramp_max` (engineering units per second; `0` = instant) |
 
-Demo IN tags follow `LEVEL_*` / `FLOW_*` (`LEVEL_KP`, `LEVEL_TF_TS`, …).
+`sp_ramp_max` is a faceplate / SP-path rate limit, **not** a PID equation
+param. It is not copied into executing PID instance params. When the operator
+(or cascade) requests an SP step larger than one scan at that rate, the Soft-PLC
+ramps the SP fed to the PID. The compound sensor then publishes ramped `sp`
+(from `SP_LEVEL` / `SP_FLOW` OUT) and muxed `sp_target`. The SP bar paints an
+orange `--pid-ramp` segment between current SP and target while
+`|sp_target − sp|` exceeds one scan.
+
+Demo IN tags follow `LEVEL_*` / `FLOW_*` (`LEVEL_KP`, `LEVEL_TF_TS`,
+`LEVEL_SP_RAMP_MAX`, …).
 Defaults align with the wedge cascade copies (`CascadeConfig` gains 40 / 5 /
 12 / 2; level CV 0–8 L/min; flow CV 0–100%; `tf_ts = 0` filter bypass;
 level `hold_when_stopped=true`). Tags are applied into the live Soft-PLC
@@ -125,7 +136,7 @@ Soft-PLC helpers live in
 
 | Entity | State | Attributes |
 |--------|-------|------------|
-| `sensor.plcassistant_pid_level` | `manual` / `automatic` / `remote` | `pv`, `sp`, `sp_man`, `sp_auto`, `sp_rem`, `cv`, `co_man`, `write_target`, standardised PID params (`kp`…`tf_ts`), `loop_id`, related `*_entity` ids including `cv_man_entity` and each `{param}_entity` |
+| `sensor.plcassistant_pid_level` | `manual` / `automatic` / `remote` | `pv`, `sp`, `sp_target`, `sp_man`, `sp_auto`, `sp_rem`, `cv`, `co_man`, `write_target`, standardised PID params (`kp`…`tf_ts`), `sp_ramp_max`, `loop_id`, related `*_entity` ids including `cv_man_entity` and each `{param}_entity` |
 | `sensor.plcassistant_pid_flow` | same | same |
 
 ## Lovelace cards
@@ -155,7 +166,7 @@ when operators should receive chrome changes.
 The PID card uses an ISA-5.1 three-mode chrome strip (ε / P / I / D) matching the
 App Diagram glyph, analog bars (thin tall vertical PV/SP, thicker horizontal MV)
 with values on the bars, **ε** between PV and SP, nudge arrows, and a settings
-gear for standardised PID parameters (Gains / Structure / Output / Filter). Clicking a bar opens a focused numeric popup for that
+gear for standardised PID parameters (Gains / Structure / Output / Filter) plus SP ramp. While SP is ramping, an orange segment on the SP bar runs from the current SP to the target. Clicking a bar opens a focused numeric popup for that
 analog (value, min, max, unit). Set is shown only when the analog is writable.
 Man / Auto / Rem are controller modes; the active button stays grayscale invert.
 The writable analog **fill** uses a muted activity green (`--pid-active`).

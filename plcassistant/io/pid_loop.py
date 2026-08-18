@@ -91,6 +91,12 @@ PID_OPERATOR_PARAM_KEYS: tuple[str, ...] = (
     "ts",
     "tf_ts",
 )
+# Faceplate SP-path (not a PID equation param). 0 = instant.
+PID_FACEPLATE_EXTRA_KEYS: tuple[str, ...] = ("sp_ramp_max",)
+PID_FACEPLATE_PARAM_KEYS: tuple[str, ...] = (
+    *PID_OPERATOR_PARAM_KEYS,
+    *PID_FACEPLATE_EXTRA_KEYS,
+)
 PID_BOOL_PARAM_KEYS = frozenset({"direct_acting", "hold_when_stopped"})
 
 
@@ -118,6 +124,7 @@ class PidLoopTags:
     hold_when_stopped: str
     ts: str
     tf_ts: str
+    sp_ramp_max: str
 
     @property
     def entity_object_id(self) -> str:
@@ -125,8 +132,8 @@ class PidLoopTags:
         return f"pid_{self.loop_id}"
 
     def operator_param_tags(self) -> dict[str, str]:
-        """Map standardised param name → Datablock IN tag."""
-        return {key: getattr(self, key) for key in PID_OPERATOR_PARAM_KEYS}
+        """Map faceplate-operator param name → Datablock IN tag."""
+        return {key: getattr(self, key) for key in PID_FACEPLATE_PARAM_KEYS}
 
 
 # Demo tank loops (stable ids for Lovelace + Soft-PLC).
@@ -151,6 +158,7 @@ LEVEL_LOOP = PidLoopTags(
     hold_when_stopped="LEVEL_HOLD_WHEN_STOPPED",
     ts="LEVEL_TS",
     tf_ts="LEVEL_TF_TS",
+    sp_ramp_max="LEVEL_SP_RAMP_MAX",
 )
 
 FLOW_LOOP = PidLoopTags(
@@ -174,6 +182,7 @@ FLOW_LOOP = PidLoopTags(
     hold_when_stopped="FLOW_HOLD_WHEN_STOPPED",
     ts="FLOW_TS",
     tf_ts="FLOW_TF_TS",
+    sp_ramp_max="FLOW_SP_RAMP_MAX",
 )
 
 DEMO_PID_LOOPS: tuple[PidLoopTags, ...] = (LEVEL_LOOP, FLOW_LOOP)
@@ -309,6 +318,8 @@ def faceplate_from_image_tags(
         "hold_when_stopped": values.get(tags.hold_when_stopped),
         "ts": values.get(tags.ts),
         "tf_ts": values.get(tags.tf_ts),
+        "sp_ramp_max": values.get(tags.sp_ramp_max),
+        "sp_target": sp,
         "tags": {
             "pv": tags.pv,
             "sp": tags.sp,
@@ -327,6 +338,8 @@ __all__ = [
     "FLOW_LOOP",
     "LEVEL_LOOP",
     "PID_BOOL_PARAM_KEYS",
+    "PID_FACEPLATE_EXTRA_KEYS",
+    "PID_FACEPLATE_PARAM_KEYS",
     "PID_OPERATOR_PARAM_KEYS",
     "PidLoopTags",
     "all_operator_param_tag_names",

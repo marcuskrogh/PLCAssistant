@@ -59,6 +59,10 @@ class CascadeConfig:
     flow_ts: float = 0.1
     level_tf_ts: float = 0.0
     flow_tf_ts: float = 0.0
+    level_sp_ramp_max: float = 0.0
+    """Level SP rate limit (m/s). 0 = instant. Not copied into PID instance params."""
+    flow_sp_ramp_max: float = 0.0
+    """Flow SP rate limit (L/min/s). 0 = instant. Not copied into PID instance params."""
 
     def instance_operator_params(self, instance_id: str) -> dict[str, float | bool]:
         """Standardised PID params for a cascade PI copy, from faceplate tags."""

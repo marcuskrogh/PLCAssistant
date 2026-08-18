@@ -10,6 +10,7 @@ SWD-183: SP-source mode mux selects Manual / Automatic / Remote into active SP.
 
 from __future__ import annotations
 
+from plcassistant.control.ramp import ramp_setpoint
 from plcassistant.io.image import IoImage
 from plcassistant.io.pid_loop import (
     FLOW_LOOP,
@@ -101,6 +102,14 @@ def _apply_faceplate_params(image: IoImage, cascade: CascadeConfig) -> None:
         cascade.flow_ts = _tag_float(image, flow.ts, cascade.flow_ts)
     if flow.tf_ts in names:
         cascade.flow_tf_ts = _tag_float(image, flow.tf_ts, cascade.flow_tf_ts)
+    if level.sp_ramp_max in names:
+        cascade.level_sp_ramp_max = _tag_float(
+            image, level.sp_ramp_max, cascade.level_sp_ramp_max
+        )
+    if flow.sp_ramp_max in names:
+        cascade.flow_sp_ramp_max = _tag_float(
+            image, flow.sp_ramp_max, cascade.flow_sp_ramp_max
+        )
 
 
 def _resolve_level_sp(image: IoImage) -> float:
@@ -182,6 +191,8 @@ class SkidImageLogic:
         self.skid = skid or Skid(process=HeldProcess())
         self.skid.apply_scan_period_s(period_s)
         self._pending: list[OperatorCommand] = []
+        self._sp_level_ramped: float | None = None
+        self._sp_flow_ramped: float | None = None
 
     def set_scan_period_s(self, period_s: float) -> None:
         """Align tick ``dt`` with Soft-PLC project ``scan_period_s``."""
@@ -240,20 +251,46 @@ class SkidImageLogic:
         if kwargs:
             self.skid.set_signal_override(**kwargs)
 
+    def _ramp_held(
+        self, held: float | None, target: float, rate: float, dt: float
+    ) -> float:
+        """Snap when unset or rate is 0; otherwise move at most ``rate`` per second."""
+        if held is None or rate <= 0.0:
+            return float(target)
+        return ramp_setpoint(held, target, rate, dt)
+
     def __call__(self, image: IoImage) -> None:
         names = image.names()
         cascade = self.skid.config.cascade
         _apply_faceplate_params(image, cascade)
-        self.skid.sp_level = _resolve_level_sp(image)
-        # Remote flow SP overrides cascade; Manual is output Manual (SWD-369).
-        self.skid.sp_flow_override = _flow_sp_override_from_image(image)
+        dt = self._scan_dt()
+        level_target = _resolve_level_sp(image)
+        level_rate = float(cascade.level_sp_ramp_max)
+        self._sp_level_ramped = self._ramp_held(
+            self._sp_level_ramped, level_target, level_rate, dt
+        )
+        self.skid.sp_level = self._sp_level_ramped
+        flow_rate = float(cascade.flow_sp_ramp_max)
+        flow_mode = _resolve_flow_mode(image)
+        last_cascade = (
+            float(self.skid.last.sp_flow) if self.skid.last is not None else 0.0
+        )
+        if flow_rate > 0.0 and flow_mode is not SpSourceMode.MANUAL:
+            flow_target = _resolve_flow_sp(image, cascade_auto=last_cascade)
+            self._sp_flow_ramped = self._ramp_held(
+                self._sp_flow_ramped, flow_target, flow_rate, dt
+            )
+            self.skid.sp_flow_override = self._sp_flow_ramped
+        else:
+            self._sp_flow_ramped = None
+            # Remote flow SP overrides cascade; Manual is output Manual (SWD-369).
+            self.skid.sp_flow_override = _flow_sp_override_from_image(image)
         self.skid.level_uman = _uman_from_image(image, loop=LEVEL_LOOP)
         self.skid.flow_uman = _uman_from_image(image, loop=FLOW_LOOP)
         self._feed_plant_from_image(image)
         pending = self._pending
         self._pending = []
         snap = None
-        dt = self._scan_dt()
         if not pending:
             snap = self.skid.step(dt, OperatorCommand.NONE)
         else:
@@ -264,11 +301,16 @@ class SkidImageLogic:
         assert snap is not None
         # Cascade: level CV is SP_FLOW_AUTO; mux → published active SP_FLOW.
         flow_sp = _resolve_flow_sp(image, cascade_auto=float(snap.sp_flow))
+        published_flow = (
+            self._sp_flow_ramped
+            if flow_rate > 0.0 and self._sp_flow_ramped is not None
+            else flow_sp
+        )
         _set = image.set_output
         if "SP_LEVEL" in names:
             _set("SP_LEVEL", float(snap.sp_level))
         if "SP_FLOW" in names:
-            _set("SP_FLOW", float(flow_sp))
+            _set("SP_FLOW", float(published_flow))
         if FLOW_LOOP.sp_auto in names:
             _set(FLOW_LOOP.sp_auto, float(snap.sp_flow))
         if "CMD_SPEED" in names:

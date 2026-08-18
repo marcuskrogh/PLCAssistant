@@ -257,7 +257,7 @@ class PlcAssistantPidCard extends HTMLElement {
     const current =
       target === "co"
         ? this._attr(st, "co_man", this._attr(st, "cv", 0))
-        : this._attr(st, "sp", 0);
+        : this._attr(st, "sp_target", this._attr(st, "sp", 0));
     const next = pidNudgeValue(current, delta, range.min, range.max);
     if (next === null) return;
     const entity = target === "co" ? cvManEntity : spAutoEntity;
@@ -463,6 +463,7 @@ class PlcAssistantPidCard extends HTMLElement {
       loopId,
       pv,
       sp,
+      spTarget: this._attr(st, "sp_target", sp),
       cv,
       kp: this._attr(st, "kp", null),
       ki: this._attr(st, "ki", null),
@@ -475,6 +476,7 @@ class PlcAssistantPidCard extends HTMLElement {
       hold_when_stopped: this._attr(st, "hold_when_stopped", null),
       ts: this._attr(st, "ts", null),
       tf_ts: this._attr(st, "tf_ts", null),
+      sp_ramp_max: this._attr(st, "sp_ramp_max", 0),
       form: "Parallel",
       settingsPane: this._settingsPane,
       spWritable: !autoDisabled,

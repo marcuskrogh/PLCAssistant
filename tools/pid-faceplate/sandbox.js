@@ -23,6 +23,7 @@ import {
   applyPidValueDialog,
   pidBarEditorKey,
   pidNormalizeBarKey,
+  rampSetpoint,
 } from "../../custom_components/plcassistant/www/pid-faceplate-elements.js";
 
 const loopEl = document.querySelector("#loop");
@@ -49,6 +50,7 @@ function defaultTune(loopId) {
     hold_when_stopped: loopId !== "flow",
     ts: 0.1,
     tf_ts: 0,
+    sp_ramp_max: loopId === "flow" ? 1.0 : 0.05,
   };
 }
 
@@ -67,6 +69,13 @@ const dialogBarByLoop = {
   flow: "co",
 };
 
+const spLiveByLoop = {
+  level: Number(spEl.value),
+  flow: Number(spEl.value),
+};
+
+let lastRampAt = performance.now();
+
 function scaleFor(loopId) {
   if (loopId === "flow") {
     return { pv: PID_PV_MAX_FLOW, cv: PID_CV_MAX_FLOW, pvUnit: "L/min", cvUnit: "%" };
@@ -83,7 +92,8 @@ function snapshot(loopId) {
     mode,
     loopId,
     pv: Number(pvEl.value),
-    sp: Number(spEl.value),
+    sp: spLiveByLoop[loopId] ?? Number(spEl.value),
+    spTarget: Number(spEl.value),
     cv: Number(cvEl.value),
     kp: tune.kp,
     ki: tune.ki,
@@ -96,6 +106,7 @@ function snapshot(loopId) {
     hold_when_stopped: tune.hold_when_stopped,
     ts: tune.ts,
     tf_ts: tune.tf_ts,
+    sp_ramp_max: tune.sp_ramp_max,
     form: tune.form || "Parallel",
     settingsPane: settingsPaneByLoop[loopId] || "gains",
     spWritable: mode === "automatic" && loopId === "level",
@@ -142,7 +153,8 @@ function applyLocalValue(loopId, key, raw) {
   if (key === "co") {
     cvEl.value = String(Math.max(0, Math.min(scale.cv, committed)));
   } else if (key === "auto") {
-    spEl.value = String(Math.max(0, Math.min(scale.pv, committed)));
+    const next = String(Math.max(0, Math.min(scale.pv, committed)));
+    spEl.value = next;
   }
 }
 
@@ -217,7 +229,7 @@ function bindLocalChrome(root, loopId) {
       const state = snapshot(loopId);
       if (!state.writeTarget) return;
       const range = pidNudgeRange(state.writeTarget, loopId);
-      const current = state.writeTarget === "co" ? state.cv : state.sp;
+      const current = state.writeTarget === "co" ? state.cv : state.spTarget;
       const next = pidNudgeValue(current, action.delta, range.min, range.max);
       if (next === null) return;
       if (state.writeTarget === "co") cvEl.value = String(next);
@@ -298,3 +310,26 @@ for (const el of [loopEl, modeEl, pvEl, spEl, cvEl]) {
 mountIsolates();
 mountAssembled();
 refresh();
+
+function tickRamp(now) {
+  const dt = Math.min(0.25, Math.max(0, (now - lastRampAt) / 1000));
+  lastRampAt = now;
+  const target = Number(spEl.value);
+  let moved = false;
+  for (const loopId of ["level", "flow"]) {
+    const rate = Number(tunings[loopId]?.sp_ramp_max) || 0;
+    const current = spLiveByLoop[loopId];
+    const next = rampSetpoint(
+      Number.isFinite(current) ? current : target,
+      target,
+      rate,
+      dt
+    );
+    if (next !== current) moved = true;
+    spLiveByLoop[loopId] = next;
+  }
+  if (moved) refresh();
+  requestAnimationFrame(tickRamp);
+}
+
+requestAnimationFrame(tickRamp);

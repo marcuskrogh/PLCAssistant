@@ -224,6 +224,7 @@ def default_tank_datablock() -> Datablock:
                 "LEVEL_HOLD_WHEN_STOPPED": {"default": 1.0, "unit": None},
                 "LEVEL_TS": {"default": 0.1, "unit": "s"},
                 "LEVEL_TF_TS": {"default": 0.0, "unit": None},
+                "LEVEL_SP_RAMP_MAX": {"default": 0.0, "unit": "m/s"},
                 "SP_FLOW": {"default": 0.0, "unit": "L/min"},
                 "SP_FLOW_MAN": {"default": 0.0, "unit": "L/min"},
                 "SP_FLOW_AUTO": {"default": 0.0, "unit": "L/min"},
@@ -240,6 +241,7 @@ def default_tank_datablock() -> Datablock:
                 "FLOW_HOLD_WHEN_STOPPED": {"default": 0.0, "unit": None},
                 "FLOW_TS": {"default": 0.1, "unit": "s"},
                 "FLOW_TF_TS": {"default": 0.0, "unit": None},
+                "FLOW_SP_RAMP_MAX": {"default": 0.0, "unit": "L/min/s"},
                 "CMD_SPEED": {"default": 0.0, "unit": "pct"},
                 "CO_LEVEL_MAN": {"default": 0.0, "unit": "L/min"},
                 "CO_FLOW_MAN": {"default": 0.0, "unit": "pct"},
@@ -456,6 +458,16 @@ def default_tank_datablock() -> Datablock:
                 {
                     "tag": "FLOW_TF_TS",
                     "entity": "number.plcassistant_flow_tf_ts",
+                    "direction": "IN",
+                },
+                {
+                    "tag": "LEVEL_SP_RAMP_MAX",
+                    "entity": "number.plcassistant_level_sp_ramp_max",
+                    "direction": "IN",
+                },
+                {
+                    "tag": "FLOW_SP_RAMP_MAX",
+                    "entity": "number.plcassistant_flow_sp_ramp_max",
                     "direction": "IN",
                 },
             ],

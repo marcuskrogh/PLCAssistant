@@ -145,7 +145,7 @@ def test_integration_datablock_has_mode_tags() -> None:
     assert "FLOW_KD" in tags
     assert "LEVEL_TF_TS" in tags
     assert "FLOW_HOLD_WHEN_STOPPED" in tags
-    assert len(block.bindings) == 42
+    assert len(block.bindings) == 44
 
 
 def test_integration_softplc_ha_pid_loop_tag_parity() -> None:
@@ -173,6 +173,7 @@ def test_integration_softplc_ha_pid_loop_tag_parity() -> None:
             "hold_when_stopped",
             "ts",
             "tf_ts",
+            "sp_ramp_max",
         ):
             assert f'"{field}": "{getattr(loop, field)}"' in text
 
@@ -196,6 +197,7 @@ def test_integration_compound_entity_attribute_schema_keys() -> None:
         "kd_entity",
         "u0_entity",
         "tf_ts_entity",
+        "sp_ramp_max_entity",
     ):
         assert entity_key in text
 

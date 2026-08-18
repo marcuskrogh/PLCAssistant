@@ -67,7 +67,7 @@ def test_unit_db_tank_is_fully_defined() -> None:
     assert "LT_TANK" in block.tags
     assert "CMD_SPEED" in block.tags
     table = block.binding_table()
-    assert len(table.bindings) == 42
+    assert len(table.bindings) == 44
     assert {b.tag for b in table.bindings} <= set(block.tags)
     assert "LEVEL_KD" in block.tags
     assert "FLOW_KD" in block.tags

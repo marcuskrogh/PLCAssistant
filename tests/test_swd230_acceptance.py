@@ -169,13 +169,13 @@ def test_system_faceplate_js_contract() -> None:
 
 
 def test_system_app_version_0_1_50() -> None:
-    assert '"0.1.63"' in (ROOT / "manifest.json").read_text(encoding="utf-8")
-    assert 'version: "0.1.63"' in Path("plc_assistant/config.yaml").read_text(
+    assert '"0.1.64"' in (ROOT / "manifest.json").read_text(encoding="utf-8")
+    assert 'version: "0.1.64"' in Path("plc_assistant/config.yaml").read_text(
         encoding="utf-8"
     )
-    assert "BUILD_VERSION=0.1.63" in Path("plc_assistant/Dockerfile").read_text(
+    assert "BUILD_VERSION=0.1.64" in Path("plc_assistant/Dockerfile").read_text(
         encoding="utf-8"
     )
     dual = Path("plc_assistant/custom_components/plcassistant")
-    assert '"0.1.63"' in (dual / "manifest.json").read_text(encoding="utf-8")
+    assert '"0.1.64"' in (dual / "manifest.json").read_text(encoding="utf-8")
     assert CARD.read_bytes() == (dual / "www" / "pid-loop-card.js").read_bytes()
