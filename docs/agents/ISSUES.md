@@ -11,6 +11,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 | SWD-377 | Subtask | SWD-373: Faceplate UX — bars, colour, values, popup, nudges, settings | Done | SWD-373 | docs/PLAN.md, custom_components/plcassistant/www/pid-faceplate-elements.js | — |
 | SWD-378 | Subtask | SWD-373: Focused MV popup and ε between PV/SP | Done | SWD-373 | docs/PLAN.md, custom_components/plcassistant/www/pid-faceplate-elements.js | — |
 | SWD-379 | Subtask | SWD-373: Calm activity green on writable analog bars | Done | SWD-373 | docs/PLAN.md, custom_components/plcassistant/www/pid-faceplate-elements.js | — |
+| SWD-380 | Subtask | SWD-373: Paned settings for all standardised PID parameters | Done | SWD-373 | docs/PLAN.md, custom_components/plcassistant/www/pid-faceplate-elements.js | — |
 | SWD-368 | Story | ISA-101 / DCS-standard PID faceplates | Done | Relates SWD-366 | docs/ROADMAP.md, docs/RESEARCH.md | Done — shipped PR [#104](https://github.com/marcuskrogh/PLCAssistant/pull/104) |
 | SWD-369 | Task | Define & ship ISA-101 DCS PID faceplate | Done | Relates SWD-368 | docs/PLAN.md | Done — shipped PR [#104](https://github.com/marcuskrogh/PLCAssistant/pull/104) |
 | SWD-370 | Subtask | SWD-369: Controller-mode contract + CO_MAN + auto/uman wiring | Done | SWD-369 | docs/PLAN.md, plcassistant/io/pid_loop.py | — |
@@ -178,6 +179,7 @@ Continuity mirror for Jira (`SWD`). Upsert rows when issues are created, transit
 
 ## Log
 
+- 2026-08-18 — Implement SWD-373 UX (SWD-380): paned settings for all standardised PID params; App 0.1.63; PR [#105](https://github.com/marcuskrogh/PLCAssistant/pull/105) → In Review. Next `/review-fix SWD-373`.
 - 2026-08-18 — Implement SWD-373 UX (SWD-379): muted activity-green writable fill; App 0.1.62; PR [#105](https://github.com/marcuskrogh/PLCAssistant/pull/105) → In Review. Next `/review-fix SWD-373`.
 - 2026-08-18 — Implement SWD-373 UX (SWD-378): focused per-bar popup, MV label, ε between PV/SP; App 0.1.61; PR [#105](https://github.com/marcuskrogh/PLCAssistant/pull/105) → In Review. Next `/review-fix SWD-373`.
 - 2026-08-18 — Implement SWD-373 UX (SWD-377): colour fill, bar values, numeric popup, nudges, settings gear; App 0.1.60; PR [#105](https://github.com/marcuskrogh/PLCAssistant/pull/105) → In Review. Next `/review-fix SWD-373`.
