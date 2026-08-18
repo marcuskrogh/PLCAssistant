@@ -227,6 +227,10 @@ assertEq(root.mk("[data-value-max]").textContent, "0.40", "level SP max is 0.40 
 assertEq(root.mk("[data-value-unit]").textContent, "m", "level SP unit");
 assertEq(root.mk("[data-value-current]").textContent, "0.30", "SP current follows sp");
 assertEq(root.mk(".pid-value-focus")._attrs["data-writable"], "1", "SP popup is writable in AUTO");
+assertEq(root.mk("[data-sp-bar]")._attrs["data-writable"], "1", "AUTO colours SP fill");
+assertEq(root.mk("[data-cv-bar]")._attrs["data-writable"], "0", "AUTO does not colour MV fill");
+assertEq(root.mk('[data-bar="sp"]')._attrs["data-writable"], "1", "AUTO highlights SP bar");
+assertEq(root.mk('[data-bar="co"]')._attrs["data-writable"], "0", "AUTO does not highlight MV bar");
 
 applyPidFaceplateState(root, {
   title: "Level PID",
