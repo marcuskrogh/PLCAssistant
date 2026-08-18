@@ -90,6 +90,12 @@ assert(css.includes("min-height: 120px"), "taller vertical tracks");
 assert(css.includes("width: 14px"), "thinner vertical tracks");
 assert(css.includes("height: 16px"), "thicker CO track");
 assert(css.includes(".pid-vbar-fill[data-writable=\"1\"]"), "writable fill colour hook");
+assert(css.includes("--pid-active"), "writable fill uses activity green");
+assert(css.includes("background: var(--pid-active"), "writable fill token is --pid-active");
+assert(
+  !css.includes('.pid-shell[data-pid-hi="abnormal"] .pid-vbar-fill[data-writable="1"]'),
+  "ε severity does not recolour the writable fill"
+);
 assert(
   !css.includes("box-shadow: inset 0 0 0 1px var(--primary-text-color)"),
   "writable analog is not a bounding box"

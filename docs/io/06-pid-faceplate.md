@@ -26,9 +26,10 @@ DCS controller modes (not three parallel SP sources while the PID still computes
 | Automatic | `1` | **SP** when the Auto entity is a Number | PID computes CO from local SP |
 | Remote | `2` | none (cascade / remote SP) | PID stays in auto; faceplate does not write SP or CO |
 
-Highlight the writable analog by colouring its **fill** (`--primary-color`).
-Mode buttons stay grayscale invert — **do not** colour-code Man / Auto / Rem.
-Caution / abnormal still override the fill. Writing CO Set flips the loop to
+Highlight the writable analog by colouring its **fill** with a muted activity
+green (`--pid-active`). Mode buttons stay grayscale invert — **do not**
+colour-code Man / Auto / Rem. Loop error colour stays on **ε**; MV clamp
+caution may tint the MV fill only. Writing CO Set flips the loop to
 Manual. Writing Auto SP Set flips to Automatic (SWD-222). Remote Set is
 disabled on the faceplate.
 
@@ -141,11 +142,11 @@ with values on the bars, **ε** between PV and SP, nudge arrows, and a settings
 gear for Kp / Ki / Kd. Clicking a bar opens a focused numeric popup for that
 analog (value, min, max, unit). Set is shown only when the analog is writable.
 Man / Auto / Rem are controller modes; the active button stays grayscale invert.
-The writable analog **fill** uses `--primary-color`. Colour otherwise follows
-ISA-101 high-performance HMI practice: caution uses Home Assistant
-`--warning-color`, abnormal uses `--error-color`, applied to relative |ε| and
-to an MV bar at clamp (~0% or ~100% of scale). Text+`inputmode=decimal` editors
-keep intermediate edits alive across live Soft-PLC hass updates. Typography uses
+The writable analog **fill** uses a muted activity green (`--pid-active`).
+Colour otherwise follows ISA-101 high-performance HMI practice: caution uses
+Home Assistant `--warning-color`, abnormal uses `--error-color`, applied to
+relative |ε|. An MV bar at clamp (~0% or ~100% of scale) may take caution on
+that fill only. Text+`inputmode=decimal` editors keep intermediate edits alive across live Soft-PLC hass updates. Typography uses
 Home Assistant Lovelace design tokens (`--ha-font-family-body`,
 `--ha-card-header-font-size`, `--ha-font-size-*`) so the faceplate matches
 surrounding entities / glance cards. Compound PID attributes are rounded to 2dp

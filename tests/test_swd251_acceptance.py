@@ -227,6 +227,6 @@ def test_version_lock_0_1_54() -> None:
     dual_man = (
         ROOT / "plc_assistant" / "custom_components" / "plcassistant" / "manifest.json"
     ).read_text(encoding="utf-8")
-    assert 'version: "0.1.61"' in cfg
-    assert '"version": "0.1.61"' in man
-    assert '"version": "0.1.61"' in dual_man
+    assert 'version: "0.1.62"' in cfg
+    assert '"version": "0.1.62"' in man
+    assert '"version": "0.1.62"' in dual_man

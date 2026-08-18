@@ -5,8 +5,9 @@
  * Named elements: isa-glyph, kpi-row, analog-bars, mode-row.
  * Mount one-at-a-time via mountPidFaceplateElement, or assemble a full face.
  *
- * Writable analog uses colour fill (--primary-color). Mode buttons stay
- * grayscale invert. Caution/abnormal still override the fill.
+ * Writable analog uses a muted activity-green fill. Mode buttons stay
+ * grayscale invert. Caution/abnormal colour stays on ε (and MV clamp),
+ * not on the writable fill.
  */
 
 /** Display precision for faceplate KPIs (PV / SP / CO / error) and SP editors. */
@@ -375,6 +376,7 @@ const PID_FACEPLATE_CSS = `
   --pid-chrome: var(--primary-text-color);
   --pid-hi-caution: var(--warning-color, #f59e0b);
   --pid-hi-abnormal: var(--error-color, #dc2626);
+  --pid-active: #5a8f6e;
   --pid-accent: var(--pid-chrome);
   --pid-focus: var(--primary-color, var(--pid-chrome));
   /* Match stock Lovelace cards (entities / glance) — HA design tokens. */
@@ -641,17 +643,11 @@ const PID_FACEPLATE_CSS = `
 }
 .pid-vbar-fill[data-writable="1"],
 .pid-cv-fill[data-writable="1"] {
-  background: var(--primary-color, var(--pid-focus));
+  background: var(--pid-active, #5a8f6e);
   opacity: 1;
 }
-.pid-cv-fill[data-hi="caution"],
-.pid-shell[data-pid-hi="caution"] .pid-vbar-fill[data-writable="1"],
-.pid-shell[data-pid-hi="caution"] .pid-cv-fill[data-writable="1"] {
+.pid-cv-fill[data-hi="caution"] {
   background: var(--pid-hi-caution); opacity: 1;
-}
-.pid-shell[data-pid-hi="abnormal"] .pid-vbar-fill[data-writable="1"],
-.pid-shell[data-pid-hi="abnormal"] .pid-cv-fill[data-writable="1"] {
-  background: var(--pid-hi-abnormal); opacity: 1;
 }
 .pid-nudge {
   display: grid;

@@ -14,9 +14,10 @@
  * Loop error (ε) sits between the PV and SP bars.
  *
  * Colour (ISA-101 high-performance HMI): grayscale / Home Assistant tokens in
- * normal operation for mode identity. The writable analog **fill** uses
- * --primary-color. Caution (--warning-color) and abnormal (--error-color)
- * still override. Man / Auto / Rem buttons stay grayscale invert.
+ * normal operation for mode identity. The writable analog **fill** uses a muted
+ * activity green (--pid-active). Caution (--warning-color) and abnormal
+ * (--error-color) colour ε; MV clamp caution tints the MV fill only.
+ * Man / Auto / Rem buttons stay grayscale invert.
  *
  * Drafts: typed SP inputs use text + inputmode=decimal (not type=number) so
  * intermediate edits like "0." survive live hass updates without caret jumps.
