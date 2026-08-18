@@ -39,4 +39,4 @@ The PID faceplate describes **REM** as cascade/remote and read-only. The flow lo
 - App: **0.1.66**
 
 ## Next
-`/review-fix SWD-383` — Review and auto-fix on the new delivery PR
+Done — shipped PR [#107](https://github.com/marcuskrogh/PLCAssistant/pull/107) (App 0.1.66)
