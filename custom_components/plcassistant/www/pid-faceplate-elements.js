@@ -151,6 +151,10 @@ export function pidBarPct(value, max) {
   return Math.max(0, Math.min(100, (n / max) * 100));
 }
 
+function cssPct(n) {
+  return `${Math.round(Number(n) * 1000) / 1000}%`;
+}
+
 /** Move current toward target at most maxRate engineering units per second. */
 export function rampSetpoint(current, target, maxRate, dt) {
   const dest = Number(target);
@@ -660,7 +664,10 @@ const PID_FACEPLATE_CSS = `
   transition: height 0.25s ease, background 0.2s ease, opacity 0.2s ease;
   z-index: 0;
 }
-.pid-vbar-fill[data-ramping="1"] { transition: none; }
+.pid-vbar-fill[data-sp-bar] {
+  /* SP fill height must track the ramp without a lagging green cap. */
+  transition: background 0.2s ease, opacity 0.2s ease;
+}
 .pid-vbar-ramp {
   position: absolute;
   left: 0;
@@ -668,9 +675,9 @@ const PID_FACEPLATE_CSS = `
   bottom: 0;
   height: 0%;
   background: var(--pid-ramp, #e67e22);
-  opacity: 0.95;
+  opacity: 1;
   display: none;
-  z-index: 1;
+  z-index: 2;
 }
 .pid-vbar-ramp[data-active="1"] { display: block; }
 .pid-hbar {
@@ -1397,7 +1404,7 @@ export function applyPidFaceplateState(root, state = {}) {
 
   const pvScale = pidPvScaleMax(loopId);
   const pvBar = root.querySelector("[data-pv-bar]");
-  if (pvBar) pvBar.style.height = `${pidBarPct(pv, pvScale)}%`;
+  if (pvBar) pvBar.style.height = cssPct(pidBarPct(pv, pvScale));
   const spBar = root.querySelector("[data-sp-bar]");
   const spTarget =
     state.spTarget !== undefined && state.spTarget !== null ? state.spTarget : sp;
@@ -1406,20 +1413,22 @@ export function applyPidFaceplateState(root, state = {}) {
   const tgtPct = pidBarPct(spTarget, pvScale);
   const ramping = pidSpRampVisible(sp, spTarget, state.sp_ramp_max, state.scanDt);
   if (spBar) {
-    // While ramping, green fill stops at the lower of current/target so the
-    // whole interval is orange (no green cap at the top of the bar).
-    spBar.style.height = `${ramping ? Math.min(spPct, tgtPct) : spPct}%`;
+    const lo = Math.min(spPct, tgtPct);
     spBar.setAttribute("data-ramping", ramping ? "1" : "0");
+    // Green fill occupies only the settled side; orange owns current↔target.
+    spBar.style.height = cssPct(ramping ? lo : spPct);
   }
   if (rampEl) {
     rampEl.setAttribute("data-active", ramping ? "1" : "0");
     if (ramping) {
       const lo = Math.min(spPct, tgtPct);
       const hi = Math.max(spPct, tgtPct);
-      rampEl.style.bottom = `${lo}%`;
-      rampEl.style.height = `${hi - lo}%`;
+      rampEl.style.bottom = cssPct(lo);
+      rampEl.style.top = cssPct(100 - hi);
+      rampEl.style.height = "auto";
     } else {
       rampEl.style.bottom = "0%";
+      rampEl.style.top = "auto";
       rampEl.style.height = "0%";
     }
   }

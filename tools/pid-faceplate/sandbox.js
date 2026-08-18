@@ -24,7 +24,7 @@ import {
   pidBarEditorKey,
   pidNormalizeBarKey,
   rampSetpoint,
-} from "../../custom_components/plcassistant/www/pid-faceplate-elements.js";
+} from "../../custom_components/plcassistant/www/pid-faceplate-elements.js?v=sp-ramp-full";
 
 const loopEl = document.querySelector("#loop");
 const modeEl = document.querySelector("#mode");
