@@ -35,6 +35,7 @@ The PID faceplate describes **REM** as cascade/remote and read-only. The flow lo
 - Task: [SWD-383](https://marcusknielsen.atlassian.net/browse/SWD-383)
 - Relates: [SWD-373](https://marcusknielsen.atlassian.net/browse/SWD-373)
 - Branch: `cursor/swd-383-flow-cascade-remote-68c1`
+- PR: https://github.com/marcuskrogh/PLCAssistant/pull/107
 - App: **0.1.65**
 
 ## Next
