@@ -31,6 +31,13 @@ ensure_cache_at_ref() {
     git clone --depth 1 "$repo" "$cache"
   fi
 
+  # For branch refs (e.g. main), fetch the remote tip explicitly so a warm cache
+  # never serves a stale detached SHA from an earlier sync.
+  if git -C "$cache" fetch --depth 1 origin "+refs/heads/${ref}:refs/remotes/origin-sync/${ref}" 2>/dev/null; then
+    git -C "$cache" checkout -f --detach "refs/remotes/origin-sync/${ref}"
+    return 0
+  fi
+
   # Fetch the requested ref (branch, tag, or SHA) and hard-reset so an old
   # cache always advances cleanly to that version.
   if ! git -C "$cache" fetch --depth 1 origin "$ref"; then

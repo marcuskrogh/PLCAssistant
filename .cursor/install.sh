@@ -10,7 +10,7 @@ cd "$ROOT"
 # Also re-run from environment.json `start` so cloud boots are not stuck
 # on a snapshotted install from an older Build.
 echo "==> Syncing agent skills"
-bash .agents/sync-skills.sh
+SKILLS_REF=main bash .agents/sync-skills.sh
 
 echo "==> Ensuring python3-venv is available"
 if ! python3 -c "import ensurepip" 2>/dev/null; then
