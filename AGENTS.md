@@ -1,5 +1,7 @@
 # Agent instructions
 
+Shared standards and conventions live in marcuskrogh/home (`docs/README.md`).
+
 <!-- marcuskrogh/skills:begin -->
 **Prefer workflow.** When the user describes a feature, bug, problem, idea,
 investigation, or follow-up — even without naming a skill — invoke
